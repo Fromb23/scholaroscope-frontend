@@ -15,6 +15,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { DEFAULT_WORKSPACE_CAPABILITIES, authAPI } from '@/app/core/api/auth';
 import { registerAuthFailureHandler } from '@/app/core/api/client';
 import { logoutLocalFirst } from '@/app/core/auth/logout';
+import {
+  clearExplicitLogout,
+  isExplicitLogoutActive,
+} from '@/app/core/auth/explicitLogout';
 import { isNetworkError } from '@/app/core/auth/networkDetection';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import {
@@ -247,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [activeOrg?.id, advanceAuthority, membershipVersion]);
 
   const syncContext = useCallback(async () => {
-    if (!user) {
+    if (!user || isExplicitLogoutActive()) {
       return;
     }
     const expectedOrganizationId = activeOrg?.id ?? null;
@@ -277,6 +281,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearAuthState]);
 
   const boot = useCallback(async (isCancelled: () => boolean = () => false) => {
+    if (isExplicitLogoutActive()) {
+      clearAuthState('session-invalidation');
+      setLoading(false);
+      return;
+    }
     const bootAuthStateVersion = authStateVersionRef.current;
     const bootWorkspaceGeneration = getWorkspaceGeneration();
     const bootTokenVersion = getAccessTokenVersion();
@@ -352,11 +361,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [boot, offline]);
 
   const login = useCallback(async (email: string, password: string) => {
+    clearExplicitLogout();
+    const authorityAtStart = captureWorkspaceAuthority(activeOrg?.id ?? null);
+    const authStateVersionAtStart = authStateVersionRef.current;
     const response = await authAPI.login({ email, password });
+    if (
+      isExplicitLogoutActive()
+      || authStateVersionRef.current !== authStateVersionAtStart
+      || !isWorkspaceAuthorityCurrent(authorityAtStart, activeOrg?.id ?? null)
+    ) {
+      throw new Error('Login response was superseded by an authentication state change.');
+    }
     applyAuthState(response, 'login');
     setLoading(false);
     return response;
-  }, [applyAuthState]);
+  }, [activeOrg?.id, applyAuthState]);
 
   const logout = useCallback(() => logoutLocalFirst({
     markLogoutStarted: () => setLoggingOut(true),
@@ -377,6 +396,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applyAuthState]);
 
   const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResponse> => {
+    clearExplicitLogout();
     const response = await authAPI.register(payload);
 
     if (response.status === 'pending' || response.status === 'email_verification_required') {
@@ -400,6 +420,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applyAuthState, membershipVersion]);
 
   const verifyEmail = useCallback(async (token: string): Promise<RegisterResponse> => {
+    clearExplicitLogout();
     const response = await authAPI.verifyEmail(token);
     if (response.access && response.user) {
       applyAuthState({

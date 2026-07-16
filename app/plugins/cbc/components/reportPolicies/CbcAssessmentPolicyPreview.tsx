@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Puzzle } from 'lucide-react';
@@ -164,7 +166,7 @@ export function CbcAssessmentPolicyPreview(context: AssessmentPolicyPreviewConte
                 if (cancelled) return;
                 setPreview({
                     status: 'error',
-                    message: error instanceof Error ? error.message : 'Failed to resolve CBC policy preview.',
+                    message: resolveErrorMessage(error, 'Failed to resolve CBC policy preview.'),
                 });
             }
         }

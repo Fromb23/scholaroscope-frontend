@@ -13,6 +13,10 @@ import {
   setAccessToken,
 } from '@/app/core/auth/tokenStore';
 import {
+  clearExplicitLogout,
+  markExplicitLogout,
+} from '@/app/core/auth/explicitLogout';
+import {
   advanceWorkspaceGeneration,
   resetWorkspaceGenerationForTests,
 } from '@/app/core/runtime/workspaceGeneration';
@@ -114,6 +118,7 @@ function getAuthRejectedHandler(): ResponseRejectedHandler {
 const originalApiAdapter = apiClient.defaults.adapter;
 
 beforeEach(() => {
+  clearExplicitLogout();
   resetWorkspaceGenerationForTests();
   clearAccessToken();
   registerAuthFailureHandler(null);
@@ -123,6 +128,7 @@ afterEach(() => {
   apiClient.defaults.adapter = originalApiAdapter;
   registerAuthFailureHandler(null);
   clearAccessToken();
+  clearExplicitLogout();
   resetWorkspaceGenerationForTests();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -210,6 +216,7 @@ describe('runtime auth refresh boundaries', () => {
 
     await flushMicrotasks();
     expect(refreshPost).toHaveBeenCalledOnce();
+    markExplicitLogout();
     clearAccessToken();
     refreshGate.resolve({ access: 'fresh-after-logout' });
 

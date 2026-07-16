@@ -16,11 +16,12 @@ import type {
     MusicPracticalContract,
     PracticalProfileKey,
 } from '@/app/core/types/session';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { CBCBreadcrumb, CBCNav } from '@/app/plugins/cbc/components/CBCComponents';
 import { FineArtsPracticalRequirementsCard } from '@/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard';
 import { MusicPracticalRequirementsCard } from '@/app/plugins/cbc/components/practicals/MusicPracticalRequirementsCard';
 import { useSessionCbcPracticalProfile } from '@/app/plugins/cbc/hooks/usePracticalProfiles';
+import { sanitizeAppDestination } from '@/app/core/auth/navigation';
 
 function withQueryParams(href: string, params: Record<string, string | null | undefined>) {
     const [basePath, existingQuery = ''] = href.split('?', 2);
@@ -43,7 +44,10 @@ export function CBCPracticalPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const action = searchParams.get('action');
-    const returnTo = searchParams.get('returnTo') || `/sessions/${sessionId}?section=complete`;
+    const returnTo = sanitizeAppDestination(
+        searchParams.get('returnTo'),
+        `/sessions/${sessionId}?section=complete`,
+    );
     const { session, closureState, loading, error, refetch, refetchClosureState } = useSessionDetail(sessionId);
     const practicalProfileQuery = useSessionCbcPracticalProfile(sessionId, Boolean(session));
     const [completionPending, setCompletionPending] = useState(false);
@@ -79,7 +83,7 @@ export function CBCPracticalPage() {
             router.push(incompleteReturnHref);
         } catch (mutationError) {
             setCompletionError(
-                extractErrorMessage(mutationError as ApiError, 'We could not close the lesson record.'),
+                resolveErrorMessage(mutationError as ApiError, 'We could not close the lesson record.'),
             );
         } finally {
             setCompletionPending(false);
@@ -105,7 +109,7 @@ export function CBCPracticalPage() {
     if (practicalProfileQuery.error) {
         return (
             <ErrorBanner
-                message={extractErrorMessage(practicalProfileQuery.error as ApiError, 'We could not load the practical profile.')}
+                message={resolveErrorMessage(practicalProfileQuery.error as ApiError, 'We could not load the practical profile.')}
                 onDismiss={() => {}}
             />
         );

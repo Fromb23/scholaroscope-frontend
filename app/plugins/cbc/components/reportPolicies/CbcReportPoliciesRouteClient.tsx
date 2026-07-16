@@ -2,13 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { CbcReportPoliciesPage } from '@/app/plugins/cbc/components/reportPolicies/CbcReportPoliciesPage';
-
-function safeReturnTo(value: string | null): string | null {
-    if (!value) return null;
-    if (!value.startsWith('/')) return null;
-    if (value.startsWith('//')) return null;
-    return value;
-}
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 function positiveNumberParam(value: string | null): number | null {
     const parsed = Number(value ?? '');
@@ -17,7 +11,7 @@ function positiveNumberParam(value: string | null): number | null {
 
 export function CbcReportPoliciesRouteClient() {
     const searchParams = useSearchParams();
-    const returnTo = safeReturnTo(searchParams.get('returnTo'));
+    const returnTo = parseAppDestination(searchParams.get('returnTo'));
     const selectedTermId = positiveNumberParam(searchParams.get('term'));
 
     return (

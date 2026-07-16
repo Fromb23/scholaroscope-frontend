@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import {
     CheckCircle2,
     Circle,
@@ -136,7 +137,7 @@ export function AssessmentStageActionCard({
     const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
-        return value?.startsWith('/') ? value : null;
+        return parseAppDestination(value);
     }, [searchParams]);
     const editHref = useMemo(
         () => getSafeEditHref(assessmentId, safeReturnTo),

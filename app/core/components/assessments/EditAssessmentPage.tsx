@@ -27,7 +27,7 @@ import {
     AssessmentStatus,
     isLearnerAssessmentDetail,
 } from '@/app/core/types/assessment';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { resolveReportError } from '@/app/core/errors';
 import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import { useAuth } from '@/app/context/AuthContext';
@@ -334,7 +334,7 @@ export function EditAssessmentPage() {
             router.push(`/assessments/${assessmentId}`);
         } catch (err) {
             setSaveError(
-                extractErrorMessage(err as ApiError, 'Failed to update assessment')
+                resolveErrorMessage(err as ApiError, 'Failed to update assessment')
             );
         } finally {
             setSaving(false);

@@ -1,7 +1,7 @@
 import type { AppError, ResolveAppErrorContext } from '@/app/core/errors';
 import { resolveAppError } from '@/app/core/errors';
 import type { ApiError } from '@/app/core/types/errors';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 
 
 export function resolveCambridgeError(
@@ -31,7 +31,7 @@ export function toPositiveNumber(value: string): number | null {
 }
 
 export function mutationErrorMessage(error: unknown, fallback = 'Action failed. Please review input and retry.') {
-  return extractErrorMessage(error as ApiError, fallback);
+  return resolveErrorMessage(error as ApiError, fallback);
 }
 
 export function modeLabel(mode: string): string {

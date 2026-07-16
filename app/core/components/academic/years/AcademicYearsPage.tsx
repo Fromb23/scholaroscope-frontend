@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, Plus, Edit2, Trash2, CheckCircle } from 'lucide-react';
@@ -20,7 +22,7 @@ import {
 import { AcademicYear, AcademicYearFormData } from '@/app/core/types/academic';
 
 function getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : 'An unexpected error occurred.';
+    return resolveErrorMessage(error, 'An unexpected error occurred.');
 }
 
 export function AcademicYearsPage() {

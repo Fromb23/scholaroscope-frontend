@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -300,7 +302,7 @@ export function CurriculumDisableWorkflowModal({
         message: 'Curriculum shutdown has started. Academic setup has been refreshed.',
       });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to start disable workflow.');
+      setError(resolveErrorMessage(requestError, 'Failed to start disable workflow.'));
     }
   };
 
@@ -313,7 +315,7 @@ export function CurriculumDisableWorkflowModal({
       await refreshView();
       router.refresh();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to cancel disable workflow.');
+      setError(resolveErrorMessage(requestError, 'Failed to cancel disable workflow.'));
     }
   };
 
@@ -328,7 +330,7 @@ export function CurriculumDisableWorkflowModal({
         message: `${curriculum.name} has been reactivated. Academic setup has been refreshed.`,
       });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to reactivate curriculum.');
+      setError(resolveErrorMessage(requestError, 'Failed to reactivate curriculum.'));
     }
   };
 

@@ -7,7 +7,7 @@ import { useSessionRubricScale, useBulkCreateClassEvidence } from '@/app/plugins
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
-import { extractErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
+import { resolveErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
 import type {
     SessionLearner,
     BulkClassEvidenceData,
@@ -110,7 +110,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
             const result = await bulkCreate.mutateAsync(payload);
             onClose(result, { evaluationType: evalType });
         } catch (e) {
-            dispatch({ type: 'set_error', payload: extractErrorMessage(e) });
+            dispatch({ type: 'set_error', payload: resolveErrorMessage(e) });
         }
     };
 

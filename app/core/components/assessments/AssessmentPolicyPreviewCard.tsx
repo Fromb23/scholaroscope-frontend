@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Award } from 'lucide-react';
@@ -343,7 +345,7 @@ export function AssessmentPolicyPreviewCard({
                 setPreview({
                     status: 'error',
                     surface,
-                    message: error instanceof Error ? error.message : 'Failed to resolve policy preview.',
+                    message: resolveErrorMessage(error, 'Failed to resolve policy preview.'),
                 });
             }
         }

@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/app/core/api/client';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 
 export interface UserProfile {
     id: number;
@@ -51,7 +51,7 @@ export const useProfile = () => {
             setProfile(response.data);
             setError(null);
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to load profile'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to load profile'));
         } finally {
             setLoading(false);
         }
@@ -66,7 +66,7 @@ export const useProfile = () => {
             const response = await apiClient.patch<UserProfile>('/users/profile/', data);
             setProfile(response.data);
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to update profile'));
+            throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update profile'));
         }
     };
 
@@ -74,7 +74,7 @@ export const useProfile = () => {
         try {
             await apiClient.post('/users/change_password/', data);
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to change password'));
+            throw new Error(resolveErrorMessage(err as ApiError, 'Failed to change password'));
         }
     };
 

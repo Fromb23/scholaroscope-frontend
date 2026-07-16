@@ -52,3 +52,12 @@ notification side-effect suppression, generic manual-store remounting, late
 late successful responses. The workspace architecture checker requires the
 generation anchors in the exact auth, API client, notification, and dashboard
 boundary files.
+
+## Explicit logout
+
+The explicit-logout tombstone is stored in session storage and mirrored in
+memory; it contains no token, user, or workspace data. Logout sets it before
+advancing the workspace generation and clearing local authority. Server
+revocation is bounded and best-effort, while local signed-out state is
+authoritative. Automatic refresh and context paths cannot clear the tombstone
+or restore a session. An intentional new authentication submission clears it.

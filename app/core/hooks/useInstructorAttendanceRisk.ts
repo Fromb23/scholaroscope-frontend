@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { reportingAPI } from '@/app/core/api/reporting';
 import type { InstructorAttendanceRiskResponse } from '@/app/core/types/reporting';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 
 interface UseInstructorAttendanceRiskParams {
   termId?: number;
@@ -26,7 +26,7 @@ export function useInstructorAttendanceRisk({
       setError(null);
     } catch (err) {
       setData(null);
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance risk'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch attendance risk'));
     } finally {
       setLoading(false);
     }

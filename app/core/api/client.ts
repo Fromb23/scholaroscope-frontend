@@ -2,6 +2,11 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 import { redirectToLogin } from '@/app/core/auth/navigation';
 import {
+  assertAutomaticAuthenticationAllowed,
+  ExplicitLogoutActiveError,
+  isExplicitLogoutActive,
+} from '@/app/core/auth/explicitLogout';
+import {
   clearAccessToken,
   getAccessToken,
   getAccessTokenVersion,
@@ -108,12 +113,15 @@ function handleAuthFailure(): void {
 }
 
 async function performRefreshRequest(): Promise<string> {
+  assertAutomaticAuthenticationAllowed();
   const tokenVersionAtStart = getAccessTokenVersion();
   const workspaceGenerationAtStart = getWorkspaceGeneration();
   const response = await refreshClient.post<RefreshPayload>('/users/refresh/');
   const accessToken = response.data.access;
 
   if (
+    isExplicitLogoutActive()
+    ||
     getAccessTokenVersion() !== tokenVersionAtStart
     || getWorkspaceGeneration() !== workspaceGenerationAtStart
   ) {
@@ -133,6 +141,9 @@ async function performRefreshRequest(): Promise<string> {
 }
 
 export function refreshAccessToken(): Promise<string> {
+  if (isExplicitLogoutActive()) {
+    return Promise.reject(new ExplicitLogoutActiveError());
+  }
   if (!refreshPromise) {
     refreshPromise = performRefreshRequest().finally(() => {
       refreshPromise = null;
@@ -201,6 +212,10 @@ apiClient.interceptors.response.use(
 
     originalRequest._retry = true;
 
+    if (isExplicitLogoutActive()) {
+      return Promise.reject(new ExplicitLogoutActiveError());
+    }
+
     try {
       const refreshedAccessToken = await refreshAccessToken();
       originalRequest.headers.Authorization = `Bearer ${refreshedAccessToken}`;
@@ -219,6 +234,7 @@ apiClient.interceptors.response.use(
 );
 
 refreshClient.interceptors.request.use((config) => {
+  assertAutomaticAuthenticationAllowed();
   const workspaceConfig = config as RetryableRequestConfig;
   workspaceConfig._workspaceGeneration ??= getWorkspaceGeneration();
   return workspaceConfig;

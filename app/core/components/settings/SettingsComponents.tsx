@@ -44,7 +44,7 @@ import type { AcademicSetupStatus, Curriculum, CurriculumDisableRequest } from '
 import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInvites';
 import { useAuth } from '@/app/context/AuthContext';
 import { hasWorkspacePermission } from '@/app/core/lib/productCapabilities';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 import {
     CurriculumCatalogDetail, InstalledPlugin,
     PluginManagementContract, SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
@@ -358,7 +358,7 @@ export function CreateInviteModal({ isOpen, onClose, onCreate }: CreateInviteMod
             const invite = await onCreate(form);
             setCreatedInvite(invite);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create invite');
+            setError(resolveErrorMessage(err, 'Failed to create invite'));
         } finally { setSubmitting(false); }
     };
 
@@ -1153,7 +1153,7 @@ export function PluginsTab() {
             await Promise.all([refetch(), refetchDisableRequests()]);
             flash('success', 'installed_plugin' in response ? response.detail : 'Plugin updated.');
         } catch (err) {
-            flash('error', extractErrorMessage(err as ApiError, 'Failed to update plugin.'));
+            flash('error', resolveErrorMessage(err as ApiError, 'Failed to update plugin.'));
         } finally { setToggling(false); }
     };
 

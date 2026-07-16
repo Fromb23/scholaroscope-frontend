@@ -25,7 +25,7 @@ import {
   AssessmentReviewSummary,
 } from '../types/assessment';
 import { PaginatedResponse } from '@/app/core/types/api';
-import { ApiError, extractErrorMessage } from '../types/errors';
+import { ApiError, resolveErrorMessage } from '../types/errors';
 import { withOperationalScope, type OperationalScope } from '@/app/core/lib/academicScope';
 
 // ── Helper ────────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ export const useAssessments = (params?: {
       setAssessments(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch assessments'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch assessments'));
     } finally {
       setLoading(false);
     }
@@ -155,7 +155,7 @@ export const useOpenAssessmentsForStudent = (
       setAssessments(openAssessments);
     } catch (err) {
       setAssessments([]);
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch open assessments'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch open assessments'));
     } finally {
       setLoading(false);
     }
@@ -191,7 +191,7 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
       setAssessment(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch assessment'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch assessment'));
     } finally {
       setLoading(false);
     }
@@ -310,7 +310,7 @@ export const useAssessmentScores = (params?: {
       setScores(unwrapList(data));
       setTotalItems(unwrapCount(data));
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch scores'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch scores'));
       setScores([]);
       setTotalItems(0);
     } finally {
@@ -365,7 +365,7 @@ export const useAssessmentReviewSummary = (params?: {
       return data;
     } catch (err) {
       setSummary(null);
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch assessment review summary'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch assessment review summary'));
       return null;
     } finally {
       setLoading(false);
@@ -400,7 +400,7 @@ export const useRubricScales = (curriculumId?: number) => {
       setRubricScales(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch rubric scales'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch rubric scales'));
     } finally {
       setLoading(false);
     }
@@ -447,7 +447,7 @@ export const useRubricScaleDetail = (scaleId: number | null) => {
       setScale(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch rubric scale'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch rubric scale'));
     } finally {
       setLoading(false);
     }
@@ -477,7 +477,7 @@ export const useStudentScores = (
       setData(result);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch student scores'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch student scores'));
     } finally {
       setLoading(false);
     }
@@ -591,7 +591,7 @@ export const useCreateAssessmentForm = (options?: {
       const result = await assessmentAPI.create(form);
       return result;
     } catch (err) {
-      setSaveError(extractErrorMessage(err as ApiError, 'Failed to create assessment'));
+      setSaveError(resolveErrorMessage(err as ApiError, 'Failed to create assessment'));
       return null;
     } finally {
       setSaving(false);

@@ -1,9 +1,12 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import type { FormEvent, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import { Eye, FileText, Plus, RotateCcw } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -434,7 +437,7 @@ export function LessonPlansPage() {
 
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
-        return value?.startsWith('/') ? value : null;
+        return parseAppDestination(value);
     }, [searchParams]);
 
     useEffect(() => {
@@ -739,7 +742,7 @@ export function LessonPlansPage() {
         } catch (err) {
             setLessonPlanFeedback(lessonPlan.id, {
                 action,
-                message: err instanceof Error ? err.message : 'Action failed.',
+                message: resolveErrorMessage(err, 'Action failed.'),
                 variant: 'error',
             });
         } finally {
@@ -775,7 +778,7 @@ export function LessonPlansPage() {
                 variant: 'success',
             });
         } catch (err) {
-            setMarkUsedError(err instanceof Error ? err.message : 'Action failed.');
+            setMarkUsedError(resolveErrorMessage(err, 'Action failed.'));
         } finally {
             setPendingActionKey(null);
         }

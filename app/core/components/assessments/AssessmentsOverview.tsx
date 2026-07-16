@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ComponentProps, type Dispatch, type SetStateAction } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import {
     AlertTriangle,
     Award,
@@ -681,7 +682,7 @@ export function AssessmentsOverview() {
     const isAdminSupervisionMode = showInstitutionSupervision && !effectiveMyTeachingMode;
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
-        return value?.startsWith('/') ? value : null;
+        return parseAppDestination(value);
     }, [searchParams]);
     const source = searchParams.get('source');
     const queryTerm = useMemo(() => parsePositiveId(searchParams.get('term')), [searchParams]);

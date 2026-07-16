@@ -12,7 +12,7 @@ import type {
     MusicPracticalContract,
     SessionDetail,
 } from '@/app/core/types/session';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { useSessionCbcPracticalProfile } from '@/app/plugins/cbc/hooks/usePracticalProfiles';
 import { buildPracticalWorkflowHref } from '@/app/plugins/cbc/lib/practicalProfiles';
 
@@ -232,7 +232,7 @@ export function PracticalLessonPanel({
         return (
             <Card>
                 <ErrorBanner
-                    message={extractErrorMessage(practicalQuery.error as ApiError, 'We could not load the practical requirements.')}
+                    message={resolveErrorMessage(practicalQuery.error as ApiError, 'We could not load the practical requirements.')}
                     onDismiss={() => {}}
                 />
             </Card>

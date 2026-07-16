@@ -40,6 +40,7 @@ import type {
     AssignmentStatus,
 } from '@/app/core/types/assignments';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
     { value: '', label: 'All stages' },
@@ -309,8 +310,9 @@ export default function CohortAssignmentsPage() {
         if (searchParams.get('source')) {
             nextSearchParams.set('source', searchParams.get('source') ?? '');
         }
-        if (searchParams.get('returnTo')) {
-            nextSearchParams.set('returnTo', searchParams.get('returnTo') ?? '');
+        const safeReturnTo = parseAppDestination(searchParams.get('returnTo'));
+        if (safeReturnTo) {
+            nextSearchParams.set('returnTo', safeReturnTo);
         }
         if (options?.includeHighlightAssignment !== false && highlightAssignmentId) {
             nextSearchParams.set('highlightAssignment', String(highlightAssignmentId));
@@ -365,10 +367,11 @@ export default function CohortAssignmentsPage() {
         visibleCohortSubjects.find((subject) => String(subject.id) === cohortSubjectFilter) ?? null
     ), [cohortSubjectFilter, visibleCohortSubjects]);
     const showingWorkspaceSelection = !cohortSubjectFilter || (isTeachingActor && !selectedCohortSubject);
+    const requestedReturnTo = parseAppDestination(searchParams.get('returnTo'));
     const contextualBackHref = cohortSubjectFilter
         ? assignmentPickerHref
-        : searchParams.get('source') === 'midterm' && searchParams.get('returnTo')?.startsWith('/')
-            ? searchParams.get('returnTo') ?? `/academic/cohorts/${cohortId}`
+        : searchParams.get('source') === 'midterm' && requestedReturnTo
+            ? requestedReturnTo
             : `/academic/cohorts/${cohortId}`;
     const contextualBackLabel = cohortSubjectFilter ? 'Back to Assignments' : 'Back to Cohort';
     const assignmentFiltersActive = Boolean(

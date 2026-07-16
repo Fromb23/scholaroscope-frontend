@@ -1,4 +1,5 @@
 import { authAPI } from '@/app/core/api/auth';
+import { markExplicitLogout } from '@/app/core/auth/explicitLogout';
 
 export const LOGOUT_REVOKE_TIMEOUT_MS = 2500;
 
@@ -15,6 +16,7 @@ export function logoutLocalFirst({
   setLoading,
   revokeSession = () => authAPI.logout({ timeoutMs: LOGOUT_REVOKE_TIMEOUT_MS }),
 }: LocalFirstLogoutOptions): Promise<void> {
+  markExplicitLogout();
   markLogoutStarted();
   clearAuthState();
   setLoading(false);

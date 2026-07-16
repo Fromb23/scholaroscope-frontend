@@ -39,7 +39,7 @@ import {
   CohortSubjectOption,
 } from '@/app/core/types/session';
 import { CohortSubject } from '@/app/core/types/academic';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 
 
 // ── Helper — unwrap paginated or flat response ────────────────────────────
@@ -108,7 +108,7 @@ export const useSessions = (
       setSessions(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch sessions'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch sessions'));
     } finally {
       setLoading(false);
     }
@@ -165,7 +165,7 @@ export const useTodaySessions = () => {
       setSessions(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, "Failed to fetch today's sessions"));
+      setError(resolveErrorMessage(err as ApiError, "Failed to fetch today's sessions"));
     } finally {
       setLoading(false);
     }
@@ -267,7 +267,7 @@ export const useSessionDetail = (
       });
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch session details'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch session details'));
     } finally {
       setLoading(false);
     }
@@ -398,7 +398,7 @@ export const useCohortSessions = (
       setSessions(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort sessions'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort sessions'));
     } finally {
       setLoading(false);
     }
@@ -424,7 +424,7 @@ export const useCohortSubjects = (cohortId: number | null) => {
       setCohortSubjects(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort subjects'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort subjects'));
     } finally {
       setLoading(false);
     }
@@ -452,7 +452,7 @@ export const useCohortSubjectOptions = (cohortId: number | null) => {
       setSubjectOptions(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort subject options'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort subject options'));
     } finally {
       setLoading(false);
     }
@@ -511,7 +511,7 @@ export const useAttendance = (params?: AttendanceQueryParams) => {
       setRecords(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance records'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch attendance records'));
     } finally {
       setLoading(false);
     }
@@ -557,7 +557,7 @@ export const useStudentAttendanceHistory = (
       setData(result as StudentAttendanceHistory);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance history'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch attendance history'));
     } finally {
       setLoading(false);
     }
@@ -591,7 +591,7 @@ export const useCohortAttendanceSummary = (
       setData(result as CohortAttendanceSummary);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort attendance summary'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort attendance summary'));
     } finally {
       setLoading(false);
     }
@@ -638,7 +638,7 @@ export const useSessionCohorts = (sessionId: number | null, enabled = true) => {
       setHistoricalCohorts(historicalItems);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch linked cohorts'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch linked cohorts'));
     } finally {
       setLoading(false);
     }
@@ -702,7 +702,7 @@ export const useAvailableSessionCohortSubjects = (
       setData(null);
       setCohortSubjects([]);
       setError(
-        extractErrorMessage(err as ApiError, 'Failed to fetch available cohort subjects')
+        resolveErrorMessage(err as ApiError, 'Failed to fetch available cohort subjects')
       );
     } finally {
       setLoading(false);

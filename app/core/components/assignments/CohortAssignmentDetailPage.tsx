@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -106,7 +108,7 @@ function summarizeEvaluation(
 
 function getSafeReturnHref(cohortId: number, returnTo: string | null): string {
     const defaultHref = `/academic/cohorts/${cohortId}/assignments`;
-    if (!returnTo) {
+    if (!isSafeNextPath(returnTo)) {
         return defaultHref;
     }
 
@@ -504,7 +506,7 @@ export default function CohortAssignmentDetailPage() {
             });
             router.push(assignmentsHref);
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to delete assignment.');
+            setActionError(resolveErrorMessage(err, 'Failed to delete assignment.'));
         }
     };
 
@@ -515,7 +517,7 @@ export default function CohortAssignmentDetailPage() {
             confirmAction.cancel();
             setSuccessMessage('Learner work closed.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to close learner work.');
+            setActionError(resolveErrorMessage(err, 'Failed to close learner work.'));
         }
     };
 
@@ -526,7 +528,7 @@ export default function CohortAssignmentDetailPage() {
             confirmAction.cancel();
             setSuccessMessage('Assignment record stored.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to store assignment record.');
+            setActionError(resolveErrorMessage(err, 'Failed to store assignment record.'));
         }
     };
 
@@ -537,7 +539,7 @@ export default function CohortAssignmentDetailPage() {
             confirmAction.cancel();
             setSuccessMessage('Assignment restored to review.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to restore assignment to review.');
+            setActionError(resolveErrorMessage(err, 'Failed to restore assignment to review.'));
         }
     };
 
@@ -548,7 +550,7 @@ export default function CohortAssignmentDetailPage() {
             confirmAction.cancel();
             setSuccessMessage('Learner work reopened.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to reopen learner work.');
+            setActionError(resolveErrorMessage(err, 'Failed to reopen learner work.'));
         }
     };
 

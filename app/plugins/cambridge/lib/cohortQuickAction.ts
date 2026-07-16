@@ -8,8 +8,9 @@ import {
 } from '@/app/core/lib/curriculumBridge';
 import { CURRICULUM_TYPE_OPTIONS } from '@/app/core/types/academic';
 import type { Curriculum, CurriculumType } from '@/app/core/types/academic';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import { useCambridgeOffering } from '@/app/plugins/cambridge/hooks';
 
 interface SearchParamsLike {
@@ -53,7 +54,7 @@ export function useCambridgeCohortQuickAction({
     const [error, setError] = useState<string | null>(null);
     const [isProvisioningCurriculum, setIsProvisioningCurriculum] = useState(false);
 
-    const returnTo = searchParams.get('returnTo');
+    const returnTo = parseAppDestination(searchParams.get('returnTo'));
     const source = searchParams.get('source');
     const explicitOfferingId = parseOptionalNumber(searchParams.get('offering'));
     const curriculumTypeParam = searchParams.get('curriculum_type');
@@ -133,7 +134,7 @@ export function useCambridgeCohortQuickAction({
             } catch (err) {
                 if (!cancelled) {
                     setError(
-                        extractErrorMessage(
+                        resolveErrorMessage(
                             err as ApiError,
                             'Failed to prepare the Cambridge curriculum for cohort creation.'
                         )

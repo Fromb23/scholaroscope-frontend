@@ -9,6 +9,7 @@ import {
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import type { AssessmentDetailResponse } from '@/app/core/types/assessment';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 interface AssessmentDetailHeaderProps {
     assessment: AssessmentDetailResponse;
@@ -26,7 +27,7 @@ export function AssessmentDetailHeader({
     const searchParams = useSearchParams();
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
-        return value?.startsWith('/') ? value : null;
+        return parseAppDestination(value);
     }, [searchParams]);
     return (
         <div className="space-y-3">

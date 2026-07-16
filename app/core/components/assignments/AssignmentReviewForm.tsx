@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -211,7 +213,7 @@ export function AssignmentReviewForm({
             }
             await onSaved?.();
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Failed to save review.');
+            setFormError(resolveErrorMessage(err, 'Failed to save review.'));
         }
     };
     const totalMarksLabel = assignment.total_marks != null

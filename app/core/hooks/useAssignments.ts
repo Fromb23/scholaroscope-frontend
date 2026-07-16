@@ -65,7 +65,7 @@ import type {
     AssignmentTeachingTodayItem,
     AssignmentUpdatePayload,
 } from '@/app/core/types/assignments';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 
 interface UseAssignmentsOptions {
@@ -225,7 +225,7 @@ export function useAssignmentTeachingToday(options?: UseAssignmentsOptions) {
                 const response = await assignmentsAPI.getTeachingToday();
                 return response.items ?? [];
             } catch (err) {
-                const message = extractErrorMessage(err as ApiError, 'Failed to load assignment workflow items.');
+                const message = resolveErrorMessage(err as ApiError, 'Failed to load assignment workflow items.');
                 throw Object.assign(new Error(message), { cause: err });
             }
         },
@@ -294,7 +294,7 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
                     totalCount: unwrapCount(response),
                 };
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignments.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignments.'));
             }
         },
         enabled,
@@ -323,7 +323,7 @@ export function useAssignmentDetail(assignmentId: number | null, options?: UseAs
             try {
                 return await assignmentsAPI.getById(assignmentId);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignment.'));
             }
         },
         enabled,
@@ -354,7 +354,7 @@ export function useAssignmentLifecycleState(
             try {
                 return await assignmentsAPI.getLifecycleState(assignmentId);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment workflow.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignment workflow.'));
             }
         },
         enabled,
@@ -386,7 +386,7 @@ export function usePreparedAssignmentsForLessonPlan(
                 return await lessonPlanAPI.getPreparedAssignments(lessonPlanId);
             } catch (err) {
                 throw new Error(
-                    extractErrorMessage(err as ApiError, 'Failed to load learner task status.')
+                    resolveErrorMessage(err as ApiError, 'Failed to load learner task status.')
                 );
             }
         },
@@ -418,7 +418,7 @@ export function useAssignmentGroups(assignmentId: number | null, options?: UseAs
                 const response = await assignmentsAPI.listAssignmentGroups(assignmentId);
                 return unwrapList(response);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment groups.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignment groups.'));
             }
         },
         enabled,
@@ -459,7 +459,7 @@ export function useAssignmentEligibleLearners(
                     }
                 );
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load eligible learners.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load eligible learners.'));
             }
         },
         enabled,
@@ -480,7 +480,7 @@ export function useAssignmentGroupDetail(groupId: number | null, options?: UseAs
             try {
                 return await assignmentGroupAPI.getById(groupId);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment group.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignment group.'));
             }
         },
         enabled,
@@ -512,7 +512,7 @@ export function useAssignmentGroupReuseSources(
                 const response = await assignmentsAPI.listGroupReuseSources(assignmentId);
                 return unwrapList(response);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load reusable group sets.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load reusable group sets.'));
             }
         },
         enabled,
@@ -541,7 +541,7 @@ export function useAssignmentRecipients(assignmentId: number | null, options?: U
                 const response = await assignmentsAPI.listRecipients(assignmentId);
                 return unwrapList(response);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment recipients.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignment recipients.'));
             }
         },
         enabled,
@@ -570,7 +570,7 @@ export function useAssignmentSubmissions(assignmentId: number | null, options?: 
                 const response = await assignmentsAPI.listSubmissions(assignmentId);
                 return unwrapList(response);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment submissions.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignment submissions.'));
             }
         },
         enabled,
@@ -599,7 +599,7 @@ export function useAssignmentGroupSubmissions(groupId: number | null, options?: 
                 const response = await assignmentGroupAPI.listSubmissions(groupId);
                 return unwrapList(response);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load group submissions.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load group submissions.'));
             }
         },
         enabled,
@@ -649,7 +649,7 @@ export function useAssignmentEvaluations(
                 );
                 return unwrapList(response);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment evaluations.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignment evaluations.'));
             }
         },
         enabled,
@@ -699,7 +699,7 @@ export function useAssignmentGroupEvaluations(
                 );
                 return unwrapList(response);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load group evaluations.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load group evaluations.'));
             }
         },
         enabled,
@@ -730,7 +730,7 @@ export function useAssignmentEvaluationDetail(
             try {
                 return await assignmentEvaluationAPI.getById(evaluationId);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment evaluation.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load assignment evaluation.'));
             }
         },
         enabled,
@@ -761,7 +761,7 @@ export function useAssignmentGroupEvaluationDetail(
             try {
                 return await assignmentGroupEvaluationAPI.getById(evaluationId);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load group evaluation.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load group evaluation.'));
             }
         },
         enabled,
@@ -795,7 +795,7 @@ export function useCreateAssignment() {
             try {
                 return await assignmentsAPI.create(data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to create assignment.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create assignment.'));
             }
         },
         onSuccess: async (assignment) => {
@@ -820,7 +820,7 @@ export function usePrepareAssignmentFromLessonPlan() {
                 return await lessonPlanAPI.prepareAssignment(lessonPlanId, data);
             } catch (err) {
                 throw new Error(
-                    extractErrorMessage(
+                    resolveErrorMessage(
                         err as ApiError,
                         'Failed to prepare a learner task for this lesson.'
                     )
@@ -858,7 +858,7 @@ export function useUpdateAssignment(currentCohortSubjectId?: number | null) {
             try {
                 return await assignmentsAPI.update(id, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to update assignment.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update assignment.'));
             }
         },
         onSuccess: async (assignment) => {
@@ -878,7 +878,7 @@ export function useDeleteAssignment() {
                 await assignmentsAPI.delete(normalized.assignmentId);
                 return normalized;
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete assignment.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete assignment.'));
             }
         },
         onSuccess: async ({ assignmentId, lessonPlanId, createdFromSessionId }) => {
@@ -907,7 +907,7 @@ export function usePublishAssignment() {
                         ?? getStableClientMutationId(variables, 'assignment-publish'),
                 });
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to publish assignment.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to publish assignment.'));
             }
         },
         onSuccess: async (result) => {
@@ -936,7 +936,7 @@ export function useIssuePreparedAssignment() {
                 return await sessionAPI.issuePreparedAssignment(sessionId, data);
             } catch (err) {
                 throw new Error(
-                    extractErrorMessage(
+                    resolveErrorMessage(
                         err as ApiError,
                         'Failed to issue the learner task.'
                     )
@@ -963,7 +963,7 @@ export function useCloseAssignment() {
             try {
                 return await assignmentsAPI.close(assignmentId);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to close assignment.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to close assignment.'));
             }
         },
         onSuccess: async (assignment) => {
@@ -981,7 +981,7 @@ export function useArchiveAssignment() {
             try {
                 return await assignmentsAPI.archive(assignmentId);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to archive assignment.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to archive assignment.'));
             }
         },
         onSuccess: async (assignment) => {
@@ -999,7 +999,7 @@ export function useReopenAssignment() {
             try {
                 return await assignmentsAPI.reopenLearnerWork(assignmentId);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to reopen assignment.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to reopen assignment.'));
             }
         },
         onSuccess: async (assignment) => {
@@ -1022,7 +1022,7 @@ export function useRestoreAssignmentToReview() {
                 return await assignmentsAPI.restoreToReview(assignmentId);
             } catch (err) {
                 throw new Error(
-                    extractErrorMessage(err as ApiError, 'Failed to restore assignment to review.')
+                    resolveErrorMessage(err as ApiError, 'Failed to restore assignment to review.')
                 );
             }
         },
@@ -1045,7 +1045,7 @@ export function useCreateAssignmentGroup(assignmentId: number | null) {
             try {
                 return await assignmentsAPI.createAssignmentGroup(assignmentId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to create assignment group.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create assignment group.'));
             }
         },
         onSuccess: async (result: AssignmentGroupCreateResponse) => {
@@ -1073,7 +1073,7 @@ export function useUpdateAssignmentGroup() {
             try {
                 return await assignmentGroupAPI.update(groupId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to update assignment group.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update assignment group.'));
             }
         },
         onSuccess: async (group) => {
@@ -1097,7 +1097,7 @@ export function useDeleteAssignmentGroup() {
                 await assignmentGroupAPI.delete(groupId);
                 return { assignmentId, groupId };
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete assignment group.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete assignment group.'));
             }
         },
         onSuccess: async ({ assignmentId, groupId }) => {
@@ -1120,7 +1120,7 @@ export function useAddAssignmentGroupMember() {
             try {
                 return await assignmentGroupAPI.addMember(groupId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to add learner to group.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to add learner to group.'));
             }
         },
         onSuccess: async (group) => {
@@ -1143,7 +1143,7 @@ export function useBulkAddAssignmentGroupMembers() {
             try {
                 return await assignmentGroupAPI.bulkAddMembers(groupId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to add learners to group.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to add learners to group.'));
             }
         },
         onSuccess: async (result: AssignmentGroupBulkMemberCreateResponse) => {
@@ -1173,7 +1173,7 @@ export function useRemoveAssignmentGroupMember() {
                 await assignmentGroupAPI.removeMember(groupId, studentId);
                 return { assignmentId, groupId };
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to remove learner from group.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to remove learner from group.'));
             }
         },
         onSuccess: async ({ assignmentId, groupId }) => {
@@ -1199,7 +1199,7 @@ export function useUpdateAssignmentGroupMemberParticipation() {
             try {
                 return await assignmentGroupAPI.updateMemberParticipation(groupId, memberId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to update learner participation.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update learner participation.'));
             }
         },
         onSuccess: async (member, variables) => {
@@ -1236,7 +1236,7 @@ export function useMoveAssignmentGroupMember() {
             try {
                 return await assignmentGroupAPI.moveMember(groupId, memberId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to move learner to another group.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to move learner to another group.'));
             }
         },
         onSuccess: async (member, variables) => {
@@ -1266,7 +1266,7 @@ export function useAutoGenerateAssignmentGroups(assignmentId: number | null) {
             try {
                 return await assignmentsAPI.autoGenerateGroups(assignmentId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to generate groups.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to generate groups.'));
             }
         },
         onSuccess: async (result: AssignmentAutoGenerateGroupsResponse) => {
@@ -1292,7 +1292,7 @@ export function useCopyAssignmentGroupsFromSource(assignmentId: number | null) {
             try {
                 return await assignmentsAPI.copyGroupsFromSource(assignmentId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to reuse assignment groups.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to reuse assignment groups.'));
             }
         },
         onSuccess: async (result: AssignmentGroupCopyFromResponse) => {
@@ -1321,7 +1321,7 @@ export function useCreateAssignmentRecipients(assignmentId: number | null) {
             try {
                 return await assignmentsAPI.createRecipients(assignmentId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to assign recipients.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to assign recipients.'));
             }
         },
         onSuccess: async () => {
@@ -1338,7 +1338,7 @@ export function useCreateAssignmentRecipient() {
             try {
                 return await assignmentRecipientAPI.create(data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to create assignment recipient.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create assignment recipient.'));
             }
         },
         onSuccess: async (recipient: AssignmentRecipient) => {
@@ -1355,7 +1355,7 @@ export function useCreateAssignmentSubmission() {
             try {
                 return await assignmentSubmissionAPI.create(data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to submit assignment response.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to submit assignment response.'));
             }
         },
         onSuccess: async (submission: AssignmentSubmission) => {
@@ -1378,7 +1378,7 @@ export function useCreateAssignmentGroupSubmission() {
             try {
                 return await assignmentGroupAPI.createSubmission(groupId, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to record group submission.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to record group submission.'));
             }
         },
         onSuccess: async (submission) => {
@@ -1395,7 +1395,7 @@ export function useCreateAssignmentEvaluation() {
             try {
                 return await assignmentEvaluationAPI.create(data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to create assignment evaluation.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create assignment evaluation.'));
             }
         },
         onSuccess: async (evaluation) => {
@@ -1421,7 +1421,7 @@ export function useUpdateAssignmentEvaluation() {
             try {
                 return await assignmentEvaluationAPI.update(id, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to update assignment evaluation.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update assignment evaluation.'));
             }
         },
         onSuccess: async (evaluation) => {
@@ -1441,7 +1441,7 @@ export function useCreateAssignmentGroupEvaluation() {
             try {
                 return await assignmentGroupEvaluationAPI.create(data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to create group evaluation.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create group evaluation.'));
             }
         },
         onSuccess: async (evaluation) => {
@@ -1469,7 +1469,7 @@ export function useUpdateAssignmentGroupEvaluation() {
             try {
                 return await assignmentGroupEvaluationAPI.update(id, data);
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to update group evaluation.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update group evaluation.'));
             }
         },
         onSuccess: async (evaluation) => {
@@ -1496,7 +1496,7 @@ export function useBridgeAssignmentEvaluation() {
                     clientMutationId: getStableClientMutationId(variables, 'assignment-evidence'),
                 });
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to bridge evaluation to evidence.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to bridge evaluation to evidence.'));
             }
         },
         onSuccess: async (_, variables) => {
@@ -1522,7 +1522,7 @@ export function useBridgeAssignmentGroupEvaluation() {
                     clientMutationId: getStableClientMutationId(variables, 'assignment-group-evidence'),
                 });
             } catch (err) {
-                throw new Error(extractErrorMessage(err as ApiError, 'Failed to bridge group evaluation to evidence.'));
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to bridge group evaluation to evidence.'));
             }
         },
         onSuccess: async (_, variables) => {

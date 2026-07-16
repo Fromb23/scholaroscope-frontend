@@ -6,7 +6,7 @@ import {
     useBulkTagOutcomes,
     useStrandsBySubject,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import { extractErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
+import { resolveErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
 
 export function useCBCAddSessionOutcomesPage(sessionId: number) {
     const router = useRouter();
@@ -75,7 +75,7 @@ export function useCBCAddSessionOutcomesPage(sessionId: number) {
             });
             router.push(`/cbc/teaching/sessions/${sessionId}/outcomes`);
         } catch (error) {
-            setTagError(extractErrorMessage(error));
+            setTagError(resolveErrorMessage(error));
         }
     };
 

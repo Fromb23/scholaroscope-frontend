@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 // ============================================================================
 // app/plugins/announcements/hooks/useAnnouncements.ts
 // ============================================================================
@@ -22,7 +24,7 @@ export const useAnnouncements = () => {
             setAnnouncements(data);
             setError(null);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch announcements');
+            setError(resolveErrorMessage(err, 'Failed to fetch announcements'));
         } finally {
             setLoading(false);
         }

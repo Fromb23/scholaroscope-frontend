@@ -27,7 +27,7 @@ import {
     getAcademicSetupPageState,
     withAcademicSetupMode,
 } from '@/app/core/lib/academicSetup';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { SubjectCatalogItem } from '@/app/core/types/academic';
 import {
@@ -123,7 +123,7 @@ export function SubjectsPage() {
         try {
             setCatalog(await subjectOfferingAPI.getCatalog(activeCurriculum.id));
         } catch (error) {
-            setPageError(extractErrorMessage(error as ApiError, 'Failed to load subject offerings.'));
+            setPageError(resolveErrorMessage(error as ApiError, 'Failed to load subject offerings.'));
         } finally {
             setCatalogLoading(false);
         }
@@ -141,7 +141,7 @@ export function SubjectsPage() {
                 if (alive) setCatalog(items);
             })
             .catch((error) => {
-                if (alive) setPageError(extractErrorMessage(error as ApiError, 'Failed to load subject offerings.'));
+                if (alive) setPageError(resolveErrorMessage(error as ApiError, 'Failed to load subject offerings.'));
             })
             .finally(() => {
                 if (alive) setCatalogLoading(false);
@@ -255,7 +255,7 @@ export function SubjectsPage() {
             setToastMessage(message);
             setSetupActionMessage(message);
         } catch (error) {
-            const message = extractErrorMessage(error as ApiError, `Failed to remove ${label}.`);
+            const message = resolveErrorMessage(error as ApiError, `Failed to remove ${label}.`);
             setRowErrors((current) => ({ ...current, [item.id]: message }));
             setToastMessage(message);
         } finally {
@@ -276,7 +276,7 @@ export function SubjectsPage() {
             setToastMessage(message);
             setSetupActionMessage(setupMode ? `${message} Continue setup?` : message);
         } catch (error) {
-            const message = extractErrorMessage(error as ApiError, `Failed to restore ${label}.`);
+            const message = resolveErrorMessage(error as ApiError, `Failed to restore ${label}.`);
             setRowErrors((current) => ({ ...current, [item.id]: message }));
             setToastMessage(message);
         } finally {
@@ -303,7 +303,7 @@ export function SubjectsPage() {
             setToastMessage(message);
             setSetupActionMessage(setupMode ? `${message} Continue setup?` : message);
         } catch (error) {
-            const message = extractErrorMessage(error as ApiError, `Failed to offer ${label} again.`);
+            const message = resolveErrorMessage(error as ApiError, `Failed to offer ${label} again.`);
             setRowErrors((current) => ({ ...current, [item.id]: message }));
             setToastMessage(message);
         } finally {

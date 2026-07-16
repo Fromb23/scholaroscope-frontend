@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useToast } from '@/app/components/ui/toast/useToast';
 import { downloadBlob } from '@/app/core/api/downloads';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import type { ReportExportFormat } from '@/app/core/types/reporting';
 
 type ExportFn = (format: ReportExportFormat) => Promise<{ blob: Blob; fileName: string }>;
@@ -28,7 +28,7 @@ export function useReportExport(exportFn: ExportFn, label: string) {
       showToast({
         severity: 'error',
         message: apiError.response?.data
-          ? extractErrorMessage(apiError, fallbackMessage)
+          ? resolveErrorMessage(apiError, fallbackMessage)
           : fallbackMessage,
       });
     } finally {

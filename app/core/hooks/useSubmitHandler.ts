@@ -1,3 +1,4 @@
+import { resolveErrorMessage } from '@/app/core/errors';
 // ============================================================================
 // app/core/hooks/useSubmitHandler.ts
 // ============================================================================
@@ -24,7 +25,7 @@ export function useSubmitHandler(): UseSubmitHandlerReturn {
         try {
             await fn();
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'An error occurred');
+            setActionError(resolveErrorMessage(err, 'An error occurred'));
         } finally {
             setSubmitting(false);
         }

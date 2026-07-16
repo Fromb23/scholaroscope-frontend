@@ -13,7 +13,7 @@ const platformRedirectSource = readFileSync(
 
 describe('login error safety contract', () => {
   it('renders platform-login-required as customer-safe copy', () => {
-    expect(loginSource).toContain("errorEnvelope?.code === 'platform_login_required'");
+    expect(loginSource).toContain("errorCode === 'platform_login_required'");
     expect(loginSource).toContain('Platform administrators sign in through the Scholaroscope control plane.');
     expect(loginSource).toContain('Open platform console');
     expect(loginSource).toContain("href={getPlatformAppUrl('/login')}");
@@ -25,6 +25,7 @@ describe('login error safety contract', () => {
     expect(loginSource).toContain('Email or password is incorrect.');
     expect(loginSource).toContain('Scholaroscope could not be reached. Try again.');
     expect(loginSource).not.toContain('Network Error');
+    expect(loginSource).not.toContain('interpretedMessage');
   });
 
   it('gets the platform console target from frontend configuration', () => {

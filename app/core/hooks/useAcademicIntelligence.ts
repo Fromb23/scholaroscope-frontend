@@ -4,7 +4,7 @@ import type {
   ClassSubjectIntelligence,
   LearnerSubjectIntelligence,
 } from '@/app/core/types/academicIntelligence';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 export function useLearnerSubjectIntelligence(
   learnerId: number | null,
@@ -40,7 +40,7 @@ export function useLearnerSubjectIntelligence(
       setError(null);
     } catch (requestError) {
       setIntelligence(null);
-      setError(extractErrorMessage(requestError as ApiError, 'Failed to fetch academic intelligence'));
+      setError(resolveErrorMessage(requestError as ApiError, 'Failed to fetch academic intelligence'));
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export function useClassSubjectIntelligence(
       setError(null);
     } catch (requestError) {
       setIntelligence(null);
-      setError(extractErrorMessage(requestError as ApiError, 'Failed to fetch class intelligence'));
+      setError(resolveErrorMessage(requestError as ApiError, 'Failed to fetch class intelligence'));
     } finally {
       setLoading(false);
     }

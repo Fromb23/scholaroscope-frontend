@@ -38,6 +38,7 @@ import { ActionStateBanner } from '@/app/components/ui/actions';
 import { useAuth } from '@/app/context/AuthContext';
 import { canRenderInstitutionReportOverview } from '@/app/core/components/reports/reportAccessPolicy';
 import { buildInstructorReportHref } from '@/app/core/components/reports/reportNavigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 type ViewMode = 'table' | 'grid';
 
@@ -335,7 +336,7 @@ export function InstructorManagementPage() {
     const selectedCohortName = searchParams.get('cohort_name');
     const selectedSubjectName = searchParams.get('subject_name');
     const selectedSubjectSource = searchParams.get('subject_source');
-    const returnTo = searchParams.get('returnTo');
+    const returnTo = parseAppDestination(searchParams.get('returnTo'));
     const hasTeachingContext = Boolean(selectedCohortSubjectId && selectedSubjectName && selectedCohortName);
     const preservedContextQuery = searchParams.toString();
     const currentReturnTo = useMemo(() => {

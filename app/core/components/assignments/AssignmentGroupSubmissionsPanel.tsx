@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
@@ -100,7 +102,7 @@ function GroupSubmissionCard({
             setStatus('SUBMITTED');
             setSuccessMessage('Group submission recorded.');
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Failed to record group submission.');
+            setFormError(resolveErrorMessage(err, 'Failed to record group submission.'));
         }
     };
 

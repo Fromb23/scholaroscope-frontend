@@ -5,4 +5,5 @@ export * from './errorChannels';
 export * from './errorCopy';
 export * from './fieldErrors';
 export * from './resolveAppError';
+export * from './resolveErrorMessage';
 export * from './sanitizeServerMessage';

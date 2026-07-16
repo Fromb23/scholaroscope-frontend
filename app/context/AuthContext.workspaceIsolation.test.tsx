@@ -9,6 +9,11 @@ import {
   authAPI,
 } from '@/app/core/api/auth';
 import { resetWorkspaceGenerationForTests } from '@/app/core/runtime/workspaceGeneration';
+import {
+  clearExplicitLogout,
+  isExplicitLogoutActive,
+  markExplicitLogout,
+} from '@/app/core/auth/explicitLogout';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
@@ -74,6 +79,7 @@ describe('AuthContext workspace authority races', () => {
   let renderer: ReactTestRenderer | null = null;
 
   beforeEach(() => {
+    clearExplicitLogout();
     resetWorkspaceGenerationForTests();
     const storage = new Map<string, string>();
     vi.stubGlobal('window', {
@@ -81,6 +87,11 @@ describe('AuthContext workspace authority races', () => {
         getItem: (key: string) => storage.get(key) ?? null,
         setItem: (key: string, value: string) => storage.set(key, value),
         removeItem: (key: string) => storage.delete(key),
+      },
+      sessionStorage: {
+        getItem: (key: string) => storage.get(`session:${key}`) ?? null,
+        setItem: (key: string, value: string) => storage.set(`session:${key}`, value),
+        removeItem: (key: string) => storage.delete(`session:${key}`),
       },
       addEventListener: (name: string, listener: () => void) => windowListeners.set(name, listener),
       removeEventListener: (name: string) => windowListeners.delete(name),
@@ -104,6 +115,7 @@ describe('AuthContext workspace authority races', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     resetWorkspaceGenerationForTests();
+    clearExplicitLogout();
   });
 
   it('does not let a late workspace A me_context overwrite workspace B', async () => {
@@ -196,5 +208,54 @@ describe('AuthContext workspace authority races', () => {
 
     expect(currentAuth().activeOrg?.id).toBe(1);
     expect(currentAuth().workspaceGeneration).toBe(generationBefore);
+  });
+
+  it('does not call boot refresh while an explicit logout tombstone is active', async () => {
+    markExplicitLogout();
+    const refresh = vi.spyOn(authAPI, 'refresh');
+
+    await act(async () => {
+      renderer = create(
+        createElement(
+          QueryClientProvider,
+          { client: new QueryClient() },
+          createElement(AuthProvider, null, createElement('auth-child')),
+        ),
+      );
+      await Promise.resolve();
+    });
+
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('clears the tombstone for an intentional login and establishes the session', async () => {
+    markExplicitLogout();
+    vi.spyOn(authAPI, 'refresh');
+    vi.spyOn(authAPI, 'login').mockResolvedValue(authState(2, true));
+    const observeAuth = vi.fn<(value: ReturnType<typeof useAuth>) => void>();
+
+    function Probe() {
+      const auth = useAuth();
+      useEffect(() => observeAuth(auth), [auth]);
+      return createElement('auth-state', { organizationId: auth.activeOrg?.id ?? null });
+    }
+
+    await act(async () => {
+      renderer = create(
+        createElement(
+          QueryClientProvider,
+          { client: new QueryClient() },
+          createElement(AuthProvider, null, createElement(Probe)),
+        ),
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await observeAuth.mock.calls.at(-1)![0].login('teacher@example.com', 'password');
+    });
+
+    expect(isExplicitLogoutActive()).toBe(false);
+    expect(observeAuth.mock.calls.at(-1)![0].activeOrg?.id).toBe(2);
   });
 });

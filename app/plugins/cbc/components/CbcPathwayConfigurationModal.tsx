@@ -9,7 +9,7 @@ import {
     type CbcPathwayConfigurationValue,
 } from '@/app/core/components/cohorts/CbcPathwayConfigurationFields';
 import type { Cohort } from '@/app/core/types/academic';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { cbcPathwayAPI } from '@/app/plugins/cbc/api/pathways';
 import type { CbcCohortProfileSummary } from '@/app/plugins/cbc/types/pathways';
@@ -69,7 +69,7 @@ export function CbcPathwayConfigurationModal({
             await onConfigured?.(profile);
             onClose();
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to configure CBC pathway.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to configure CBC pathway.'));
         } finally {
             setSaving(false);
         }

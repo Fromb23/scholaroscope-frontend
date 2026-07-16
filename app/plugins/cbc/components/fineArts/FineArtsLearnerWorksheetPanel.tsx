@@ -19,7 +19,7 @@ import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import type {
     FineArtsEvidenceType,
     FineArtsLearnerEvidenceCell,
@@ -282,7 +282,7 @@ export function FineArtsLearnerWorksheetPanel({
         actionError
         ?? (matrixError ? { message: matrixError.message, nextAction: matrixError.next_action } : null)
         ?? (queryError ? { message: queryError.message, nextAction: queryError.next_action } : null)
-        ?? (loadError ? { message: extractErrorMessage(loadError, 'We could not load learner worksheet evidence.') } : null)
+        ?? (loadError ? { message: resolveErrorMessage(loadError, 'We could not load learner worksheet evidence.') } : null)
     ), [actionError, loadError, matrixError, queryError]);
     const showQueuePane = !guidedMode || mobileView === 'queue';
     const showLearnerPane = !guidedMode || mobileView === 'learner';
@@ -470,7 +470,7 @@ export function FineArtsLearnerWorksheetPanel({
             const apiError = mutationError as ApiError;
             const structured = getStructuredWorksheetError(apiError);
             setActionError({
-                message: extractErrorMessage(apiError, 'We could not save learner evidence.'),
+                message: resolveErrorMessage(apiError, 'We could not save learner evidence.'),
                 nextAction: structured?.next_action,
             });
             return null;
@@ -512,7 +512,7 @@ export function FineArtsLearnerWorksheetPanel({
             }
         } catch (error) {
             setActionError({
-                message: extractErrorMessage(error as ApiError, 'We saved the learner evidence, but could not load the next learner state.'),
+                message: resolveErrorMessage(error as ApiError, 'We saved the learner evidence, but could not load the next learner state.'),
             });
         }
     };

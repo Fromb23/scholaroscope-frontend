@@ -9,7 +9,7 @@ import {
     getSubjectGroupKey,
     groupSubjects,
 } from '@/app/core/components/academic/SubjectComponents';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Subject, SubjectFormData } from '@/app/core/types/academic';
 import { isAdminOrAbove } from '@/app/utils/permissions';
@@ -202,7 +202,7 @@ export function useSubjectsPage() {
         try {
             await deleteSubject(id);
         } catch (error) {
-            setPageError(extractErrorMessage(error as ApiError, 'Failed to delete subject.'));
+            setPageError(resolveErrorMessage(error as ApiError, 'Failed to delete subject.'));
         }
     };
 

@@ -5,7 +5,7 @@ import { pluginAPI } from '@/app/core/api/plugins';
 import type { InstalledPlugin } from '@/app/core/types/plugins';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useAuth } from '@/app/context/AuthContext';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 
 interface UsePluginsReturn {
     plugins: InstalledPlugin[];
@@ -47,7 +47,7 @@ export const usePlugins = (options: UsePluginsOptions = {}): UsePluginsReturn =>
             }
         } catch (err) {
             if (requestId === requestIdRef.current) {
-                setError(extractErrorMessage(err as ApiError, 'Failed to fetch plugins'));
+                setError(resolveErrorMessage(err as ApiError, 'Failed to fetch plugins'));
             }
         } finally {
             if (requestId === requestIdRef.current) {

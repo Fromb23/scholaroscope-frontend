@@ -35,10 +35,11 @@ import { academicKeys } from '@/app/core/lib/queryKeys';
 import {
     canEditCurriculumWork,
 } from '@/app/core/lib/curriculumLifecycle';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Curriculum } from '@/app/core/types/academic';
 import type { CurriculumDisableImpactSnapshot } from '@/app/core/types/academic';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import {
     getCurriculumBridgeCode,
@@ -73,7 +74,7 @@ export function CurriculaPage() {
     const shouldOpenCreate = searchParams.get('create') === '1';
     const setupMode = searchParams.get('setup') === '1';
     const blockedNotice = searchParams.get('blocked') === '1';
-    const returnTo = searchParams.get('returnTo');
+    const returnTo = parseAppDestination(searchParams.get('returnTo'));
     const setupOriginContext = resolveAcademicSetupOrigin({
         setup: searchParams.get('setup'),
         blocked: searchParams.get('blocked'),
@@ -126,7 +127,7 @@ export function CurriculaPage() {
         try {
             await deleteCurriculum(curriculum.id);
         } catch (err) {
-            setPageError(extractErrorMessage(err as ApiError, 'Failed to delete curriculum.'));
+            setPageError(resolveErrorMessage(err as ApiError, 'Failed to delete curriculum.'));
         }
     };
 
@@ -142,7 +143,7 @@ export function CurriculaPage() {
             setDisableImpact(response.impact_snapshot);
             setActiveDisableRequestId(response.active_disable_request_id);
         } catch (err) {
-            setDisableError(extractErrorMessage(err as ApiError, 'Failed to load disable impact.'));
+            setDisableError(resolveErrorMessage(err as ApiError, 'Failed to load disable impact.'));
         } finally {
             setDisableLoading(false);
         }
@@ -186,7 +187,7 @@ export function CurriculaPage() {
                 message: 'Curriculum shutdown has started. Academic setup has been refreshed.',
             });
         } catch (err) {
-            setDisableError(extractErrorMessage(err as ApiError, 'Failed to disable curriculum.'));
+            setDisableError(resolveErrorMessage(err as ApiError, 'Failed to disable curriculum.'));
         } finally {
             setDisableSubmitting(false);
         }
@@ -204,7 +205,7 @@ export function CurriculaPage() {
             setActiveDisableRequestId(null);
             setDisableError(null);
         } catch (err) {
-            setDisableError(extractErrorMessage(err as ApiError, 'Failed to cancel curriculum disable.'));
+            setDisableError(resolveErrorMessage(err as ApiError, 'Failed to cancel curriculum disable.'));
         } finally {
             setDisableSubmitting(false);
         }
@@ -220,7 +221,7 @@ export function CurriculaPage() {
                 message: `${getCurriculumBridgeName(curriculum)} has been reactivated. Academic setup has been refreshed.`,
             });
         } catch (err) {
-            setPageError(extractErrorMessage(err as ApiError, 'Failed to reactivate curriculum.'));
+            setPageError(resolveErrorMessage(err as ApiError, 'Failed to reactivate curriculum.'));
         }
     };
 

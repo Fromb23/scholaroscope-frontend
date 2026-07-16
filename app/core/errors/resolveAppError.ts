@@ -55,7 +55,7 @@ function getServerCode(data: unknown): string | undefined {
 
 function getSupportCode(data: unknown): string | undefined {
   const nested = getNestedError(data);
-  return readString(
+  const supportCode = readString(
     nested?.support_code,
     nested?.supportCode,
     nested?.request_id,
@@ -65,6 +65,9 @@ function getSupportCode(data: unknown): string | undefined {
     isRecord(data) ? data.request_id : undefined,
     isRecord(data) ? data.trace_id : undefined,
   );
+  return supportCode && /^[A-Za-z0-9_-]{1,64}$/.test(supportCode)
+    ? supportCode
+    : undefined;
 }
 
 function getServerMessage(data: unknown, err: unknown): string | undefined {
@@ -95,6 +98,7 @@ function classifyByStatus(status?: number): AppErrorKind | null {
   if (status === 403) return 'permission';
   if (status === 404) return 'not_found';
   if (status === 409) return 'conflict';
+  if (status === 429) return 'server';
   if (status >= 500) return 'server';
   return null;
 }
@@ -140,7 +144,9 @@ export function resolveAppError(err: unknown, context: ResolveAppErrorContext): 
   const serverCode = getServerCode(data);
   const registryCopy = getErrorCodeCopy(serverCode);
   const kind = registryCopy?.kind ?? classifyError(rawStatus, serverCode, fieldErrors);
-  const serverMessage = sanitizeServerMessage(getServerMessage(data, err), kind);
+  const serverMessage = sanitizeServerMessage(getServerMessage(data, err), kind, {
+    requireAllowlisted: true,
+  });
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
   const defaultMessage = defaultMessageForKind(kind, context);
   const safeServerMessage = isFrameworkGenericMessage(kind, serverMessage)

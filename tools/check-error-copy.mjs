@@ -2179,6 +2179,10 @@ for (const file of walk(scanRoot)) {
   const source = readFileSync(file, 'utf8');
   const relative = rel(file);
 
+  for (const match of source.matchAll(/\bextractErrorMessage\b/g)) {
+    record(file, 'legacy-extract-error-message', lineFor(source, match.index), 'uses the retired raw error extractor; use resolveAppError or resolveErrorMessage.');
+  }
+
   for (const match of source.matchAll(/(["'`])Something went wrong\.?[^"'`]*\1/g)) {
     record(file, 'raw-something-went-wrong', lineFor(source, match.index), 'uses raw "Something went wrong"; use resolveAppError with domain/action context.');
   }

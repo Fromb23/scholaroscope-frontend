@@ -18,7 +18,7 @@ import type {
     CbcAllowedSubject,
     CbcCohortAllowedSubjects,
 } from '@/app/core/types/cbcPathways';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortSubject, Subject } from '@/app/core/types/academic';
 
@@ -177,7 +177,7 @@ export function AssignSubjectToCohortModal({
                     return {
                         cohort,
                         alreadyLinked: false,
-                        disabledReason: extractErrorMessage(err as ApiError, 'Could not verify this cohort right now.'),
+                        disabledReason: resolveErrorMessage(err as ApiError, 'Could not verify this cohort right now.'),
                         setupRequired: false,
                     } satisfies CohortAssignmentTarget;
                 }
@@ -245,7 +245,7 @@ export function AssignSubjectToCohortModal({
             await onAssigned?.(assignment, selectedTarget.cohort.id);
             onClose();
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to link subject to cohort.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to link subject to cohort.'));
         } finally {
             setSaving(false);
         }

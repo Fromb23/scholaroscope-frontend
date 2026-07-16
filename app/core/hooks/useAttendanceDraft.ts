@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react';
 import type { AttendanceRecord } from '@/app/core/types/session';
 import type { ApiError } from '@/app/core/types/errors';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 
 export interface AttendanceDraftEntry {
     status: string;
@@ -78,7 +78,7 @@ export function useAttendanceDraft({ records, onSave, readOnly = false }: UseAtt
             }));
             await onSave({ attendance_records: payload });
         } catch (err) {
-            setSaveError(extractErrorMessage(err as ApiError, 'Failed to save attendance.'));
+            setSaveError(resolveErrorMessage(err as ApiError, 'Failed to save attendance.'));
         } finally {
             setSaving(false);
         }

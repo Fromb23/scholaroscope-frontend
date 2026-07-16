@@ -83,13 +83,13 @@ describe('cohort report setup routes', () => {
     }));
   });
 
-  it('keeps generic compute errors generic', () => {
+  it('replaces unregistered compute messages with generic safe copy', () => {
     const resolved = resolveCbcComputeFailure({
       response: { data: { message: 'Unexpected compute failure.' } },
     }, 'class', 9);
 
     expect(resolved).toEqual(expect.objectContaining({
-      message: 'Unexpected compute failure.',
+      message: 'Check your connection and try again. Retrying is safe because the request did not reach the server reliably.',
     }));
     expect(resolved.actionHref).toBeUndefined();
   });
@@ -104,7 +104,7 @@ describe('cohort report setup routes', () => {
 
     expect(resolved).toEqual(expect.objectContaining({
       kind: 'server',
-      message: 'The server could not complete this request. Try again later.',
+      message: 'The server could not complete this request. Try again later, or contact platform support if it continues.',
     }));
     expect(resolved.actionHref).toBeUndefined();
   });

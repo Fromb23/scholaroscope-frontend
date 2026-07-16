@@ -6,7 +6,7 @@ import {
     useUpdateSubStrand,
     useDeleteSubStrand,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import { extractErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
+import { resolveErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
 import type { SubStrand, SubStrandFormData } from '@/app/plugins/cbc/types/cbc';
 
 const EMPTY_FORM: Partial<SubStrandFormData> = { name: '', description: '' };
@@ -40,7 +40,7 @@ export function useCBCAuthoringSubStrandsPage(strandId: number) {
             setShowCreate(false);
             setCreateForm(EMPTY_FORM);
         } catch (error) {
-            setCreateError(extractErrorMessage(error));
+            setCreateError(resolveErrorMessage(error));
         }
     };
 
@@ -58,7 +58,7 @@ export function useCBCAuthoringSubStrandsPage(strandId: number) {
             await updateMutation.mutateAsync({ id: editId, data: editForm });
             setEditId(null);
         } catch (error) {
-            setEditError(extractErrorMessage(error));
+            setEditError(resolveErrorMessage(error));
         }
     };
 

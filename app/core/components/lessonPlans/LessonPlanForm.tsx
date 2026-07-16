@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -303,7 +305,7 @@ export function LessonPlanForm({
 
             router.push(`/lesson-plans/${updated.id}?notice=updated`);
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Failed to save lesson plan.');
+            setFormError(resolveErrorMessage(err, 'Failed to save lesson plan.'));
         } finally {
             setSaving(false);
         }

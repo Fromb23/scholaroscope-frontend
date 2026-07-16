@@ -3,6 +3,7 @@ import type {
     AcademicSetupStep,
     AcademicSetupStepKey,
 } from '@/app/core/types/academic';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 export const ACADEMIC_SETUP_STEP_ORDER: AcademicSetupStepKey[] = [
     'CURRICULUM',
@@ -223,7 +224,8 @@ export function withAcademicSetupMode(
 }
 
 function isCambridgeReturnTarget(returnTo?: string | null): boolean {
-    return Boolean(returnTo?.startsWith('/cambridge') || returnTo?.startsWith('/admin/settings?tab=plugins&plugin=cambridge'));
+    const safeReturnTo = parseAppDestination(returnTo);
+    return Boolean(safeReturnTo?.startsWith('/cambridge') || safeReturnTo?.startsWith('/admin/settings?tab=plugins&plugin=cambridge'));
 }
 
 function explicitlyRequestsCambridge(input: AcademicSetupOriginInput): boolean {

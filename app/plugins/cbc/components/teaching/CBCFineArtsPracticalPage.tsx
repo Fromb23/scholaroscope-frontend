@@ -11,11 +11,12 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useSessionDetail } from '@/app/core/hooks/useSessions';
 import { sessionAPI } from '@/app/core/api/sessions';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { CBCBreadcrumb, CBCNav } from '@/app/plugins/cbc/components/CBCComponents';
 import { FineArtsPracticalRequirementsCard } from '@/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard';
 import { useSessionFineArtsPractical } from '@/app/plugins/cbc/hooks/useFineArtsPracticals';
 import { isCbcFineArtsPracticalSession } from '@/app/plugins/cbc/lib/fineArtsPracticals';
+import { sanitizeAppDestination } from '@/app/core/auth/navigation';
 
 function withQueryParams(href: string, params: Record<string, string | null | undefined>) {
     const [basePath, existingQuery = ''] = href.split('?', 2);
@@ -38,7 +39,10 @@ export function CBCFineArtsPracticalPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const action = searchParams.get('action');
-    const returnTo = searchParams.get('returnTo') || `/sessions/${sessionId}?section=complete`;
+    const returnTo = sanitizeAppDestination(
+        searchParams.get('returnTo'),
+        `/sessions/${sessionId}?section=complete`,
+    );
     const { session, closureState, loading, error, refetch, refetchClosureState } = useSessionDetail(sessionId);
     const practicalQuery = useSessionFineArtsPractical(sessionId, Boolean(session));
     const [completionPending, setCompletionPending] = useState(false);
@@ -74,7 +78,7 @@ export function CBCFineArtsPracticalPage() {
             router.push(incompleteReturnHref);
         } catch (mutationError) {
             setCompletionError(
-                extractErrorMessage(mutationError as ApiError, 'We could not close the lesson record.'),
+                resolveErrorMessage(mutationError as ApiError, 'We could not close the lesson record.'),
             );
         } finally {
             setCompletionPending(false);

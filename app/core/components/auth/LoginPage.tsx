@@ -14,7 +14,6 @@ import { AuthFrame } from './AuthFrame';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { getPlatformAppUrl } from '@/app/core/auth/platformRedirect';
-import type { AccessNotice } from '@/app/core/types/auth';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -57,54 +56,6 @@ function LoginForm() {
     const inviteEmail = searchParams.get('email');
     if (inviteEmail) setEmail(inviteEmail);
   }, [searchParams]);
-
-  const resolveErrorMessage = (data: Record<string, unknown>): string => {
-    const state = data?.state as string;
-    const errorCode = data?.error as string;
-    const code = data?.code as string;
-    const restrictedOrgs = (data?.restricted_orgs as AccessNotice[]) ?? [];
-    const orgSuspendedOrgs = (data?.org_suspended_orgs as AccessNotice[]) ?? [];
-    const removedOrgs = (data?.removed_orgs as AccessNotice[]) ?? [];
-    const pendingOrgs = (data?.pending_orgs as AccessNotice[]) ?? [];
-    const platformRestrictionMessage = (data?.non_field_errors as string[])?.[0];
-
-    if (platformRestrictionMessage) {
-      return platformRestrictionMessage;
-    }
-
-    if (errorCode === 'email_not_verified' || code === 'email_not_verified') {
-      return typeof data?.message === 'string'
-        ? data.message
-        : 'Verify your email before logging in.';
-    }
-
-    if (errorCode === 'restricted' || state === 'ONLY_SUSPENDED') {
-      return [...restrictedOrgs, ...orgSuspendedOrgs]
-        .map((notice) => notice.message)
-        .join('\n');
-    }
-
-    if (errorCode === 'removed' || state === 'ONLY_REVOKED') {
-      return removedOrgs.map((notice) => notice.message).join('\n');
-    }
-
-    if (errorCode === 'mixed_inactive' || state === 'MIXED_INACTIVE') {
-      return [...restrictedOrgs, ...orgSuspendedOrgs, ...removedOrgs]
-        .map((notice) => notice.message)
-        .join('\n');
-    }
-
-    if (errorCode === 'no_active_workspace' || code === 'no_active_workspace') {
-      const detail = typeof data?.detail === 'string'
-        ? data.detail
-        : 'You do not currently have access to any active workspace.';
-      return [detail, ...pendingOrgs.map((notice) => notice.message)]
-        .filter(Boolean)
-        .join('\n');
-    }
-
-    return (data?.non_field_errors as string[])?.[0] || '';
-  };
 
   const platformLoginError = (): AppError => ({
     kind: 'permission',
@@ -151,12 +102,15 @@ function LoginForm() {
       const e = err as { data?: Record<string, unknown>; message?: string; status?: number };
       const data = e?.data ?? {};
       const errorEnvelope = data.error as { code?: string; message?: string } | undefined;
-      if (errorEnvelope?.code === 'platform_login_required') {
+      const errorCode = errorEnvelope?.code
+        ?? (typeof data.error === 'string' ? data.error : undefined)
+        ?? (typeof data.code === 'string' ? data.code : undefined);
+      if (errorCode === 'platform_login_required') {
         setPlatformLoginRequired(true);
         setError(platformLoginError());
         return;
       }
-      if (data.error === 'email_not_verified' || data.code === 'email_not_verified') {
+      if (errorCode === 'email_not_verified') {
         setVerificationEmail(email);
       }
       if (!e?.status && !Object.keys(data).length) {
@@ -165,21 +119,18 @@ function LoginForm() {
       }
       if (
         [400, 401, 403].includes(e?.status ?? 0)
-        && data.error !== 'email_not_verified'
-        && data.code !== 'email_not_verified'
+        && errorCode !== 'email_not_verified'
         && !data.state
       ) {
         setError(invalidCredentialsError());
         return;
       }
       const resolved = resolveAuthError(err, { action: 'login', entityLabel: 'account access' });
-      const interpretedMessage = resolveErrorMessage(data);
       setError({
         ...resolved,
-        title: data.error === 'email_not_verified' || data.code === 'email_not_verified'
+        title: errorCode === 'email_not_verified'
           ? 'Email verification is required.'
           : resolved.title,
-        message: interpretedMessage || resolved.message,
       });
     } finally {
       setLoading(false);

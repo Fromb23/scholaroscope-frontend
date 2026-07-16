@@ -31,6 +31,7 @@ import { useLearnerSubjectIntelligence } from '@/app/core/hooks/useAcademicIntel
 import { useStudent } from '@/app/core/hooks/useStudents';
 import { LearnerSubjectIntelligencePanel } from '@/app/core/components/reports/AcademicInsightPrimitives';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
+import { sanitizeAppDestination } from '@/app/core/auth/navigation';
 import {
   BarListChart,
   formatDate,
@@ -291,7 +292,10 @@ export function LearnerSubjectReportPage() {
   const searchParams = useSearchParams();
   const learnerId = Number(params.learnerId);
   const requestedCohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject'));
-  const returnTo = searchParams.get('returnTo') || `/learners/${learnerId}`;
+  const returnTo = sanitizeAppDestination(
+    searchParams.get('returnTo'),
+    `/learners/${learnerId}`,
+  );
 
   const { student, loading: learnerLoading, error: learnerError } = useStudent(learnerId);
   const {

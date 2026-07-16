@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -1273,7 +1275,7 @@ export function SessionDetailPage() {
                 navigateForEvidence: true,
             });
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not close this lesson record.');
+            setWorkflowError(resolveErrorMessage(error, 'We could not close this lesson record.'));
         }
     }, [
         clearWorkflowFeedback,
@@ -1294,7 +1296,7 @@ export function SessionDetailPage() {
             await cancelSession();
             setWorkflowSuccess('Lesson cancelled.');
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not cancel this lesson.');
+            setWorkflowError(resolveErrorMessage(error, 'We could not cancel this lesson.'));
         }
     }, [
         cancelSession,
@@ -1532,7 +1534,7 @@ export function SessionDetailPage() {
                 isInstructor ? 'Lesson started. Next step: take attendance.' : 'Lesson started.'
             );
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not start this lesson.');
+            setWorkflowError(resolveErrorMessage(error, 'We could not start this lesson.'));
         }
     };
 
@@ -1662,7 +1664,7 @@ export function SessionDetailPage() {
                     : 'What was taught has been confirmed.'
             );
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not confirm what was taught.');
+            setWorkflowError(resolveErrorMessage(error, 'We could not confirm what was taught.'));
         } finally {
             setConfirmingTaughtOutcomes(false);
         }

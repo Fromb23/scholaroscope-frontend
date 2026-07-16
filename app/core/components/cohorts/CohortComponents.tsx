@@ -27,7 +27,7 @@ import {
     isStructuredCurriculumLevel,
     normalizeAcademicLevel,
 } from '@/app/core/lib/curriculumLevels';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortDetail, AcademicYear, Curriculum } from '@/app/core/types/academic';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
@@ -167,7 +167,7 @@ function KernelSubjectPanel({
       await loadDetail();
       await onSubjectsChanged?.();
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to link subject.'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to link subject.'));
     } finally {
       setWorking(false);
     }
@@ -181,7 +181,7 @@ function KernelSubjectPanel({
       await loadDetail();
       await onSubjectsChanged?.();
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to unlink subject.'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to unlink subject.'));
     } finally {
       setWorking(false);
     }
@@ -363,7 +363,7 @@ export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps
             onSuccess();
             onClose();
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Rollover failed. Please try again.'));
+            setError(resolveErrorMessage(err as ApiError, 'Rollover failed. Please try again.'));
         } finally { setSaving(false); }
     };
 
@@ -538,7 +538,7 @@ export function CohortFormModal({
                 onClose();
             }
         } catch (err) {
-            setFormError(extractErrorMessage(err as ApiError, 'Failed to save cohort.'));
+            setFormError(resolveErrorMessage(err as ApiError, 'Failed to save cohort.'));
         } finally { setSaving(false); }
     };
 

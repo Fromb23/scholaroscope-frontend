@@ -11,6 +11,11 @@ one entity to another and back.
   report links.
 - Do not create open redirects. Platform console redirects use the fixed frontend
   environment URL and do not reuse arbitrary `next` or backend URL fields.
+- Parse every application-controlled `next`, `returnTo`, or equivalent value with
+  `parseAppDestination` (or its `sanitizeAppDestination` wrapper). The parser
+  requires an application-relative, same-origin result and rejects schemes,
+  protocol-relative forms, backslashes, control characters, malformed encoding,
+  encoded/double-encoded external forms, credentials, and excessive lengths.
 - Commercial quote selection should survive registration navigation through the
   backend quote token.
 - Authenticated additional-workspace creation routes through `/workspaces/new` and
@@ -23,6 +28,8 @@ Run:
 
 ```bash
 npm run check:desire-paths
+npm run check:security-presentation
 ```
 
-The guard keeps new entity-profile/report links from dropping `returnTo`.
+The guards keep new entity-profile/report links from dropping `returnTo` and
+prevent destination consumers from bypassing the canonical parser.

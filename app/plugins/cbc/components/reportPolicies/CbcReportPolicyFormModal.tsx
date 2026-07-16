@@ -19,7 +19,7 @@ import {
     useFormValidationFeedback,
     type FormFieldErrors,
 } from '@/app/core/forms';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 import { extractFieldErrors, fieldErrorsToSummary } from '@/app/core/errors/fieldErrors';
 import {
     CBC_DEFAULT_LEVEL_SCALE,
@@ -950,7 +950,7 @@ export function CbcReportPolicyFormModal({
                 mappedErrors.globalError
                 ?? (Object.keys(mappedErrors.fieldErrors).length > 0
                     ? null
-                    : extractErrorMessage(error as ApiError, 'Failed to save CBC report policy.')),
+                    : resolveErrorMessage(error as ApiError, 'Failed to save CBC report policy.')),
             );
             focusFirstError(mappedErrors.fieldErrors);
         } finally {

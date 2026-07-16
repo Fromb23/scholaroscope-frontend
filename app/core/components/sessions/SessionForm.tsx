@@ -36,7 +36,7 @@ import {
     type SessionCreateField,
 } from '@/app/core/components/sessions/sessionFormValidation';
 import { useAuth } from '@/app/context/AuthContext';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { SessionFormData } from '@/app/core/types/session';
 
@@ -284,7 +284,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             const session = await createSession(formData);
             router.push(`/sessions/${session.id}`);
         } catch (err) {
-            setSubmitError(extractErrorMessage(err as ApiError));
+            setSubmitError(resolveErrorMessage(err as ApiError));
         } finally {
             setSaving(false);
         }

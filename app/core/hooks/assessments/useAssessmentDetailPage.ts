@@ -22,7 +22,7 @@ import {
     isLearnerAssessmentDetail,
     sortAssessmentScores,
 } from '@/app/core/types/assessment';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 function normalizeSearchValue(value: string | number | null | undefined): string {
     return String(value ?? '').trim().toLowerCase();
@@ -311,7 +311,7 @@ export function useAssessmentDetailPage() {
             ]);
         } catch (error) {
             setParticipationError(
-                extractErrorMessage(error as ApiError, 'Failed to update assessment participation')
+                resolveErrorMessage(error as ApiError, 'Failed to update assessment participation')
             );
         } finally {
             setParticipationSaving(false);
@@ -340,7 +340,7 @@ export function useAssessmentDetailPage() {
             ]);
         } catch (error) {
             setParticipationError(
-                extractErrorMessage(error as ApiError, 'Failed to update makeup completion')
+                resolveErrorMessage(error as ApiError, 'Failed to update makeup completion')
             );
         } finally {
             setMakeupSavingStudentId(null);
@@ -468,7 +468,7 @@ export function useAssessmentDetailPage() {
             setSaveSuccess('Scores updated successfully.');
             refetch();
         } catch (error) {
-            setSaveError(extractErrorMessage(error as ApiError, 'Failed to save scores'));
+            setSaveError(resolveErrorMessage(error as ApiError, 'Failed to save scores'));
         } finally {
             setSaving(false);
         }
@@ -501,7 +501,7 @@ export function useAssessmentDetailPage() {
             await deleteAssessment();
             router.push('/assessments');
         } catch (error) {
-            setDeleteError(error instanceof Error ? error.message : 'Failed to delete');
+            setDeleteError(resolveErrorMessage(error, 'Failed to delete'));
         }
     };
 
@@ -513,7 +513,7 @@ export function useAssessmentDetailPage() {
         try {
             await activateAssessment();
         } catch (error) {
-            setSaveError(error instanceof Error ? error.message : 'Failed to activate');
+            setSaveError(resolveErrorMessage(error, 'Failed to activate'));
         }
     };
 
@@ -538,7 +538,7 @@ export function useAssessmentDetailPage() {
                 await finalizeAssessment();
             }
         } catch (error) {
-            setSaveError(error instanceof Error ? error.message : 'Failed to finalize');
+            setSaveError(resolveErrorMessage(error, 'Failed to finalize'));
         }
     };
 
@@ -556,7 +556,7 @@ export function useAssessmentDetailPage() {
                 isTrackedParticipation ? loadParticipationRoster(true) : Promise.resolve(),
             ]);
         } catch (error) {
-            setSaveError(extractErrorMessage(error as ApiError, 'Failed to reopen assessment'));
+            setSaveError(resolveErrorMessage(error as ApiError, 'Failed to reopen assessment'));
             throw error;
         }
     };

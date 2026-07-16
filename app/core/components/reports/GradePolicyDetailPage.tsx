@@ -23,7 +23,7 @@ import {
 } from '@/app/core/lib/policySurfaces';
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 import type { ApiError } from '@/app/core/types/errors';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
 import {
     InactivePolicyNotice,
@@ -138,7 +138,7 @@ export function GradePolicyDetailPage() {
             setSelectedCohort(nextPolicy.cohort ?? null);
             setError(null);
         } catch (requestError) {
-            setError(extractErrorMessage(requestError as ApiError, 'Failed to load grade policy.'));
+            setError(resolveErrorMessage(requestError as ApiError, 'Failed to load grade policy.'));
         } finally {
             setLoading(false);
         }
@@ -153,7 +153,7 @@ export function GradePolicyDetailPage() {
             setPolicy(activated);
             setError(null);
         } catch (requestError) {
-            setError(extractErrorMessage(requestError as ApiError, 'Failed to activate grade policy.'));
+            setError(resolveErrorMessage(requestError as ApiError, 'Failed to activate grade policy.'));
         } finally {
             setActivating(false);
         }
