@@ -92,6 +92,39 @@ describe('SessionDetailPage attendance learner links', () => {
     expect(component).toContain("label: 'Confirm what was taught'");
   });
 
+  it('uses explicit progressive disclosure helpers for attendance and taught outcomes', () => {
+    const component = source();
+
+    expect(component).toContain('getLessonWorkflowStep');
+    expect(component).toContain('shouldRenderAttendanceEditor');
+    expect(component).toContain('shouldRenderTaughtOutcomesEditor');
+    expect(component).toContain('getDefaultOpenLessonWorkflowSection');
+    expect(component).toContain('attendanceReviewRequested');
+    expect(component).toContain('setTaughtOutcomesOpen(false)');
+    expect(component).toContain('setAttendanceOpen(false)');
+  });
+
+  it('closes taught outcomes immediately after successful confirmation', () => {
+    const component = source();
+    const confirmMutation = component.indexOf('await confirmTaughtOutcomes({');
+    const localConfirmation = component.indexOf('setTaughtOutcomesConfirmedLocally(true);', confirmMutation);
+    const closeTaughtOutcomes = component.indexOf('setTaughtOutcomesOpen(false);', localConfirmation);
+
+    expect(confirmMutation).toBeGreaterThan(-1);
+    expect(localConfirmation).toBeGreaterThan(confirmMutation);
+    expect(closeTaughtOutcomes).toBeGreaterThan(localConfirmation);
+    expect(component).toContain('showTaughtOutcomesConfirmationSummary');
+    expect(component).toContain('What was taught confirmed');
+  });
+
+  it('provides a visible path back from reviewed attendance to taught-outcome confirmation', () => {
+    const component = source();
+
+    expect(component).toContain('Return to what was taught');
+    expect(component).toContain('onClick={revealTaughtOutcomesSection}');
+    expect(component).not.toContain('Review attendance can do nothing');
+  });
+
   it('renders requires-review as a neutral review state', () => {
     const component = source();
 

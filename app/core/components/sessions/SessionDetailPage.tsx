@@ -66,9 +66,14 @@ import { calcAttendanceStats } from '@/app/utils/sessionUtils';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import {
+    getDefaultOpenLessonWorkflowSection,
+    getLessonWorkflowStep,
     shouldShowMergedCohortBadge,
     shouldShowParticipatingCohorts,
     shouldShowPostLessonAssignmentActions,
+    shouldRenderAttendanceEditor,
+    shouldRenderTaughtOutcomesConfirmationSummary,
+    shouldRenderTaughtOutcomesEditor,
 } from '@/app/core/components/sessions/sessionDetailVisibility';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
@@ -306,6 +311,8 @@ export function SessionDetailPage() {
     const [lessonPreparationOpen, setLessonPreparationOpen] = useState(false);
     const [attendanceOpen, setAttendanceOpen] = useState(false);
     const [taughtOutcomesOpen, setTaughtOutcomesOpen] = useState(false);
+    const [attendanceReviewRequested, setAttendanceReviewRequested] = useState(false);
+    const [taughtOutcomesConfirmedLocally, setTaughtOutcomesConfirmedLocally] = useState(false);
     const [checklistOpen, setChecklistOpen] = useState(false);
     const [skipPreparedTaskPrompt, setSkipPreparedTaskPrompt] = useState(false);
     const [highlightedAssignmentId, setHighlightedAssignmentId] = useState<number | null>(null);
@@ -479,33 +486,16 @@ export function SessionDetailPage() {
         startAvailableDateTimeLabel,
         startAvailableTimeLabel,
     ]);
-    const currentWorkflowStep = useMemo(() => {
-        if (isCancelled) {
-            return 'cancelled';
-        }
-        if (isScheduled) {
-            return 'scheduled';
-        }
-        if (isInProgress && !hasMarkedAttendance) {
-            return 'attendance';
-        }
-        if (isInProgress && !hasConfirmedTaughtOutcomes) {
-            return 'confirm_taught';
-        }
-        if (isInProgress) {
-            return 'complete';
-        }
-        if (isCompleted) {
-            return 'post_lesson';
-        }
-        return 'scheduled';
-    }, [
+    const currentWorkflowStep = useMemo(() => getLessonWorkflowStep({
+        status: sessionStatus,
+        closureNextStep: closureState?.next_step,
+        hasMarkedAttendance,
+        hasConfirmedTaughtOutcomes,
+    }), [
+        closureState?.next_step,
         hasConfirmedTaughtOutcomes,
         hasMarkedAttendance,
-        isCompleted,
-        isCancelled,
-        isInProgress,
-        isScheduled,
+        sessionStatus,
     ]);
     const preparedTaskDraft = [preparedAssignment, lessonPlanPreparedDraft].find(
         (assignment) => assignment?.status === 'DRAFT'
@@ -526,12 +516,29 @@ export function SessionDetailPage() {
             || (currentWorkflowStep === 'post_lesson' && showPostLessonAssignmentActions)
         )
     );
-    const showAttendanceSection = currentWorkflowStep === 'attendance' || isCompleted || needsCompletion;
-    const showTaughtOutcomesSection = hasLessonPlan && (
-        currentWorkflowStep === 'confirm_taught'
-        || isCompleted
-        || needsCompletion
-    );
+    const showAttendanceSection = shouldRenderAttendanceEditor({
+        workflowStep: currentWorkflowStep,
+        isAttendanceReviewRequested: attendanceReviewRequested,
+        canAdvanceTeachingWorkflow,
+        isHistorical,
+    });
+    const showTaughtOutcomesSection = shouldRenderTaughtOutcomesEditor({
+        workflowStep: currentWorkflowStep,
+        hasLessonPlan,
+        isAttendanceReviewRequested: attendanceReviewRequested,
+        hasConfirmedTaughtOutcomes: hasConfirmedTaughtOutcomes || taughtOutcomesConfirmedLocally,
+        canAdvanceTeachingWorkflow,
+        isHistorical,
+    });
+    const showTaughtOutcomesConfirmationSummary = shouldRenderTaughtOutcomesConfirmationSummary({
+        hasConfirmedTaughtOutcomes: hasConfirmedTaughtOutcomes || taughtOutcomesConfirmedLocally,
+        shouldRenderTaughtOutcomesEditor: showTaughtOutcomesSection,
+        status: sessionStatus,
+    });
+    const defaultOpenWorkflowSection = getDefaultOpenLessonWorkflowSection({
+        shouldRenderAttendanceEditor: showAttendanceSection,
+        shouldRenderTaughtOutcomesEditor: showTaughtOutcomesSection,
+    });
     const buildAttendanceLearnerHref = useCallback((record: { student: number }) => {
         if (!session) {
             return `/learners/${record.student}`;
@@ -699,20 +706,45 @@ export function SessionDetailPage() {
     }, [searchParams]);
 
     const revealAttendanceSection = useCallback(() => {
-        if (!showAttendanceSection) {
+        const canRenderRequestedAttendance = shouldRenderAttendanceEditor({
+            workflowStep: currentWorkflowStep,
+            isAttendanceReviewRequested: true,
+            canAdvanceTeachingWorkflow,
+            isHistorical,
+        });
+        if (!canRenderRequestedAttendance) {
             return;
         }
+        setAttendanceReviewRequested(currentWorkflowStep !== 'attendance');
         setAttendanceOpen(true);
+        setTaughtOutcomesOpen(false);
         setGuidedSection('attendance');
-    }, [showAttendanceSection]);
+    }, [canAdvanceTeachingWorkflow, currentWorkflowStep, isHistorical]);
 
     const revealTaughtOutcomesSection = useCallback(() => {
-        if (!showTaughtOutcomesSection) {
+        const canRenderRequestedTaughtOutcomes = shouldRenderTaughtOutcomesEditor({
+            workflowStep: currentWorkflowStep,
+            hasLessonPlan,
+            isAttendanceReviewRequested: false,
+            hasConfirmedTaughtOutcomes: hasConfirmedTaughtOutcomes || taughtOutcomesConfirmedLocally,
+            canAdvanceTeachingWorkflow,
+            isHistorical,
+        });
+        if (!canRenderRequestedTaughtOutcomes) {
             return;
         }
+        setAttendanceReviewRequested(false);
+        setAttendanceOpen(false);
         setTaughtOutcomesOpen(true);
         setGuidedSection('taught-outcomes');
-    }, [showTaughtOutcomesSection]);
+    }, [
+        canAdvanceTeachingWorkflow,
+        currentWorkflowStep,
+        hasConfirmedTaughtOutcomes,
+        hasLessonPlan,
+        isHistorical,
+        taughtOutcomesConfirmedLocally,
+    ]);
 
     const revealReflectionSection = useCallback(() => {
         setGuidedSection('reflection');
@@ -916,16 +948,24 @@ export function SessionDetailPage() {
     const toggleAttendanceOpen = useCallback(() => {
         setAttendanceOpen((current) => {
             const next = !current;
+            if (next) {
+                setAttendanceReviewRequested(currentWorkflowStep !== 'attendance');
+                setTaughtOutcomesOpen(false);
+            }
             if (!next) {
                 clampDashboardScrollToContent();
             }
             return next;
         });
-    }, []);
+    }, [currentWorkflowStep]);
 
     const toggleTaughtOutcomesOpen = useCallback(() => {
         setTaughtOutcomesOpen((current) => {
             const next = !current;
+            if (next) {
+                setAttendanceReviewRequested(false);
+                setAttendanceOpen(false);
+            }
             if (!next) {
                 clampDashboardScrollToContent();
             }
@@ -961,6 +1001,7 @@ export function SessionDetailPage() {
         if (guidedSection === 'attendance' && showAttendanceSection) {
             if (!attendanceOpen) {
                 setAttendanceOpen(true);
+                setTaughtOutcomesOpen(false);
                 return;
             }
             scrollToSection('attendance-section');
@@ -969,6 +1010,8 @@ export function SessionDetailPage() {
 
         if (guidedSection === 'taught-outcomes' && showTaughtOutcomesSection) {
             if (!taughtOutcomesOpen) {
+                setAttendanceReviewRequested(false);
+                setAttendanceOpen(false);
                 setTaughtOutcomesOpen(true);
                 return;
             }
@@ -1022,21 +1065,26 @@ export function SessionDetailPage() {
     }, [preparedTaskDraft?.id, issuedPreparedTask?.id, sessionId]);
 
     useEffect(() => {
+        setTaughtOutcomesConfirmedLocally(false);
+    }, [sessionId]);
+
+    useEffect(() => {
         if (currentWorkflowStep === 'scheduled') {
             setLessonPreparationOpen(hasLessonPlan);
             setAttendanceOpen(false);
             setTaughtOutcomesOpen(false);
+            setAttendanceReviewRequested(false);
             return;
         }
 
-        if (currentWorkflowStep === 'attendance') {
+        if (defaultOpenWorkflowSection === 'attendance') {
             setLessonPreparationOpen(false);
             setAttendanceOpen(true);
             setTaughtOutcomesOpen(false);
             return;
         }
 
-        if (currentWorkflowStep === 'confirm_taught') {
+        if (defaultOpenWorkflowSection === 'taught-outcomes') {
             setLessonPreparationOpen(false);
             setAttendanceOpen(false);
             setTaughtOutcomesOpen(true);
@@ -1047,13 +1095,15 @@ export function SessionDetailPage() {
             setLessonPreparationOpen(false);
             setAttendanceOpen(false);
             setTaughtOutcomesOpen(false);
+            setAttendanceReviewRequested(false);
             return;
         }
 
         setLessonPreparationOpen(false);
         setAttendanceOpen(false);
         setTaughtOutcomesOpen(false);
-    }, [currentWorkflowStep, hasLessonPlan]);
+        setAttendanceReviewRequested(false);
+    }, [currentWorkflowStep, defaultOpenWorkflowSection, hasLessonPlan]);
 
     useEffect(() => {
         const section = searchParams.get('section');
@@ -1214,7 +1264,7 @@ export function SessionDetailPage() {
         ? `${attendanceMarkedCount}/${attendanceStats.total} learners marked`
         : 'No attendance records are available yet.';
     const plannedOutcomeCount = session?.planned_outcomes.length ?? 0;
-    const canEditTaughtOutcomes = canAdvanceTeachingWorkflow && isInProgress && hasMarkedAttendance && !isHistorical && !isCompleted && !confirmingTaughtOutcomes;
+    const canEditTaughtOutcomes = canAdvanceTeachingWorkflow && isInProgress && hasMarkedAttendance && !isHistorical && !isCompleted && !confirmingTaughtOutcomes && !taughtOutcomesConfirmedLocally;
     const allPlannedOutcomesSelected = session?.planned_outcomes.every(
         (outcome) => Boolean(taughtSelections[outcome.outcome_id])
     ) ?? false;
@@ -1234,6 +1284,7 @@ export function SessionDetailPage() {
         && plannedOutcomeCount > 0
         && allPlannedOutcomesSelected
         && !confirmingTaughtOutcomes
+        && !taughtOutcomesConfirmedLocally
     );
     const confirmTaughtOutcomesLabel = allPlannedOutcomesNotTaught
         ? 'Mark lesson as not taught'
@@ -1633,6 +1684,10 @@ export function SessionDetailPage() {
                     status: taughtSelections[outcome.outcome_id] as TaughtStatus,
                 })),
             });
+            setTaughtOutcomesConfirmedLocally(true);
+            setTaughtOutcomesOpen(false);
+            setAttendanceReviewRequested(false);
+            setAttendanceOpen(false);
             const result = await continueSessionClosureWorkflow('taught_outcomes_confirmed', {
                 navigateForEvidence: true,
             });
@@ -2633,6 +2688,14 @@ export function SessionDetailPage() {
                     open={attendanceOpen}
                     onToggle={toggleAttendanceOpen}
                 >
+                    {attendanceReviewRequested && currentWorkflowStep === 'confirm_taught' ? (
+                        <div className="mb-4 flex flex-col gap-3 rounded-lg border px-3 py-3 text-sm theme-border theme-surface-muted theme-muted sm:flex-row sm:items-center sm:justify-between">
+                            <span>Review attendance, then return to confirming what was taught.</span>
+                            <Button variant="secondary" size="sm" onClick={revealTaughtOutcomesSection}>
+                                Return to what was taught
+                            </Button>
+                        </div>
+                    ) : null}
                     <AttendanceTable
                         records={attendanceRecords}
                         draft={draft}
@@ -2654,6 +2717,15 @@ export function SessionDetailPage() {
                                         : 'Attendance updated.'
                                 );
                                 return;
+                            }
+
+                            setAttendanceReviewRequested(false);
+                            setAttendanceOpen(false);
+                            if (result.closureState.next_step === 'TAUGHT_OUTCOMES') {
+                                setTaughtOutcomesOpen(true);
+                                setGuidedSection('taught-outcomes');
+                            } else {
+                                setTaughtOutcomesOpen(false);
                             }
 
                             setWorkflowSuccess(
@@ -2781,6 +2853,24 @@ export function SessionDetailPage() {
                         </div>
                     </div>
                 </CollapsibleSection>
+            ) : null}
+
+            {showTaughtOutcomesConfirmationSummary ? (
+                <Card>
+                    <div className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+                        <div>
+                            <h2 className="text-sm font-semibold theme-text">
+                                What was taught confirmed
+                            </h2>
+                            <p className="mt-1 text-sm theme-muted">
+                                {taughtOutcomeCount > 0
+                                    ? `${taughtOutcomeCount} taught outcome${taughtOutcomeCount === 1 ? '' : 's'}`
+                                    : `${confirmedTaughtOutcomes.length || plannedOutcomeCount} outcome${(confirmedTaughtOutcomes.length || plannedOutcomeCount) === 1 ? '' : 's'} reviewed`}
+                            </p>
+                        </div>
+                    </div>
+                </Card>
             ) : null}
 
             {showParticipatingCohorts ? (

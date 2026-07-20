@@ -138,7 +138,6 @@ describe('commercial onboarding contract', () => {
   });
 
   it('loads public rate cards from the backend and quotes before registration', () => {
-    expect(landingSource).toContain('<CommercialSection');
     expect(getStartedPageSource).toContain('<PublicGetStartedPage');
     expect(getStartedComponentSource).toContain('<CommercialRateCards');
     expect(commercialApiSource).toContain("'/subscriptions/catalog/'");
@@ -168,25 +167,29 @@ describe('commercial onboarding contract', () => {
     expect(moneySource).toContain('minimumFractionDigits: hasFraction ? 2 : 0');
   });
 
-  it('uses the CBC evidence landing hierarchy and public sample route', () => {
+  it('uses a deliberately simple public landing hierarchy', () => {
     const order = [
+      '<PublicHeader',
       '<HeroSection',
-      '<ProblemSection',
-      '<HowItWorksSection',
-      '<EvidenceDashboardSection',
-      '<ReportAudienceSection',
-      '<AudienceSection',
-      '<EvidenceIntegritySection',
-      '<CommercialSection',
-      '<FooterCtaSection',
+      '<FaqSection',
       '<PublicFooter',
     ];
     for (let index = 0; index < order.length - 1; index += 1) {
       expect(landingSource.indexOf(order[index])).toBeLessThan(landingSource.indexOf(order[index + 1]));
     }
 
-    expect(heroSource).toContain('CBC evidence doesn&apos;t wait.');
-    expect(heroSource).toContain('href="/sample-report"');
+    expect(heroSource).toContain('Classroom records for teachers');
+    expect(heroSource).toContain('href="/get-started"');
+    expect(heroSource).toContain('href="/login"');
+    expect(landingSource).toContain('<FaqSection');
+    expect(landingSource).not.toContain('<ProblemSection');
+    expect(landingSource).not.toContain('<HowItWorksSection');
+    expect(landingSource).not.toContain('<EvidenceDashboardSection');
+    expect(landingSource).not.toContain('<ReportAudienceSection');
+    expect(landingSource).not.toContain('<AudienceSection');
+    expect(landingSource).not.toContain('<EvidenceIntegritySection');
+    expect(landingSource).not.toContain('<CommercialSection');
+    expect(landingSource).not.toContain('<FooterCtaSection');
     expect(problemSource).toContain('CBC was designed around continuous evidence.');
     expect(howItWorksSource).toContain('Set up your workspace');
     expect(evidenceDashboardSource).toContain('Every competency level is earned, not assigned');
