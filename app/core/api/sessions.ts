@@ -13,7 +13,9 @@ import {
   AvailableSessionCohortSubjectsResponse,
   Session,
   SessionDetail,
+  SessionDetailResponse,
   AttendanceRecord,
+  AttendanceRecordUpdatePayload,
   AttendanceSummary,
   BulkAttendanceData,
   ConfirmTaughtOutcomesPayload,
@@ -121,8 +123,8 @@ export const sessionAPI = {
     return res.data;
   },
 
-  getById: async (id: number): Promise<SessionDetail> => {
-    const res = await apiClient.get<SessionDetail>(`/sessions/${id}/`);
+  getById: async (id: number): Promise<SessionDetailResponse> => {
+    const res = await apiClient.get<SessionDetailResponse>(`/sessions/${id}/`);
     return res.data;
   },
 
@@ -295,7 +297,7 @@ export const attendanceAPI = {
     return res.data;
   },
 
-  update: async (id: number, data: Partial<AttendanceRecord>): Promise<AttendanceRecord> => {
+  update: async (id: number, data: AttendanceRecordUpdatePayload): Promise<AttendanceRecord> => {
     const res = await apiClient.patch<AttendanceRecord>(`/sessions/attendance/${id}/`, data);
     return res.data;
   },

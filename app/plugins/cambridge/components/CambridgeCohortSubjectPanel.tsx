@@ -6,7 +6,7 @@ import { Check, X } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import type { CohortSubjectPanelContext } from '@/app/core/registry/cohortSubjectPanels';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { cohortSubjectAPI } from '@/app/plugins/cambridge/api';
 import type { CambridgeCohortSubject } from '@/app/plugins/cambridge/types';
@@ -48,7 +48,7 @@ export function CambridgeCohortSubjectPanel({
       await loadAssignments();
       await onSubjectsChanged?.();
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to unlink Cambridge subject.'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to unlink Cambridge subject.'));
     } finally {
       setWorking(false);
     }

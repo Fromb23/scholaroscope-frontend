@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { apiClient } from '@/app/core/api/client';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
 
@@ -61,7 +61,7 @@ export function useInvites() {
             );
             setInvites(response.data);
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to load invites');
+            setError(resolveErrorMessage(err, 'Failed to load invites'));
         } finally {
             setLoading(false);
         }
@@ -79,7 +79,7 @@ export function useInvites() {
         } catch (error) {
             const data = (error as { response?: { data?: object } }).response?.data ?? {};
             throw Object.assign(
-                new Error(extractErrorMessage(error as ApiError, 'Failed to create invite')),
+                new Error(resolveErrorMessage(error as ApiError, 'Failed to create invite')),
                 { data },
             );
         }

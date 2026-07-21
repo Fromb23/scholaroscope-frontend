@@ -10,7 +10,7 @@ import {
   StudentStats,
   TransferFormData,
 } from '../types/student';
-import { ApiError, extractErrorMessage } from '../types/errors';
+import { ApiError, resolveErrorMessage } from '../types/errors';
 import { academicKeys } from '@/app/core/lib/queryKeys';
 
 // ── useStudents ───────────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ export function useStudents(filters?: StudentsFilters, options?: { enabled?: boo
       }
     } catch (err) {
       if (controller.signal.aborted) return;
-      setError(extractErrorMessage(err as ApiError, 'Failed to load students'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to load students'));
       setStudents([]);
       setPagination({ currentPage: 1, pageSize: 10, totalItems: 0, totalPages: 0 });
     } finally {
@@ -187,7 +187,7 @@ export function useStudent(id: number) {
       }
       return result;
     } catch (err) {
-      const message = extractErrorMessage(err as ApiError, 'Action failed');
+      const message = resolveErrorMessage(err as ApiError, 'Action failed');
       setActionError(message);
       throw err;
     } finally {
@@ -252,7 +252,7 @@ export function useStudentStats() {
       const data = await learnersAPI.getStatistics();
       setStats(data);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to load stats'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to load stats'));
       setStats(null);
     } finally {
       setLoading(false);
@@ -279,7 +279,7 @@ export function useStudentsByCohort(cohortId?: number) {
       const data = await learnersAPI.getStudentsByCohort(cohortId);
       setStudents(data);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to load students'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to load students'));
       setStudents([]);
     } finally {
       setLoading(false);
@@ -307,7 +307,7 @@ export function useMultiCohortStudents() {
       const data = await learnersAPI.getMultiCohortStudents();
       setStudents(data);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to load students'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to load students'));
       setStudents([]);
     } finally {
       setLoading(false);

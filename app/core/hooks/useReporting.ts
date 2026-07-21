@@ -39,7 +39,7 @@ import {
   InstructorCohortSubjectTeachingActivityReport,
   ReportFilters,
 } from '@/app/core/types/reporting';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 
 function unwrap<T>(data: T[] | { results?: T[] }): T[] {
   return Array.isArray(data) ? data : data?.results ?? [];
@@ -78,7 +78,7 @@ export const useDashboardOverview = () => {
       setOverview(await adminReportsAPI.getOverview());
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Could not load reporting overview.'));
+      setError(resolveErrorMessage(err as ApiError, 'Could not load reporting overview.'));
     } finally {
       setLoading(false);
     }
@@ -109,7 +109,7 @@ export const useAttendanceSummaries = ({
       setSummaries(unwrap(await attendanceSummaryAPI.getAll(filters)));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance summaries'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch attendance summaries'));
     } finally {
       setLoading(false);
     }
@@ -146,7 +146,7 @@ export const useGradeSummaries = ({
       setSummaries(unwrap(await gradeSummaryAPI.getAll(filters)));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch grade summaries'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch grade summaries'));
     } finally {
       setLoading(false);
     }
@@ -183,7 +183,7 @@ export const useCohortSummaries = ({
       )));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort summaries'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort summaries'));
     } finally {
       setLoading(false);
     }
@@ -220,7 +220,7 @@ export const useSubjectSummaries = ({
       )));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch subject summaries'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch subject summaries'));
     } finally {
       setLoading(false);
     }
@@ -257,7 +257,7 @@ export const useAssessmentTypeSummaries = ({
       )));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch assessment type summaries'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch assessment type summaries'));
     } finally {
       setLoading(false);
     }
@@ -297,7 +297,7 @@ export const useStudentReportCard = (
       setError(null);
     } catch (err) {
       setReportCard(null);
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch report card'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch report card'));
     } finally {
       setLoading(false);
     }
@@ -331,7 +331,7 @@ export const useClassSummary = (
       setError(null);
     } catch (err) {
       setSummary(null);
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch class summary'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch class summary'));
     } finally {
       setLoading(false);
     }
@@ -365,7 +365,7 @@ export const useSubjectAnalysis = (
       setError(null);
     } catch (err) {
       setAnalysis(null);
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch subject analysis'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch subject analysis'));
     } finally {
       setLoading(false);
     }
@@ -407,7 +407,7 @@ export const useAdminAttendanceScopeReport = (params?: {
       setError(null);
     } catch (err) {
       setReport(null);
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance report'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch attendance report'));
     } finally {
       setLoading(false);
     }
@@ -442,7 +442,7 @@ export const useInstructorOverview = () => {
     } catch (err) {
       const apiError = err as ApiError;
       setOverview(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch instructor overview'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch instructor overview'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -476,7 +476,7 @@ export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => 
     } catch (err) {
       const apiError = err as ApiError;
       setCohortSubjects([]);
-      setError(extractErrorMessage(apiError, 'Failed to fetch cohort subject reports'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch cohort subject reports'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -518,7 +518,7 @@ export const useInstructorCohortSubjectLearners = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch learner report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch learner report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -560,7 +560,7 @@ export const useInstructorCohortSubjectPerformance = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch performance report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch performance report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -602,7 +602,7 @@ export const useInstructorCohortSubjectTeachingActivity = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch teaching activity report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch teaching activity report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -627,7 +627,7 @@ export const useLongitudinalStudent = (studentId: number | null) => {
       setData(await reportsAPI.getLongitudinalStudent(studentId));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch longitudinal data'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch longitudinal data'));
     } finally {
       setLoading(false);
     }
@@ -670,7 +670,7 @@ export const useLearnerSubjectReport = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch learner subject report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch learner subject report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -730,7 +730,7 @@ export const useLearnerAssessmentReport = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch learner assessment report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch learner assessment report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -781,7 +781,7 @@ export const useLearnerAvailableReportScopes = (
     } catch (err) {
       const apiError = err as ApiError;
       setScopes(null);
-      setError(extractErrorMessage(apiError, 'Failed to load available report scopes'));
+      setError(resolveErrorMessage(apiError, 'Failed to load available report scopes'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -822,7 +822,7 @@ export const useLearnerOverviewReport = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch learner overview report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch learner overview report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -864,7 +864,7 @@ export const useLearnerTermProgressReport = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Could not load learner term progress report.'));
+      setError(resolveErrorMessage(apiError, 'Could not load learner term progress report.'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -912,7 +912,7 @@ export const useClassSubjectReport = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch class subject report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch class subject report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -952,7 +952,7 @@ export const useInstructorTeacherReport = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch teacher report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch teacher report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);
@@ -1003,7 +1003,7 @@ export const useAdminInstructorTeacherReport = (
     } catch (err) {
       const apiError = err as ApiError;
       setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch teacher report'));
+      setError(resolveErrorMessage(apiError, 'Failed to fetch teacher report'));
       setErrorStatus(statusCode(apiError));
     } finally {
       setLoading(false);

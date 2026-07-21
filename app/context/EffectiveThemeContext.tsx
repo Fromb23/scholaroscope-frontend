@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import {
   createContext,
   useCallback,
@@ -108,7 +110,7 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
         return normalizeEffectiveTheme(DEFAULT_EFFECTIVE_THEME, themeMode);
       }
       const fallback = applyResolvedTheme(DEFAULT_EFFECTIVE_THEME);
-      setError(err instanceof Error ? err.message : 'Theme settings could not be loaded.');
+      setError(resolveErrorMessage(err, 'Theme settings could not be loaded.'));
       return fallback;
     } finally {
       if (requestId === themeRequestIdRef.current) {

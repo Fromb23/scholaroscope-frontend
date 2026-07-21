@@ -42,36 +42,6 @@ export interface ApiError {
  *   - ["error1", "error2"]      → list of errors
  *   - "plain string"            → raw string
  */
-export function extractErrorMessage(err: ApiError, fallback = 'An error occurred'): string {
-    const data = err?.response?.data;
-
-    if (!data) return err?.message ?? fallback;
-
-    if (Array.isArray(data)) return data.join('\n');
-
-    if (typeof data === 'string') return data;
-
-    if (typeof data === 'object') {
-        const structuredError = 'error' in data ? data.error : undefined;
-        if (
-            structuredError
-            && typeof structuredError === 'object'
-            && !Array.isArray(structuredError)
-            && typeof structuredError.message === 'string'
-        ) {
-            return structuredError.message;
-        }
-        if ('message' in data && typeof data.message === 'string') {
-            return data.message;
-        }
-        return Object.values(data)
-            .flat()
-            .join('\n');
-    }
-
-    return fallback;
-}
-
 export function extractErrorCode(err: ApiError): string | null {
     const data = err?.response?.data;
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
@@ -91,3 +61,5 @@ export type ApiErrorWithCode = Error & {
     code?: string | null;
     response?: ApiError['response'];
 };
+
+export { resolveErrorMessage } from '@/app/core/errors/resolveErrorMessage';

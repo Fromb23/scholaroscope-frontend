@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ClipboardCheck, Layers3, Plus } from 'lucide-react';
@@ -290,7 +292,7 @@ export function CbcReportPoliciesPage({
             await updatePolicy(policy.id, { is_active: true });
             await refetch();
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to activate CBC report policy.';
+            const message = resolveErrorMessage(error, 'Failed to activate CBC report policy.');
             setDeleteError(message);
         } finally {
             setActivatingId(null);
@@ -304,7 +306,7 @@ export function CbcReportPoliciesPage({
             await deletePolicy(id);
             await refetch();
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to delete CBC report policy.';
+            const message = resolveErrorMessage(error, 'Failed to delete CBC report policy.');
             setDeleteError(message);
         } finally {
             setDeletingId(null);
@@ -586,7 +588,7 @@ export function CbcReportPoliciesPage({
 
             {error && (
                 <ErrorBanner
-                    message={error instanceof Error ? error.message : 'Failed to load CBC report policies.'}
+                    message={resolveErrorMessage(error, 'Failed to load CBC report policies.')}
                     onDismiss={() => {}}
                 />
             )}

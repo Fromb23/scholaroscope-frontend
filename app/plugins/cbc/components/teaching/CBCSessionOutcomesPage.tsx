@@ -19,13 +19,14 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 export function CBCSessionOutcomesPage() {
   const { sessionId: raw } = useParams<{ sessionId: string }>();
   const searchParams = useSearchParams();
   const sessionId = Number(raw);
   const page = useSessionOutcomes(sessionId);
-  const returnTo = searchParams.get('returnTo');
+  const returnTo = parseAppDestination(searchParams.get('returnTo'));
   const addOutcomesHref = `/cbc/teaching/sessions/${sessionId}/outcomes/add`;
   const learnersHref = `/cbc/teaching/sessions/${sessionId}/learners`;
   const lessonHref = page.session?.id ? `/sessions/${page.session.id}` : '/cbc/teaching/sessions';

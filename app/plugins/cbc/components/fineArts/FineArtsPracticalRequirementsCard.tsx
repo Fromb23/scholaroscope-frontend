@@ -10,7 +10,7 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { subscribeToSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import type {
     FineArtsCourseworkTask,
@@ -228,7 +228,7 @@ export function FineArtsPracticalRequirementsCard({
             await resolveMutation.mutateAsync({ coursework_task_id: taskId });
             await handleStateChange();
         } catch (mutationError) {
-            setError(extractErrorMessage(mutationError as ApiError));
+            setError(resolveErrorMessage(mutationError as ApiError));
         }
     };
 
@@ -244,7 +244,7 @@ export function FineArtsPracticalRequirementsCard({
             });
             await handleStateChange();
         } catch (mutationError) {
-            setError(extractErrorMessage(mutationError as ApiError));
+            setError(resolveErrorMessage(mutationError as ApiError));
         }
     };
 
@@ -258,7 +258,7 @@ export function FineArtsPracticalRequirementsCard({
             });
             await handleStateChange();
         } catch (mutationError) {
-            setError(extractErrorMessage(mutationError as ApiError));
+            setError(resolveErrorMessage(mutationError as ApiError));
         }
     };
 
@@ -274,7 +274,7 @@ export function FineArtsPracticalRequirementsCard({
         return (
             <Card>
                 <ErrorBanner
-                    message={extractErrorMessage(practicalQuery.error as ApiError, 'We could not load the Fine Arts practical requirements.')}
+                    message={resolveErrorMessage(practicalQuery.error as ApiError, 'We could not load the Fine Arts practical requirements.')}
                     onDismiss={() => {}}
                 />
             </Card>

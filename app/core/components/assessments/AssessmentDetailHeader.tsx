@@ -8,10 +8,11 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import type { AssessmentDetail } from '@/app/core/types/assessment';
+import type { AssessmentDetailResponse } from '@/app/core/types/assessment';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 interface AssessmentDetailHeaderProps {
-    assessment: AssessmentDetail;
+    assessment: AssessmentDetailResponse;
     isDraft: boolean;
     isActive: boolean;
     isFinalized: boolean;
@@ -26,7 +27,7 @@ export function AssessmentDetailHeader({
     const searchParams = useSearchParams();
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
-        return value?.startsWith('/') ? value : null;
+        return parseAppDestination(value);
     }, [searchParams]);
     return (
         <div className="space-y-3">

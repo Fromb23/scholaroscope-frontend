@@ -6,6 +6,7 @@ import type {
     SessionPracticalContext,
 } from '@/app/core/types/session';
 import type { PlannedOutcome } from '@/app/core/types/lessonPlans';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 const CBC_CURRICULUM_TYPES = new Set(['CBE', 'CBC']);
 const FINE_ARTS_SUBJECT_CODE = 'FINEARTS';
@@ -230,8 +231,9 @@ export function buildFineArtsPracticalWorkflowHref(
         notice: 'closure-evidence-required',
     });
 
-    if (returnTo) {
-        searchParams.set('returnTo', returnTo);
+    const safeReturnTo = parseAppDestination(returnTo);
+    if (safeReturnTo) {
+        searchParams.set('returnTo', safeReturnTo);
     }
 
     return `/cbc/teaching/sessions/${sessionId}/practical?${searchParams.toString()}`;

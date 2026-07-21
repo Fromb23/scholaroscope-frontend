@@ -26,7 +26,7 @@ import {
 } from '@/app/core/types/academic';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
-import { ApiError, ApiErrorWithCode, extractErrorCode, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, ApiErrorWithCode, extractErrorCode, resolveErrorMessage } from '@/app/core/types/errors';
 import { academicKeys } from '@/app/core/lib/queryKeys';
 
 export interface CohortFilters {
@@ -49,7 +49,7 @@ function toIdSet(idsKey: string): Set<number> {
 
 function wrapApiMutationError(err: unknown, fallback: string): ApiErrorWithCode {
   const apiError = err as ApiError;
-  const wrapped = new Error(extractErrorMessage(apiError, fallback)) as ApiErrorWithCode;
+  const wrapped = new Error(resolveErrorMessage(apiError, fallback)) as ApiErrorWithCode;
   wrapped.code = extractErrorCode(apiError);
   wrapped.response = apiError.response;
   return wrapped;
@@ -67,7 +67,7 @@ export function useAcademicLifecycleContext(options: { enabled?: boolean } = {})
           organizationId ? { organization: organizationId } : undefined
         );
       } catch (err) {
-        throw new Error(extractErrorMessage(err as ApiError, 'Failed to load academic context'));
+        throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load academic context'));
       }
     },
     enabled,
@@ -92,7 +92,7 @@ export const useAcademicYears = () => {
       setAcademicYears(Array.isArray(data) ? data : (data as { results?: AcademicYear[] })?.results ?? []);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch academic years'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch academic years'));
     } finally {
       setLoading(false);
     }
@@ -106,7 +106,7 @@ export const useAcademicYears = () => {
       setAcademicYears(prev => [newYear, ...prev]);
       return newYear;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to create academic year'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create academic year'));
     }
   };
 
@@ -116,7 +116,7 @@ export const useAcademicYears = () => {
       setAcademicYears(prev => prev.map(y => y.id === id ? updated : y));
       return updated;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to update academic year'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update academic year'));
     }
   };
 
@@ -125,7 +125,7 @@ export const useAcademicYears = () => {
       await academicYearAPI.delete(id);
       setAcademicYears(prev => prev.filter(y => y.id !== id));
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete academic year'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete academic year'));
     }
   };
 
@@ -135,7 +135,7 @@ export const useAcademicYears = () => {
       setAcademicYears(prev => prev.map(y => ({ ...y, is_current: y.id === id })));
       return updated;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to set current year'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to set current year'));
     }
   };
 
@@ -159,7 +159,7 @@ export const useCurrentAcademicYear = () => {
       setCurrentYear(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch current academic year'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch current academic year'));
       setCurrentYear(null);
     } finally {
       setLoading(false);
@@ -188,7 +188,7 @@ export const useCurrentTerm = () => {
       setCurrentTerm(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch current term'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch current term'));
       setCurrentTerm(null);
     } finally {
       setLoading(false);
@@ -220,7 +220,7 @@ export const useTerms = (academicYearId?: number) => {
       setError(null);
       return nextTerms;
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch terms'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch terms'));
       return [];
     } finally {
       setLoading(false);
@@ -319,7 +319,7 @@ export const useTermCalendarEvents = (termId: number | null) => {
       return nextEvents;
     } catch (err) {
       setEvents([]);
-      setError(extractErrorMessage(err as ApiError, 'Failed to load term calendar events'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to load term calendar events'));
       return [];
     } finally {
       setLoading(false);
@@ -405,7 +405,7 @@ export const useCurricula = (options: { enabled?: boolean } = {}) => {
       try {
         return await curriculumAPI.create(data);
       } catch (err) {
-        throw new Error(extractErrorMessage(err as ApiError, 'Failed to create curriculum'));
+        throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create curriculum'));
       }
     },
     onSuccess: (created) => {
@@ -421,7 +421,7 @@ export const useCurricula = (options: { enabled?: boolean } = {}) => {
       try {
         return await curriculumAPI.update(id, data);
       } catch (err) {
-        throw new Error(extractErrorMessage(err as ApiError, 'Failed to update curriculum'));
+        throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update curriculum'));
       }
     },
     onSuccess: (updated) => {
@@ -438,7 +438,7 @@ export const useCurricula = (options: { enabled?: boolean } = {}) => {
         await curriculumAPI.delete(id);
         return id;
       } catch (err) {
-        throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete curriculum'));
+        throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete curriculum'));
       }
     },
     onSuccess: (deletedId) => {
@@ -499,7 +499,7 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
       );
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch subjects'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch subjects'));
     } finally {
       setLoading(false);
     }
@@ -513,7 +513,7 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
       setSubjects(prev => [...prev, newSubject]);
       return newSubject;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to create subject'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create subject'));
     }
   };
 
@@ -523,7 +523,7 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
       setSubjects(prev => prev.map(s => s.id === id ? updated : s));
       return updated;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to update subject'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update subject'));
     }
   };
 
@@ -532,7 +532,7 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
       await subjectAPI.delete(id);
       setSubjects(prev => prev.filter(s => s.id !== id));
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete subject'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete subject'));
     }
   };
 
@@ -562,7 +562,7 @@ export const useLearnerSubjectOptions = (
       setError(null);
     } catch (err) {
       setSubjectOptions([]);
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch learner subject options'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch learner subject options'));
     } finally {
       setLoading(false);
     }
@@ -598,7 +598,7 @@ export const useSubjectDetail = (subjectId: number | null) => {
       setSubject(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch subject details'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch subject details'));
       setSubject(null);
     } finally {
       setLoading(false);
@@ -685,7 +685,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       );
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohorts'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohorts'));
     } finally {
       setLoading(false);
     }
@@ -705,7 +705,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       setCohorts(prev => [...prev, newCohort]);
       return newCohort;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to create cohort'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create cohort'));
     }
   };
 
@@ -717,7 +717,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       setCohorts(prev => prev.map(c => c.id === id ? updated : c));
       return updated;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to update cohort'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update cohort'));
     }
   };
 
@@ -726,7 +726,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       await cohortAPI.delete(id);
       setCohorts(prev => prev.filter(c => c.id !== id));
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete cohort'));
+      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete cohort'));
     }
   };
 
@@ -742,7 +742,7 @@ export const useCohort = (cohortId: number | null) => {
     setLoading(true);
     cohortAPI.getById(cohortId)
       .then(data => { setCohort(data); setError(null); })
-      .catch(err => setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort')))
+      .catch(err => setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort')))
       .finally(() => setLoading(false));
   }, [cohortId]);
 

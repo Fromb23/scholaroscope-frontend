@@ -7,7 +7,7 @@ import { emitSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type { LessonPlanCurriculumContext } from '@/app/core/types/lessonPlanCurriculum';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type {
     AvailableLessonPlanParticipatingCohortsResponse,
@@ -35,7 +35,7 @@ function getStatusCode(error: ApiError): number | null {
 }
 
 function getLessonPlanListMessage(error: ApiError): string {
-    return extractErrorMessage(error, 'We could not load lesson plans. Try again.');
+    return resolveErrorMessage(error, 'We could not load lesson plans. Try again.');
 }
 
 function getLessonPlanDetailMessage(error: ApiError): string {
@@ -49,12 +49,12 @@ function getLessonPlanDetailMessage(error: ApiError): string {
         return 'This lesson plan could not be found.';
     }
 
-    return extractErrorMessage(error, 'We could not load this lesson plan. Try again.');
+    return resolveErrorMessage(error, 'We could not load this lesson plan. Try again.');
 }
 
 function getLessonPlanExportMessage(error: ApiError): string {
     const status = getStatusCode(error);
-    const message = extractErrorMessage(error, 'Could not export the lesson plan PDF.');
+    const message = resolveErrorMessage(error, 'Could not export the lesson plan PDF.');
 
     if (
         status === 503
@@ -73,7 +73,7 @@ function getLessonPlanCreateMessage(error: ApiError, fallback: string): string {
         return 'You cannot plan a lesson for this class subject.';
     }
 
-    return extractErrorMessage(error, fallback);
+    return resolveErrorMessage(error, fallback);
 }
 
 function getLessonPlanGenerateMessage(error: ApiError, fallback: string): string {
@@ -279,7 +279,7 @@ export function useLessonPlanCompliance(params: LessonPlanComplianceQueryParams 
             setError(null);
         } catch (err) {
             setData(null);
-            setError(extractErrorMessage(err as ApiError, 'We could not load lesson plan compliance.'));
+            setError(resolveErrorMessage(err as ApiError, 'We could not load lesson plan compliance.'));
         } finally {
             setLoading(false);
         }
@@ -440,7 +440,7 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
             return await lessonPlanAPI.createAssignmentDraft(lessonPlanId);
         } catch (err) {
             throw new Error(
-                extractErrorMessage(
+                resolveErrorMessage(
                     err as ApiError,
                     'Failed to prepare an assignment draft.'
                 )
@@ -598,7 +598,7 @@ export const useLessonPlanCurriculumContext = (
             const apiError = err as ApiError;
             setCurriculumContext(null);
             setError(
-                extractErrorMessage(
+                resolveErrorMessage(
                     apiError,
                     'We could not load lesson planning for this class subject.'
                 )
@@ -648,7 +648,7 @@ export const useAvailableLessonPlanParticipatingCohortSubjects = (
         } catch (err) {
             setData(null);
             setError(
-                extractErrorMessage(
+                resolveErrorMessage(
                     err as ApiError,
                     'We could not load compatible participating classes.'
                 )

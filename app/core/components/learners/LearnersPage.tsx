@@ -10,7 +10,7 @@ import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { learnersAPI } from '@/app/core/api/learners';
 import type { ApiError } from '@/app/core/types/errors';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import type { Student } from '@/app/core/types/student';
 import { useAuth } from '@/app/context/AuthContext';
@@ -320,7 +320,7 @@ function LearnersPageInner() {
                 }
                 setInstructorStudents([]);
                 setInstructorStudentsError(
-                    extractErrorMessage(err as ApiError, 'Failed to load learners')
+                    resolveErrorMessage(err as ApiError, 'Failed to load learners')
                 );
             })
             .finally(() => {

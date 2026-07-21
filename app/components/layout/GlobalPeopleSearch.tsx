@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react';
@@ -112,7 +114,7 @@ export function GlobalPeopleSearch() {
                 }
 
                 setResults([]);
-                setError(err instanceof Error ? err.message : 'Search failed.');
+                setError(resolveErrorMessage(err, 'Search failed.'));
             } finally {
                 if (!cancelled) {
                     setLoading(false);
@@ -143,7 +145,7 @@ export function GlobalPeopleSearch() {
             setExpandedResultKey(null);
             router.push(href);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Search navigation failed.');
+            setError(resolveErrorMessage(err, 'Search navigation failed.'));
             setOpen(true);
         }
     };

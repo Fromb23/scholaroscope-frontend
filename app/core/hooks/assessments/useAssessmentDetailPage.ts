@@ -19,9 +19,10 @@ import {
     type AssessmentScore,
     type AssessmentScoreDraft,
     getAssessmentScoreDraftValue,
+    isLearnerAssessmentDetail,
     sortAssessmentScores,
 } from '@/app/core/types/assessment';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 function normalizeSearchValue(value: string | number | null | undefined): string {
     return String(value ?? '').trim().toLowerCase();
@@ -31,7 +32,7 @@ export function useAssessmentDetailPage() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole } = useAuth();
+    const { activeRole, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const assessmentId = Number(params.id);
     const focusTarget = searchParams.get('focus');
@@ -40,6 +41,9 @@ export function useAssessmentDetailPage() {
     const focusedStudentId = Number.isInteger(parsedStudentId) && parsedStudentId > 0
         ? parsedStudentId
         : null;
+    const isStaffAcademicViewer = Boolean(
+        instructorAccess.isTeachingActor || capabilities.can_manage_assessments
+    );
 
     const {
         assessment,
@@ -58,6 +62,7 @@ export function useAssessmentDetailPage() {
     const { scores, loading: scoresLoading, bulkEntry, refetch: refetchScores } = useAssessmentScores({
         assessment: assessmentId,
         page_size: 1000,
+        enabled: isStaffAcademicViewer,
     });
 
     const [draft, setDraft] = useState<Record<number, AssessmentScoreDraft>>({});
@@ -77,6 +82,12 @@ export function useAssessmentDetailPage() {
     const [makeupSavingStudentId, setMakeupSavingStudentId] = useState<number | null>(null);
     const seededStudentFilterRef = useRef<string | null>(null);
 
+    const learnerAssessment = assessment && isLearnerAssessmentDetail(assessment)
+        ? assessment
+        : null;
+    const staffAssessment = assessment && !isLearnerAssessmentDetail(assessment)
+        ? assessment
+        : null;
     const isFinalized = assessment?.status === AssessmentStatus.FINALIZED;
     const isDraft = assessment?.status === AssessmentStatus.DRAFT;
     const isActive = assessment?.status === AssessmentStatus.ACTIVE;
@@ -88,12 +99,12 @@ export function useAssessmentDetailPage() {
         && instructorAccess.cohortSubjectIds.includes(assessment.cohort_subject)
     );
     const canManageAssessment = isAdminLike || isAssignedInstructor;
-    const canUpdate = assessment?.can_update ?? (Boolean(assessment) && canManageAssessment && !isFinalized);
-    const canDelete = assessment?.can_delete ?? (Boolean(assessment) && isAdminLike);
-    const canActivate = assessment?.can_activate ?? (Boolean(assessment) && canManageAssessment && isDraft);
-    const canFinalize = assessment?.can_finalize ?? (Boolean(assessment) && canManageAssessment && (isDraft || isActive));
-    const canReopen = assessment?.can_reopen ?? false;
-    const canScore = assessment?.can_score ?? (Boolean(assessment) && canManageAssessment && !isFinalized);
+    const canUpdate = staffAssessment?.can_update ?? (Boolean(staffAssessment) && canManageAssessment && !isFinalized);
+    const canDelete = staffAssessment?.can_delete ?? (Boolean(staffAssessment) && isAdminLike);
+    const canActivate = staffAssessment?.can_activate ?? (Boolean(staffAssessment) && canManageAssessment && isDraft);
+    const canFinalize = staffAssessment?.can_finalize ?? (Boolean(staffAssessment) && canManageAssessment && (isDraft || isActive));
+    const canReopen = staffAssessment?.can_reopen ?? false;
+    const canScore = staffAssessment?.can_score ?? (Boolean(staffAssessment) && canManageAssessment && !isFinalized);
     const canExportPdf = canManageAssessment;
     const sortedScores = useMemo(() => sortAssessmentScores(scores), [scores]);
     const participationByStudentId = useMemo(
@@ -154,7 +165,6 @@ export function useAssessmentDetailPage() {
         });
     }, [assessment?.total_marks, draft, rubricLevelById, searchQuery, sortedScores]);
     const stats = useMemo(() => calculateScoreStats(sortedScores), [sortedScores]);
-    const scoredBy = user?.email ?? 'system';
     const scoreEntryFocusRequest = focusTarget === 'score-entry'
         ? `${assessmentId}:${focusedStudentId ?? 'all'}`
         : null;
@@ -168,13 +178,13 @@ export function useAssessmentDetailPage() {
             return;
         }
 
-        setParticipationSummary(assessment.participation_summary ?? null);
+        setParticipationSummary(staffAssessment?.participation_summary ?? null);
         if (!tracksAssessmentParticipation(assessment.participation_mode)) {
             setParticipationRecords([]);
             setParticipationLoaded(false);
             setParticipationError(null);
         }
-    }, [assessment]);
+    }, [assessment, staffAssessment]);
 
     useEffect(() => {
         if (!focusedStudentId || scoresLoading) {
@@ -239,7 +249,7 @@ export function useAssessmentDetailPage() {
     };
 
     const loadParticipationRoster = useCallback(async (force = false) => {
-        if (!assessmentId || !isTrackedParticipation) {
+        if (!assessmentId || !isTrackedParticipation || !canManageAssessment) {
             return;
         }
         if (!force && participationLoaded) {
@@ -262,7 +272,7 @@ export function useAssessmentDetailPage() {
         } finally {
             setParticipationLoading(false);
         }
-    }, [assessmentId, isTrackedParticipation, participationLoaded]);
+    }, [assessmentId, canManageAssessment, isTrackedParticipation, participationLoaded]);
 
     useEffect(() => {
         if (
@@ -301,7 +311,7 @@ export function useAssessmentDetailPage() {
             ]);
         } catch (error) {
             setParticipationError(
-                extractErrorMessage(error as ApiError, 'Failed to update assessment participation')
+                resolveErrorMessage(error as ApiError, 'Failed to update assessment participation')
             );
         } finally {
             setParticipationSaving(false);
@@ -330,7 +340,7 @@ export function useAssessmentDetailPage() {
             ]);
         } catch (error) {
             setParticipationError(
-                extractErrorMessage(error as ApiError, 'Failed to update makeup completion')
+                resolveErrorMessage(error as ApiError, 'Failed to update makeup completion')
             );
         } finally {
             setMakeupSavingStudentId(null);
@@ -453,13 +463,12 @@ export function useAssessmentDetailPage() {
             await bulkEntry({
                 assessment: assessmentId,
                 scores: editedRows,
-                scored_by: scoredBy,
             });
             setDraft({});
             setSaveSuccess('Scores updated successfully.');
             refetch();
         } catch (error) {
-            setSaveError(extractErrorMessage(error as ApiError, 'Failed to save scores'));
+            setSaveError(resolveErrorMessage(error as ApiError, 'Failed to save scores'));
         } finally {
             setSaving(false);
         }
@@ -492,7 +501,7 @@ export function useAssessmentDetailPage() {
             await deleteAssessment();
             router.push('/assessments');
         } catch (error) {
-            setDeleteError(error instanceof Error ? error.message : 'Failed to delete');
+            setDeleteError(resolveErrorMessage(error, 'Failed to delete'));
         }
     };
 
@@ -504,7 +513,7 @@ export function useAssessmentDetailPage() {
         try {
             await activateAssessment();
         } catch (error) {
-            setSaveError(error instanceof Error ? error.message : 'Failed to activate');
+            setSaveError(resolveErrorMessage(error, 'Failed to activate'));
         }
     };
 
@@ -529,7 +538,7 @@ export function useAssessmentDetailPage() {
                 await finalizeAssessment();
             }
         } catch (error) {
-            setSaveError(error instanceof Error ? error.message : 'Failed to finalize');
+            setSaveError(resolveErrorMessage(error, 'Failed to finalize'));
         }
     };
 
@@ -547,7 +556,7 @@ export function useAssessmentDetailPage() {
                 isTrackedParticipation ? loadParticipationRoster(true) : Promise.resolve(),
             ]);
         } catch (error) {
-            setSaveError(extractErrorMessage(error as ApiError, 'Failed to reopen assessment'));
+            setSaveError(resolveErrorMessage(error as ApiError, 'Failed to reopen assessment'));
             throw error;
         }
     };
@@ -555,6 +564,10 @@ export function useAssessmentDetailPage() {
     return {
         assessmentId,
         assessment,
+        learnerScore: learnerAssessment?.own_score ?? null,
+        learnerParticipation: learnerAssessment?.own_participation ?? null,
+        isLearnerAssessment: Boolean(learnerAssessment),
+        isStaffAcademicViewer,
         loading,
         error,
         finalizing,

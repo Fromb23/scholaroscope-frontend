@@ -4,7 +4,7 @@ import {
     useTeachingSession, useSessionLearners, useLearningOutcomeDetail,
     useEvidenceBySessionOutcome, useCreateEvidence,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import { extractErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
+import { resolveErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
 import {
     isAttendanceBlocking,
     isEvidenceEligible,
@@ -104,7 +104,7 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
             });
             resetForm();
         } catch (e: unknown) {
-            setFormError(extractErrorMessage(e));
+            setFormError(resolveErrorMessage(e));
         }
     };
 

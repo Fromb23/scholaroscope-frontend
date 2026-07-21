@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CheckSquare, ClipboardList, Save, Users } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
@@ -130,7 +131,7 @@ export function CreateAssessmentPage() {
     );
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
-        return value?.startsWith('/') ? value : null;
+        return parseAppDestination(value);
     }, [searchParams]);
     const policySetupHref = useMemo(() => {
         const returnTo = `/assessments/new?${new URLSearchParams({

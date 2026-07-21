@@ -10,14 +10,14 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ReportPreparingState } from '@/app/components/ui/loading';
 import { useTeachingToday } from '@/app/core/hooks/useTeachingToday';
 import { MIDTERM_DASHBOARD_RETURN_TO, deriveMidtermInsights } from '@/app/core/lib/midtermBreak';
-
-function safeReturnTo(value: string | null): string {
-  return value?.startsWith('/') ? value : MIDTERM_DASHBOARD_RETURN_TO;
-}
+import { sanitizeAppDestination } from '@/app/core/auth/navigation';
 
 export function MidtermIntelligenceReportPage() {
   const searchParams = useSearchParams();
-  const returnTo = safeReturnTo(searchParams.get('returnTo'));
+  const returnTo = sanitizeAppDestination(
+    searchParams.get('returnTo'),
+    MIDTERM_DASHBOARD_RETURN_TO,
+  );
   const { context, loading, error, refresh } = useTeachingToday();
   const insights = useMemo(
     () => deriveMidtermInsights(context, 8),

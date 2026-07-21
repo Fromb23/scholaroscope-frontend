@@ -13,9 +13,10 @@ import { ButtonPendingContent, CardSkeleton, SectionLoading } from '@/app/compon
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useSubjectsPage } from '@/app/core/hooks/academic/useSubjectsPage';
 import { subjectOfferingAPI } from '@/app/core/api/academic';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { SubjectCatalogItem, SubjectOfferingCatalogStatus } from '@/app/core/types/academic';
+import { sanitizeAppDestination } from '@/app/core/auth/navigation';
 import {
   canOffer,
   canRemove,
@@ -99,7 +100,10 @@ export function SubjectCataloguePage() {
     }
     return curricula.find((curriculum) => curriculum.is_active) ?? curricula[0] ?? null;
   }, [curricula, selectedCurriculumId]);
-  const returnTo = searchParams.get('returnTo') || '/academic/subjects';
+  const returnTo = sanitizeAppDestination(
+    searchParams.get('returnTo'),
+    '/academic/subjects',
+  );
   const initialLevel = searchParams.get('level') ?? 'all';
   const initialSubject = searchParams.get('subject') ?? '';
   const [catalog, setCatalog] = useState<SubjectCatalogItem[]>([]);
@@ -120,7 +124,7 @@ export function SubjectCataloguePage() {
     try {
       setCatalog(await subjectOfferingAPI.getCatalog(activeCurriculum.id));
     } catch (error) {
-      setPageError(extractErrorMessage(error as ApiError, 'Failed to load curriculum catalogue.'));
+      setPageError(resolveErrorMessage(error as ApiError, 'Failed to load curriculum catalogue.'));
     } finally {
       setLoading(false);
     }
@@ -138,7 +142,7 @@ export function SubjectCataloguePage() {
         if (alive) setCatalog(items);
       })
       .catch((error) => {
-        if (alive) setPageError(extractErrorMessage(error as ApiError, 'Failed to load curriculum catalogue.'));
+        if (alive) setPageError(resolveErrorMessage(error as ApiError, 'Failed to load curriculum catalogue.'));
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -182,7 +186,7 @@ export function SubjectCataloguePage() {
       await loadCatalog();
       showToast({ message: `${catalogRowLabel(item)} is now offered by this workspace.`, severity: 'success' });
     } catch (error) {
-      const message = extractErrorMessage(error as ApiError, `Failed to offer ${catalogRowLabel(item)}.`);
+      const message = resolveErrorMessage(error as ApiError, `Failed to offer ${catalogRowLabel(item)}.`);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
       showToast({ message, severity: 'error' });
     } finally {
@@ -203,7 +207,7 @@ export function SubjectCataloguePage() {
       await loadCatalog();
       showToast({ message: result.detail ?? `${label} was removed from this workspace.`, severity: 'success' });
     } catch (error) {
-      const message = extractErrorMessage(error as ApiError, `Failed to remove ${label}.`);
+      const message = resolveErrorMessage(error as ApiError, `Failed to remove ${label}.`);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
       showToast({ message, severity: 'error' });
     } finally {
@@ -221,7 +225,7 @@ export function SubjectCataloguePage() {
       await loadCatalog();
       showToast({ message: `${label} has been restored.`, severity: 'success' });
     } catch (error) {
-      const message = extractErrorMessage(error as ApiError, `Failed to restore ${label}.`);
+      const message = resolveErrorMessage(error as ApiError, `Failed to restore ${label}.`);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
       showToast({ message, severity: 'error' });
     } finally {
@@ -245,7 +249,7 @@ export function SubjectCataloguePage() {
       await loadCatalog();
       showToast({ message: `${label} has been offered again.`, severity: 'success' });
     } catch (error) {
-      const message = extractErrorMessage(error as ApiError, `Failed to offer ${label} again.`);
+      const message = resolveErrorMessage(error as ApiError, `Failed to offer ${label} again.`);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
       showToast({ message, severity: 'error' });
     } finally {

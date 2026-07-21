@@ -1,30 +1,51 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  isSoloOwnerWorkspace,
-  supportsAnnouncements,
-  supportsCustomRoles,
-  supportsInternalApprovals,
-  supportsInternalRequests,
-} from './workspaceGovernance';
 import type { WorkspaceCapabilities } from '@/app/core/types/auth';
+import { canUseAnnouncements } from '@/app/core/lib/workspaceGovernance';
 
-const soloGovernance: WorkspaceCapabilities['workspace_governance'] = {
-  mode: 'SOLO_OWNER',
-  supports_custom_roles: false,
-  supports_staff_management: false,
-  supports_announcements: false,
-  supports_internal_requests: false,
-  supports_internal_approvals: false,
-  default_action_authority: 'DIRECT',
-};
+function capabilities(
+  enabled: boolean,
+  permissionKeys: string[] = ['announcements.view'],
+): WorkspaceCapabilities {
+  return {
+    can_teach: false,
+    can_manage_academic_setup: false,
+    can_manage_learners: false,
+    can_manage_cohorts: false,
+    can_manage_subjects: false,
+    can_manage_assessments: false,
+    can_view_reports: false,
+    can_manage_staff: false,
+    is_workspace_owner: false,
+    workspace_mode: 'SCHOOL',
+    workspace_behavior: 'INSTITUTION',
+    product_capabilities: {
+      announcements: { enabled },
+    },
+    workspace_governance: {
+      mode: 'MANAGED_TEAM',
+      supports_custom_roles: true,
+      supports_staff_management: true,
+      supports_announcements: true,
+      supports_internal_requests: true,
+      supports_internal_approvals: true,
+      default_action_authority: 'ROLE_DEPENDENT',
+    },
+    authorization: {
+      enforced: true,
+      permission_keys: permissionKeys,
+      roles: [],
+    },
+  };
+}
 
-describe('workspace governance helpers', () => {
-  it('uses backend governance to identify solo-owner workspaces', () => {
-    expect(isSoloOwnerWorkspace({ workspace_governance: soloGovernance } as WorkspaceCapabilities)).toBe(true);
-    expect(supportsCustomRoles({ workspace_governance: soloGovernance } as WorkspaceCapabilities)).toBe(false);
-    expect(supportsAnnouncements({ workspace_governance: soloGovernance } as WorkspaceCapabilities)).toBe(false);
-    expect(supportsInternalRequests({ workspace_governance: soloGovernance } as WorkspaceCapabilities)).toBe(false);
-    expect(supportsInternalApprovals({ workspace_governance: soloGovernance } as WorkspaceCapabilities)).toBe(false);
+describe('announcement capability authority', () => {
+  it('allows an enabled announcement product only with its view permission', () => {
+    expect(canUseAnnouncements(capabilities(true))).toBe(true);
+    expect(canUseAnnouncements(capabilities(true, []))).toBe(false);
+  });
+
+  it('keeps an explicit product denial authoritative', () => {
+    expect(canUseAnnouncements(capabilities(false))).toBe(false);
   });
 });

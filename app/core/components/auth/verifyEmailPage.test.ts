@@ -19,8 +19,8 @@ describe('email verification auth screens', () => {
   it('shows resend affordance when login is blocked by email verification', () => {
     const source = readFileSync(join(process.cwd(), 'app/core/components/auth/LoginPage.tsx'), 'utf8');
 
-    expect(source).toContain("code === 'email_not_verified'");
-    expect(source).toContain('Verify your email before logging in.');
+    expect(source).toContain("errorCode === 'email_not_verified'");
+    expect(source).toContain('resolveAuthError');
     expect(source).toContain('Resend verification email');
     expect(source).toContain('authAPI.resendVerification(verificationEmail)');
   });

@@ -12,6 +12,14 @@ import {
   getAccessToken,
   setAccessToken,
 } from '@/app/core/auth/tokenStore';
+import {
+  clearExplicitLogout,
+  markExplicitLogout,
+} from '@/app/core/auth/explicitLogout';
+import {
+  advanceWorkspaceGeneration,
+  resetWorkspaceGenerationForTests,
+} from '@/app/core/runtime/workspaceGeneration';
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -110,6 +118,8 @@ function getAuthRejectedHandler(): ResponseRejectedHandler {
 const originalApiAdapter = apiClient.defaults.adapter;
 
 beforeEach(() => {
+  clearExplicitLogout();
+  resetWorkspaceGenerationForTests();
   clearAccessToken();
   registerAuthFailureHandler(null);
 });
@@ -118,11 +128,30 @@ afterEach(() => {
   apiClient.defaults.adapter = originalApiAdapter;
   registerAuthFailureHandler(null);
   clearAccessToken();
+  clearExplicitLogout();
+  resetWorkspaceGenerationForTests();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
 describe('runtime auth refresh boundaries', () => {
+  it('rejects a successful response that resolves after a workspace switch', async () => {
+    const responseGate = deferred<AxiosResponse<{ workspace: string }>>();
+    let capturedConfig: InternalAxiosRequestConfig | null = null;
+
+    apiClient.defaults.adapter = (async (config) => {
+      capturedConfig = config;
+      return responseGate.promise;
+    }) satisfies AxiosAdapter;
+
+    const request = apiClient.get('/sessions/');
+    await flushMicrotasks();
+    advanceWorkspaceGeneration('workspace-switch');
+    responseGate.resolve(response(capturedConfig!, { workspace: 'A' }));
+
+    await expect(request).rejects.toThrow('earlier workspace or authentication generation');
+  });
+
   it('concurrent 401 responses share one refresh and retry with the fresh token', async () => {
     setAccessToken('stale-access');
     const refreshGate = deferred<{ access: string }>();
@@ -187,6 +216,7 @@ describe('runtime auth refresh boundaries', () => {
 
     await flushMicrotasks();
     expect(refreshPost).toHaveBeenCalledOnce();
+    markExplicitLogout();
     clearAccessToken();
     refreshGate.resolve({ access: 'fresh-after-logout' });
 

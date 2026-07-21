@@ -24,7 +24,7 @@ import {
     type SessionEditField,
     type SessionEditFormState,
 } from '@/app/core/components/sessions/sessionFormValidation';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { SessionDetail } from '@/app/core/types/session';
 
@@ -101,7 +101,7 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
             router.push(`/sessions/${session.id}`);
         } catch (err) {
             setSubmitError(
-                extractErrorMessage(
+                resolveErrorMessage(
                     err as ApiError,
                     'Failed to save session details.',
                 ),

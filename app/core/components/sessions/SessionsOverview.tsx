@@ -41,6 +41,7 @@ import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/admi
 import { useAuth } from '@/app/context/AuthContext';
 import type { Session } from '@/app/core/types/session';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import { shouldShowInstructorIdentity } from '@/app/core/components/sessions/sessionDetailVisibility';
 
 const SESSION_TYPES = [
@@ -449,7 +450,7 @@ function SessionWorkspaceView() {
     const source = searchParams.get('source');
     const returnTo = searchParams.get('returnTo');
     const midtermCleanupView = cleanupFilterActive && source === 'midterm';
-    const safeReturnTo = returnTo?.startsWith('/') ? returnTo : null;
+    const safeReturnTo = parseAppDestination(returnTo);
     const effectiveMyTeachingMode = canUseMyTeaching && (isInstructor || isSelfManagedTeaching || viewMode === 'my_teaching');
     const showInstructorIdentity = shouldShowInstructorIdentity({
         activeRole,

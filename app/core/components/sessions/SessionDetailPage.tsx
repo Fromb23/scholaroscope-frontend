@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -290,6 +292,11 @@ export function SessionDetailPage() {
         isSuperadmin: false,
         capabilities,
     });
+    const isStaffAcademicViewer = Boolean(
+        capabilities.can_teach
+        || capabilities.can_manage_academic_setup
+        || capabilities.can_manage_assessments
+    );
     const returnTo = searchParams.get('returnTo');
     const backHref = isSafeNextPath(returnTo) ? returnTo : '/sessions';
     const sessionReturnTo = useMemo(() => {
@@ -334,16 +341,18 @@ export function SessionDetailPage() {
         cancelSession,
         rescheduleSession,
         confirmTaughtOutcomes,
-    } = useSessionDetail(sessionId);
+    } = useSessionDetail(sessionId, {
+        includeOperationalData: isStaffAcademicViewer,
+    });
     const issuePreparedAssignmentMutation = useIssuePreparedAssignment();
     const {
         draft: lessonPlanPreparedDraft,
         issued: lessonPlanIssuedAssignments,
     } = usePreparedAssignmentsForLessonPlan(session?.lesson_plan_id ?? null, {
-        enabled: Boolean(session?.lesson_plan_id),
+        enabled: isStaffAcademicViewer && Boolean(session?.lesson_plan_id),
     });
 
-    const { activeCohorts } = useSessionCohorts(sessionId);
+    const { activeCohorts } = useSessionCohorts(sessionId, isStaffAcademicViewer);
     const isCbcSession = session ? ['CBE', 'CBC'].includes(session.curriculum_type) : false;
 
     const isHistorical = session ? !session.is_current_year : false;
@@ -414,9 +423,9 @@ export function SessionDetailPage() {
         [attendanceRecords]
     );
 
-    const hasMarkedAttendance = useMemo(
-        () => attendanceRecords.some((record) => record.status !== null),
-        [attendanceRecords]
+    const hasCompleteAttendance = closureState?.has_attendance ?? (
+        attendanceRecords.length > 0
+        && attendanceRecords.every((record) => record.status !== null)
     );
 
     const hasLessonPlan = Boolean(session?.lesson_plan_id);
@@ -438,7 +447,7 @@ export function SessionDetailPage() {
         canAdvanceTeachingWorkflow &&
         isInProgress &&
         teachingWorkflow &&
-        hasMarkedAttendance &&
+        hasCompleteAttendance &&
         hasConfirmedTaughtOutcomes &&
         taughtOutcomeCount > 0
     );
@@ -489,12 +498,12 @@ export function SessionDetailPage() {
     const currentWorkflowStep = useMemo(() => getLessonWorkflowStep({
         status: sessionStatus,
         closureNextStep: closureState?.next_step,
-        hasMarkedAttendance,
+        hasMarkedAttendance: hasCompleteAttendance,
         hasConfirmedTaughtOutcomes,
     }), [
         closureState?.next_step,
         hasConfirmedTaughtOutcomes,
-        hasMarkedAttendance,
+        hasCompleteAttendance,
         sessionStatus,
     ]);
     const preparedTaskDraft = [preparedAssignment, lessonPlanPreparedDraft].find(
@@ -1183,8 +1192,8 @@ export function SessionDetailPage() {
         {
             title: 'Take attendance',
             icon: ClipboardCheck,
-            complete: hasMarkedAttendance,
-            description: hasMarkedAttendance
+            complete: hasCompleteAttendance,
+            description: hasCompleteAttendance
                 ? `${attendanceStats.total - attendanceStats.unmarked}/${attendanceStats.total} learners marked.`
                 : 'Take attendance first.',
         },
@@ -1239,7 +1248,7 @@ export function SessionDetailPage() {
         closureReady,
         hasReflection,
         hasRequiredEvidence,
-        hasMarkedAttendance,
+        hasCompleteAttendance,
         isCompleted,
         isCancelled,
         isInProgress,
@@ -1264,7 +1273,7 @@ export function SessionDetailPage() {
         ? `${attendanceMarkedCount}/${attendanceStats.total} learners marked`
         : 'No attendance records are available yet.';
     const plannedOutcomeCount = session?.planned_outcomes.length ?? 0;
-    const canEditTaughtOutcomes = canAdvanceTeachingWorkflow && isInProgress && hasMarkedAttendance && !isHistorical && !isCompleted && !confirmingTaughtOutcomes && !taughtOutcomesConfirmedLocally;
+    const canEditTaughtOutcomes = canAdvanceTeachingWorkflow && isInProgress && hasCompleteAttendance && !isHistorical && !isCompleted && !confirmingTaughtOutcomes && !taughtOutcomesConfirmedLocally;
     const allPlannedOutcomesSelected = session?.planned_outcomes.every(
         (outcome) => Boolean(taughtSelections[outcome.outcome_id])
     ) ?? false;
@@ -1278,7 +1287,7 @@ export function SessionDetailPage() {
     const canConfirmTaughtOutcomes = (
         isInProgress
         && canAdvanceTeachingWorkflow
-        && hasMarkedAttendance
+        && hasCompleteAttendance
         && !isHistorical
         && !isCompleted
         && plannedOutcomeCount > 0
@@ -1317,7 +1326,7 @@ export function SessionDetailPage() {
                 navigateForEvidence: true,
             });
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not close this lesson record.');
+            setWorkflowError(resolveErrorMessage(error, 'We could not close this lesson record.'));
         }
     }, [
         clearWorkflowFeedback,
@@ -1338,7 +1347,7 @@ export function SessionDetailPage() {
             await cancelSession();
             setWorkflowSuccess('Lesson cancelled.');
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not cancel this lesson.');
+            setWorkflowError(resolveErrorMessage(error, 'We could not cancel this lesson.'));
         }
     }, [
         cancelSession,
@@ -1456,7 +1465,7 @@ export function SessionDetailPage() {
             is_in_progress: isInProgress,
             is_completed: isCompleted,
             has_lesson_plan: hasLessonPlan,
-            has_marked_attendance: hasMarkedAttendance,
+            has_marked_attendance: hasCompleteAttendance,
             has_confirmed_taught_outcomes: hasConfirmedTaughtOutcomes,
             needs_completion: needsCompletion,
             closure_ready: closureReady,
@@ -1546,7 +1555,7 @@ export function SessionDetailPage() {
         hasRequiredEvidence,
         hasConfirmedTaughtOutcomes,
         hasLessonPlan,
-        hasMarkedAttendance,
+        hasCompleteAttendance,
         handleCancelLesson,
         handleEndLessonIntent,
         handleOpenRescheduleModal,
@@ -1576,7 +1585,7 @@ export function SessionDetailPage() {
                 isInstructor ? 'Lesson started. Next step: take attendance.' : 'Lesson started.'
             );
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not start this lesson.');
+            setWorkflowError(resolveErrorMessage(error, 'We could not start this lesson.'));
         }
     };
 
@@ -1670,7 +1679,7 @@ export function SessionDetailPage() {
             return;
         }
 
-        if (!isInProgress || !hasMarkedAttendance || isHistorical || isCompleted || session.planned_outcomes.length === 0) {
+        if (!isInProgress || !hasCompleteAttendance || isHistorical || isCompleted || session.planned_outcomes.length === 0) {
             return;
         }
 
@@ -1710,7 +1719,7 @@ export function SessionDetailPage() {
                     : 'What was taught has been confirmed.'
             );
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not confirm what was taught.');
+            setWorkflowError(resolveErrorMessage(error, 'We could not confirm what was taught.'));
         } finally {
             setConfirmingTaughtOutcomes(false);
         }
@@ -1719,7 +1728,7 @@ export function SessionDetailPage() {
         confirmTaughtOutcomes,
         confirmingTaughtOutcomes,
         continueSessionClosureWorkflow,
-        hasMarkedAttendance,
+        hasCompleteAttendance,
         isCompleted,
         isHistorical,
         isInProgress,
@@ -1768,6 +1777,62 @@ export function SessionDetailPage() {
         return (
             <div className="mx-auto w-full max-w-6xl pb-8">
                 <div className="p-10 text-gray-500">Lesson not found.</div>
+            </div>
+        );
+    }
+
+    if (!isStaffAcademicViewer) {
+        const ownAttendance = attendanceRecords[0] ?? null;
+        return (
+            <div className="mx-auto w-full max-w-4xl space-y-6 pb-8">
+                <div>
+                    <Link href={backHref}>
+                        <Button variant="ghost" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back
+                        </Button>
+                    </Link>
+                    <h1 className="mt-3 text-2xl font-semibold text-gray-900">{session.title}</h1>
+                    <p className="mt-1 text-sm text-gray-500">
+                        {session.subject_name || 'Lesson'} · {session.cohort_name || 'Class'}
+                    </p>
+                </div>
+
+                <Card>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <SessionMetaItem
+                            icon={Calendar}
+                            label="Date"
+                            value={lessonDateLabel || 'Not set'}
+                        />
+                        <SessionMetaItem
+                            icon={Clock}
+                            label="Time"
+                            value={lessonTimeLabel}
+                        />
+                        <SessionMetaItem
+                            icon={MapPin}
+                            label="Venue"
+                            value={session.venue || 'Not set'}
+                        />
+                        <SessionMetaItem
+                            icon={ClipboardCheck}
+                            label="Your attendance"
+                            value={ownAttendance?.status_display ?? 'Not marked'}
+                        />
+                    </div>
+                    {session.description ? (
+                        <p className="mt-4 border-t border-gray-100 pt-4 text-sm text-gray-600">
+                            {session.description}
+                        </p>
+                    ) : null}
+                    {ownAttendance?.notes ? (
+                        <p className="mt-3 text-sm text-gray-600">
+                            <span className="font-medium text-gray-800">Attendance note:</span>{' '}
+                            {ownAttendance.notes}
+                        </p>
+                    ) : null}
+                </Card>
             </div>
         );
     }
@@ -2655,7 +2720,7 @@ export function SessionDetailPage() {
                             <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                                 {isCompleted
                                     ? 'This lesson is completed. New learner performance cannot be recorded from the lesson workspace.'
-                                    : !hasMarkedAttendance || !hasConfirmedTaughtOutcomes
+                                    : !hasCompleteAttendance || !hasConfirmedTaughtOutcomes
                                         ? 'Learner performance opens after attendance and taught outcomes are confirmed.'
                                         : taughtOutcomeCount === 0
                                             ? 'No outcomes were marked as taught for this lesson yet.'

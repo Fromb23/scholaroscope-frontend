@@ -8,6 +8,7 @@ import {
     isCbcFineArtsPracticalSession,
 } from './fineArtsPracticals';
 import { isCbcMusicPracticalSession } from './musicPracticals';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 export interface PracticalProfileDefinition {
     key: PracticalProfileKey;
@@ -63,8 +64,9 @@ export function buildPracticalWorkflowHref(
         notice: 'closure-evidence-required',
     });
 
-    if (returnTo) {
-        searchParams.set('returnTo', returnTo);
+    const safeReturnTo = parseAppDestination(returnTo);
+    if (safeReturnTo) {
+        searchParams.set('returnTo', safeReturnTo);
     }
 
     return `/cbc/teaching/sessions/${sessionId}/practical?${searchParams.toString()}`;

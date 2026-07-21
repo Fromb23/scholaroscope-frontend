@@ -39,7 +39,7 @@ import {
 } from '@/app/core/lib/curriculumLevels';
 import { canCreateCurriculumWork, canEditCurriculumWork, getCurriculumActionBlockReason } from '@/app/core/lib/curriculumLifecycle';
 import { getAcademicSetupPageState } from '@/app/core/lib/academicSetup';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort } from '@/app/core/types/academic';
 import { getCurriculumBridgeName, getCurriculumOptionLabel } from '@/app/core/lib/curriculumBridge';
@@ -214,7 +214,7 @@ export function AdminCohortsPageContent() {
         try {
             await deleteCohort(cohort.id);
         } catch (error) {
-            setPageError(extractErrorMessage(error as ApiError, 'Failed to delete cohort.'));
+            setPageError(resolveErrorMessage(error as ApiError, 'Failed to delete cohort.'));
         }
     };
 

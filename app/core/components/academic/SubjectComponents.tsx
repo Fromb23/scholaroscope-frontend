@@ -21,7 +21,7 @@ import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { getCurriculumOptionLabel } from '@/app/core/lib/curriculumBridge';
 import type { Subject, SubjectFormData, Curriculum } from '@/app/core/types/academic';
@@ -357,7 +357,7 @@ export function SubjectFormModal({
             await onSave(form, editing?.id);
             onClose();
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to save subject.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to save subject.'));
         } finally { setSaving(false); }
     };
 

@@ -495,16 +495,31 @@ describe('selective plugin registration', () => {
     expect(cambridgeRule?.allowedRoles).toEqual(['ADMIN', 'INSTRUCTOR']);
   });
 
-  it('keeps requests, announcements, and schemes navigation behind existing workspace behavior', async () => {
+  it('keeps requests, announcements, and schemes navigation behind workspace authority', async () => {
     await loadPluginById('requests');
     await loadPluginById('announcements');
     await loadPluginById('schemes');
 
     expect(itemNames('admin.primary.afterDashboard', buildNavigationContext())).toContain('Pending Requests');
-    expect(itemNames('admin.secondary.beforeSettings', buildNavigationContext())).toContain('Announcements');
+    expect(itemNames('admin.secondary.beforeSettings', buildNavigationContext())).not.toContain('Announcements');
+    const announcementCapabilities: WorkspaceCapabilities = {
+      ...baseCapabilities,
+      authorization: {
+        enforced: true,
+        permission_keys: ['announcements.view'],
+        roles: [],
+      },
+      product_capabilities: {
+        announcements: capability(true),
+      },
+    };
+    expect(itemNames('admin.secondary.beforeSettings', buildNavigationContext({
+      capabilities: announcementCapabilities,
+    }))).toContain('Announcements');
     expect(itemNames('admin.secondary.beforeSettings', buildNavigationContext({
       orgType: 'PERSONAL',
       workspaceBehavior: 'FREELANCE_TEACHER',
+      capabilities: announcementCapabilities,
     }))).not.toContain('Announcements');
     expect(itemNames('admin.primary.afterDashboard', buildNavigationContext({
       hasPlugin: (pluginKey) => pluginKey === 'schemes',

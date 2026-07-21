@@ -553,8 +553,7 @@ export function AssignmentCreateModal({
             counts_for_reports: reportCounting,
         };
 
-        const basePayload = {
-            cohort_subject: Number(cohortSubjectId),
+        const mutablePayload = {
             title: title.trim(),
             instructions: instructions.trim(),
             starts_at: fromDateTimeLocalValue(startsAt),
@@ -574,14 +573,20 @@ export function AssignmentCreateModal({
             let savedAssignment: Assignment;
 
             if (isEditMode && assignment) {
-                const payload: AssignmentUpdatePayload = basePayload;
+                const payload: AssignmentUpdatePayload = {
+                    ...mutablePayload,
+                    ...(assignment.status === 'DRAFT'
+                        ? { cohort_subject: Number(cohortSubjectId) }
+                        : {}),
+                };
                 savedAssignment = await updateMutation.mutateAsync({
                     id: assignment.id,
                     data: payload,
                 });
             } else {
                 const payload: AssignmentCreatePayload = {
-                    ...basePayload,
+                    ...mutablePayload,
+                    cohort_subject: Number(cohortSubjectId),
                     created_from_session: resolvedLinkedSessionId,
                     recipient_mode: deliveryMode === 'INDIVIDUAL' && publishNow
                         ? toAssignmentRecipientMode(audienceChoice)
@@ -686,6 +691,7 @@ export function AssignmentCreateModal({
                             label={isLessonPreparationMode ? 'Class subject' : 'Subject Group'}
                             value={cohortSubjectId}
                             onChange={(event) => setCohortSubjectId(event.target.value)}
+                            disabled={isEditMode && assignment?.status !== 'DRAFT'}
                             options={[
                                 { value: '', label: 'Select subject group' },
                                 ...sortedSubjects.map((subject) => ({

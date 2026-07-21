@@ -25,6 +25,7 @@ import {
   Session,
   SessionDetail,
   AttendanceRecord,
+  AttendanceRecordUpdatePayload,
   BulkAttendanceData,
   ConfirmTaughtOutcomesPayload,
   SessionClosureState,
@@ -38,7 +39,7 @@ import {
   CohortSubjectOption,
 } from '@/app/core/types/session';
 import { CohortSubject } from '@/app/core/types/academic';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 
 
 // ── Helper — unwrap paginated or flat response ────────────────────────────
@@ -107,7 +108,7 @@ export const useSessions = (
       setSessions(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch sessions'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch sessions'));
     } finally {
       setLoading(false);
     }
@@ -164,7 +165,7 @@ export const useTodaySessions = () => {
       setSessions(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, "Failed to fetch today's sessions"));
+      setError(resolveErrorMessage(err as ApiError, "Failed to fetch today's sessions"));
     } finally {
       setLoading(false);
     }
@@ -187,6 +188,7 @@ export const useTodaySessions = () => {
 
 export const useSessionDetail = (
   sessionId: number | null,
+  options?: { includeOperationalData?: boolean },
 ) => {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -196,9 +198,10 @@ export const useSessionDetail = (
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const includeOperationalData = options?.includeOperationalData ?? true;
 
   const fetchClosureState = useCallback(async (): Promise<SessionClosureState | null> => {
-    if (!sessionId) {
+    if (!sessionId || !includeOperationalData) {
       setClosureState(null);
       return null;
     }
@@ -211,7 +214,7 @@ export const useSessionDetail = (
       setClosureState(null);
       return null;
     }
-  }, [sessionId]);
+  }, [includeOperationalData, sessionId]);
 
   const fetchSession = useCallback(async () => {
     if (!sessionId) { setLoading(false); return; }
@@ -219,18 +222,38 @@ export const useSessionDetail = (
     try {
       setLoading(true);
 
-      const [sessionData, attendanceData, closureData] = await Promise.all([
-        sessionAPI.getById(sessionId),
-        sessionAPI.getAttendanceRecords(sessionId, {
-          page_size: 1000,
-        }),
-        sessionAPI.getClosureState(sessionId).catch(() => null),
-      ]);
+      const sessionData = await sessionAPI.getById(sessionId);
+      const [attendanceData, closureData] = includeOperationalData
+        ? await Promise.all([
+          sessionAPI.getAttendanceRecords(sessionId, {
+            page_size: 1000,
+          }),
+          sessionAPI.getClosureState(sessionId).catch(() => null),
+        ])
+        : [sessionData.attendance_records, null] as const;
 
-      setSession(sessionData);
+      // Operational fields are absent from the learner contract. Empty/default
+      // values keep the shared component stable without reconstructing class data.
+      setSession({
+        linked_cohorts: [],
+        planned_outcomes: [],
+        taught_outcomes: [],
+        attendance_count: {
+          total: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+          sick: 0,
+          unmarked: 0,
+        },
+        schedule_state: 'UNKNOWN',
+        is_current_year: true,
+        ...sessionData,
+      } as SessionDetail);
       setClosureState(closureData);
 
-      const records = unwrapList(attendanceData);
+      const records = unwrapList(attendanceData) as AttendanceRecord[];
       const totalItems = Array.isArray(attendanceData)
         ? records.length
         : (attendanceData as { count?: number }).count ?? records.length;
@@ -244,11 +267,11 @@ export const useSessionDetail = (
       });
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch session details'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch session details'));
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [includeOperationalData, sessionId]);
 
   useEffect(() => { fetchSession(); }, [fetchSession]);
 
@@ -375,7 +398,7 @@ export const useCohortSessions = (
       setSessions(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort sessions'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort sessions'));
     } finally {
       setLoading(false);
     }
@@ -401,7 +424,7 @@ export const useCohortSubjects = (cohortId: number | null) => {
       setCohortSubjects(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort subjects'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort subjects'));
     } finally {
       setLoading(false);
     }
@@ -429,7 +452,7 @@ export const useCohortSubjectOptions = (cohortId: number | null) => {
       setSubjectOptions(data);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort subject options'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort subject options'));
     } finally {
       setLoading(false);
     }
@@ -488,7 +511,7 @@ export const useAttendance = (params?: AttendanceQueryParams) => {
       setRecords(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance records'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch attendance records'));
     } finally {
       setLoading(false);
     }
@@ -498,7 +521,7 @@ export const useAttendance = (params?: AttendanceQueryParams) => {
     fetchRecords();
   }, [fetchRecords]);
 
-  const updateRecord = async (id: number, data: Partial<AttendanceRecord>): Promise<AttendanceRecord> => {
+  const updateRecord = async (id: number, data: AttendanceRecordUpdatePayload): Promise<AttendanceRecord> => {
     const updated = await attendanceAPI.update(id, data);
     setRecords(prev => prev.map(r => r.id === id ? updated : r));
     return updated;
@@ -534,7 +557,7 @@ export const useStudentAttendanceHistory = (
       setData(result as StudentAttendanceHistory);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance history'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch attendance history'));
     } finally {
       setLoading(false);
     }
@@ -568,7 +591,7 @@ export const useCohortAttendanceSummary = (
       setData(result as CohortAttendanceSummary);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort attendance summary'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort attendance summary'));
     } finally {
       setLoading(false);
     }
@@ -581,7 +604,7 @@ export const useCohortAttendanceSummary = (
 
 // ── useSessionCohorts ─────────────────────────────────────────────────────
 
-export const useSessionCohorts = (sessionId: number | null) => {
+export const useSessionCohorts = (sessionId: number | null, enabled = true) => {
   const [linkedCohorts, setLinkedCohorts] = useState<SessionCohort[]>([]);
   const [activeCohorts, setActiveCohorts] = useState<SessionCohort[]>([]);
   const [historicalCohorts, setHistoricalCohorts] = useState<SessionCohort[]>([]);
@@ -590,7 +613,15 @@ export const useSessionCohorts = (sessionId: number | null) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchLinkedCohorts = useCallback(async () => {
-    if (!sessionId) { setLoading(false); return; }
+    if (!sessionId || !enabled) {
+      setLinkedCohorts([]);
+      setActiveCohorts([]);
+      setHistoricalCohorts([]);
+      setTotalLearners(0);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const data = await sessionCohortAPI.getLinkedCohorts(sessionId);
@@ -607,11 +638,11 @@ export const useSessionCohorts = (sessionId: number | null) => {
       setHistoricalCohorts(historicalItems);
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch linked cohorts'));
+      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch linked cohorts'));
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [enabled, sessionId]);
 
   useEffect(() => { fetchLinkedCohorts(); }, [fetchLinkedCohorts]);
 
@@ -671,7 +702,7 @@ export const useAvailableSessionCohortSubjects = (
       setData(null);
       setCohortSubjects([]);
       setError(
-        extractErrorMessage(err as ApiError, 'Failed to fetch available cohort subjects')
+        resolveErrorMessage(err as ApiError, 'Failed to fetch available cohort subjects')
       );
     } finally {
       setLoading(false);

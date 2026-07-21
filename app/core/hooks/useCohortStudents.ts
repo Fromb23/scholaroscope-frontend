@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cohortAPI } from '@/app/core/api/academic';
 import { academicKeys } from '@/app/core/lib/queryKeys';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 
 export interface EnrolledStudent {
@@ -162,7 +162,7 @@ export function useCohortStudents(cohortId: number) {
             await invalidatePlacementDependencies(queryClient, cohortId, studentIds);
             return result as BulkEnrollResult;
         } catch (err) {
-            const message = extractErrorMessage(err as ApiError, 'Failed to enroll learners in the cohort.');
+            const message = resolveErrorMessage(err as ApiError, 'Failed to enroll learners in the cohort.');
             setActionError(message);
             throw err;
         }
@@ -182,7 +182,7 @@ export function useCohortStudents(cohortId: number) {
             await invalidatePlacementDependencies(queryClient, cohortId, studentIds);
             return result as BulkUnenrollResult;
         } catch (err) {
-            const message = extractErrorMessage(err as ApiError, 'Failed to remove learners from the cohort.');
+            const message = resolveErrorMessage(err as ApiError, 'Failed to remove learners from the cohort.');
             setActionError(message);
             throw err;
         }

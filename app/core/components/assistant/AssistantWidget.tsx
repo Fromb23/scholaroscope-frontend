@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import {
   useCallback,
   useEffect,
@@ -575,7 +577,7 @@ export function AssistantWidget() {
       setMessage((current) => (current.trim() === trimmed ? '' : current));
     } catch (error) {
       setFailedMessage(trimmed);
-      setChatError(error instanceof Error ? error.message : 'Could not reach the help assistant.');
+      setChatError(resolveErrorMessage(error, 'Could not reach the help assistant.'));
     } finally {
       setPending(false);
       setPendingUserMessage(null);
@@ -622,7 +624,7 @@ export function AssistantWidget() {
       setFeedbackDescription('');
       setFeedbackOpen(false);
     } catch (error) {
-      setFeedbackMessage(error instanceof Error ? error.message : 'Could not submit feedback.');
+      setFeedbackMessage(resolveErrorMessage(error, 'Could not submit feedback.'));
     } finally {
       setFeedbackPending(false);
     }

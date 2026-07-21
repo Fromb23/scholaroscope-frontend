@@ -9,7 +9,7 @@ import {
     isSelfManagedTeachingAdmin,
     isTeachingActorView,
 } from '@/app/core/lib/workspaces';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 
 export type InstructorCurriculumKey = 'CBC' | 'CAMBRIDGE';
@@ -30,7 +30,7 @@ export function useMyTeachingLoad(options?: { enabled?: boolean }) {
                 return await teachingLoadAPI.getMyTeachingLoad();
             } catch (err) {
                 throw new Error(
-                    extractErrorMessage(err as ApiError, 'Failed to fetch teaching load.')
+                    resolveErrorMessage(err as ApiError, 'Failed to fetch teaching load.')
                 );
             }
         },

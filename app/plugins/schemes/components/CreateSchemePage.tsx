@@ -1,8 +1,11 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -179,7 +182,7 @@ export function CreateSchemePage() {
   const [generationFailure, setGenerationFailure] = useState<string | null>(null);
   const safeReturnTo = useMemo(() => {
     const value = searchParams.get('returnTo');
-    return value?.startsWith('/') ? value : null;
+    return parseAppDestination(value);
   }, [searchParams]);
 
   useEffect(() => {
@@ -802,7 +805,7 @@ export function CreateSchemePage() {
       }).toString()}`);
     } catch (err) {
       setGenerationFailure(
-        err instanceof Error ? err.message : 'We could not generate the draft scheme.',
+        resolveErrorMessage(err, 'We could not generate the draft scheme.'),
       );
     }
   };

@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
@@ -22,7 +24,7 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
-import { isSafeNextPath } from '@/app/core/auth/navigation';
+import { isSafeNextPath, parseAppDestination } from '@/app/core/auth/navigation';
 import { useSchemeDetail } from '@/app/core/hooks/useSchemes';
 import type {
   SchemeEntry,
@@ -253,7 +255,7 @@ export function SchemeDetailPage() {
   const searchParams = useSearchParams();
   const safeReturnTo = useMemo(() => {
     const value = searchParams.get('returnTo');
-    return value?.startsWith('/') ? value : null;
+    return parseAppDestination(value);
   }, [searchParams]);
   const currentReturnTo = useMemo(() => {
     const query = searchParams.toString();
@@ -402,7 +404,7 @@ export function SchemeDetailPage() {
       await updateScheme({ title: titleDraft.trim() });
       setActionSuccess('Scheme title saved.');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not save the scheme title.');
+      setActionError(resolveErrorMessage(err, 'Could not save the scheme title.'));
     } finally {
       setSavingTitle(false);
     }
@@ -436,7 +438,7 @@ export function SchemeDetailPage() {
     } catch (err) {
       openWeek(week.id);
       setEditingWeekId(week.id);
-      setActionError(err instanceof Error ? err.message : 'Could not save the learning week.');
+      setActionError(resolveErrorMessage(err, 'Could not save the learning week.'));
     } finally {
       setSavingWeekId(null);
     }
@@ -465,7 +467,7 @@ export function SchemeDetailPage() {
       openWeek(entry.week);
       setExpandedTeacherFields((current) => ({ ...current, [entry.id]: true }));
       setExpandedReflections((current) => ({ ...current, [entry.id]: true }));
-      setActionError(err instanceof Error ? err.message : 'Could not save the lesson draft.');
+      setActionError(resolveErrorMessage(err, 'Could not save the lesson draft.'));
     } finally {
       setSavingEntryId(null);
     }
@@ -477,7 +479,7 @@ export function SchemeDetailPage() {
       setDownloadingDocx(true);
       await downloadSchemeDocx();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not download the Word document.');
+      setActionError(resolveErrorMessage(err, 'Could not download the Word document.'));
     } finally {
       setDownloadingDocx(false);
     }

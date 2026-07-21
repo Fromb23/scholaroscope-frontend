@@ -19,7 +19,7 @@ describe('terms subscription gate frontend behavior', () => {
     const terms = source('app/core/components/academic/terms/TermsPage.tsx');
     expect(terms).toContain('subscriptionSummaryQuery.data.term_creation_message');
     expect(terms).toContain("extractErrorCode(err as ApiError) === 'subscription_required_for_term'");
-    expect(terms).toContain("setPageError(err instanceof Error ? err.message : 'Subscription required for this term.')");
+    expect(terms).toContain("setPageError(resolveErrorMessage(err, 'Subscription required for this term.'))");
   });
 
   it('explicit backend error code is preserved through the term creation hook', () => {

@@ -6,13 +6,6 @@
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "(dashboard)/DashboardClientShell.tsx::raw-workspace-behavior-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P0",
-    "removeBy": "2026-08-31"
-  },
   "components/layout/Header.tsx::raw-admin-role-check": {
     "count": 2,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
@@ -160,13 +153,6 @@
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "core/components/settings/AdminSettingsPage.tsx::raw-admin-role-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P0",
-    "removeBy": "2026-08-31"
-  },
   "core/components/settings/AdminSettingsPage.tsx::raw-personal-org-type-check": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
@@ -175,13 +161,6 @@
     "removeBy": "2026-08-31"
   },
   "core/components/settings/AdminSettingsPage.tsx::raw-workspace-behavior-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P0",
-    "removeBy": "2026-08-31"
-  },
-  "core/components/settings/SettingsComponents.tsx::raw-admin-role-check": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
     "owner": "frontend-migration",
@@ -245,27 +224,6 @@
     "removeBy": "2026-12-31"
   },
   "core/theme/effectiveTheme.ts::raw-workspace-behavior-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P2",
-    "removeBy": "2026-12-31"
-  },
-  "plugins/announcements/components/AnnouncementsPage.tsx::raw-admin-role-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P2",
-    "removeBy": "2026-12-31"
-  },
-  "plugins/announcements/components/AnnouncementsRoutePage.tsx::raw-personal-org-type-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P2",
-    "removeBy": "2026-12-31"
-  },
-  "plugins/announcements/components/AnnouncementsRoutePage.tsx::raw-workspace-behavior-check": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
     "owner": "frontend-migration",

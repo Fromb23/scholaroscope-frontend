@@ -29,8 +29,9 @@ import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { sessionAPI } from '@/app/core/api/sessions';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { attendanceStatusLabel } from '@/app/plugins/cbc/lib/evidenceEligibility';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 interface WorkflowNotice {
     message: string;
@@ -84,7 +85,7 @@ export function CBCEvidenceEntryPage() {
     const section = searchParams.get('section');
     const action = searchParams.get('action');
     const notice = searchParams.get('notice');
-    const returnTo = searchParams.get('returnTo');
+    const returnTo = parseAppDestination(searchParams.get('returnTo'));
 
     const page = useEvidenceEntry(sessionId, learningOutcomeId);
     const isLoading = page.isPageLoading || page.isEvidencePanelLoading;
@@ -222,7 +223,7 @@ export function CBCEvidenceEntryPage() {
             }
 
             setCompletionError(
-                extractErrorMessage(apiError, 'We could not close the lesson record.'),
+                resolveErrorMessage(apiError, 'We could not close the lesson record.'),
             );
         } finally {
             setCompletionPending(false);

@@ -65,11 +65,14 @@ function normalizeMessages(value: unknown): string[] {
       .flatMap((item) => normalizeMessages(item))
       .filter(Boolean);
   }
-  if (typeof value === 'string') return [value];
+  if (typeof value === 'string') {
+    const safe = sanitizeServerMessage(value, 'validation', { allowlistedValidation: true });
+    return safe ? [safe] : [];
+  }
   if (value && typeof value === 'object') {
     const nested = value as Record<string, unknown>;
-    if (typeof nested.message === 'string') return [nested.message];
-    if (typeof nested.detail === 'string') return [nested.detail];
+    if (typeof nested.message === 'string') return normalizeMessages(nested.message);
+    if (typeof nested.detail === 'string') return normalizeMessages(nested.detail);
   }
   return [];
 }
@@ -117,3 +120,4 @@ export function fieldErrorsToSummary(fieldErrors: Record<string, string[]>): str
     .flatMap(([field, messages]) => messages.map((message) => `${formatFieldLabel(field)}: ${message}`))
     .join('\n');
 }
+import { sanitizeServerMessage } from './sanitizeServerMessage';

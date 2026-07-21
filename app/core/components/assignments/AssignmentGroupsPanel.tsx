@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
     CheckSquare,
@@ -863,7 +865,7 @@ export function AssignmentGroupsPanel({
             }
             setSuccessMessage('Group created.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to create group.');
+            setActionError(resolveErrorMessage(err, 'Failed to create group.'));
         }
     };
 
@@ -886,7 +888,7 @@ export function AssignmentGroupsPanel({
             });
             setSuccessMessage(`Saved ${draft.name.trim()}.`);
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to save group.');
+            setActionError(resolveErrorMessage(err, 'Failed to save group.'));
         }
     };
 
@@ -904,7 +906,7 @@ export function AssignmentGroupsPanel({
             });
             setSuccessMessage(`Deleted ${group.name}.`);
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to delete group.');
+            setActionError(resolveErrorMessage(err, 'Failed to delete group.'));
         }
     };
 
@@ -936,7 +938,7 @@ export function AssignmentGroupsPanel({
                 `Added ${result.created_count} learner${result.created_count === 1 ? '' : 's'} to ${result.group.name}.`
             );
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to add learners to group.');
+            setActionError(resolveErrorMessage(err, 'Failed to add learners to group.'));
         }
     };
 
@@ -959,7 +961,7 @@ export function AssignmentGroupsPanel({
             });
             setSuccessMessage(`Removed ${studentName} from ${group.name}.`);
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to remove learner from group.');
+            setActionError(resolveErrorMessage(err, 'Failed to remove learner from group.'));
         }
     };
 
@@ -993,7 +995,7 @@ export function AssignmentGroupsPanel({
             });
             setSuccessMessage(`Updated ${member.student_name}.`);
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to update learner participation.');
+            setActionError(resolveErrorMessage(err, 'Failed to update learner participation.'));
         }
     };
 
@@ -1019,7 +1021,7 @@ export function AssignmentGroupsPanel({
             });
             setSuccessMessage(`Moved ${member.student_name} to the selected group.`);
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to move learner.');
+            setActionError(resolveErrorMessage(err, 'Failed to move learner.'));
         }
     };
 
@@ -1061,7 +1063,7 @@ export function AssignmentGroupsPanel({
                 `Created ${result.created_count} group${result.created_count === 1 ? '' : 's'} with ${result.member_created_count} learner${result.member_created_count === 1 ? '' : 's'}.`
             );
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to generate groups.');
+            setActionError(resolveErrorMessage(err, 'Failed to generate groups.'));
         }
     };
 
@@ -1088,7 +1090,7 @@ export function AssignmentGroupsPanel({
                 `Reused ${result.created_count} group${result.created_count === 1 ? '' : 's'} with ${result.member_created_count} learner${result.member_created_count === 1 ? '' : 's'}.`
             );
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to reuse groups.');
+            setActionError(resolveErrorMessage(err, 'Failed to reuse groups.'));
         }
     };
 

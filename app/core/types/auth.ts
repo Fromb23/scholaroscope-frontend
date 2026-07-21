@@ -63,6 +63,12 @@ export interface WorkspaceCapabilities {
   can_manage_assessments: boolean;
   can_view_reports: boolean;
   can_manage_staff: boolean;
+  can_manage_roles?: boolean;
+  can_view_subscriptions?: boolean;
+  can_manage_plugins?: boolean;
+  can_manage_announcements?: boolean;
+  can_manage_references?: boolean;
+  can_approve_references?: boolean;
   is_workspace_owner: boolean;
   workspace_mode: string | null;
   workspace_behavior: string | null;

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { buildInstructorReportHref } from '@/app/core/components/reports/reportNavigation';
+import { sanitizeAppDestination } from '@/app/core/auth/navigation';
 
 function firstQueryValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) {
@@ -36,7 +37,10 @@ export default async function LegacyAdminTeacherReportRedirect({
     }
   });
 
-  const returnTo = firstQueryValue(query.returnTo) ?? `/admin/instructors/${id}/progress`;
+  const returnTo = sanitizeAppDestination(
+    firstQueryValue(query.returnTo),
+    `/admin/instructors/${id}/progress`,
+  );
   nextParams.set('returnTo', returnTo);
 
   const href = buildInstructorReportHref(Number(id), nextParams);

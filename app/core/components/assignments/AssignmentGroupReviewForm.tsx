@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -291,7 +293,7 @@ export function AssignmentGroupReviewForm({
             setLocalEvaluation(created);
             setSuccessMessage('Group review saved.');
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Failed to save group review.');
+            setFormError(resolveErrorMessage(err, 'Failed to save group review.'));
         }
     };
 

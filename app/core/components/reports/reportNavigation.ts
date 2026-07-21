@@ -1,4 +1,4 @@
-import { isSafeNextPath } from '@/app/core/auth/navigation';
+import { isSafeNextPath, parseAppDestination } from '@/app/core/auth/navigation';
 
 export interface ReportNavigationState {
   term?: number | null;
@@ -37,8 +37,9 @@ function setStringParam(
   key: string,
   value: string | null | undefined,
 ): void {
-  if (value) {
-    params.set(key, value);
+  const safeValue = key === 'returnTo' ? parseAppDestination(value) : value;
+  if (safeValue) {
+    params.set(key, safeValue);
   }
 }
 
@@ -52,11 +53,19 @@ function normalizeState(state?: ReportNavigationState | URLSearchParams | string
   }
 
   if (typeof state === 'string') {
-    return new URLSearchParams(state.startsWith('?') ? state.slice(1) : state);
+    const params = new URLSearchParams(state.startsWith('?') ? state.slice(1) : state);
+    const safeReturnTo = parseAppDestination(params.get('returnTo'));
+    if (safeReturnTo) params.set('returnTo', safeReturnTo);
+    else params.delete('returnTo');
+    return params;
   }
 
   if (state instanceof URLSearchParams) {
-    return new URLSearchParams(state.toString());
+    const params = new URLSearchParams(state.toString());
+    const safeReturnTo = parseAppDestination(params.get('returnTo'));
+    if (safeReturnTo) params.set('returnTo', safeReturnTo);
+    else params.delete('returnTo');
+    return params;
   }
 
   const params = new URLSearchParams();
@@ -124,8 +133,9 @@ export function buildLearnerOverviewReportHref(
   state?: ReportNavigationState,
 ): string {
   const params = new URLSearchParams();
-  if (state?.returnTo) {
-    params.set('returnTo', state.returnTo);
+  const safeReturnTo = parseAppDestination(state?.returnTo);
+  if (safeReturnTo) {
+    params.set('returnTo', safeReturnTo);
   }
   const query = params.toString();
   return query
@@ -142,8 +152,9 @@ export function buildLearnerSubjectReportHref(
   if (cohortSubjectId && Number.isInteger(cohortSubjectId) && cohortSubjectId > 0) {
     params.set('cohort_subject', String(cohortSubjectId));
   }
-  if (state?.returnTo) {
-    params.set('returnTo', state.returnTo);
+  const safeReturnTo = parseAppDestination(state?.returnTo);
+  if (safeReturnTo) {
+    params.set('returnTo', safeReturnTo);
   }
   const query = params.toString();
   return query
@@ -269,7 +280,7 @@ export function buildSessionReportHref(
   sessionId: number,
   state?: ReportNavigationState,
 ): string {
-  const returnTo = state?.returnTo;
+  const returnTo = parseAppDestination(state?.returnTo);
   const params = new URLSearchParams();
   if (returnTo) {
     params.set('returnTo', returnTo);

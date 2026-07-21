@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 // ============================================================================
 // app/core/components/cohorts/CohortStudentComponents.tsx
 //
@@ -243,7 +245,7 @@ export function EnrollModal({ isOpen, count, cohortName, onClose, onConfirm }: E
             setNotes('');
             onClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Enrollment failed.');
+            setError(resolveErrorMessage(err, 'Enrollment failed.'));
         } finally { setSaving(false); }
     };
 
@@ -304,7 +306,7 @@ export function UnenrollModal({ isOpen, count, onClose, onConfirm }: UnenrollMod
             setNotes('');
             onClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unenrollment failed.');
+            setError(resolveErrorMessage(err, 'Unenrollment failed.'));
         } finally { setSaving(false); }
     };
 

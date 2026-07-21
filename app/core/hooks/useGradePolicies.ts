@@ -10,7 +10,7 @@ import {
     PolicyContextFilters,
     ComputedGradeFilters,
 } from '@/app/core/types/gradePolicy';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 import { hasFormFieldErrors } from '@/app/core/forms';
 
 // ── useGradePolicies ──────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ export function useGradePolicies(
             setError(null);
             setPolicies(await gradePolicyAPI.getAll(filters));
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to fetch policies'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to fetch policies'));
         } finally {
             setLoading(false);
         }
@@ -306,7 +306,7 @@ export function useCreatePolicyForm(
             onSuccess(result);
             return {};
         } catch (err) {
-            setSaveError(extractErrorMessage(err as ApiError, 'Failed to save policy'));
+            setSaveError(resolveErrorMessage(err as ApiError, 'Failed to save policy'));
             return {};
         } finally {
             setSaving(false);
@@ -359,7 +359,7 @@ export function useComputedGrades(filters?: ComputedGradeFilters) {
             setError(null);
             setGrades(await gradePolicyAPI.getComputedGrades(params));
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to fetch computed grades'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to fetch computed grades'));
         } finally {
             setLoading(false);
         }

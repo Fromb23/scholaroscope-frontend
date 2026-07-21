@@ -7,7 +7,7 @@ import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Select } from '@/app/components/ui/Select';
 import { cohortAPI } from '@/app/core/api/academic';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { CohortSubjectPanelContext } from '@/app/core/registry/cohortSubjectPanels';
 import { cbcPathwayAPI } from '@/app/plugins/cbc/api/pathways';
@@ -138,7 +138,7 @@ export function CBCCohortSubjectPanel({
             });
             setError(null);
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to load class subject setup.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to load class subject setup.'));
         } finally {
             setLoading(false);
         }
@@ -159,7 +159,7 @@ export function CBCCohortSubjectPanel({
             })
             .catch((err: unknown) => {
                 if (!active) return;
-                setError(err instanceof Error ? err.message : 'Failed to load class pathways.');
+                setError(resolveErrorMessage(err, 'Failed to load class pathways.'));
             })
             .finally(() => {
                 if (active) {
@@ -204,7 +204,7 @@ export function CBCCohortSubjectPanel({
             })
             .catch((err: unknown) => {
                 if (!active) return;
-                setError(err instanceof Error ? err.message : 'Failed to load class pathway details.');
+                setError(resolveErrorMessage(err, 'Failed to load class pathway details.'));
             })
             .finally(() => {
                 if (active) {
@@ -247,7 +247,7 @@ export function CBCCohortSubjectPanel({
             })
             .catch((err: unknown) => {
                 if (!active) return;
-                setError(err instanceof Error ? err.message : 'Failed to load official class grouping.');
+                setError(resolveErrorMessage(err, 'Failed to load official class grouping.'));
             })
             .finally(() => {
                 if (active) {
@@ -289,7 +289,7 @@ export function CBCCohortSubjectPanel({
             await onSubjectsChanged?.();
             setSuccessMessage(profile.message ?? 'Required subjects added for all learners.');
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to save class pathway.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to save class pathway.'));
         } finally {
             setWorking(false);
         }
@@ -311,7 +311,7 @@ export function CBCCohortSubjectPanel({
             await onSubjectsChanged?.();
             setSuccessMessage(response.message ?? 'Subject added to class.');
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to add subject to class.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to add subject to class.'));
         } finally {
             setWorking(false);
         }
@@ -330,7 +330,7 @@ export function CBCCohortSubjectPanel({
             await onSubjectsChanged?.();
             setSuccessMessage('Subject removed from class.');
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to remove subject from class.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to remove subject from class.'));
         } finally {
             setWorking(false);
         }

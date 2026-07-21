@@ -6,7 +6,7 @@ import {
     useUpdateOutcome,
     useDeleteOutcome,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import { extractErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
+import { resolveErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
 import type { LearningOutcome, LearningOutcomeFormData } from '@/app/plugins/cbc/types/cbc';
 
 type OutcomeForm = Omit<Partial<LearningOutcomeFormData>, 'sub_strand' | 'grade'>;
@@ -46,7 +46,7 @@ export function useCBCAuthoringOutcomesPage(subStrandId: number) {
             setShowCreate(false);
             setCreateForm({ description: '', level: inferredLevel });
         } catch (error) {
-            setCreateError(extractErrorMessage(error));
+            setCreateError(resolveErrorMessage(error));
         }
     };
 
@@ -70,7 +70,7 @@ export function useCBCAuthoringOutcomesPage(subStrandId: number) {
             });
             setEditId(null);
         } catch (error) {
-            setEditError(extractErrorMessage(error));
+            setEditError(resolveErrorMessage(error));
         }
     };
 

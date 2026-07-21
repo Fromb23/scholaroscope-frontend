@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 // ============================================================================
 // app/core/components/profile/ProfileComponents.tsx
 //
@@ -395,7 +397,7 @@ export function EditProfileModal({ isOpen, onClose, initialValues, onSave }: Edi
             onClose();
         } catch (err: unknown) {
             setApiError(
-                err instanceof Error ? err.message : 'An error occurred'
+                resolveErrorMessage(err, 'An error occurred')
             );
         } finally {
             setSaving(false);
@@ -481,7 +483,7 @@ export function ChangePasswordModal({ isOpen, onClose, onSave }: ChangePasswordM
             setSuccess(true);
             setForm({ old_password: '', new_password: '', new_password2: '' });
         } catch (err: unknown) {
-            setApiError(err instanceof Error ? err.message : 'An error occurred');
+            setApiError(resolveErrorMessage(err, 'An error occurred'));
         } finally {
             setSaving(false);
         }
@@ -611,7 +613,7 @@ export function DeletionRequestModal({ isOpen, onClose, type, orgName, onConfirm
             await onConfirm(reason.trim());
             setSuccess(true);
         } catch (err: unknown) {
-            setApiError(err instanceof Error ? err.message : 'An error occurred');
+            setApiError(resolveErrorMessage(err, 'An error occurred'));
         } finally {
             setSubmitting(false);
         }

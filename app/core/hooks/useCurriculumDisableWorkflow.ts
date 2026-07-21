@@ -12,7 +12,7 @@ import type {
   CurriculumDisableRequestTransitionPayload,
   RequestCurriculumDisablePayload,
 } from '@/app/core/types/academic';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
 function shouldPoll(status?: CurriculumDisableRequestStatus | null): boolean {
@@ -20,7 +20,7 @@ function shouldPoll(status?: CurriculumDisableRequestStatus | null): boolean {
 }
 
 function toError(error: unknown, fallback: string): Error {
-  return new Error(extractErrorMessage(error as ApiError, fallback));
+  return new Error(resolveErrorMessage(error as ApiError, fallback));
 }
 
 function invalidateCurriculumDisableQueries(

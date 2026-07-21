@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useMemo, useState } from 'react';
 import { Paperclip, UserCheck } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
@@ -128,7 +130,7 @@ export function AssignmentRecordResponsePanel({
             });
             await onSaved?.(submission);
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Failed to record learner response.');
+            setFormError(resolveErrorMessage(err, 'Failed to record learner response.'));
         }
     };
 

@@ -1,8 +1,11 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import { BookOpen, Download, Eye, Plus } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -290,7 +293,7 @@ export function SchemesPage() {
   }, [instructorFilter]);
   const safeReturnTo = useMemo(() => {
     const value = searchParams.get('returnTo');
-    return value?.startsWith('/') ? value : null;
+    return parseAppDestination(value);
   }, [searchParams]);
   const effectiveMyTeachingMode = isInstructor || canUseTeacherModeAsAdmin || viewMode === 'my_teaching';
   const institutionComplianceMode = isInstitutionalAdminSupervisor && !effectiveMyTeachingMode;
@@ -516,7 +519,7 @@ export function SchemesPage() {
       setDownloadingId(schemeId);
       await downloadSchemeDocx(schemeId);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not download the Word document.');
+      setActionError(resolveErrorMessage(err, 'Could not download the Word document.'));
     } finally {
       setDownloadingId(null);
     }

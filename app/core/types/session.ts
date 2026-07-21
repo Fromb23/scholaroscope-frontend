@@ -209,6 +209,54 @@ export interface AttendanceRecord {
   marked_by: string | null;
 }
 
+export interface LearnerAttendanceRecord {
+  id: number;
+  session: number;
+  session_date: string;
+  student: number;
+  status: string | null;
+  status_display: string;
+  notes: string;
+  marked_at: string | null;
+}
+
+/** Minimized session detail returned to the authenticated learner. */
+export interface LearnerSessionDetail {
+  id: number;
+  subject_source: string;
+  session_subject_id: number | null;
+  curriculum_type: string | null;
+  cohort_subject: number | null;
+  cohort_id: number | null;
+  cohort_name: string | null;
+  cohort_level: string | null;
+  subject_id: number | null;
+  subject_name: string | null;
+  subject_code: string | null;
+  curriculum_name: string | null;
+  term: number | null;
+  term_name: string | null;
+  session_type: string;
+  session_type_display: string;
+  session_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  title: string;
+  description: string;
+  venue: string;
+  is_unplanned: boolean;
+  status: string;
+  attendance_records: LearnerAttendanceRecord[];
+  created_at: string;
+}
+
+export type SessionDetailResponse = SessionDetail | LearnerSessionDetail;
+
+export interface AttendanceRecordUpdatePayload {
+  status?: string | null;
+  notes?: string;
+}
+
 export interface AttendanceSummary {
   present_count: number;
   total_students: number;

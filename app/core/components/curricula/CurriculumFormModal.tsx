@@ -12,7 +12,7 @@ import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { CURRICULUM_TYPE_OPTIONS, type Curriculum, type CurriculumType } from '@/app/core/types/academic';
 import { Select } from '@/app/components/ui/Select';
@@ -80,7 +80,7 @@ export function CurriculumFormModal({
             await onSave(form, editing?.id);
             onClose();
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to save curriculum.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to save curriculum.'));
         } finally {
             setSaving(false);
         }

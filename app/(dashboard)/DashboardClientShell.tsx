@@ -45,12 +45,14 @@ import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigati
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { OfflineRetryState } from '@/app/offline/OfflineRetryState';
+import { canUseAnnouncements } from '@/app/core/lib/workspaceGovernance';
+import { WorkspaceGenerationBoundary } from '@/app/core/runtime/workspaceGeneration';
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
 
 function routeAllowedByCapabilities(pathname: string, capabilities: ReturnType<typeof useAuth>['capabilities']): boolean {
   if (/^\/announcements/.test(pathname)) {
-    return capabilities.workspace_behavior !== 'FREELANCE_TEACHER';
+    return canUseAnnouncements(capabilities);
   }
   if (/^\/admin\/(instructors|alerts)/.test(pathname)) {
     return capabilities.can_manage_staff;
@@ -385,19 +387,21 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
 
 export function DashboardClientShell({ children }: { children: ReactNode }) {
   return (
-    <PluginRegistryProvider>
-      <Suspense
-        fallback={
-          <PermissionResolvingState
-            fullScreen
-            message="Loading workspace..."
-            description="Preparing your dashboard."
-          />
-        }
-      >
-        <DashboardLayoutContent>{children}</DashboardLayoutContent>
-      </Suspense>
-    </PluginRegistryProvider>
+    <WorkspaceGenerationBoundary>
+      <PluginRegistryProvider>
+        <Suspense
+          fallback={
+            <PermissionResolvingState
+              fullScreen
+              message="Loading workspace..."
+              description="Preparing your dashboard."
+            />
+          }
+        >
+          <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        </Suspense>
+      </PluginRegistryProvider>
+    </WorkspaceGenerationBoundary>
   );
 }
 

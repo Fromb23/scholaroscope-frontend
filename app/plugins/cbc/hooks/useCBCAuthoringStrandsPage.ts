@@ -7,7 +7,7 @@ import {
 } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import { useAcademic } from '@/app/core/hooks/useAcademic';
-import { extractErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
+import { resolveErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
 import type { Strand, StrandFormData } from '@/app/plugins/cbc/types/cbc';
 import type { Subject } from '@/app/core/types/academic';
 
@@ -65,7 +65,7 @@ export function useCBCAuthoringStrandsPage() {
             setShowCreate(false);
             setCreateForm(EMPTY_FORM);
         } catch (error) {
-            setCreateError(extractErrorMessage(error));
+            setCreateError(resolveErrorMessage(error));
         }
     };
 
@@ -87,7 +87,7 @@ export function useCBCAuthoringStrandsPage() {
             await updateMutation.mutateAsync({ id: editId, data: editForm });
             setEditId(null);
         } catch (error) {
-            setEditError(extractErrorMessage(error));
+            setEditError(resolveErrorMessage(error));
         }
     };
 

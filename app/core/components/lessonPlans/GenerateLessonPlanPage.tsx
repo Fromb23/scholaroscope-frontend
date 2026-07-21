@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import {
     ArrowLeft,
     Bot,
@@ -53,7 +54,7 @@ import {
     useLessonPlanCurriculumContext,
 } from '@/app/core/hooks/useLessonPlans';
 import type { ApiError } from '@/app/core/types/errors';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type {
     LessonPlan,
     LessonPlanCreatePayload,
@@ -100,7 +101,7 @@ export function GenerateLessonPlanPage() {
     const requestedTermId = searchParams.get('term');
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
-        return value?.startsWith('/') ? value : null;
+        return parseAppDestination(value);
     }, [searchParams]);
 
     const selectedCohortSubjectId = cohortSubjectId ? Number(cohortSubjectId) : null;
@@ -324,7 +325,7 @@ export function GenerateLessonPlanPage() {
                 return await lessonPlanAPI.update(draftLessonPlan.id, updatePayload);
             } catch (err) {
                 throw new Error(
-                    extractErrorMessage(
+                    resolveErrorMessage(
                         err as ApiError,
                         'Failed to update the draft lesson plan.'
                     )

@@ -1,6 +1,9 @@
 'use client';
 // app/plugins/cbc/components/CBCComponents.tsx
 
+import { resolveErrorMessage } from '@/app/core/errors';
+export { resolveErrorMessage } from '@/app/core/errors';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -427,93 +430,18 @@ export function StrandProgressRow({
 // Handles the standard server error shape: { detail, type, code, message }
 // ============================================================================
 
-interface ServerError {
-  detail?: string;
-  message?: string;
-  error?: string;
-  non_field_errors?: string[];
-  type?: string;
-}
-
-interface CBCErrorDiagnostic {
-  endpoint?: string;
-  url?: string;
-  params?: unknown;
-  statusCode?: number;
-  backendDetail?: string;
-  backendMessage?: string;
-  responseData?: unknown;
-}
-
-interface CBCErrorDebugContext {
-  endpointUrl?: string | null;
-  queryParams?: unknown;
-  statusCode?: number | null;
-  backendDetail?: string | null;
-  backendMessage?: string | null;
-  responseData?: unknown;
-  selectedCurriculumId?: number | null;
-  selectedSubjectId?: number | null;
-  selectedCohortId?: number | null;
-  allowedSubjectIds?: number[] | null;
-  allowedCohortIds?: number[] | null;
-  finalUseStrandsParams?: unknown;
-}
-
-function formatDiagnosticValue(value: unknown) {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'string') return value;
-
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-function flattenErrorMessages(value: unknown): string[] {
-  if (typeof value === 'string') {
-    return [value];
-  }
-
-  if (Array.isArray(value)) {
-    return value.flatMap((item) => flattenErrorMessages(item));
-  }
-
-  if (!value || typeof value !== 'object') {
-    return [];
-  }
-
-  return Object.values(value).flatMap((item) => flattenErrorMessages(item));
-}
-
 export function CBCError({
   error,
   onRetry,
   title = 'CBC workflow could not be completed',
-  debugContext,
 }: {
   error: unknown;
   onRetry?: () => void;
   title?: string;
-  debugContext?: CBCErrorDebugContext | null;
+  debugContext?: unknown;
 }) {
-  const msg = sanitizeServerMessage(extractErrorMessage(error), 'server')
+  const msg = sanitizeServerMessage(resolveErrorMessage(error), 'server')
     ?? 'The CBC request could not be completed. Try again, or ask an admin to check the CBC setup if it continues.';
-  const diagnostic = extractCBCErrorDiagnostic(error);
-  const resolvedDebugContext =
-    debugContext ??
-    (diagnostic
-      ? {
-          endpointUrl: diagnostic.url ?? diagnostic.endpoint ?? null,
-          queryParams: diagnostic.params ?? null,
-          statusCode: diagnostic.statusCode ?? null,
-          backendDetail: diagnostic.backendDetail ?? null,
-          backendMessage: diagnostic.backendMessage ?? null,
-          responseData: diagnostic.responseData ?? null,
-        }
-      : null);
-  const showDiagnostic = process.env.NODE_ENV === 'development' && resolvedDebugContext !== null;
 
   return (
     <div className="theme-danger-surface flex items-start gap-4 rounded-xl p-5">
@@ -523,60 +451,6 @@ export function CBCError({
       <div className="flex-1 min-w-0">
         <p className="font-semibold theme-text">{title}</p>
         <p className="mt-1 text-sm theme-muted">{msg}</p>
-        {showDiagnostic && (
-          <div className="theme-card-muted mt-3 space-y-2 rounded-lg p-3 text-xs text-red-900">
-            <div>
-              <p className="font-semibold">Request URL</p>
-              <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
-                {formatDiagnosticValue(resolvedDebugContext.endpointUrl ?? 'Unknown')}
-              </pre>
-            </div>
-            <div>
-              <p className="font-semibold">Query Params</p>
-              <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
-                {formatDiagnosticValue(resolvedDebugContext.queryParams ?? null)}
-              </pre>
-            </div>
-            <div>
-              <p className="font-semibold">Status Code</p>
-              <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
-                {formatDiagnosticValue(resolvedDebugContext.statusCode ?? null)}
-              </pre>
-            </div>
-            <div>
-              <p className="font-semibold">Backend Detail / Message</p>
-              <pre className="mt-1 whitespace-pre-wrap break-words font-mono">
-                {formatDiagnosticValue({
-                  detail: resolvedDebugContext.backendDetail ?? null,
-                  message: resolvedDebugContext.backendMessage ?? null,
-                })}
-              </pre>
-            </div>
-            {'selectedCurriculumId' in resolvedDebugContext && (
-              <div>
-                <p className="font-semibold">CBC Browser Context</p>
-                <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
-                  {formatDiagnosticValue({
-                    selectedCurriculumId: resolvedDebugContext.selectedCurriculumId ?? null,
-                    selectedSubjectId: resolvedDebugContext.selectedSubjectId ?? null,
-                    selectedCohortId: resolvedDebugContext.selectedCohortId ?? null,
-                    allowedSubjectIds: resolvedDebugContext.allowedSubjectIds ?? [],
-                    allowedCohortIds: resolvedDebugContext.allowedCohortIds ?? [],
-                    finalUseStrandsParams: resolvedDebugContext.finalUseStrandsParams ?? null,
-                  })}
-                </pre>
-              </div>
-            )}
-            {resolvedDebugContext.responseData !== undefined && (
-              <div>
-                <p className="font-semibold">Backend Response</p>
-                <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
-                  {formatDiagnosticValue(resolvedDebugContext.responseData)}
-                </pre>
-              </div>
-            )}
-          </div>
-        )}
       </div>
       {onRetry && (
         <button
@@ -590,40 +464,6 @@ export function CBCError({
       )}
     </div>
   );
-}
-
-export function extractErrorMessage(error: unknown): string {
-  if (!error) return 'The CBC request could not be completed.';
-  if (typeof error === 'string') return error;
-
-  const e = error as {
-    response?: { data?: ServerError | string };
-    message?: string;
-    diagnostic?: CBCErrorDiagnostic;
-  };
-
-  if (e.diagnostic?.backendDetail || e.diagnostic?.backendMessage) {
-    return e.diagnostic.backendDetail ?? e.diagnostic.backendMessage ?? 'The CBC server request could not be completed.';
-  }
-
-  if (e.response?.data) {
-    const d = e.response.data;
-    if (typeof d === 'string') return d;
-    const structuredMessage = d.detail ?? d.message ?? d.error ?? d.non_field_errors ?? d;
-    const flattenedMessages = flattenErrorMessages(structuredMessage);
-    if (flattenedMessages.length > 0) {
-      return flattenedMessages.join('\n');
-    }
-    return 'The CBC server request could not be completed.';
-  }
-  return e.message ?? 'The CBC request could not be completed.';
-}
-
-function extractCBCErrorDiagnostic(error: unknown): CBCErrorDiagnostic | null {
-  if (!error || typeof error !== 'object') return null;
-
-  const diagnostic = (error as { diagnostic?: CBCErrorDiagnostic }).diagnostic;
-  return diagnostic ?? null;
 }
 
 // ============================================================================

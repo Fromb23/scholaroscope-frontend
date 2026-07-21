@@ -8,7 +8,7 @@ import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import Modal from '@/app/components/ui/Modal';
 import { Select } from '@/app/components/ui/Select';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import type {
     FineArtsCourseworkTask,
     FineArtsEvidenceType,
@@ -137,7 +137,7 @@ export function FineArtsLearnerEvidenceModal({
             setPersistedEvidenceId(result.id ?? null);
             await onStateChange?.();
         } catch (mutationError) {
-            setError(extractErrorMessage(mutationError as ApiError, 'We could not save learner evidence.'));
+            setError(resolveErrorMessage(mutationError as ApiError, 'We could not save learner evidence.'));
         }
     };
 
@@ -171,7 +171,7 @@ export function FineArtsLearnerEvidenceModal({
             setUploadProgress({});
             await onStateChange?.();
         } catch (mutationError) {
-            setError(extractErrorMessage(mutationError as ApiError, 'We could not upload the selected files.'));
+            setError(resolveErrorMessage(mutationError as ApiError, 'We could not upload the selected files.'));
         }
     };
 

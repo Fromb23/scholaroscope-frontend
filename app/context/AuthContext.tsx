@@ -15,10 +15,26 @@ import { useQueryClient } from '@tanstack/react-query';
 import { DEFAULT_WORKSPACE_CAPABILITIES, authAPI } from '@/app/core/api/auth';
 import { registerAuthFailureHandler } from '@/app/core/api/client';
 import { logoutLocalFirst } from '@/app/core/auth/logout';
+import {
+  clearExplicitLogout,
+  isExplicitLogoutActive,
+} from '@/app/core/auth/explicitLogout';
 import { isNetworkError } from '@/app/core/auth/networkDetection';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
-import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
+import {
+  clearAccessToken,
+  getAccessTokenVersion,
+  setAccessToken,
+} from '@/app/core/auth/tokenStore';
 import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
+import {
+  advanceWorkspaceGeneration,
+  captureWorkspaceAuthority,
+  getWorkspaceGeneration,
+  isWorkspaceAuthorityCurrent,
+  useWorkspaceGeneration,
+  type WorkspaceGenerationReason,
+} from '@/app/core/runtime/workspaceGeneration';
 import type {
   ActiveOrg,
   AccessNotice,
@@ -41,6 +57,7 @@ interface AuthContextType {
   loading: boolean;
   loggingOut: boolean;
   offline: boolean;
+  workspaceGeneration: number;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
@@ -136,6 +153,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const workspaceGeneration = useWorkspaceGeneration();
 
   const [user, setUser] = useState<User | null>(null);
   const [activeOrg, setActiveOrg] = useState<ActiveOrg | null>(null);
@@ -153,7 +171,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, activeOrg, memberships]
   );
 
-  const clearAuthState = useCallback(() => {
+  const advanceAuthority = useCallback((reason: WorkspaceGenerationReason) => {
+    queryClient.clear();
+    advanceWorkspaceGeneration(reason);
+  }, [queryClient]);
+
+  const clearAuthState = useCallback((
+    reason: WorkspaceGenerationReason = 'session-invalidation',
+  ) => {
     authStateVersionRef.current += 1;
     clearAccessToken();
     clearStoredAuthState();
@@ -163,10 +188,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCapabilities(DEFAULT_WORKSPACE_CAPABILITIES);
     setMembershipVersion(0);
     setAccessNotices([]);
-    queryClient.clear();
-  }, [queryClient]);
+    advanceAuthority(reason);
+  }, [advanceAuthority]);
 
-  const applyAuthState = useCallback((payload: AuthStatePayload) => {
+  const applyAuthState = useCallback((
+    payload: AuthStatePayload,
+    reason: WorkspaceGenerationReason = 'login',
+  ) => {
     if (payload.user?.is_superadmin) {
       clearAuthState();
       redirectToPlatformConsole('/login');
@@ -189,7 +217,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
     );
     storeMembershipVersion(payload.membership_version ?? 0);
-  }, [clearAuthState]);
+    advanceAuthority(reason);
+  }, [advanceAuthority, clearAuthState]);
 
   const applyMembershipContext = useCallback((payload: {
     active_org: ActiveOrg | null;
@@ -200,6 +229,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     org_suspended_orgs?: AccessNotice[];
     removed_orgs?: AccessNotice[];
   }) => {
+    const authorityChanged = (
+      activeOrg?.id !== (payload.active_org?.id ?? null)
+      || membershipVersion !== (payload.membership_version ?? 0)
+    );
     setActiveOrg(payload.active_org);
     setMemberships(payload.memberships ?? []);
     setCapabilities(payload.capabilities ?? DEFAULT_WORKSPACE_CAPABILITIES);
@@ -212,19 +245,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
     );
     storeMembershipVersion(payload.membership_version ?? 0);
-  }, []);
+    if (authorityChanged) {
+      advanceAuthority('context-replacement');
+    }
+  }, [activeOrg?.id, advanceAuthority, membershipVersion]);
 
   const syncContext = useCallback(async () => {
-    if (!user) {
+    if (!user || isExplicitLogoutActive()) {
       return;
     }
+    const expectedOrganizationId = activeOrg?.id ?? null;
+    const authorityAtStart = captureWorkspaceAuthority(expectedOrganizationId);
+    const tokenVersionAtStart = getAccessTokenVersion();
     try {
       const context = await authAPI.meContext();
+      if (
+        tokenVersionAtStart !== getAccessTokenVersion()
+        || !isWorkspaceAuthorityCurrent(authorityAtStart, expectedOrganizationId)
+        || (context.active_org?.id ?? null) !== expectedOrganizationId
+      ) {
+        return;
+      }
       applyMembershipContext(context);
     } catch {
       // Request interceptor handles refresh/retry and terminal redirect.
     }
-  }, [applyMembershipContext, user]);
+  }, [activeOrg?.id, applyMembershipContext, user]);
 
   useEffect(() => {
     registerAuthFailureHandler(() => {
@@ -235,9 +281,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearAuthState]);
 
   const boot = useCallback(async (isCancelled: () => boolean = () => false) => {
+    if (isExplicitLogoutActive()) {
+      clearAuthState('session-invalidation');
+      setLoading(false);
+      return;
+    }
     const bootAuthStateVersion = authStateVersionRef.current;
+    const bootWorkspaceGeneration = getWorkspaceGeneration();
+    const bootTokenVersion = getAccessTokenVersion();
     const bootWasSuperseded = () => (
-      isCancelled() || authStateVersionRef.current !== bootAuthStateVersion
+      isCancelled()
+      || authStateVersionRef.current !== bootAuthStateVersion
+      || getWorkspaceGeneration() !== bootWorkspaceGeneration
+      || getAccessTokenVersion() !== bootTokenVersion
     );
 
     setLoading(true);
@@ -247,7 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (bootWasSuperseded()) {
         return;
       }
-      applyAuthState(response);
+      applyAuthState(response, 'session-restoration');
       setLoading(false);
     } catch (error) {
       if (bootWasSuperseded()) {
@@ -258,7 +314,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      clearAuthState();
+      clearAuthState('session-invalidation');
       setLoading(false);
     }
   }, [applyAuthState, clearAuthState]);
@@ -305,33 +361,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [boot, offline]);
 
   const login = useCallback(async (email: string, password: string) => {
+    clearExplicitLogout();
+    const authorityAtStart = captureWorkspaceAuthority(activeOrg?.id ?? null);
+    const authStateVersionAtStart = authStateVersionRef.current;
     const response = await authAPI.login({ email, password });
-    applyAuthState(response);
+    if (
+      isExplicitLogoutActive()
+      || authStateVersionRef.current !== authStateVersionAtStart
+      || !isWorkspaceAuthorityCurrent(authorityAtStart, activeOrg?.id ?? null)
+    ) {
+      throw new Error('Login response was superseded by an authentication state change.');
+    }
+    applyAuthState(response, 'login');
     setLoading(false);
     return response;
-  }, [applyAuthState]);
+  }, [activeOrg?.id, applyAuthState]);
 
   const logout = useCallback(() => logoutLocalFirst({
     markLogoutStarted: () => setLoggingOut(true),
-    clearAuthState,
+    clearAuthState: () => clearAuthState('logout'),
     setLoading,
   }), [clearAuthState]);
 
   const switchOrg = useCallback(async (organizationId: number) => {
     const response = await authAPI.switchOrg(organizationId);
-    applyAuthState(response);
-    queryClient.clear();
+    applyAuthState(response, 'workspace-switch');
     return response;
-  }, [applyAuthState, queryClient]);
+  }, [applyAuthState]);
 
   const restoreWorkspace = useCallback(async (organizationId: number) => {
     const response = await authAPI.restoreWorkspace(organizationId);
-    applyAuthState(response);
-    queryClient.clear();
+    applyAuthState(response, 'workspace-restore');
     return response;
-  }, [applyAuthState, queryClient]);
+  }, [applyAuthState]);
 
   const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResponse> => {
+    clearExplicitLogout();
     const response = await authAPI.register(payload);
 
     if (response.status === 'pending' || response.status === 'email_verification_required') {
@@ -349,12 +414,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       capabilities: response.capabilities ?? DEFAULT_WORKSPACE_CAPABILITIES,
       memberships: response.memberships ?? [],
       membership_version: response.membership_version ?? membershipVersion,
-    });
+    }, 'registration');
     setLoading(false);
     return response;
   }, [applyAuthState, membershipVersion]);
 
   const verifyEmail = useCallback(async (token: string): Promise<RegisterResponse> => {
+    clearExplicitLogout();
     const response = await authAPI.verifyEmail(token);
     if (response.access && response.user) {
       applyAuthState({
@@ -364,7 +430,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         capabilities: response.capabilities ?? DEFAULT_WORKSPACE_CAPABILITIES,
         memberships: response.memberships ?? [],
         membership_version: response.membership_version ?? membershipVersion,
-      });
+      }, 'verification');
       setLoading(false);
     }
     return response;
@@ -393,6 +459,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       loggingOut,
       offline,
+      workspaceGeneration,
       isAuthenticated: !!user,
       login,
       logout,

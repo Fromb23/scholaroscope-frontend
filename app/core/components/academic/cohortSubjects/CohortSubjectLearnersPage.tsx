@@ -39,7 +39,7 @@ import {
 } from '@/app/core/components/learners/learnerProfileNavigation';
 import { buildLearnerSubjectReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import { shouldUseInstructorReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
@@ -162,7 +162,7 @@ export default function CohortSubjectLearnersPage() {
         onError: (error) => {
             setResultBanner({
                 tone: 'error',
-                message: extractErrorMessage(error as ApiError, 'Failed to enroll learners in the cohort subject.'),
+                message: resolveErrorMessage(error as ApiError, 'Failed to enroll learners in the cohort subject.'),
             });
         },
     });
@@ -178,7 +178,7 @@ export default function CohortSubjectLearnersPage() {
         onError: (error) => {
             setResultBanner({
                 tone: 'error',
-                message: extractErrorMessage(error as ApiError, 'Failed to unenroll learners from the cohort subject.'),
+                message: resolveErrorMessage(error as ApiError, 'Failed to unenroll learners from the cohort subject.'),
             });
         },
     });
@@ -304,7 +304,7 @@ export default function CohortSubjectLearnersPage() {
         } catch (error) {
             setResultBanner({
                 tone: 'error',
-                message: extractErrorMessage(error as ApiError, 'Failed to download the class list PDF.'),
+                message: resolveErrorMessage(error as ApiError, 'Failed to download the class list PDF.'),
             });
         } finally {
             setDownloadingClassList(false);

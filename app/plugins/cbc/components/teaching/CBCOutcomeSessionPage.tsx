@@ -23,6 +23,7 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 function buildOutcomeListHref(sessionId: number, returnTo?: string | null) {
     const params = new URLSearchParams();
@@ -50,7 +51,7 @@ export function CBCOutcomeSessionPage() {
     const searchParams = useSearchParams();
     const sessionId = Number(params.sessionId);
     const learningOutcomeId = Number(params.learningOutcomeId);
-    const returnTo = searchParams.get('returnTo');
+    const returnTo = parseAppDestination(searchParams.get('returnTo'));
     const page = useCBCOutcomeSessionPage(sessionId, learningOutcomeId);
     const outcomesHref = buildOutcomeListHref(sessionId, returnTo);
     const evidenceHref = buildOutcomeEvidenceHref(sessionId, learningOutcomeId, returnTo);

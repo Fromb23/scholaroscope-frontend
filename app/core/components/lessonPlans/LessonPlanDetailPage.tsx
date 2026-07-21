@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import type { FormEvent, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -57,7 +59,7 @@ import {
 import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
-import { isSafeNextPath } from '@/app/core/auth/navigation';
+import { isSafeNextPath, parseAppDestination } from '@/app/core/auth/navigation';
 import {
     getLessonPlanDetailInitialSectionState,
     shouldOpenLearnerTaskFromQuery,
@@ -228,7 +230,7 @@ export function LessonPlanDetailPage() {
     const isInstructor = activeRole === 'INSTRUCTOR';
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
-        return value?.startsWith('/') ? value : null;
+        return parseAppDestination(value);
     }, [searchParams]);
     const currentReturnTo = useMemo(() => {
         const query = searchParams.toString();
@@ -618,7 +620,7 @@ export function LessonPlanDetailPage() {
                 setActionSuccess('Lesson plan restored.');
             }
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Action failed.');
+            setActionError(resolveErrorMessage(err, 'Action failed.'));
         } finally {
             setPendingActionKey(null);
         }
@@ -714,7 +716,7 @@ export function LessonPlanDetailPage() {
             setReflection('');
             setActionSuccess('Lesson plan marked as used.');
         } catch (err) {
-            setMarkUsedError(err instanceof Error ? err.message : 'Action failed.');
+            setMarkUsedError(resolveErrorMessage(err, 'Action failed.'));
         } finally {
             setPendingActionKey(null);
         }
@@ -764,7 +766,7 @@ export function LessonPlanDetailPage() {
                     : 'Lesson scheduled.'
             );
         } catch (err) {
-            setScheduleError(err instanceof Error ? err.message : 'Action failed.');
+            setScheduleError(resolveErrorMessage(err, 'Action failed.'));
         } finally {
             setPendingActionKey(null);
         }

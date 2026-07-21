@@ -18,7 +18,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/app/components/ui/Table';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import type {
     MusicEvidenceType,
     MusicPracticalContract,
@@ -134,7 +134,7 @@ export function PracticalLearnerEvidencePanel({
     const structuredError = getStructuredWorksheetError(loadError);
     const visibleError = actionError
         ?? structuredError?.message
-        ?? (loadError ? extractErrorMessage(loadError, 'We could not load learner evidence.') : null)
+        ?? (loadError ? resolveErrorMessage(loadError, 'We could not load learner evidence.') : null)
         ?? null;
     const learners = useMemo(
         () => filterMusicLearners(matrix?.learners ?? [], search),
@@ -224,7 +224,7 @@ export function PracticalLearnerEvidencePanel({
                 await onStateChange();
             }
         } catch (error) {
-            setActionError(extractErrorMessage(error as ApiError, 'We could not save Music practical evidence.'));
+            setActionError(resolveErrorMessage(error as ApiError, 'We could not save Music practical evidence.'));
         }
     };
 

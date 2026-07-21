@@ -8,6 +8,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { MembersTab, PluginsTab } from '@/app/core/components/settings/SettingsComponents';
 import { useAuth } from '@/app/context/AuthContext';
+import { getWorkspaceSettingsTabs } from '@/app/core/lib/settingsAuthority';
 import { renderSettingsExtensions } from '@/app/core/registry/settingsExtensions';
 
 type Tab = 'general' | 'members' | 'plugins';
@@ -28,20 +29,29 @@ function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { activeOrg, activeRole, capabilities, loading } = useAuth();
-  const canManageSettings = activeRole === 'ADMIN';
   const isFreelance = activeOrg?.org_type === 'PERSONAL'
     || capabilities.workspace_behavior === 'FREELANCE_TEACHER';
+  const authorizedTabs = getWorkspaceSettingsTabs(capabilities, { isFreelance });
+  const canManageSettings = authorizedTabs.length > 0;
 
   const tabParam = searchParams.get('tab') as Tab;
   const availableTabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    { key: 'general', label: 'General', icon: Settings },
-    ...(!isFreelance ? [{ key: 'members' as const, label: 'Members', icon: Users }] : []),
-    { key: 'plugins', label: 'Features & integrations', icon: Puzzle },
+    ...(authorizedTabs.includes('general')
+      ? [{ key: 'general' as const, label: 'General', icon: Settings }]
+      : []),
+    ...(authorizedTabs.includes('members')
+      ? [{ key: 'members' as const, label: 'Members', icon: Users }]
+      : []),
+    ...(authorizedTabs.includes('plugins')
+      ? [{ key: 'plugins' as const, label: 'Features & integrations', icon: Puzzle }]
+      : []),
   ];
   const validTabs = availableTabs.map((tab) => tab.key);
   const activeTab: Tab = validTabs.includes(tabParam)
     ? tabParam
-    : (searchParams.get('plugin') ? 'plugins' : 'general');
+    : (searchParams.get('plugin') && validTabs.includes('plugins')
+      ? 'plugins'
+      : availableTabs[0]?.key ?? 'general');
   const cameFromCurricula = searchParams.get('from') === 'curricula';
 
   if (loading) {
@@ -53,7 +63,7 @@ function SettingsContent() {
       <div className="mx-auto max-w-xl space-y-4">
         <Card className="space-y-4 p-6 text-center">
           <h1 className="text-xl font-semibold theme-text">You do not have permission to manage organization settings.</h1>
-          <p className="text-sm theme-muted">Organization settings are available to workspace administrators.</p>
+          <p className="text-sm theme-muted">Each settings area requires its corresponding workspace permission.</p>
           <div className="flex justify-center gap-2">
             <Link href={activeRole === 'INSTRUCTOR' ? '/profile' : '/dashboard'}>
               <Button type="button" variant="secondary">

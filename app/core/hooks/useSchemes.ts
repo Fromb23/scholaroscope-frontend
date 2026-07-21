@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { schemesAPI } from '@/app/core/api/schemes';
 import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type { ApiError } from '@/app/core/types/errors';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveErrorMessage } from '@/app/core/types/errors';
 import type {
   GenerateSchemePayload,
   SchemeEntry,
@@ -24,7 +24,7 @@ function unwrapSchemes(data: SchemeOfWork[] | { results?: SchemeOfWork[] }): Sch
 }
 
 function getSchemeListMessage(error: ApiError): string {
-  return extractErrorMessage(error, 'We could not load schemes of work. Try again.');
+  return resolveErrorMessage(error, 'We could not load schemes of work. Try again.');
 }
 
 function getSchemeDetailMessage(error: ApiError): string {
@@ -38,7 +38,7 @@ function getSchemeDetailMessage(error: ApiError): string {
     return 'This scheme of work could not be found.';
   }
 
-  return extractErrorMessage(error, 'We could not load this scheme of work. Try again.');
+  return resolveErrorMessage(error, 'We could not load this scheme of work. Try again.');
 }
 
 export function useSchemes(
@@ -80,7 +80,7 @@ export function useSchemes(
       await schemesAPI.triggerSchemeDocxDownload(id);
     } catch (err) {
       throw new Error(
-        extractErrorMessage(err as ApiError, 'Could not download the scheme of work.'),
+        resolveErrorMessage(err as ApiError, 'Could not download the scheme of work.'),
       );
     }
   };
@@ -115,7 +115,7 @@ export function useSchemeCompliance(params: SchemeComplianceQueryParams | null) 
       setError(null);
     } catch (err) {
       setData(null);
-      setError(extractErrorMessage(err as ApiError, 'We could not load scheme compliance.'));
+      setError(resolveErrorMessage(err as ApiError, 'We could not load scheme compliance.'));
     } finally {
       setLoading(false);
     }
@@ -147,7 +147,7 @@ export function useGenerateScheme() {
       setError(null);
       return await schemesAPI.generateScheme(payload);
     } catch (err) {
-      const message = extractErrorMessage(
+      const message = resolveErrorMessage(
         err as ApiError,
         'We could not generate the draft scheme.',
       );
@@ -187,7 +187,7 @@ export function useSchemeSubjectStrands(cohortSubjectId: number | null) {
     } catch (err) {
       setStrands([]);
       setError(
-        extractErrorMessage(
+        resolveErrorMessage(
           err as ApiError,
           'We could not load the strand range for this class subject.',
         ),
@@ -305,7 +305,7 @@ export function useSchemeDetail(schemeId: number | null) {
       await schemesAPI.triggerSchemeDocxDownload(schemeId);
     } catch (err) {
       throw new Error(
-        extractErrorMessage(err as ApiError, 'Could not download the scheme of work.'),
+        resolveErrorMessage(err as ApiError, 'Could not download the scheme of work.'),
       );
     }
   };

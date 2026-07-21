@@ -8,7 +8,7 @@ import {
     RequestReviewPayload, RequestType, RequestStats,
 } from '@/app/plugins/requests/types/requests';
 import { requestsAPI, type RequestListParams } from '@/app/plugins/requests/api/requests';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 import { buildContextualRequestKey, getCurrentApprovalRoute } from '@/app/plugins/requests/lib/approvalIntents';
 
 type PaginatedResponse<T> = { results?: T[] };
@@ -195,7 +195,7 @@ export const useMyRequests = () => {
             setRequests(data);
             setError(null);
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to load requests'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to load requests'));
         } finally {
             setLoading(false);
         }
@@ -232,7 +232,7 @@ export const useMyRequests = () => {
             setRequests(prev => [newRequest, ...prev]);
             return newRequest;
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to submit deletion request'));
+            throw new Error(resolveErrorMessage(err as ApiError, 'Failed to submit deletion request'));
         }
     };
 

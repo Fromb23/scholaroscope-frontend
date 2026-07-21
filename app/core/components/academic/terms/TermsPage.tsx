@@ -59,7 +59,7 @@ import type {
     TermCalendarEvent,
     TermCalendarEventType,
 } from '@/app/core/types/academic';
-import { extractErrorCode, extractErrorMessage } from '@/app/core/types/errors';
+import { extractErrorCode, resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -277,7 +277,7 @@ function TermCalendarEventModal({
             await onSave(form, editingEvent?.id);
             onClose();
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to save term calendar event.'));
+            setError(resolveErrorMessage(err as ApiError, 'Failed to save term calendar event.'));
         } finally {
             setSaving(false);
         }
@@ -520,7 +520,7 @@ export function TermsPage() {
         closeEventModal();
         setPageError(
             refreshedTerm?.configuration_locked_reason
-            ?? extractErrorMessage(err, fallback),
+            ?? resolveErrorMessage(err, fallback),
         );
         return true;
     };
@@ -552,7 +552,7 @@ export function TermsPage() {
             created = await createTerm(payload);
         } catch (err) {
             if (extractErrorCode(err as ApiError) === 'subscription_required_for_term') {
-                setPageError(err instanceof Error ? err.message : 'Subscription required for this term.');
+                setPageError(resolveErrorMessage(err, 'Subscription required for this term.'));
             }
             throw err;
         }
@@ -581,7 +581,7 @@ export function TermsPage() {
                 'Failed to delete term.',
             );
             if (!recovered) {
-                setPageError(extractErrorMessage(err as ApiError, 'Failed to delete term.'));
+                setPageError(resolveErrorMessage(err as ApiError, 'Failed to delete term.'));
             }
         }
     };
@@ -642,7 +642,7 @@ export function TermsPage() {
                 'Failed to delete term calendar event.',
             );
             if (!recovered) {
-                setPageError(extractErrorMessage(err as ApiError, 'Failed to delete term calendar event.'));
+                setPageError(resolveErrorMessage(err as ApiError, 'Failed to delete term calendar event.'));
             }
         }
     };
@@ -663,7 +663,7 @@ export function TermsPage() {
                 'Failed to complete term calendar setup.',
             );
             if (!recovered) {
-                setPageError(extractErrorMessage(err as ApiError, 'Failed to complete term calendar setup.'));
+                setPageError(resolveErrorMessage(err as ApiError, 'Failed to complete term calendar setup.'));
             }
         }
     };
@@ -690,7 +690,7 @@ export function TermsPage() {
                 'Failed to reopen term calendar setup.',
             );
             if (!recovered) {
-                setPageError(extractErrorMessage(err as ApiError, 'Failed to reopen term calendar setup.'));
+                setPageError(resolveErrorMessage(err as ApiError, 'Failed to reopen term calendar setup.'));
             }
         }
     };

@@ -5,7 +5,7 @@ import {
     type ApprovalRequest,
     submitApprovalIntent,
 } from '@/app/core/lib/approvalIntents';
-import { type ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { type ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 
 export function useApprovalIntent() {
     const [intent, setIntent] = useState<ApprovalIntentInput | null>(null);
@@ -34,7 +34,7 @@ export function useApprovalIntent() {
             setIntent(null);
             return request;
         } catch (err) {
-            const message = extractErrorMessage(err as ApiError, 'Failed to submit request.');
+            const message = resolveErrorMessage(err as ApiError, 'Failed to submit request.');
             setError(message);
             throw new Error(message);
         } finally {

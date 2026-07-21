@@ -67,7 +67,7 @@ describe('useReportExport', () => {
     });
   });
 
-  it('shows normalized server messages on export failure', async () => {
+  it('does not show arbitrary server validation content on export failure', async () => {
     const exportFn = vi.fn(async () => {
       throw {
         response: {
@@ -83,7 +83,7 @@ describe('useReportExport', () => {
 
     expect(toastMocks.showToast).toHaveBeenCalledWith({
       severity: 'error',
-      message: "Unsupported export format 'xlsx' for report type 'learner_term_progress'.",
+      message: 'Could not export learner progress report. Try again.',
     });
   });
 

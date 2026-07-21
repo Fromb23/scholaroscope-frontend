@@ -4,7 +4,7 @@ import { useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import type { TeachingAssignment } from '@/app/core/types/academic';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 import type {
     Session,
     SessionLifecycleReminder,
@@ -218,7 +218,7 @@ export function useSessionLifecycleReminders() {
             setRecentSessions(filtered);
             setError(null);
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Could not load lesson reminders.'));
+            setError(resolveErrorMessage(err as ApiError, 'Could not load lesson reminders.'));
             setRecentSessions([]);
         } finally {
             setRecentLoading(false);

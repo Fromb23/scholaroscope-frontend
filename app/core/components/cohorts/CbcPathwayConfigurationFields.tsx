@@ -1,5 +1,7 @@
 'use client';
 
+import { resolveErrorMessage } from '@/app/core/errors';
+
 import { useEffect, useMemo, useState } from 'react';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Select } from '@/app/components/ui/Select';
@@ -121,7 +123,7 @@ export function CbcPathwayConfigurationFields({
             })
             .catch((err: unknown) => {
                 if (!active) return;
-                setError(err instanceof Error ? err.message : 'Failed to load CBC pathways.');
+                setError(resolveErrorMessage(err, 'Failed to load CBC pathways.'));
             })
             .finally(() => {
                 if (active) {
@@ -158,7 +160,7 @@ export function CbcPathwayConfigurationFields({
             })
             .catch((err: unknown) => {
                 if (!active) return;
-                setError(err instanceof Error ? err.message : 'Failed to load CBC tracks.');
+                setError(resolveErrorMessage(err, 'Failed to load CBC tracks.'));
             })
             .finally(() => {
                 if (active) {
@@ -195,7 +197,7 @@ export function CbcPathwayConfigurationFields({
             })
             .catch((err: unknown) => {
                 if (!active) return;
-                setError(err instanceof Error ? err.message : 'Failed to load pathway subject catalogue.');
+                setError(resolveErrorMessage(err, 'Failed to load pathway subject catalogue.'));
             })
             .finally(() => {
                 if (active) {
@@ -232,7 +234,7 @@ export function CbcPathwayConfigurationFields({
             })
             .catch((err: unknown) => {
                 if (!active) return;
-                setError(err instanceof Error ? err.message : 'Failed to load CBC subject combinations.');
+                setError(resolveErrorMessage(err, 'Failed to load CBC subject combinations.'));
             })
             .finally(() => {
                 if (active) {

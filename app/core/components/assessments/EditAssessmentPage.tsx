@@ -25,8 +25,9 @@ import {
     AssessmentFormData,
     AssessmentParticipationMode,
     AssessmentStatus,
+    isLearnerAssessmentDetail,
 } from '@/app/core/types/assessment';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { resolveReportError } from '@/app/core/errors';
 import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import { useAuth } from '@/app/context/AuthContext';
@@ -65,9 +66,12 @@ export function EditAssessmentPage() {
     const saveErrorRef = useScrollIntoViewOnMessage(saveError);
 
     const { assessment, loading, error } = useAssessmentDetail(assessmentId);
+    const staffAssessment = assessment && !isLearnerAssessmentDetail(assessment)
+        ? assessment
+        : null;
     const lifecycle = useCurriculumLifecycleGuard({
-        curriculumId: assessment?.curriculum_id ?? null,
-        curriculumType: assessment?.curriculum_type ?? assessment?.cohort_curriculum_type ?? null,
+        curriculumId: staffAssessment?.curriculum_id ?? null,
+        curriculumType: staffAssessment?.curriculum_type ?? staffAssessment?.cohort_curriculum_type ?? null,
         routeIntent: 'edit',
         allowWhenNoCurriculum: true,
     });
@@ -111,37 +115,37 @@ export function EditAssessmentPage() {
     });
 
     useEffect(() => {
-        if (!assessment) return;
+        if (!staffAssessment) return;
 
-        setSelectedCohortId(assessment.cohort_id);
+        setSelectedCohortId(staffAssessment.cohort_id);
         setFormData({
-            cohort_subject: assessment.cohort_subject,
-            term: assessment.term,
-            name: assessment.name,
-            assessment_type: assessment.assessment_type,
-            evaluation_type: assessment.evaluation_type,
-            total_marks: assessment.total_marks,
-            rubric_scale: assessment.rubric_scale,
-            assessment_date: assessment.assessment_date,
-            description: assessment.description,
-            participation_mode: assessment.participation_mode,
+            cohort_subject: staffAssessment.cohort_subject,
+            term: staffAssessment.term,
+            name: staffAssessment.name,
+            assessment_type: staffAssessment.assessment_type,
+            evaluation_type: staffAssessment.evaluation_type,
+            total_marks: staffAssessment.total_marks,
+            rubric_scale: staffAssessment.rubric_scale,
+            assessment_date: staffAssessment.assessment_date,
+            description: staffAssessment.description,
+            participation_mode: staffAssessment.participation_mode,
         });
-    }, [assessment]);
+    }, [staffAssessment]);
 
-    const isFinalized = assessment?.status === AssessmentStatus.FINALIZED;
-    const canUpdateAssessment = assessment?.can_update ?? (
-        Boolean(assessment)
+    const isFinalized = staffAssessment?.status === AssessmentStatus.FINALIZED;
+    const canUpdateAssessment = staffAssessment?.can_update ?? (
+        Boolean(staffAssessment)
         && !isFinalized
         && (isAdminLike || (
             isInstructor
-            && allowedCohortSubjectIds.includes(assessment?.cohort_subject ?? 0)
+            && allowedCohortSubjectIds.includes(staffAssessment?.cohort_subject ?? 0)
         ))
     );
     const isCbcPolicyContext = (
-        assessment?.curriculum_type === 'CBE'
-        || assessment?.curriculum_type === 'CBC'
-        || assessment?.cohort_curriculum_type === 'CBE'
-        || assessment?.cohort_curriculum_type === 'CBC'
+        staffAssessment?.curriculum_type === 'CBE'
+        || staffAssessment?.curriculum_type === 'CBC'
+        || staffAssessment?.cohort_curriculum_type === 'CBE'
+        || staffAssessment?.cohort_curriculum_type === 'CBC'
     );
     const allowedAssessmentTypes = useMemo(
         () => policyGuidance?.allowed_assessment_types ?? [],
@@ -330,7 +334,7 @@ export function EditAssessmentPage() {
             router.push(`/assessments/${assessmentId}`);
         } catch (err) {
             setSaveError(
-                extractErrorMessage(err as ApiError, 'Failed to update assessment')
+                resolveErrorMessage(err as ApiError, 'Failed to update assessment')
             );
         } finally {
             setSaving(false);
@@ -349,7 +353,19 @@ export function EditAssessmentPage() {
         return <ErrorBanner message={error} onDismiss={() => undefined} />;
     }
 
-    if (!assessment) {
+    if (assessment && !staffAssessment) {
+        return (
+            <CurriculumLifecycleAccessState
+                title="Assessment editing is unavailable"
+                status={null}
+                message="This assessment editor is restricted to authorized staff."
+                backHref={`/assessments/${assessmentId}`}
+                backLabel="View Assessment"
+            />
+        );
+    }
+
+    if (!staffAssessment) {
         return <div className="p-10 text-gray-500">Assessment not found.</div>;
     }
 

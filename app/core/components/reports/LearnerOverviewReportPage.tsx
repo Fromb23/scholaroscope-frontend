@@ -41,6 +41,7 @@ import type {
   LearnerTermProgressReportPayload,
   LearnerTermProgressResultStatus,
 } from '@/app/core/types/reporting';
+import { sanitizeAppDestination } from '@/app/core/auth/navigation';
 
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'default';
 
@@ -306,7 +307,10 @@ export function LearnerOverviewReportPage() {
   const searchParams = useSearchParams();
   const learnerId = Number(params.learnerId);
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
-  const returnTo = searchParams.get('returnTo') || `/learners/${learnerId}`;
+  const returnTo = sanitizeAppDestination(
+    searchParams.get('returnTo'),
+    `/learners/${learnerId}`,
+  );
   const { student, loading: learnerLoading, error: learnerError } = useStudent(learnerId);
   const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
   const { terms, loading: termsLoading } = useTerms();

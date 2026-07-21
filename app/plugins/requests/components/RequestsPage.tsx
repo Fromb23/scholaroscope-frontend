@@ -1,4 +1,6 @@
 'use client';
+
+import { resolveErrorMessage } from '@/app/core/errors';
 // ============================================================================
 // app/(dashboard)/requests/page.tsx
 // Shared by ADMIN and INSTRUCTOR — same page, role-aware content
@@ -20,7 +22,7 @@ import {
 } from '@/app/plugins/requests/components/RequestShared';
 
 function getErrorMessage(err: unknown): string {
-    return err instanceof Error ? err.message : 'Request action failed';
+    return resolveErrorMessage(err, 'Request action failed');
 }
 
 export function RequestsPage() {

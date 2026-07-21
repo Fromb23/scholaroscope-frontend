@@ -5,7 +5,7 @@ import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 import type { RescheduleSessionPayload, SessionDetail } from '@/app/core/types/session';
 
 interface RescheduleLessonModalProps {
@@ -112,7 +112,7 @@ export function RescheduleLessonModal({
             onClose();
         } catch (error) {
             setSubmitError(
-                extractErrorMessage(error as ApiError, 'Could not reschedule this lesson.')
+                resolveErrorMessage(error as ApiError, 'Could not reschedule this lesson.')
             );
         } finally {
             setSubmitting(false);

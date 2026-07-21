@@ -26,6 +26,8 @@ export function isScopedInstructorAttendanceReport(path: string): boolean {
 const kernelRouteRules: RouteRule[] = [
     // ADMIN ONLY
     { pattern: /^\/dashboard\/admin/, allowedRoles: ['ADMIN'] },
+    // The page performs action-specific permission checks for each settings surface.
+    { pattern: /^\/admin\/settings(?:\/|$)/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/admin/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/curricula/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/years/, allowedRoles: ['ADMIN'] },

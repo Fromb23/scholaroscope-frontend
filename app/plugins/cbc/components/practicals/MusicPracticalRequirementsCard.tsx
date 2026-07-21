@@ -7,7 +7,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import type { MusicPracticalContract } from '@/app/core/types/session';
 import { PracticalLearnerEvidencePanel } from '@/app/plugins/cbc/components/practicals/PracticalLearnerEvidencePanel';
 import {
@@ -64,7 +64,7 @@ export function MusicPracticalRequirementsCard({
                 await onStateChange();
             }
         } catch (error) {
-            setActionError(extractErrorMessage(error as ApiError, 'We could not save the Music practical task.'));
+            setActionError(resolveErrorMessage(error as ApiError, 'We could not save the Music practical task.'));
         }
     };
 
@@ -75,7 +75,7 @@ export function MusicPracticalRequirementsCard({
     if (practicalQuery.error && !contract) {
         return (
             <ErrorBanner
-                message={extractErrorMessage(practicalQuery.error as ApiError, 'We could not load the Music practical workflow.')}
+                message={resolveErrorMessage(practicalQuery.error as ApiError, 'We could not load the Music practical workflow.')}
                 onDismiss={() => {}}
             />
         );
