@@ -13,7 +13,7 @@ import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 
 export type InstructorCurriculumKey = 'CBC' | 'CAMBRIDGE';
-export function useMyTeachingLoad(options?: { enabled?: boolean }) {
+export function useMyTeachingLoad(options?: { enabled?: boolean; includeProgress?: boolean }) {
     const { user, activeRole, activeOrg, capabilities } = useAuth();
     const isTeachingActor = isTeachingActorView({
         activeRole,
@@ -24,10 +24,12 @@ export function useMyTeachingLoad(options?: { enabled?: boolean }) {
     const enabled = options?.enabled ?? true;
 
     return useQuery<MyTeachingLoadResponse, Error>({
-        queryKey: ['my-teaching-load', activeOrg?.id ?? null, user?.id ?? null, activeRole],
+        queryKey: ['my-teaching-load', activeOrg?.id ?? null, user?.id ?? null, activeRole, options?.includeProgress ?? false],
         queryFn: async () => {
             try {
-                return await teachingLoadAPI.getMyTeachingLoad();
+                return await teachingLoadAPI.getMyTeachingLoad(
+                    options?.includeProgress ? { include_progress: true } : undefined
+                );
             } catch (err) {
                 throw new Error(
                     resolveErrorMessage(err as ApiError, 'Failed to fetch teaching load.')

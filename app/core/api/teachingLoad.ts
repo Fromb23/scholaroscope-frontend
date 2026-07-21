@@ -11,6 +11,7 @@ export interface MyTeachingLoadResponse {
     total_assigned: number;
     assignments: TeachingAssignment[];
     cohort_assignments: InstructorCohortAccessAssignment[];
+    progress_included?: boolean;
 }
 
 export interface MyTeachingHistoryResponse {
@@ -19,8 +20,8 @@ export interface MyTeachingHistoryResponse {
 }
 
 export const teachingLoadAPI = {
-    getMyTeachingLoad: async (): Promise<MyTeachingLoadResponse> => {
-        const response = await apiClient.get<MyTeachingLoadResponse>('/users/my_teaching_load/');
+    getMyTeachingLoad: async (params?: { include_progress?: boolean }): Promise<MyTeachingLoadResponse> => {
+        const response = await apiClient.get<MyTeachingLoadResponse>('/users/my_teaching_load/', { params });
         return response.data;
     },
     getMyTeachingHistory: async (): Promise<MyTeachingHistoryResponse> => {

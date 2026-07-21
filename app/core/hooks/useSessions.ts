@@ -27,6 +27,7 @@ import {
   AttendanceRecord,
   AttendanceRecordUpdatePayload,
   BulkAttendanceData,
+  BulkAttendanceResponse,
   ConfirmTaughtOutcomesPayload,
   SessionClosureState,
   SessionAssignmentDraftResponse,
@@ -108,7 +109,7 @@ export const useSessions = (
       setSessions(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch sessions'));
+      setError(resolveErrorMessage(err as ApiError, 'Unable to load sessions right now.'));
     } finally {
       setLoading(false);
     }
@@ -210,13 +211,17 @@ export const useSessionDetail = (
       const data = await sessionAPI.getClosureState(sessionId);
       setClosureState(data);
       return data;
-    } catch {
+    } catch (err) {
+      const message = resolveErrorMessage(err as ApiError, 'Failed to fetch lesson closure state');
+      setError(message);
       setClosureState(null);
-      return null;
+      throw new Error(message);
     }
   }, [includeOperationalData, sessionId]);
 
-  const fetchSession = useCallback(async () => {
+  const fetchSession = useCallback(async (
+    freshClosureState?: SessionClosureState | null,
+  ) => {
     if (!sessionId) { setLoading(false); return; }
 
     try {
@@ -228,7 +233,9 @@ export const useSessionDetail = (
           sessionAPI.getAttendanceRecords(sessionId, {
             page_size: 1000,
           }),
-          sessionAPI.getClosureState(sessionId).catch(() => null),
+          freshClosureState === undefined
+            ? sessionAPI.getClosureState(sessionId)
+            : Promise.resolve(freshClosureState),
         ])
         : [sessionData.attendance_records, null] as const;
 
@@ -275,14 +282,16 @@ export const useSessionDetail = (
 
   useEffect(() => { fetchSession(); }, [fetchSession]);
 
-  const markAttendance = async (data: BulkAttendanceData): Promise<void> => {
-    if (!sessionId) return;
-    await sessionAPI.markAttendance(sessionId, data);
-    await fetchSession();
+  const markAttendance = async (data: BulkAttendanceData): Promise<BulkAttendanceResponse | null> => {
+    if (!sessionId) return null;
+    const response = await sessionAPI.markAttendance(sessionId, data);
+    setClosureState(response.closure_state);
+    await fetchSession(response.closure_state);
     emitSessionDataChanged({
       reason: 'attendance_updated',
       sessionId,
     });
+    return response;
   };
 
   const reseedAttendance = async (): Promise<void> => {
@@ -366,7 +375,7 @@ export const useSessionDetail = (
     session, attendanceRecords, pagination,
     closureState,
     loading, error,
-    refetch: fetchSession,
+    refetch: () => fetchSession(),
     refetchClosureState: fetchClosureState,
     markAttendance,
     reseedAttendance,

@@ -13,7 +13,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Badge } from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import { Input } from '@/app/components/ui/Input';
-import { useAcademicYears } from '@/app/core/hooks/useAcademic';
+import { Select } from '@/app/components/ui/Select';
+import { useAcademicYears, useCurricula } from '@/app/core/hooks/useAcademic';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import {
     getAcademicSetupPageState,
@@ -32,10 +33,12 @@ export function AcademicYearsPage() {
     const blockedNotice = searchParams.get('blocked') === '1';
     const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const { academicYears, loading, createAcademicYear, updateAcademicYear, deleteAcademicYear, setCurrentYear } = useAcademicYears();
+    const { curricula } = useCurricula();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
     const [formData, setFormData] = useState<AcademicYearFormData>({
         name: '',
+        curriculum: '',
         start_date: '',
         end_date: '',
         is_current: false
@@ -51,11 +54,15 @@ export function AcademicYearsPage() {
         e.preventDefault();
         setSaving(true);
         try {
+            const payload = {
+                ...formData,
+                curriculum: Number(formData.curriculum),
+            };
             let savedYear: AcademicYear;
             if (editingYear) {
-                savedYear = await updateAcademicYear(editingYear.id, formData);
+                savedYear = await updateAcademicYear(editingYear.id, payload);
             } else {
-                savedYear = await createAcademicYear(formData);
+                savedYear = await createAcademicYear(payload);
             }
             setSetupCurrentYearNotice(null);
             if (setupMode && savedYear.is_current) {
@@ -84,6 +91,7 @@ export function AcademicYearsPage() {
         setEditingYear(year);
         setFormData({
             name: year.name,
+            curriculum: year.curriculum ?? '',
             start_date: year.start_date,
             end_date: year.end_date,
             is_current: year.is_current
@@ -121,6 +129,7 @@ export function AcademicYearsPage() {
     const resetForm = () => {
         setFormData({
             name: '',
+            curriculum: '',
             start_date: '',
             end_date: '',
             is_current: false
@@ -209,6 +218,7 @@ export function AcademicYearsPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Academic Year</TableHead>
+                                <TableHead>Curriculum</TableHead>
                                 <TableHead>Period</TableHead>
                                 <TableHead>Terms</TableHead>
                                 <TableHead>Cohorts</TableHead>
@@ -225,6 +235,11 @@ export function AcademicYearsPage() {
                                                 <Badge variant="green" size="sm" className="mt-1">Current</Badge>
                                             )}
                                         </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-sm text-gray-600">
+                                            {year.curriculum_name ?? 'Unassigned'}
+                                        </span>
                                     </TableCell>
                                     <TableCell>
                                         <div className="text-sm text-gray-600">
@@ -288,6 +303,24 @@ export function AcademicYearsPage() {
                         placeholder="e.g., 2024, 2024-2025"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                    />
+
+                    <Select
+                        label="Curriculum"
+                        value={String(formData.curriculum)}
+                        onChange={(e) => setFormData({
+                            ...formData,
+                            curriculum: e.target.value ? Number(e.target.value) : '',
+                        })}
+                        disabled={Boolean(editingYear)}
+                        options={[
+                            { value: '', label: 'Select curriculum' },
+                            ...curricula.map((curriculum) => ({
+                                value: String(curriculum.id),
+                                label: curriculum.name,
+                            })),
+                        ]}
                         required
                     />
 

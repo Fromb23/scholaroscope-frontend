@@ -91,7 +91,7 @@
     "removeBy": "2026-10-31"
   },
   "core/components/assignments/CohortAssignmentsPage.tsx::raw-admin-role-check": {
-    "count": 2,
+    "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
     "owner": "frontend-migration",
     "priority": "P1",
@@ -166,27 +166,6 @@
     "owner": "frontend-migration",
     "priority": "P0",
     "removeBy": "2026-08-31"
-  },
-  "core/components/superadmin/GlobalUserComponents.tsx::raw-admin-role-check": {
-    "count": 2,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P2",
-    "removeBy": "2026-12-31"
-  },
-  "core/components/superadmin/OrgDetailComponents.tsx::raw-admin-role-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P2",
-    "removeBy": "2026-12-31"
-  },
-  "core/components/superadmin/UserDetailPage.tsx::raw-admin-role-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P2",
-    "removeBy": "2026-12-31"
   },
   "core/guards/CurriculumAccessGuard.tsx::raw-admin-role-check": {
     "count": 1,

@@ -26,6 +26,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { CardSkeleton, Skeleton, SkeletonStatCard, TableSkeleton } from '@/app/components/ui/loading';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { AssessmentCompletionSummary } from '@/app/core/components/reports/AssessmentCompletionSummary';
@@ -77,6 +78,32 @@ const TABS: Array<{ id: DetailTab; label: string; icon: ElementType }> = [
   { id: 'teaching-activity', label: 'Teaching Progress', icon: Activity },
 ];
 const EMPTY_LEARNERS: InstructorLearnerReportRow[] = [];
+
+function CohortSubjectDetailSkeleton() {
+  return (
+    <ReportPageShell>
+      <div className="space-y-6" aria-label="Loading instructor class subject report">
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-32" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-72 max-w-full" />
+              <Skeleton className="h-4 w-96 max-w-full" />
+            </div>
+            <Skeleton className="h-8 w-8" rounded="full" />
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => <SkeletonStatCard key={index} />)}
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => <CardSkeleton key={index} lines={3} />)}
+        </div>
+        <TableSkeleton rows={6} columns={5} />
+      </div>
+    </ReportPageShell>
+  );
+}
 
 function isDetailTab(value: string | null): value is DetailTab {
   return value === 'learners' || value === 'performance' || value === 'teaching-activity';
@@ -263,7 +290,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
   }
 
   if (cohortSubjectsLoading && !cohortSubjectMeta && !reportMeta && activeQuery.loading) {
-    return <LoadingSpinner message="Loading instructor class subject report..." />;
+    return <CohortSubjectDetailSkeleton />;
   }
 
   if (cohortSubjectsError && !cohortSubjectMeta && !reportMeta && !activeQuery.loading) {

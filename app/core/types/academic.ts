@@ -84,14 +84,26 @@ export type AcademicLifecycleMode =
 
 export interface AcademicLifecycleContext {
   mode: AcademicLifecycleMode;
-  today: string;
+  current_date?: string;
+  today?: string;
   organization: number | null;
+  curriculum?: {
+    id: number;
+    name: string;
+    curriculum_type?: string;
+  } | null;
+  curriculum_id?: number | null;
+  curriculum_name?: string | null;
   academic_year: AcademicYear | null;
-  current_term: Term | null;
-  active_term: Term | null;
-  upcoming_term: Term | null;
-  previous_term: Term | null;
+  term?: Term | null;
+  current_term?: Term | null;
+  active_term?: Term | null;
+  upcoming_term?: Term | null;
+  previous_term?: Term | null;
   message: string;
+  allows_current_work?: boolean;
+  allows_new_teaching?: boolean;
+  allows_cleanup?: boolean;
   actions?: Array<{
     key: string;
     label: string;
@@ -103,6 +115,8 @@ export interface AcademicLifecycleContext {
 export interface AcademicYear {
   id: number;
   name: string;
+  curriculum?: number | null;
+  curriculum_name?: string | null;
   start_date: string;
   end_date: string;
   is_current: boolean;
@@ -690,6 +704,7 @@ export interface CohortDetail extends Cohort {
 // Form Data Types
 export interface AcademicYearFormData {
   name: string;
+  curriculum: number | '';
   start_date: string;
   end_date: string;
   is_current: boolean;
@@ -738,6 +753,16 @@ export interface CohortSubjectFormData {
 export interface TermQueryParams {
   academic_year?: number
   organization?: number
+  curriculum?: number
+  cohort?: number
+  cohort_subject?: number
+}
+
+export interface AcademicTermContextSummary {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
 }
 
 export interface InstructorCohortAccessAssignment {
@@ -754,6 +779,7 @@ export interface InstructorCohortAccessAssignment {
   students_count?: number | null;
   subjects_count?: number | null;
   is_current_year: boolean;
+  current_term?: AcademicTermContextSummary | null;
 }
 
 export interface TeachingAssignment {
@@ -778,6 +804,7 @@ export interface TeachingAssignment {
   academic_year_id?: number | null;
   academic_year_name?: string | null;
   is_current_year: boolean;
+  current_term?: AcademicTermContextSummary | null;
   curriculum_type: string;
   covered: number;
   total: number;

@@ -58,7 +58,12 @@ export const academicSetupAPI = {
 };
 
 export const academicLifecycleAPI = {
-  getCurrentContext: async (params?: { organization?: number }): Promise<AcademicLifecycleContext> => {
+  getCurrentContext: async (params?: {
+    organization?: number;
+    curriculum?: number;
+    cohort?: number;
+    cohort_subject?: number;
+  }): Promise<AcademicLifecycleContext> => {
     const response = await apiClient.get<AcademicLifecycleContext>('/academic/current-context/', { params });
     return response.data;
   },
@@ -146,7 +151,7 @@ export const academicYearAPI = {
     return response.data;
   },
 
-  getCurrent: async (params?: { organization?: number }) => {
+  getCurrent: async (params?: { organization?: number; curriculum?: number }) => {
     const response = await apiClient.get<AcademicYear>('/academic-years/current/', { params });
     return response.data;
   },
@@ -183,7 +188,7 @@ export const termAPI = {
     return response.data;
   },
 
-  getCurrent: async (params?: { organization?: number }) => {
+  getCurrent: async (params?: { organization?: number; curriculum?: number; cohort?: number; cohort_subject?: number }) => {
     const response = await apiClient.get<Term>('/terms/current/', { params });
     return response.data;
   },

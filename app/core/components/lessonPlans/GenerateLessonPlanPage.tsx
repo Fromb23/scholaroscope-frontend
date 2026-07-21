@@ -44,7 +44,7 @@ import {
     validateLessonPlanGenerationForm,
     type LessonPlanGenerationField,
 } from '@/app/core/components/lessonPlans/lessonPlanFormValidation';
-import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
+import { useAcademicLifecycleContext, useCurricula } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
@@ -67,7 +67,6 @@ export function GenerateLessonPlanPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { curricula } = useCurricula();
-    const { terms } = useTerms();
     const { assignments, isLoading: assignmentsLoading, error: assignmentsError } = useInstructorCohortAccess();
     const {
         createLessonPlan,
@@ -83,7 +82,6 @@ export function GenerateLessonPlanPage() {
     } = useGenerateLessonPlan();
 
     const [cohortSubjectId, setCohortSubjectId] = useState('');
-    const [termId, setTermId] = useState('');
     const [title, setTitle] = useState('');
     const [plannedOutcomes, setPlannedOutcomes] = useState<PlannedOutcome[]>([]);
     const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([]);
@@ -98,14 +96,22 @@ export function GenerateLessonPlanPage() {
         termId: number;
     } | null>(null);
     const requestedCohortSubjectId = searchParams.get('cohort_subject');
-    const requestedTermId = searchParams.get('term');
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
         return parseAppDestination(value);
     }, [searchParams]);
 
     const selectedCohortSubjectId = cohortSubjectId ? Number(cohortSubjectId) : null;
-    const selectedTermId = termId ? Number(termId) : null;
+    const {
+        data: academicContext,
+        isLoading: academicContextLoading,
+        error: academicContextError,
+    } = useAcademicLifecycleContext({
+        cohortSubjectId: selectedCohortSubjectId,
+        enabled: Boolean(selectedCohortSubjectId),
+    });
+    const selectedContextTerm = academicContext?.term ?? academicContext?.active_term ?? academicContext?.current_term ?? null;
+    const selectedTermId = selectedContextTerm?.id ?? null;
     const {
         curriculumContext,
         loading: curriculumLoading,
@@ -160,20 +166,10 @@ export function GenerateLessonPlanPage() {
         ) {
             setCohortSubjectId(requestedCohortSubjectId);
         }
-        if (
-            requestedTermId
-            && terms.some((term) => String(term.id) === requestedTermId)
-            && termId !== requestedTermId
-        ) {
-            setTermId(requestedTermId);
-        }
     }, [
         availableAssignmentOptions,
         cohortSubjectId,
         requestedCohortSubjectId,
-        requestedTermId,
-        termId,
-        terms,
     ]);
 
     const submitting = creatingLessonPlan || generatingLessonPlan;
@@ -197,8 +193,8 @@ export function GenerateLessonPlanPage() {
         && schemeRequirement?.applies
         && !schemeRequirement.scheme_exists
     );
-    const schemeGenerationHref = selectedCohortSubjectId && selectedTermId
-        ? `/schemes/new?cohort_subject=${selectedCohortSubjectId}&term=${selectedTermId}`
+    const schemeGenerationHref = selectedCohortSubjectId
+        ? `/schemes/new?cohort_subject=${selectedCohortSubjectId}`
         : '/schemes/new';
     const activeErrorMessage = submittingError || createError || generateError || null;
     const errorContainerRef = useScrollIntoViewOnMessage(
@@ -224,10 +220,10 @@ export function GenerateLessonPlanPage() {
         {
             step: 'Step 1',
             title: 'Choose the lesson context',
-            detail: selectedCohortSubjectId && termId
+            detail: selectedCohortSubjectId && selectedTermId
                 ? 'Ready'
                 : 'Choose the lesson context first.',
-            complete: Boolean(selectedCohortSubjectId && termId),
+            complete: Boolean(selectedCohortSubjectId && selectedTermId),
         },
         {
             step: 'Step 2',
@@ -275,7 +271,7 @@ export function GenerateLessonPlanPage() {
         setShowRetryWithoutAi(false);
         clearCreateError();
         clearGenerateError();
-    }, [clearCreateError, clearGenerateError, cohortSubjectId, termId]);
+    }, [clearCreateError, clearGenerateError, cohortSubjectId, selectedTermId]);
 
     useEffect(() => {
         if (aiGenerationAvailability === null) {
@@ -287,6 +283,8 @@ export function GenerateLessonPlanPage() {
 
     const submitButtonDisabled = submitting
         || curriculumLoading
+        || academicContextLoading
+        || Boolean(selectedCohortSubjectId && (!selectedTermId || academicContext?.allows_new_teaching === false))
         || schemeFirstBlocked
         || (selectedCurriculum ? !canCreateCurriculumWork(selectedCurriculum) : false);
 
@@ -357,8 +355,15 @@ export function GenerateLessonPlanPage() {
 
         const trimmedTitle = title.trim();
 
-        if (!selectedCohortSubjectId || !termId) {
-            setSubmittingError('Choose the class subject and term before continuing.');
+        if (!selectedCohortSubjectId) {
+            setSubmittingError('Choose the class subject before continuing.');
+            return;
+        }
+
+        if (!selectedTermId || academicContext?.allows_new_teaching === false) {
+            setSubmittingError(
+                academicContext?.message || 'There is no active teaching term for this class subject.'
+            );
             return;
         }
 
@@ -388,7 +393,7 @@ export function GenerateLessonPlanPage() {
         try {
             const lessonPlan = await upsertDraftLessonPlan({
                 cohort_subject: selectedCohortSubjectId,
-                term: Number(termId),
+                term: selectedTermId,
                 title: trimmedTitle,
                 planned_outcomes: plannedOutcomes,
                 reference_pages: validatedReferences.payload,
@@ -605,7 +610,7 @@ export function GenerateLessonPlanPage() {
                                 Lesson context
                             </div>
                             <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted">
-                                {selectedCohortSubjectId && termId ? 'Ready' : 'Required'}
+                                {selectedCohortSubjectId && selectedTermId ? 'Ready' : 'Required'}
                             </span>
                         </div>
 
@@ -620,18 +625,27 @@ export function GenerateLessonPlanPage() {
                                 ]}
                             />
 
-                            <Select
-                                label="Term"
-                                value={termId}
-                                onChange={(event) => setTermId(event.target.value)}
-                                options={[
-                                    { value: '', label: 'Choose term' },
-                                    ...terms.map((term) => ({
-                                        value: String(term.id),
-                                        label: term.name,
-                                    })),
-                                ]}
-                            />
+                            <div className="rounded-lg border theme-border theme-surface-elevated px-3 py-2">
+                                <p className="text-xs font-medium theme-subtle">Current teaching term</p>
+                                {academicContextLoading ? (
+                                    <p className="mt-1 text-sm theme-muted">Resolving from selected class subject…</p>
+                                ) : selectedContextTerm ? (
+                                    <div className="mt-1 space-y-1">
+                                        <p className="text-sm font-semibold theme-text">{selectedContextTerm.name}</p>
+                                        <p className="text-xs theme-muted">
+                                            {academicContext?.curriculum_name ?? academicContext?.curriculum?.name ?? 'Curriculum'}
+                                            {' • '}
+                                            {academicContext?.academic_year?.name ?? 'Current academic year'}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="mt-1 text-sm text-amber-700">
+                                        {academicContextError instanceof Error
+                                            ? academicContextError.message
+                                            : academicContext?.message ?? 'Choose a class subject to resolve the current term.'}
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
                         <Input

@@ -18,6 +18,7 @@ import {
   AttendanceRecordUpdatePayload,
   AttendanceSummary,
   BulkAttendanceData,
+  BulkAttendanceResponse,
   ConfirmTaughtOutcomesPayload,
   RecordLessonReflectionPayload,
   RecordLessonReflectionResponse,
@@ -202,8 +203,9 @@ export const sessionAPI = {
     return res.data;
   },
 
-  markAttendance: async (id: number, data: BulkAttendanceData): Promise<void> => {
-    await apiClient.post(`/sessions/${id}/mark_attendance/`, data);
+  markAttendance: async (id: number, data: BulkAttendanceData): Promise<BulkAttendanceResponse> => {
+    const res = await apiClient.post<BulkAttendanceResponse>(`/sessions/${id}/mark_attendance/`, data);
+    return res.data;
   },
 
   reseedAttendance: async (id: number): Promise<void> => {

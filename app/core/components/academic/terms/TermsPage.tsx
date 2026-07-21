@@ -53,6 +53,7 @@ import {
     canReopenTermCalendar,
     isTermDetailLocked,
     resolveSelectedTermId,
+    termHasHistoricalLifecycle,
 } from '@/app/core/components/academic/terms/termSelection';
 import type {
     Term,
@@ -207,11 +208,11 @@ function getTermLifecycleBadge(term: Term) {
 }
 
 function termCanEdit(term: Term): boolean {
-    return term.configuration_actions.can_edit_term;
+    return !termHasHistoricalLifecycle(term) && term.configuration_actions.can_edit_term;
 }
 
 function termCanDelete(term: Term): boolean {
-    return term.configuration_actions.can_delete_term;
+    return !termHasHistoricalLifecycle(term) && term.configuration_actions.can_delete_term;
 }
 
 function termLockedReason(term: Term): string | null {
