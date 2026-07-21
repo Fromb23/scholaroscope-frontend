@@ -42,6 +42,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import type { Session } from '@/app/core/types/session';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { parseAppDestination } from '@/app/core/auth/navigation';
+import { shouldShowInstructorIdentity } from '@/app/core/components/sessions/sessionDetailVisibility';
 
 const SESSION_TYPES = [
     { value: '', label: 'All Types' },
@@ -219,20 +220,22 @@ function SessionInstructor({
 
 function CohortSessionsTable({
     sessions,
+    showInstructorIdentity,
 }: {
     sessions: Session[];
+    showInstructorIdentity: boolean;
 }) {
     const router = useRouter();
 
     return (
         <div className="overflow-x-auto">
-            <div className="min-w-[860px]">
+            <div className={showInstructorIdentity ? 'min-w-[860px]' : 'min-w-[760px]'}>
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Date & Time</TableHead>
                             <TableHead>Subject</TableHead>
-                            <TableHead>Instructor</TableHead>
+                            {showInstructorIdentity ? <TableHead>Instructor</TableHead> : null}
                             <TableHead>Type</TableHead>
                             <TableHead>Venue</TableHead>
                             <TableHead>Attendance</TableHead>
@@ -270,13 +273,15 @@ function CohortSessionsTable({
                                             {session.subject_code ? ` · ${session.subject_code}` : ''}
                                         </div>
                                     </TableCell>
-                                    <TableCell>
-                                        <SessionInstructor
-                                            session={session}
-                                            className="text-sm theme-text"
-                                            linkClassName="text-sm theme-link hover:underline"
-                                        />
-                                    </TableCell>
+                                    {showInstructorIdentity ? (
+                                        <TableCell>
+                                            <SessionInstructor
+                                                session={session}
+                                                className="text-sm theme-text"
+                                                linkClassName="text-sm theme-link hover:underline"
+                                            />
+                                        </TableCell>
+                                    ) : null}
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <Badge variant="blue">{session.session_type_display}</Badge>
@@ -325,8 +330,10 @@ function CohortSessionsTable({
 
 function CohortSessionsCards({
     sessions,
+    showInstructorIdentity,
 }: {
     sessions: Session[];
+    showInstructorIdentity: boolean;
 }) {
     return (
         <div className="space-y-3 md:hidden">
@@ -360,14 +367,16 @@ function CohortSessionsCards({
                                     <Clock className="h-4 w-4 theme-subtle shrink-0" />
                                     <span>{getSessionTimeLabel(session)}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 theme-subtle shrink-0" />
-                                    <SessionInstructor
-                                        session={session}
-                                        className="theme-text"
-                                        linkClassName="theme-link hover:underline"
-                                    />
-                                </div>
+                                {showInstructorIdentity ? (
+                                    <div className="flex items-center gap-2">
+                                        <Users className="h-4 w-4 theme-subtle shrink-0" />
+                                        <SessionInstructor
+                                            session={session}
+                                            className="theme-text"
+                                            linkClassName="theme-link hover:underline"
+                                        />
+                                    </div>
+                                ) : null}
                                 <div className="flex items-center gap-2">
                                     <MapPin className="h-4 w-4 theme-subtle shrink-0" />
                                     <span>{session.venue || '-'}</span>
@@ -443,6 +452,13 @@ function SessionWorkspaceView() {
     const midtermCleanupView = cleanupFilterActive && source === 'midterm';
     const safeReturnTo = parseAppDestination(returnTo);
     const effectiveMyTeachingMode = canUseMyTeaching && (isInstructor || isSelfManagedTeaching || viewMode === 'my_teaching');
+    const showInstructorIdentity = shouldShowInstructorIdentity({
+        activeRole,
+        viewMode,
+        groupingMode,
+        effectiveMyTeachingMode,
+        showInstitutionSupervision,
+    });
     const shouldFilterToMyTeaching = showInstitutionSupervision && effectiveMyTeachingMode;
     const currentUserId = user?.id;
     const currentUserFullName = user?.full_name;
@@ -1006,17 +1022,20 @@ function SessionWorkspaceView() {
                 {!isCollapsed ? (
                     <>
                         <div className="p-4 md:hidden">
-                            <CohortSessionsCards sessions={group.items} />
+                            <CohortSessionsCards
+                                sessions={group.items}
+                                showInstructorIdentity={showInstructorIdentity}
+                            />
                         </div>
                         <div className="hidden overflow-x-auto md:block theme-surface">
-                            <div className="min-w-[640px]">
+                            <div className={showInstructorIdentity ? 'min-w-[640px]' : 'min-w-[560px]'}>
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Date & Time</TableHead>
                                             <TableHead>Subject</TableHead>
                                             <TableHead>Cohorts</TableHead>
-                                            <TableHead>Instructor</TableHead>
+                                            {showInstructorIdentity ? <TableHead>Instructor</TableHead> : null}
                                             <TableHead>Type</TableHead>
                                             <TableHead>Venue</TableHead>
                                             <TableHead>Attendance</TableHead>
@@ -1063,13 +1082,15 @@ function SessionWorkspaceView() {
                                                                 : session.cohort_name}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell>
-                                                        <SessionInstructor
-                                                            session={session}
-                                                            className="text-sm theme-text"
-                                                            linkClassName="text-sm theme-link hover:underline"
-                                                        />
-                                                    </TableCell>
+                                                    {showInstructorIdentity ? (
+                                                        <TableCell>
+                                                            <SessionInstructor
+                                                                session={session}
+                                                                className="text-sm theme-text"
+                                                                linkClassName="text-sm theme-link hover:underline"
+                                                            />
+                                                        </TableCell>
+                                                    ) : null}
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <Badge variant="blue">{session.session_type_display}</Badge>
@@ -1169,11 +1190,11 @@ function SessionWorkspaceView() {
                                     <p className="mt-1 text-sm theme-muted">{section.description}</p>
                                 </div>
                                 <div className="md:hidden">
-                                    <CohortSessionsCards sessions={section.items} />
+                                    <CohortSessionsCards sessions={section.items} showInstructorIdentity={true} />
                                 </div>
                                 <div className="hidden md:block">
                                     <Card className="p-0">
-                                        <CohortSessionsTable sessions={section.items} />
+                                        <CohortSessionsTable sessions={section.items} showInstructorIdentity={true} />
                                     </Card>
                                 </div>
                             </div>
@@ -1651,6 +1672,11 @@ function CohortSessionsView({
         isSuperadmin: false,
         capabilities,
     });
+    const showInstructorIdentity = shouldShowInstructorIdentity({
+        activeRole,
+        effectiveMyTeachingMode: isInstructor,
+        showInstitutionSupervision: false,
+    });
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const { sessions, loading, error, refetch } = useCohortSessions(cohortId);
@@ -1808,10 +1834,16 @@ function CohortSessionsView({
           </Card>
         ) : (
           <div className="space-y-4">
-            <CohortSessionsCards sessions={filteredSessions} />
+            <CohortSessionsCards
+              sessions={filteredSessions}
+              showInstructorIdentity={showInstructorIdentity}
+            />
             <div className="hidden md:block">
               <Card className="p-0">
-                <CohortSessionsTable sessions={filteredSessions} />
+                <CohortSessionsTable
+                  sessions={filteredSessions}
+                  showInstructorIdentity={showInstructorIdentity}
+                />
               </Card>
             </div>
           </div>

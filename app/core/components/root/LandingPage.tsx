@@ -7,14 +7,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { PublicHeader } from '@/app/core/components/public/PublicHeader';
 import { HeroSection } from '@/app/core/components/public/HeroSection';
-import { ProblemSection } from '@/app/core/components/public/ProblemSection';
-import { HowItWorksSection } from '@/app/core/components/public/HowItWorksSection';
-import { EvidenceDashboardSection } from '@/app/core/components/public/EvidenceDashboardSection';
-import { ReportAudienceSection } from '@/app/core/components/public/ReportAudienceSection';
-import { AudienceSection } from '@/app/core/components/public/AudienceSection';
-import { EvidenceIntegritySection } from '@/app/core/components/public/EvidenceIntegritySection';
-import { CommercialSection } from '@/app/core/components/public/CommercialSection';
-import { FooterCtaSection } from '@/app/core/components/public/FooterCtaSection';
+import { FaqSection } from '@/app/core/components/public/FaqSection';
 import { PublicFooter } from '@/app/core/components/public/PublicFooter';
 
 export function LandingPage() {
@@ -37,14 +30,7 @@ export function LandingPage() {
       <PublicHeader />
       <main>
         <HeroSection />
-        <ProblemSection />
-        <HowItWorksSection />
-        <EvidenceDashboardSection />
-        <ReportAudienceSection />
-        <AudienceSection />
-        <EvidenceIntegritySection />
-        <CommercialSection />
-        <FooterCtaSection />
+        <FaqSection />
       </main>
       <PublicFooter />
     </div>
