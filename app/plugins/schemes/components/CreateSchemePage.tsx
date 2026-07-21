@@ -21,7 +21,7 @@ import { Select } from '@/app/components/ui/Select';
 import { cohortSubjectAPI } from '@/app/core/api/academic';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { instructorsAPI } from '@/app/core/api/instructors';
-import { useTermCalendarEvents, useTerms, useCurricula, useSubjects } from '@/app/core/hooks/useAcademic';
+import { useAcademicLifecycleContext, useTermCalendarEvents, useCurricula, useSubjects } from '@/app/core/hooks/useAcademic';
 import { useGenerateScheme, useSchemeSubjectStrands } from '@/app/core/hooks/useSchemes';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { isSelfManagedTeachingAdmin } from '@/app/core/lib/workspaces';
@@ -145,7 +145,6 @@ export function CreateSchemePage() {
   const isTeachingActor = isInstructor || selfManagedTeachingAdmin;
   const isInstitutionalAdmin = activeRole === 'ADMIN' && !selfManagedTeachingAdmin;
   const { curricula, loading: curriculaLoading } = useCurricula();
-  const { terms, loading: termsLoading } = useTerms();
   const { subjects, loading: subjectsLoading } = useSubjects();
   const instructorAccess = useInstructorCohortAccess();
   const { generateScheme, submitting, error: generateError, clearError } = useGenerateScheme();
@@ -162,7 +161,6 @@ export function CreateSchemePage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedLevelLabel, setSelectedLevelLabel] = useState('');
   const [selectedCohortSubjectId, setSelectedCohortSubjectId] = useState('');
-  const [selectedTermId, setSelectedTermId] = useState('');
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
@@ -249,16 +247,11 @@ export function CreateSchemePage() {
 
   useEffect(() => {
     const requestedCohortSubjectId = searchParams.get('cohort_subject');
-    const requestedTermId = searchParams.get('term');
 
     if (requestedCohortSubjectId && !selectedCohortSubjectId) {
       setSelectedCohortSubjectId(requestedCohortSubjectId);
     }
-
-    if (requestedTermId && !selectedTermId) {
-      setSelectedTermId(requestedTermId);
-    }
-  }, [searchParams, selectedCohortSubjectId, selectedTermId]);
+  }, [searchParams, selectedCohortSubjectId]);
 
   const activeCurricula = useMemo(
     () => curricula.filter((curriculum) => curriculum.is_active),
@@ -411,6 +404,14 @@ export function CreateSchemePage() {
   const resolvedSelectedCohortSubjectId =
     selectedContext?.cohortSubjectId ??
     (selectedCohortSubjectId ? Number(selectedCohortSubjectId) : null);
+  const {
+    data: academicContext,
+    isLoading: academicContextLoading,
+    error: academicContextError,
+  } = useAcademicLifecycleContext({
+    cohortSubjectId: resolvedSelectedCohortSubjectId,
+    enabled: Boolean(resolvedSelectedCohortSubjectId),
+  });
 
   const resolvedSelectedSubjectId =
     selectedContext?.subjectId ?? (selectedSubjectId ? Number(selectedSubjectId) : null);
@@ -427,9 +428,8 @@ export function CreateSchemePage() {
     selectedSubject?.name ?? selectedContext?.subjectName ?? 'Not selected';
 
   const selectedTerm = useMemo<Term | null>(
-    () =>
-      selectedTermId ? (terms.find((term) => String(term.id) === selectedTermId) ?? null) : null,
-    [selectedTermId, terms],
+    () => academicContext?.term ?? academicContext?.active_term ?? academicContext?.current_term ?? null,
+    [academicContext],
   );
 
   const {
@@ -629,7 +629,7 @@ export function CreateSchemePage() {
         selectedSubjectId,
         selectedLevelLabel,
         selectedCohortSubjectId,
-        selectedTermId,
+        selectedTermId: selectedTerm?.id ?? null,
         selectedTeacherId,
         title,
         lessonsPerWeek,
@@ -650,7 +650,7 @@ export function CreateSchemePage() {
       selectedLevelLabel,
       selectedSubjectId,
       selectedTeacherId,
-      selectedTermId,
+      selectedTerm?.id,
       startStrandId,
       startSubStrandId,
       title,
@@ -693,14 +693,14 @@ export function CreateSchemePage() {
         return 'Choose the class / subject.';
       }
       if (!selectedTerm) {
-        return 'Choose the teaching term.';
+        return academicContext?.message || 'There is no active teaching term for this class subject.';
       }
       return null;
     }
 
     if (step === 2) {
       if (!selectedTerm) {
-        return 'Choose the teaching term first.';
+        return academicContext?.message || 'There is no active teaching term for this class subject.';
       }
       if (selectedTerm.configuration_state !== 'SETUP_LOCKED') {
         return termCalendarSetupMessage;
@@ -739,7 +739,7 @@ export function CreateSchemePage() {
 
   const loading =
     curriculaLoading ||
-    termsLoading ||
+    academicContextLoading ||
     subjectsLoading ||
     adminContextLoading ||
     adminTeachersLoading ||
@@ -784,7 +784,7 @@ export function CreateSchemePage() {
       clearError();
 
       const payload: GenerateSchemePayload = {
-        term: Number(selectedTermId),
+        term: selectedTerm.id,
         cohort_subject: resolvedSelectedCohortSubjectId,
         title: title.trim(),
         lessons_per_week: lessonsPerWeekValue ?? 1,
@@ -992,18 +992,27 @@ export function CreateSchemePage() {
               ]}
             />
 
-            <Select
-              label="Teaching Term"
-              value={selectedTermId}
-              onChange={(event) => setSelectedTermId(event.target.value)}
-              options={[
-                { value: '', label: 'Select term' },
-                ...terms.map((term) => ({
-                  value: String(term.id),
-                  label: `${term.name} • ${formatDateRange(term.start_date, term.end_date)} • ${calculateTermWeekCount(term.start_date, term.end_date)} weeks`,
-                })),
-              ]}
-            />
+            <div className="rounded-lg border theme-border theme-surface-elevated px-3 py-2">
+              <p className="text-xs font-medium theme-subtle">Current teaching term</p>
+              {academicContextLoading ? (
+                <p className="mt-1 text-sm theme-muted">Resolving from selected class subject…</p>
+              ) : selectedTerm ? (
+                <div className="mt-1 space-y-1">
+                  <p className="text-sm font-semibold theme-text">{selectedTerm.name}</p>
+                  <p className="text-xs theme-muted">
+                    {formatDateRange(selectedTerm.start_date, selectedTerm.end_date)}
+                    {' • '}
+                    {termWeekCount} weeks
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-amber-700">
+                  {academicContextError instanceof Error
+                    ? academicContextError.message
+                    : academicContext?.message ?? 'Choose a class subject to resolve the current term.'}
+                </p>
+              )}
+            </div>
 
             {!isTeachingActor ? (
               <Select

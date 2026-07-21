@@ -26,6 +26,7 @@ import {
   SessionDetail,
   AttendanceRecord,
   BulkAttendanceData,
+  BulkAttendanceResponse,
   ConfirmTaughtOutcomesPayload,
   SessionClosureState,
   SessionAssignmentDraftResponse,
@@ -107,7 +108,7 @@ export const useSessions = (
       setSessions(unwrapList(data));
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch sessions'));
+      setError(extractErrorMessage(err as ApiError, 'Unable to load sessions right now.'));
     } finally {
       setLoading(false);
     }
@@ -207,9 +208,11 @@ export const useSessionDetail = (
       const data = await sessionAPI.getClosureState(sessionId);
       setClosureState(data);
       return data;
-    } catch {
+    } catch (err) {
+      const message = extractErrorMessage(err as ApiError, 'Failed to fetch lesson closure state');
+      setError(message);
       setClosureState(null);
-      return null;
+      throw new Error(message);
     }
   }, [sessionId]);
 
@@ -224,7 +227,7 @@ export const useSessionDetail = (
         sessionAPI.getAttendanceRecords(sessionId, {
           page_size: 1000,
         }),
-        sessionAPI.getClosureState(sessionId).catch(() => null),
+        sessionAPI.getClosureState(sessionId),
       ]);
 
       setSession(sessionData);
@@ -252,14 +255,16 @@ export const useSessionDetail = (
 
   useEffect(() => { fetchSession(); }, [fetchSession]);
 
-  const markAttendance = async (data: BulkAttendanceData): Promise<void> => {
-    if (!sessionId) return;
-    await sessionAPI.markAttendance(sessionId, data);
+  const markAttendance = async (data: BulkAttendanceData): Promise<BulkAttendanceResponse | null> => {
+    if (!sessionId) return null;
+    const response = await sessionAPI.markAttendance(sessionId, data);
+    setClosureState(response.closure_state);
     await fetchSession();
     emitSessionDataChanged({
       reason: 'attendance_updated',
       sessionId,
     });
+    return response;
   };
 
   const reseedAttendance = async (): Promise<void> => {

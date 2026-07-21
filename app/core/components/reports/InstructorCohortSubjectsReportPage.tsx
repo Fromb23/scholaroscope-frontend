@@ -7,7 +7,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { CardSkeleton, Skeleton, SkeletonStatCard } from '@/app/components/ui/loading';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { useInstructorCohortSubjects } from '@/app/core/hooks/useReporting';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
@@ -24,6 +24,26 @@ function average(values: Array<number | null | undefined>): number | null {
   return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
 }
 
+function CohortSubjectsReportSkeleton() {
+  return (
+    <div className="space-y-6" aria-label="Loading instructor class subject reports">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-3">
+          <Skeleton className="h-7 w-56" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+        </div>
+        <Skeleton className="h-8 w-8" rounded="full" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => <SkeletonStatCard key={index} />)}
+      </div>
+      <div className="grid gap-4">
+        {Array.from({ length: 5 }).map((_, index) => <CardSkeleton key={index} lines={4} />)}
+      </div>
+    </div>
+  );
+}
+
 export default function InstructorCohortSubjectsReportPage() {
   const { cohortSubjects, loading, error } = useInstructorCohortSubjects();
 
@@ -33,7 +53,7 @@ export default function InstructorCohortSubjectsReportPage() {
     return acc;
   }, {});
 
-  if (loading) return <LoadingSpinner message="Loading instructor class subject reports..." />;
+  if (loading) return <CohortSubjectsReportSkeleton />;
   if (error) return <ErrorBanner message={error} onDismiss={() => {}} />;
 
   return (

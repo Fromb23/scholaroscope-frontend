@@ -218,7 +218,7 @@ describe('academic term calendar access', () => {
         })).toBe(false);
     });
 
-    it('does not infer edit permission from term dates', () => {
+    it('defensively locks ended terms even when stale server actions say setup is open', () => {
         const serverOpenEndedTerm = buildTerm({
             id: 3,
             start_date: '2026-01-01',
@@ -238,11 +238,23 @@ describe('academic term calendar access', () => {
         expect(canEditTermCalendar({
             isAdminLike: true,
             term: serverOpenEndedTerm,
-        })).toBe(true);
+        })).toBe(false);
         expect(canEditTermCalendarEvent({
             isAdminLike: true,
             term: serverOpenEndedTerm,
-        })).toBe(true);
+        })).toBe(false);
+        expect(canAddTermCalendarEvent({
+            isAdminLike: true,
+            term: serverOpenEndedTerm,
+        })).toBe(false);
+        expect(canDeleteTermCalendarEvent({
+            isAdminLike: true,
+            term: serverOpenEndedTerm,
+        })).toBe(false);
+        expect(canCompleteTermCalendar({
+            isAdminLike: true,
+            term: serverOpenEndedTerm,
+        })).toBe(false);
     });
 
     it('keeps a historical selected term read-only', () => {

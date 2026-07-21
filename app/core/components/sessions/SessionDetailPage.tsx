@@ -28,7 +28,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { CardSkeleton, Skeleton, SkeletonStatCard, TableSkeleton } from '@/app/components/ui/loading';
 import { AttendanceStatsStrip } from '@/app/core/components/sessions/AttendanceStats';
 import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable';
 import { ParticipatingCohorts } from '@/app/core/components/sessions/ParticipatingCohorts';
@@ -79,6 +79,35 @@ import { ContextualApprovalRequestButton } from '@/app/core/components/approvals
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { buildSessionLearnerAttendanceReportHref } from '@/app/core/lib/learnerIntentRoutes';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
+
+function SessionDetailSkeleton() {
+    return (
+        <div className="mx-auto w-full max-w-6xl space-y-6 pb-8" aria-label="Loading session details">
+            <div className="space-y-3">
+                <Skeleton className="h-8 w-28" />
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-3">
+                        <Skeleton className="h-8 w-72 max-w-full" />
+                        <Skeleton className="h-4 w-96 max-w-full" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => <SkeletonStatCard key={index} />)}
+            </div>
+            <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+                <CardSkeleton lines={6} />
+                <CardSkeleton lines={5} />
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+                <CardSkeleton lines={5} />
+                <CardSkeleton lines={5} />
+            </div>
+            <TableSkeleton rows={5} columns={4} />
+        </div>
+    );
+}
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 type SessionPageNotice = {
@@ -907,8 +936,17 @@ export function SessionDetailPage() {
             });
         }
 
-        await refetch();
-        const latestClosureState = await refetchClosureState();
+        let latestClosureState: SessionClosureState | null = null;
+        try {
+            await refetch();
+            latestClosureState = await refetchClosureState();
+        } catch (err) {
+            const message = err instanceof Error
+                ? err.message
+                : 'The lesson workspace could not refresh the latest closure state.';
+            setWorkflowError(message);
+            return null;
+        }
 
         if (!latestClosureState) {
             setWorkflowError('The lesson workspace could not refresh the latest closure state.');
@@ -1154,6 +1192,8 @@ export function SessionDetailPage() {
         draft,
         saving,
         saveError,
+        isComplete: attendanceDraftComplete,
+        unmarkedLearners,
         dismissError,
         updateStatus,
         updateNotes,
@@ -1757,11 +1797,7 @@ export function SessionDetailPage() {
     };
 
     if (loading && !session) {
-        return (
-            <div className="mx-auto w-full max-w-6xl pb-8">
-                <LoadingSpinner message="Loading session details..." />
-            </div>
-        );
+        return <SessionDetailSkeleton />;
     }
 
     if (!session) {
@@ -2702,13 +2738,19 @@ export function SessionDetailPage() {
                         loading={loading}
                         saving={saving}
                         saveError={saveError}
+                        isComplete={attendanceDraftComplete}
+                        unmarkedLearners={unmarkedLearners}
                         pagination={pagination}
                         onUpdateStatus={updateStatus}
                         onUpdateNotes={updateNotes}
                         onMarkAll={markAll}
                         readOnly={!canEditAttendance}
                         onSave={async () => {
-                            await save();
+                            const saveResult = await save();
+                            if (!saveResult.ok) {
+                                setWorkflowError(saveResult.error);
+                                return;
+                            }
                             const result = await continueSessionClosureWorkflow('attendance_saved');
                             if (!result?.closureState) {
                                 setWorkflowSuccess(

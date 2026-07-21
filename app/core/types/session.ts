@@ -233,6 +233,12 @@ export interface BulkAttendanceData {
   }[];
 }
 
+export interface BulkAttendanceResponse {
+  detail: string;
+  session: Session;
+  closure_state: SessionClosureState;
+}
+
 export interface RescheduleSessionPayload {
   session_date: string;
   start_time: string;

@@ -31,6 +31,8 @@ interface AttendanceTableProps {
     loading: boolean;
     saving: boolean;
     saveError: string | null;
+    isComplete?: boolean;
+    unmarkedLearners?: AttendanceRecord[];
     readOnly: boolean;
     pagination?: PaginationState;
     onUpdateStatus: (studentId: number, status: string) => void;
@@ -45,7 +47,7 @@ interface AttendanceTableProps {
 type AttendanceWithIndex = { [key: string]: unknown } & AttendanceRecord;
 
 export function AttendanceTable({
-    records, draft, loading, saving, saveError,
+    records, draft, loading, saving, saveError, isComplete = true, unmarkedLearners = [],
     readOnly, pagination,
     onUpdateStatus, onUpdateNotes, onMarkAll, onSave,
     onDismissError, onPaginationChange, learnerHrefBuilder,
@@ -139,7 +141,7 @@ export function AttendanceTable({
                     {readOnly ? 'Attendance Records' : 'Mark Attendance'}
                 </h2>
                 {!readOnly && (
-                    <Button onClick={onSave} disabled={saving} className="hidden sm:inline-flex">
+                    <Button onClick={onSave} disabled={saving || !isComplete} className="hidden sm:inline-flex">
                         <Save className="mr-2 h-4 w-4" />
                         {saving ? 'Saving...' : 'Save'}
                     </Button>
@@ -149,6 +151,14 @@ export function AttendanceTable({
             {saveError && (
                 <ErrorState message={saveError} onRetry={onDismissError} fullScreen={false} />
             )}
+
+            {!readOnly && !isComplete ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    Mark attendance for every learner before continuing. Unmarked:{' '}
+                    {unmarkedLearners.slice(0, 5).map((record) => record.student_name).join(', ')}
+                    {unmarkedLearners.length > 5 ? ', …' : ''}
+                </div>
+            ) : null}
 
             {!readOnly && (
                 <div className="flex gap-2 flex-wrap">
@@ -183,7 +193,7 @@ export function AttendanceTable({
             {!readOnly && (
                 <div className="sticky bottom-3 z-10 sm:hidden">
                     <div className="rounded-xl border px-3 py-3 shadow-lg theme-border theme-surface-elevated">
-                        <Button onClick={onSave} disabled={saving} className="w-full">
+                        <Button onClick={onSave} disabled={saving || !isComplete} className="w-full">
                             <Save className="mr-2 h-4 w-4" />
                             {saving ? 'Saving...' : 'Save attendance'}
                         </Button>

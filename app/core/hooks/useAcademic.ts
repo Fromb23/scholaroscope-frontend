@@ -55,17 +55,30 @@ function wrapApiMutationError(err: unknown, fallback: string): ApiErrorWithCode 
   return wrapped;
 }
 
-export function useAcademicLifecycleContext(options: { enabled?: boolean } = {}) {
+export function useAcademicLifecycleContext(options: {
+  enabled?: boolean;
+  curriculumId?: number | null;
+  cohortId?: number | null;
+  cohortSubjectId?: number | null;
+} = {}) {
   const { organizationId } = useOrganizationContext();
   const enabled = options.enabled ?? true;
 
   return useQuery<AcademicLifecycleContext, Error>({
-    queryKey: academicKeys.currentContext.detail(organizationId),
+    queryKey: [
+      ...academicKeys.currentContext.detail(organizationId),
+      options.curriculumId ?? null,
+      options.cohortId ?? null,
+      options.cohortSubjectId ?? null,
+    ],
     queryFn: async () => {
       try {
-        return await academicLifecycleAPI.getCurrentContext(
-          organizationId ? { organization: organizationId } : undefined
-        );
+        return await academicLifecycleAPI.getCurrentContext({
+          ...(organizationId ? { organization: organizationId } : {}),
+          ...(options.curriculumId ? { curriculum: options.curriculumId } : {}),
+          ...(options.cohortId ? { cohort: options.cohortId } : {}),
+          ...(options.cohortSubjectId ? { cohort_subject: options.cohortSubjectId } : {}),
+        });
       } catch (err) {
         throw new Error(extractErrorMessage(err as ApiError, 'Failed to load academic context'));
       }
@@ -132,7 +145,11 @@ export const useAcademicYears = () => {
   const setCurrentYear = async (id: number) => {
     try {
       const updated = await academicYearAPI.setCurrent(id);
-      setAcademicYears(prev => prev.map(y => ({ ...y, is_current: y.id === id })));
+      setAcademicYears(prev => prev.map(y => (
+        y.curriculum === updated.curriculum
+          ? { ...y, is_current: y.id === id }
+          : y
+      )));
       return updated;
     } catch (err) {
       throw new Error(extractErrorMessage(err as ApiError, 'Failed to set current year'));

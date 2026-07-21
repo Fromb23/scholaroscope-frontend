@@ -13,7 +13,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { CardSkeleton, Skeleton, SkeletonStatCard } from '@/app/components/ui/loading';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { useInstructorOverview } from '@/app/core/hooks/useReporting';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
@@ -30,6 +30,29 @@ function average(values: Array<number | null | undefined>): number | null {
   return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
 }
 
+function InstructorReportsOverviewSkeleton() {
+  return (
+    <div className="space-y-6" aria-label="Loading instructor report overview">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-3">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+        </div>
+        <Skeleton className="h-8 w-8" rounded="full" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => <CardSkeleton key={index} lines={3} />)}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => <SkeletonStatCard key={index} />)}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => <CardSkeleton key={index} lines={4} />)}
+      </div>
+    </div>
+  );
+}
+
 export function InstructorReportsOverviewPage() {
   const { overview, loading, error } = useInstructorOverview();
 
@@ -43,7 +66,7 @@ export function InstructorReportsOverviewPage() {
     return acc;
   }, {});
 
-  if (loading) return <LoadingSpinner message="Loading instructor report overview..." />;
+  if (loading) return <InstructorReportsOverviewSkeleton />;
   if (error) return <ErrorBanner message={error} onDismiss={() => {}} />;
 
   const reportCards = [

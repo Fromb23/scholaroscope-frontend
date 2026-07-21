@@ -6,7 +6,7 @@
 // Submits via useSessionDetail.markAttendance — no direct API calls.
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { AttendanceRecord } from '@/app/core/types/session';
 import type { ApiError } from '@/app/core/types/errors';
 import { extractErrorMessage } from '@/app/core/types/errors';
@@ -20,7 +20,7 @@ export type AttendanceDraft = Record<number, AttendanceDraftEntry>;
 
 interface UseAttendanceDraftProps {
     records: AttendanceRecord[];
-    onSave: (payload: { attendance_records: { student_id: number; status: string; notes: string }[] }) => Promise<void>;
+    onSave: (payload: { attendance_records: { student_id: number; status: string; notes: string }[] }) => Promise<unknown>;
     readOnly?: boolean;
 }
 
@@ -28,6 +28,11 @@ export function useAttendanceDraft({ records, onSave, readOnly = false }: UseAtt
     const [draft, setDraft] = useState<AttendanceDraft>({});
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const unmarkedLearners = useMemo(
+        () => records.filter((record) => !draft[record.student]?.status),
+        [draft, records]
+    );
+    const isComplete = unmarkedLearners.length === 0;
 
     // Sync draft when records load or change
     useEffect(() => {
@@ -66,8 +71,20 @@ export function useAttendanceDraft({ records, onSave, readOnly = false }: UseAtt
         setDraft(next);
     };
 
-    const save = async () => {
-        if (readOnly) return;
+    const save = async (): Promise<{ ok: true } | { ok: false; error: string }> => {
+        if (readOnly) return { ok: false, error: 'Attendance is read-only.' };
+        if (!isComplete) {
+            const names = unmarkedLearners
+                .slice(0, 5)
+                .map((record) => record.student_name)
+                .filter(Boolean)
+                .join(', ');
+            const message = names
+                ? `Mark attendance for every learner. Unmarked: ${names}${unmarkedLearners.length > 5 ? ', …' : ''}.`
+                : 'Mark attendance for every learner before continuing.';
+            setSaveError(message);
+            return { ok: false, error: message };
+        }
         setSaving(true);
         setSaveError(null);
         try {
@@ -77,8 +94,11 @@ export function useAttendanceDraft({ records, onSave, readOnly = false }: UseAtt
                 notes: entry.notes,
             }));
             await onSave({ attendance_records: payload });
+            return { ok: true };
         } catch (err) {
-            setSaveError(extractErrorMessage(err as ApiError, 'Failed to save attendance.'));
+            const message = extractErrorMessage(err as ApiError, 'Failed to save attendance.');
+            setSaveError(message);
+            return { ok: false, error: message };
         } finally {
             setSaving(false);
         }
@@ -88,6 +108,8 @@ export function useAttendanceDraft({ records, onSave, readOnly = false }: UseAtt
         draft,
         saving,
         saveError,
+        isComplete,
+        unmarkedLearners,
         dismissError: () => setSaveError(null),
         updateStatus,
         updateNotes,

@@ -21,6 +21,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { CardSkeleton, TableSkeleton } from '@/app/components/ui/loading';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
@@ -1560,9 +1561,13 @@ function SessionWorkspaceView() {
             {error ? (
                 <ErrorState message={error} onRetry={refetch} />
             ) : loading ? (
-                <div className="py-12 text-center">
-                    <LoadingSpinner size="md" fullScreen={false} message="Loading sessions..." showMessage={false} />
-                    <p className="mt-2 theme-muted">Loading sessions...</p>
+                <div className="space-y-4" aria-label="Loading sessions">
+                    <div className="hidden md:block">
+                        <TableSkeleton rows={6} columns={6} />
+                    </div>
+                    <div className="grid gap-3 md:hidden">
+                        {Array.from({ length: 4 }).map((_, index) => <CardSkeleton key={index} lines={4} />)}
+                    </div>
                 </div>
             ) : visibleSessions.length === 0 ? (
                 <Card>
