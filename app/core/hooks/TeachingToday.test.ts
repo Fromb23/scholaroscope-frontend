@@ -8,6 +8,26 @@ const source = () => readFileSync(
 );
 
 describe('Teaching Today assignment workflow integration', () => {
+  it('uses instructor-safe academic context instead of admin setup/year/term requests', () => {
+    const hookSource = source();
+
+    expect(hookSource).toContain('useAcademicLifecycleContext');
+    expect(hookSource).toContain('useAcademicTodayMode');
+    expect(hookSource).not.toContain('useAcademicSetupStatus');
+    expect(hookSource).not.toContain('useCurrentAcademicYear');
+    expect(hookSource).not.toContain('useCurrentTerm');
+    expect(hookSource).not.toContain('useTermCalendarEvents');
+  });
+
+  it('refreshes dashboard data independently', () => {
+    const hookSource = source();
+
+    expect(hookSource).toContain('Promise.allSettled');
+    expect(hookSource).not.toContain('refetchSetupStatus');
+    expect(hookSource).not.toContain('refetchCurrentYear');
+    expect(hookSource).not.toContain('refetchCurrentTerm');
+  });
+
   it('loads assignment workflow items from the assignment hook', () => {
     const hookSource = source();
 
