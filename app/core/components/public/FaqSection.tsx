@@ -1,33 +1,19 @@
-import Link from 'next/link';
-
 const faqs = [
   {
-    question: 'What is Scholaroscope?',
-    answer: 'Scholaroscope helps teachers and schools keep classroom records in one place so progress can be reviewed from actual teaching activity.',
+    question: 'Can an individual teacher use Scholaroscope?',
+    answer: 'Yes. An independent teacher can create a workspace for their own classes and keep lesson, attendance, learner work, assessment, and report evidence together.',
   },
   {
-    question: 'Who can use Scholaroscope?',
-    answer: 'It is built for schools, learning centres, homeschool groups, and independent teachers who need a structured teaching workspace.',
+    question: 'What teaching records can I manage?',
+    answer: 'You can manage lesson records, attendance, learner work, assignments, assessments, curriculum evidence, learner progress, and teacher reports.',
   },
   {
-    question: 'Can an independent teacher use it?',
-    answer: 'Yes. Independent teachers can create a workspace for their own classes without needing a full school account.',
+    question: 'Which curricula are currently supported?',
+    answer: 'Current product areas include CBC/CBE and Cambridge teaching workflows. Other curricula should be treated as upcoming until they are explicitly available in the workspace.',
   },
   {
-    question: 'What classroom records can be managed?',
-    answer: 'Teachers can manage lesson records, attendance, learner work, observations, assessments, and supporting notes used for progress review.',
-  },
-  {
-    question: 'Does Scholaroscope replace the teacher’s professional judgement?',
-    answer: 'No. It supports the teacher’s judgement by keeping classroom records organized and available when progress is reviewed.',
-  },
-  {
-    question: 'Which curricula are supported?',
-    answer: 'Scholaroscope is designed for curriculum-aware classroom record keeping, including CBC and CBE teaching contexts.',
-  },
-  {
-    question: 'How do I get started?',
-    answer: 'Create a workspace, choose the setup that matches how you teach, and add your classes and learners.',
+    question: 'Does Scholaroscope work for schools?',
+    answer: 'Yes. Schools and learning centres can use scoped workspaces so teachers see their assigned teaching work while administrators manage the broader academic setup.',
   },
 ];
 
@@ -40,7 +26,7 @@ export function FaqSection() {
             Frequently asked questions
           </h2>
           <p className="mt-4 text-base leading-7 theme-muted">
-            A short guide to what Scholaroscope is for and how to begin.
+            Practical answers about who Scholaroscope is for and what it supports today.
           </p>
         </div>
 
@@ -55,28 +41,13 @@ export function FaqSection() {
                   <span>{faq.question}</span>
                   <span className="text-xl leading-none theme-muted" aria-hidden="true">
                     <span className="group-open:hidden">+</span>
-                    <span className="hidden group-open:inline">−</span>
+                    <span className="hidden group-open:inline">-</span>
                   </span>
                 </span>
               </summary>
               <p className="mt-3 text-sm leading-6 theme-muted">{faq.answer}</p>
             </details>
           ))}
-        </div>
-
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center sm:flex-row">
-          <Link
-            href="/get-started"
-            className="inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold theme-button-primary"
-          >
-            Get started
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-sm font-semibold theme-button-secondary"
-          >
-            Sign in
-          </Link>
         </div>
       </div>
     </section>
