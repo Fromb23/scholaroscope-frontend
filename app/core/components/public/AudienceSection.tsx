@@ -1,32 +1,19 @@
-import { Building2, GraduationCap, Home, UserRoundCheck } from 'lucide-react';
-
-const audiences = [
-  { title: 'Schools and institutions', body: 'For schools that need shared teacher records, class evidence, review workflows, and parent-facing progress reports.', icon: Building2 },
-  { title: 'Tuition centres', body: 'For centres that need to track learner attendance, assignments, assessments, and evidence across groups without heavy paperwork.', icon: GraduationCap },
-  { title: 'Homeschool families', body: 'For families coordinating learning records, term progress, and tutor evidence in one place.', icon: Home },
-  { title: 'Freelance teachers', body: 'For independent teachers who need a professional record of sessions, learner progress, and evidence-backed reporting.', icon: UserRoundCheck },
-];
-
 export function AudienceSection() {
   return (
-    <section id="audiences" className="bg-slate-950 py-20 text-white">
-      <div className="mx-auto max-w-[1220px] px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl">
-          <p className="text-sm font-semibold text-blue-300">Who it is for</p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight">Built for the people protecting classroom evidence</h2>
-        </div>
-        <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {audiences.map((audience) => {
-            const Icon = audience.icon;
-            return (
-              <article key={audience.title} className="rounded-xl border border-white/10 bg-[rgb(255_255_255_/_0.05)] p-6">
-                <Icon className="h-6 w-6 text-blue-200" />
-                <h3 className="mt-5 text-lg font-bold">{audience.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{audience.body}</p>
-              </article>
-            );
-          })}
-        </div>
+    <section className="theme-surface py-16 sm:py-20">
+      <div className="mx-auto grid max-w-[1100px] gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+        <article id="for-teachers" className="rounded-2xl border p-6 theme-border theme-card">
+          <h2 className="text-2xl font-bold theme-text">For independent teachers</h2>
+          <p className="mt-3 text-sm leading-6 theme-muted">
+            Create a workspace for your own classes, keep teaching evidence organized, and prepare progress conversations from actual records.
+          </p>
+        </article>
+        <article id="for-schools" className="rounded-2xl border p-6 theme-border theme-card">
+          <h2 className="text-2xl font-bold theme-text">For schools and learning centres</h2>
+          <p className="mt-3 text-sm leading-6 theme-muted">
+            Give teachers a structured workflow for lessons, attendance, learner work, assessments, curriculum evidence, and reports while keeping responsibilities scoped.
+          </p>
+        </article>
       </div>
     </section>
   );

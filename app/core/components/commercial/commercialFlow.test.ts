@@ -31,7 +31,7 @@ const heroSource = readFileSync(
   'utf8',
 );
 const howItWorksSource = readFileSync(
-  join(process.cwd(), 'app/core/components/public/HowItWorksSection.tsx'),
+  join(process.cwd(), 'app/core/components/public/WorkflowSection.tsx'),
   'utf8',
 );
 const problemSource = readFileSync(
@@ -39,19 +39,19 @@ const problemSource = readFileSync(
   'utf8',
 );
 const evidenceDashboardSource = readFileSync(
-  join(process.cwd(), 'app/core/components/public/EvidenceDashboardSection.tsx'),
+  join(process.cwd(), 'app/core/components/public/ProductPreviewSection.tsx'),
   'utf8',
 );
 const reportAudienceSource = readFileSync(
-  join(process.cwd(), 'app/core/components/public/ReportAudienceSection.tsx'),
+  join(process.cwd(), 'app/core/components/public/AudienceSection.tsx'),
   'utf8',
 );
 const evidenceIntegritySource = readFileSync(
-  join(process.cwd(), 'app/core/components/public/EvidenceIntegritySection.tsx'),
+  join(process.cwd(), 'app/core/components/public/TrustSection.tsx'),
   'utf8',
 );
 const footerCtaSource = readFileSync(
-  join(process.cwd(), 'app/core/components/public/FooterCtaSection.tsx'),
+  join(process.cwd(), 'app/core/components/public/FinalCtaSection.tsx'),
   'utf8',
 );
 const audienceSource = readFileSync(
@@ -167,36 +167,40 @@ describe('commercial onboarding contract', () => {
     expect(moneySource).toContain('minimumFractionDigits: hasFraction ? 2 : 0');
   });
 
-  it('uses a deliberately simple public landing hierarchy', () => {
+  it('uses the product-focused public landing hierarchy', () => {
     const order = [
       '<PublicHeader',
       '<HeroSection',
+      '<ProblemSection',
+      '<WorkflowSection',
+      '<ProductPreviewSection',
+      '<AudienceSection',
+      '<TrustSection',
       '<FaqSection',
+      '<FinalCtaSection',
       '<PublicFooter',
     ];
     for (let index = 0; index < order.length - 1; index += 1) {
       expect(landingSource.indexOf(order[index])).toBeLessThan(landingSource.indexOf(order[index + 1]));
     }
 
-    expect(heroSource).toContain('Classroom records for teachers');
+    expect(heroSource).toContain('Stop reconstructing learner progress from memory.');
     expect(heroSource).toContain('href="/get-started"');
-    expect(heroSource).toContain('href="/login"');
+    expect(heroSource).toContain('href="#how-it-works"');
     expect(landingSource).toContain('<FaqSection');
-    expect(landingSource).not.toContain('<ProblemSection');
     expect(landingSource).not.toContain('<HowItWorksSection');
     expect(landingSource).not.toContain('<EvidenceDashboardSection');
     expect(landingSource).not.toContain('<ReportAudienceSection');
-    expect(landingSource).not.toContain('<AudienceSection');
     expect(landingSource).not.toContain('<EvidenceIntegritySection');
     expect(landingSource).not.toContain('<CommercialSection');
     expect(landingSource).not.toContain('<FooterCtaSection');
-    expect(problemSource).toContain('CBC was designed around continuous evidence.');
-    expect(howItWorksSource).toContain('Set up your workspace');
-    expect(evidenceDashboardSource).toContain('Every competency level is earned, not assigned');
-    expect(reportAudienceSource).toContain('Reports that mean something to the person reading them');
-    expect(audienceSource).toContain('Schools and institutions');
-    expect(evidenceIntegritySource).toContain("If the evidence isn&apos;t real, the curriculum isn&apos;t real");
-    expect(footerCtaSource).toContain('Kenyan schools need a better way to protect classroom evidence.');
+    expect(problemSource).toContain('The problem is not that teachers lack records.');
+    expect(howItWorksSource).toContain('How Scholaroscope works');
+    expect(evidenceDashboardSource).toContain('Product proof, not vague promises');
+    expect(reportAudienceSource).toContain('For independent teachers');
+    expect(audienceSource).toContain('For schools and learning centres');
+    expect(evidenceIntegritySource).toContain('Built from real classroom workflow in Kenya.');
+    expect(footerCtaSource).toContain('Build progress reviews from the teaching record.');
   });
 
   it('does not publish unsupported public claims on the landing page', () => {

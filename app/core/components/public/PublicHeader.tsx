@@ -7,6 +7,10 @@ import { Menu, X } from 'lucide-react';
 import { PublicThemeToggle } from '@/app/components/theme/PublicThemeToggle';
 
 const navItems = [
+  { href: '#product', label: 'Product' },
+  { href: '#how-it-works', label: 'How it works' },
+  { href: '#for-teachers', label: 'For teachers' },
+  { href: '#for-schools', label: 'For schools' },
   { href: '#faq', label: 'FAQ' },
 ];
 
@@ -58,7 +62,7 @@ export function PublicHeader() {
             href="/get-started"
             className="inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-semibold theme-button-primary"
           >
-            Get started
+            Create workspace
           </Link>
         </div>
 
@@ -109,7 +113,7 @@ export function PublicHeader() {
               className="rounded-lg px-3 py-3 text-sm font-semibold theme-text theme-hover-surface"
               onClick={() => setMenuOpen(false)}
             >
-              Get started
+              Create workspace
             </Link>
           </nav>
         </div>
