@@ -2127,7 +2127,7 @@ function walk(dir) {
 }
 
 function rel(file) {
-  return path.relative(root, file);
+  return path.relative(root, file).split(path.sep).join('/');
 }
 
 function lineFor(source, index) {

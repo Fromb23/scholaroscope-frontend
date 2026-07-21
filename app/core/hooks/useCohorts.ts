@@ -25,11 +25,12 @@ export function useCohorts(filters?: {
   level?: string;
   is_active?: boolean;
   search?: string;
-}) {
+}, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
-  const instructorAccess = useInstructorCohortAccess();
+  const instructorAccess = useInstructorCohortAccess({ enabled });
   const curriculum = filters?.curriculum;
   const academicYear = filters?.academic_year;
   const level = filters?.level;
@@ -51,6 +52,13 @@ export function useCohorts(filters?: {
   );
 
   const loadCohorts = useCallback(async () => {
+    if (!enabled) {
+      setCohorts([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -67,7 +75,7 @@ export function useCohorts(filters?: {
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, instructorAccess.isInstructor, requestFilters]);
+  }, [allowedCohortIds, enabled, instructorAccess.isInstructor, requestFilters]);
 
   useEffect(() => {
     void loadCohorts();

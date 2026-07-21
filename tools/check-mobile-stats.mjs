@@ -44,6 +44,10 @@ function walk(relativeDir) {
   return files;
 }
 
+function normalizePath(relativePath) {
+  return relativePath.split(path.sep).join('/');
+}
+
 function assertNoJsWidthDetection(relativePath, source) {
   for (const forbidden of ['window.innerWidth', 'matchMedia', 'useMediaQuery']) {
     if (source.includes(forbidden)) {
@@ -86,9 +90,10 @@ if (statStrip) {
 }
 
 const statsUsageFiles = walk('app').filter((relativePath) => {
-  if (!relativePath.endsWith('.tsx')) return false;
-  if (relativePath === statsCardPath) return false;
-  if (relativePath === 'app/core/components/DesktopOnly.tsx') return false;
+  const normalizedPath = normalizePath(relativePath);
+  if (!normalizedPath.endsWith('.tsx')) return false;
+  if (normalizedPath === statsCardPath) return false;
+  if (normalizedPath === 'app/core/components/DesktopOnly.tsx') return false;
   return read(relativePath).includes('<StatsCard');
 });
 

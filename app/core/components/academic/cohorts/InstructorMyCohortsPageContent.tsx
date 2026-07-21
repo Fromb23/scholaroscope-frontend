@@ -18,7 +18,6 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
-import { useAcademicYears } from '@/app/core/hooks/useAcademic';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
@@ -33,7 +32,6 @@ import {
 } from '@/app/core/components/academic/cohorts/cohortsPageShared';
 
 export function InstructorMyCohortsPageContent() {
-    const { academicYears } = useAcademicYears();
     const [filters, updateFilters] = usePersistedFilters('/academic/cohorts', {
         academic_year: '',
     });
@@ -47,6 +45,29 @@ export function InstructorMyCohortsPageContent() {
     const [isErrorDismissed, setIsErrorDismissed] = useState(false);
     const [search, setSearch] = useState('');
 
+    const academicYears = useMemo(() => {
+        const yearMap = new Map<number, { id: number; name: string; is_current: boolean }>();
+
+        cohortSubjectGroups.forEach((group) => {
+            if (typeof group.academic_year_id !== 'number' || !group.academic_year_name) {
+                return;
+            }
+
+            const existing = yearMap.get(group.academic_year_id);
+            yearMap.set(group.academic_year_id, {
+                id: group.academic_year_id,
+                name: group.academic_year_name,
+                is_current: Boolean(existing?.is_current || group.is_current_year),
+            });
+        });
+
+        return Array.from(yearMap.values()).sort((left, right) => {
+            if (left.is_current !== right.is_current) {
+                return left.is_current ? -1 : 1;
+            }
+            return right.name.localeCompare(left.name);
+        });
+    }, [cohortSubjectGroups]);
     const currentYear = useMemo(
         () => academicYears.find((academicYear) => academicYear.is_current),
         [academicYears]

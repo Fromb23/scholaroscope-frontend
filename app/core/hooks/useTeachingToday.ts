@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
-import {
-    useCurrentAcademicYear,
-    useCurrentTerm,
-    useTermCalendarEvents,
-} from '@/app/core/hooks/useAcademic';
+import { useAcademicLifecycleContext } from '@/app/core/hooks/useAcademic';
 import { useMyTeachingLoad } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useSessionLifecycleReminders } from '@/app/core/hooks/useSessionLifecycleReminders';
@@ -175,9 +170,10 @@ function deriveLearningDayState(
     setupStatus: AcademicSetupStatus | null,
     currentTerm: Term | null,
     calendarEventsToday: TermCalendarEvent[],
-    todayMode: AcademicTodayMode | null
+    todayMode: AcademicTodayMode | null,
+    lifecycleMode?: string | null
 ): LearningDayState {
-    if (setupStatus && !setupStatus.complete) {
+    if ((setupStatus && !setupStatus.complete) || lifecycleMode === 'NO_ACADEMIC_SETUP') {
         return 'SETUP_BLOCKED';
     }
 
@@ -723,11 +719,11 @@ export function useTeachingToday(): UseTeachingTodayResult {
     const [lastRefresh, setLastRefresh] = useState(() => new Date());
 
     const {
-        data: setupStatus,
-        isLoading: setupStatusLoading,
-        error: setupStatusError,
-        refetch: refetchSetupStatus,
-    } = useAcademicSetupStatus();
+        data: academicContext,
+        isLoading: academicContextLoading,
+        error: academicContextError,
+        refetch: refetchAcademicContext,
+    } = useAcademicLifecycleContext();
     const {
         data: teachingLoadData,
         isLoading: teachingLoadLoading,
@@ -741,24 +737,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
         refetch: refetchTodayMode,
     } = useAcademicTodayMode();
     const {
-        currentYear,
-        loading: currentYearLoading,
-        error: currentYearError,
-        refetch: refetchCurrentYear,
-    } = useCurrentAcademicYear();
-    const {
-        currentTerm,
-        loading: currentTermLoading,
-        error: currentTermError,
-        refetch: refetchCurrentTerm,
-    } = useCurrentTerm();
-    const {
-        events: calendarEvents,
-        loading: calendarLoading,
-        error: calendarError,
-        refetch: refetchCalendarEvents,
-    } = useTermCalendarEvents(currentTerm?.id ?? null);
-    const {
         sessions: todaySessions,
         loading: sessionsLoading,
         error: sessionsError,
@@ -770,6 +748,8 @@ export function useTeachingToday(): UseTeachingTodayResult {
         error: remindersError,
         refetch: refetchReminders,
     } = useSessionLifecycleReminders();
+    const currentYear = academicContext?.academic_year ?? null;
+    const currentTerm = academicContext?.current_term ?? academicContext?.active_term ?? null;
     const {
         summary: reviewSummary,
         loading: reviewSummaryLoading,
@@ -801,18 +781,44 @@ export function useTeachingToday(): UseTeachingTodayResult {
         () => teachingLoadData?.assignments ?? [],
         [teachingLoadData?.assignments]
     );
-    const calendarEventsToday = useMemo(
-        () => calendarEvents.filter((event) => isDateWithinRange(todayKey, event.start_date, event.end_date)),
-        [calendarEvents, todayKey]
-    );
+    const todayMode = todayModeData ?? null;
+    const calendarEventsToday = useMemo<TermCalendarEvent[]>(() => {
+        const event = todayMode?.event;
+        if (!event || !isDateWithinRange(todayKey, event.start_date, event.end_date)) {
+            return [];
+        }
+
+        return [{
+            ...event,
+            organization: academicContext?.organization ?? 0,
+            academic_year: currentYear?.id ?? 0,
+            academic_year_name: currentYear?.name ?? '',
+            term: currentTerm?.id ?? 0,
+            term_name: currentTerm?.name ?? '',
+            start_week_number: null,
+            end_week_number: null,
+            notes: todayMode.message ?? '',
+            created_by: null,
+            created_by_name: '',
+            created_at: '',
+            updated_at: '',
+        }];
+    }, [
+        academicContext?.organization,
+        currentTerm?.id,
+        currentTerm?.name,
+        currentYear?.id,
+        currentYear?.name,
+        todayKey,
+        todayMode,
+    ]);
     const currentWeek = useMemo(
         () => computeCurrentWeek(currentTerm, todayKey),
         [currentTerm, todayKey]
     );
-    const todayMode = todayModeData ?? null;
     const learningDayState = useMemo(
-        () => deriveLearningDayState(setupStatus ?? null, currentTerm, calendarEventsToday, todayMode),
-        [calendarEventsToday, currentTerm, setupStatus, todayMode]
+        () => deriveLearningDayState(null, currentTerm, calendarEventsToday, todayMode, academicContext?.mode ?? null),
+        [academicContext?.mode, calendarEventsToday, currentTerm, todayMode]
     );
     const normalTeachingExpected = useMemo(
         () => isNormalTeachingExpected(learningDayState),
@@ -874,11 +880,8 @@ export function useTeachingToday(): UseTeachingTodayResult {
     );
 
     const refresh = useCallback(async () => {
-        await Promise.all([
-            refetchSetupStatus(),
-            refetchCurrentYear(),
-            refetchCurrentTerm(),
-            refetchCalendarEvents(),
+        await Promise.allSettled([
+            refetchAcademicContext(),
             refetchTodaySessions(),
             refetchReminders(),
             refetchReviewSummary(),
@@ -891,13 +894,10 @@ export function useTeachingToday(): UseTeachingTodayResult {
         setClock(nextRefresh);
         setLastRefresh(nextRefresh);
     }, [
-        refetchCalendarEvents,
-        refetchCurrentTerm,
-        refetchCurrentYear,
+        refetchAcademicContext,
         refetchReminders,
         refetchReviewSummary,
         refetchScores,
-        refetchSetupStatus,
         refetchTeachingLoad,
         refetchTodayMode,
         refetchTodaySessions,
@@ -913,10 +913,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
     }, [refresh]);
 
     const loading = Boolean(
-        setupStatusLoading
-        || currentYearLoading
-        || currentTermLoading
-        || calendarLoading
+        academicContextLoading
         || sessionsLoading
         || remindersLoading
         || reviewSummaryLoading
@@ -925,10 +922,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         || todayModeLoading
         || assignmentWorkLoading
     );
-    const error = setupStatusError?.message
-        ?? currentYearError
-        ?? currentTermError
-        ?? calendarError
+    const error = academicContextError?.message
         ?? sessionsError
         ?? remindersError
         ?? reviewSummaryError
@@ -944,7 +938,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
             currentYear,
             currentTerm,
             currentWeek,
-            setupStatus: setupStatus ?? null,
+            setupStatus: null,
             calendarEventsToday,
             calendarAffectsLearning: calendarEventsToday.some((event) => event.affects_learning),
             todayMode,
