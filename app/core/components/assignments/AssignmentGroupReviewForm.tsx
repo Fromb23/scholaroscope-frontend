@@ -32,6 +32,10 @@ interface AssignmentGroupReviewFormProps {
     submission: AssignmentGroupSubmission;
     evaluation?: AssignmentGroupEvaluation | null;
     rubricLevels?: RubricLevel[];
+    onSaved?: () => void | Promise<void>;
+    onSaveAndNext?: () => void | Promise<void>;
+    pending?: boolean;
+    readOnly?: boolean;
 }
 
 interface OverrideDraft {
@@ -107,6 +111,10 @@ export function AssignmentGroupReviewForm({
     submission,
     evaluation = null,
     rubricLevels = [],
+    onSaved,
+    onSaveAndNext,
+    pending = false,
+    readOnly = false,
 }: AssignmentGroupReviewFormProps) {
     const createMutation = useCreateAssignmentGroupEvaluation();
     const updateMutation = useUpdateAssignmentGroupEvaluation();
@@ -158,7 +166,7 @@ export function AssignmentGroupReviewForm({
     }, [evaluation, groupMembers]);
 
     const activeEvaluation = localEvaluation ?? evaluation;
-    const saving = createMutation.isPending || updateMutation.isPending;
+    const saving = pending || createMutation.isPending || updateMutation.isPending;
     const evaluationType = assignment.evaluation_type;
     const cbcEnabled = hasCBCOutcome(assignment);
     const evidenceCreated = Boolean(activeEvaluation?.evidence_created);
@@ -257,7 +265,7 @@ export function AssignmentGroupReviewForm({
         });
     }, [groupMembers, overrideDrafts, projectionMode]);
 
-    const handleSave = async () => {
+    const handleSave = async (advance = false) => {
         const basePayload = validateBasePayload();
         if (!basePayload) return;
 
@@ -283,6 +291,10 @@ export function AssignmentGroupReviewForm({
                     evidence_warning: previous?.evidence_warning ?? updated.evidence_warning,
                 }));
                 setSuccessMessage('Group review updated.');
+                await onSaved?.();
+                if (advance) {
+                    await onSaveAndNext?.();
+                }
                 return;
             }
 
@@ -292,6 +304,10 @@ export function AssignmentGroupReviewForm({
             } as AssignmentGroupEvaluationCreatePayload);
             setLocalEvaluation(created);
             setSuccessMessage('Group review saved.');
+            await onSaved?.();
+            if (advance) {
+                await onSaveAndNext?.();
+            }
         } catch (err) {
             setFormError(resolveErrorMessage(err, 'Failed to save group review.'));
         }
@@ -350,6 +366,7 @@ export function AssignmentGroupReviewForm({
                     min="0"
                     max={assignment.total_marks ?? undefined}
                     value={numericScore}
+                    disabled={readOnly || saving}
                     onChange={(event) => setNumericScore(event.target.value)}
                 />
             ) : null}
@@ -358,6 +375,7 @@ export function AssignmentGroupReviewForm({
                 <Select
                     label="Rubric Level"
                     value={rubricLevel}
+                    disabled={readOnly || saving}
                     onChange={(event) => setRubricLevel(event.target.value)}
                     options={buildRubricOptions(rubricLevels)}
                 />
@@ -367,6 +385,7 @@ export function AssignmentGroupReviewForm({
                 <Select
                     label="Competency State"
                     value={competencyState}
+                    disabled={readOnly || saving}
                     onChange={(event) => setCompetencyState(event.target.value)}
                     options={buildCompetencyOptions()}
                 />
@@ -378,6 +397,7 @@ export function AssignmentGroupReviewForm({
                 </label>
                 <textarea
                     value={narrative}
+                    disabled={readOnly || saving}
                     onChange={(event) => setNarrative(event.target.value)}
                     rows={4}
                     placeholder="Add feedback for the group."
@@ -388,6 +408,7 @@ export function AssignmentGroupReviewForm({
             <Select
                 label="Evidence Projection"
                 value={projectionMode}
+                disabled={readOnly || saving}
                 onChange={(event) => setProjectionMode(event.target.value as AssignmentEvidenceProjectionMode)}
                 options={PROJECTION_MODE_OPTIONS}
             />
@@ -468,6 +489,7 @@ export function AssignmentGroupReviewForm({
                                                     <input
                                                         type="checkbox"
                                                         checked={draft.enabled}
+                                                        disabled={readOnly || saving}
                                                         onChange={(event) => updateOverrideDraft(member.student, 'enabled', event.target.checked)}
                                                         className="theme-checkbox mt-1 h-4 w-4 rounded theme-border"
                                                     />
@@ -512,6 +534,7 @@ export function AssignmentGroupReviewForm({
                                                         min="0"
                                                         max={assignment.total_marks ?? undefined}
                                                         value={draft.numericScore}
+                                                        disabled={readOnly || saving}
                                                         onChange={(event) => updateOverrideDraft(member.student, 'numericScore', event.target.value)}
                                                     />
                                                 ) : null}
@@ -520,6 +543,7 @@ export function AssignmentGroupReviewForm({
                                                     <Select
                                                         label="Override Rubric Level"
                                                         value={draft.rubricLevel}
+                                                        disabled={readOnly || saving}
                                                         onChange={(event) => updateOverrideDraft(member.student, 'rubricLevel', event.target.value)}
                                                         options={buildRubricOptions(rubricLevels)}
                                                     />
@@ -529,6 +553,7 @@ export function AssignmentGroupReviewForm({
                                                     <Select
                                                         label="Override Competency State"
                                                         value={draft.competencyState}
+                                                        disabled={readOnly || saving}
                                                         onChange={(event) => updateOverrideDraft(member.student, 'competencyState', event.target.value)}
                                                         options={buildCompetencyOptions()}
                                                     />
@@ -540,6 +565,7 @@ export function AssignmentGroupReviewForm({
                                                     </label>
                                                     <textarea
                                                         value={draft.narrative}
+                                                        disabled={readOnly || saving}
                                                         onChange={(event) => updateOverrideDraft(member.student, 'narrative', event.target.value)}
                                                         rows={3}
                                                         placeholder="Add learner-specific notes."
@@ -587,13 +613,21 @@ export function AssignmentGroupReviewForm({
 
                 <Button
                     type="button"
-                    onClick={handleSave}
-                    disabled={saving}
+                    onClick={() => void handleSave(false)}
+                    disabled={readOnly || saving}
                     className="w-full sm:w-auto"
                 >
                     {saving
                         ? 'Saving evaluation...'
-                        : 'Save evaluation'}
+                        : 'Save'}
+                </Button>
+                <Button
+                    type="button"
+                    onClick={() => void handleSave(true)}
+                    disabled={readOnly || saving || !onSaveAndNext}
+                    className="w-full sm:w-auto"
+                >
+                    Save & Next
                 </Button>
             </div>
         </div>

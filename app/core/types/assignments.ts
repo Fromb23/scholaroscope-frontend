@@ -425,7 +425,6 @@ export interface AssignmentSubmission {
 export interface AssignmentSubmissionCreatePayload extends ClientMutationFields {
     assignment: number;
     student: number;
-    submitted_at?: string;
     text_response?: string;
     attachment_metadata?: unknown[];
 }
@@ -689,10 +688,8 @@ export interface AssignmentGroupSubmission {
 }
 
 export interface AssignmentGroupSubmissionCreatePayload extends ClientMutationFields {
-    submitted_at?: string;
     text_response?: string;
     attachment_metadata?: unknown[];
-    status?: AssignmentGroupSubmissionStatus;
 }
 
 export interface AssignmentGroupMemberEvaluationOverride {
@@ -769,6 +766,24 @@ export interface AssignmentGroupEvaluationUpdatePayload {
     competency_state?: string | null;
     projection_mode?: AssignmentEvidenceProjectionMode;
     member_overrides?: AssignmentGroupMemberEvaluationOverridePayload[];
+}
+
+export interface AssignmentBulkReviewPayload extends ClientMutationFields {
+    submission_ids?: number[];
+    group_submission_ids?: number[];
+    evaluation_type: AssignmentEvaluationType;
+    numeric_score?: number | null;
+    rubric_level?: number | null;
+    narrative?: string;
+    competency_state?: string | null;
+    projection_mode?: AssignmentEvidenceProjectionMode;
+    member_overrides?: AssignmentGroupMemberEvaluationOverridePayload[];
+}
+
+export interface AssignmentBulkReviewResponse {
+    delivery_mode: AssignmentDeliveryMode;
+    affected_count: number;
+    evaluations: Array<AssignmentEvaluation | AssignmentGroupEvaluation>;
 }
 
 export interface AssignmentGroupEvaluationFilters {

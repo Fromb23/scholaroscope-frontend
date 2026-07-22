@@ -21,6 +21,8 @@ import type {
     Assignment,
     AssignmentAutoGenerateGroupsPayload,
     AssignmentAutoGenerateGroupsResponse,
+    AssignmentBulkReviewPayload,
+    AssignmentBulkReviewResponse,
     AssignmentCreatePayload,
     AssignmentEligibleLearnersParams,
     AssignmentEligibleLearnersResponse,
@@ -1403,6 +1405,35 @@ export function useCreateAssignmentEvaluation() {
             await queryClient.invalidateQueries({
                 queryKey: assignmentKeys.evaluationDetail(evaluation.id),
             });
+        },
+    });
+}
+
+export function useAssignmentBulkReview() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            assignmentId,
+            data,
+        }: {
+            assignmentId: number;
+            data: AssignmentBulkReviewPayload;
+        }): Promise<AssignmentBulkReviewResponse> => {
+            try {
+                return await assignmentsAPI.bulkReview(assignmentId, {
+                    ...data,
+                    clientMutationId: getStableClientMutationId(
+                        { assignmentId, ...data },
+                        'assignment-bulk-review'
+                    ),
+                });
+            } catch (err) {
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to apply bulk assignment review.'));
+            }
+        },
+        onSuccess: async (_, variables) => {
+            await invalidateAssignmentDependencies(queryClient, variables.assignmentId);
         },
     });
 }

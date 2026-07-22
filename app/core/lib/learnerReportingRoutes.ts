@@ -1,5 +1,6 @@
 import {
   buildLearnerAssessmentReportHref as buildLearnerAssessmentReportHrefFromNavigation,
+  buildLearnerAssignmentReportHref as buildLearnerAssignmentReportHrefFromNavigation,
   buildLearnerOverviewReportHref as buildLearnerOverviewReportHrefFromNavigation,
   buildLearnerSubjectReportHref as buildLearnerSubjectReportHrefFromNavigation,
 } from '@/app/core/components/reports/reportNavigation';
@@ -27,6 +28,24 @@ export function buildLearnerAssessmentReportHref(
       subjectId: options?.subjectId ?? null,
       cohortId: options?.cohortId ?? null,
       academicYearId: options?.academicYearId ?? null,
+      returnTo: options?.returnTo ?? null,
+    },
+  );
+}
+
+export function buildLearnerAssignmentReportHref(
+  learnerId: number,
+  options?: {
+    cohortSubjectId?: number | null;
+    highlightAssignment?: number | null;
+    returnTo?: string | null;
+  },
+): string {
+  return buildLearnerAssignmentReportHrefFromNavigation(
+    learnerId,
+    {
+      cohortSubjectId: options?.cohortSubjectId ?? null,
+      highlightAssignment: options?.highlightAssignment ?? null,
       returnTo: options?.returnTo ?? null,
     },
   );

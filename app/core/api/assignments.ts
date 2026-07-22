@@ -3,6 +3,8 @@ import { withClientMutationId } from '@/app/core/lib/clientMutationId';
 import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type {
     Assignment,
+    AssignmentBulkReviewPayload,
+    AssignmentBulkReviewResponse,
     AssignmentCreatePayload,
     AssignmentAutoGenerateGroupsPayload,
     AssignmentAutoGenerateGroupsResponse,
@@ -83,6 +85,17 @@ export const assignmentsAPI = {
     getLifecycleState: async (id: number): Promise<AssignmentLifecycleState> => {
         const response = await apiClient.get<AssignmentLifecycleState>(
             `${ASSIGNMENTS_BASE}/${id}/lifecycle-state/`
+        );
+        return response.data;
+    },
+
+    bulkReview: async (
+        id: number,
+        data: AssignmentBulkReviewPayload
+    ): Promise<AssignmentBulkReviewResponse> => {
+        const response = await apiClient.post<AssignmentBulkReviewResponse>(
+            `${ASSIGNMENTS_BASE}/${id}/bulk-review/`,
+            withClientMutationId(data, 'assignment-bulk-review')
         );
         return response.data;
     },

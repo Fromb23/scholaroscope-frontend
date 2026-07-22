@@ -9,6 +9,7 @@ import {
   buildInstructorClassReportHref,
   buildInstructorCohortSubjectDetailHref,
   buildLearnerAssessmentReportHref,
+  buildLearnerAssignmentReportHref,
   buildLearnerReportHref,
   buildLearnerSubjectReportHref,
   buildReportReturnTo,
@@ -67,6 +68,16 @@ describe('report navigation helpers', () => {
     );
     expect(href).not.toContain('assessment=');
     expect(href).not.toContain('assessment_type=');
+  });
+
+  it('builds learner assignment report routes with assignment highlight and return state', () => {
+    expect(buildLearnerAssignmentReportHref(74, {
+      cohortSubjectId: 3,
+      highlightAssignment: 99,
+      returnTo: '/academic/cohorts/5/assignments/99?workflow=review&unit=student%3A12&tab=evaluations&returnTo=%2Facademic%2Fcohorts%2F5%2Fassignments',
+    })).toBe(
+      '/reports/learners/74/assignments?cohort_subject=3&highlightAssignment=99&returnTo=%2Facademic%2Fcohorts%2F5%2Fassignments%2F99%3Fworkflow%3Dreview%26unit%3Dstudent%253A12%26tab%3Devaluations%26returnTo%3D%252Facademic%252Fcohorts%252F5%252Fassignments',
+    );
   });
 
   it('builds canonical admin report hrefs with shared query state', () => {

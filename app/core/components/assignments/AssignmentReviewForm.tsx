@@ -31,6 +31,9 @@ interface AssignmentReviewFormProps {
     evaluation?: AssignmentEvaluation | null;
     rubricLevels?: RubricLevel[];
     onSaved?: () => void | Promise<void>;
+    onSaveAndNext?: () => void | Promise<void>;
+    pending?: boolean;
+    readOnly?: boolean;
 }
 
 type ReviewField = 'numericScore' | 'rubricLevel' | 'narrative' | 'competencyState';
@@ -94,6 +97,9 @@ export function AssignmentReviewForm({
     evaluation = null,
     rubricLevels = [],
     onSaved,
+    onSaveAndNext,
+    pending = false,
+    readOnly = false,
 }: AssignmentReviewFormProps) {
     const createMutation = useCreateAssignmentEvaluation();
     const updateMutation = useUpdateAssignmentEvaluation();
@@ -126,7 +132,7 @@ export function AssignmentReviewForm({
         setSuccessMessage(null);
     }, [evaluation]);
 
-    const saving = createMutation.isPending || updateMutation.isPending;
+    const saving = pending || createMutation.isPending || updateMutation.isPending;
     const evaluationType = assignment.evaluation_type;
 
     const validate = (): AssignmentEvaluationCreatePayload | AssignmentEvaluationUpdatePayload | null => {
@@ -184,16 +190,23 @@ export function AssignmentReviewForm({
             };
         }
 
+        if (!competencyState) {
+            nextFieldErrors.competencyState = 'Select a competency state before saving the review.';
+            setFieldErrors(nextFieldErrors);
+            focusFirstError(nextFieldErrors);
+            return null;
+        }
+
         setFieldErrors({});
         return {
             submission: submission.id,
             evaluation_type: evaluationType as AssignmentEvaluationType,
-            competency_state: competencyState || null,
+            competency_state: competencyState,
             narrative: narrative.trim(),
         };
     };
 
-    const handleSave = async () => {
+    const handleSave = async (advance = false) => {
         const payload = validate();
         if (!payload) return;
 
@@ -212,6 +225,9 @@ export function AssignmentReviewForm({
                 setSuccessMessage('Review saved.');
             }
             await onSaved?.();
+            if (advance) {
+                await onSaveAndNext?.();
+            }
         } catch (err) {
             setFormError(resolveErrorMessage(err, 'Failed to save review.'));
         }
@@ -267,6 +283,7 @@ export function AssignmentReviewForm({
                     min="0"
                     max={assignment.total_marks ?? undefined}
                     value={numericScore}
+                    disabled={readOnly || saving}
                     helperText={numericHelperText}
                     error={getFormFieldErrorMessage(fieldErrors.numericScore)}
                     onChange={(event) => {
@@ -283,6 +300,7 @@ export function AssignmentReviewForm({
                     ref={setFieldRef('rubricLevel')}
                     label="Rubric Level"
                     value={rubricLevel}
+                    disabled={readOnly || saving}
                     error={getFormFieldErrorMessage(fieldErrors.rubricLevel)}
                     onChange={(event) => {
                         setRubricLevel(event.target.value);
@@ -297,6 +315,7 @@ export function AssignmentReviewForm({
                     ref={setFieldRef('competencyState')}
                     label="Competency State"
                     value={competencyState}
+                    disabled={readOnly || saving}
                     onChange={(event) => setCompetencyState(event.target.value)}
                     options={buildCompetencyOptions()}
                 />
@@ -310,6 +329,7 @@ export function AssignmentReviewForm({
                     <textarea
                         ref={setFieldRef('narrative')}
                         value={narrative}
+                        disabled={readOnly || saving}
                         onChange={(event) => {
                             setNarrative(event.target.value);
                             setFieldErrors((previous) => ({ ...previous, narrative: undefined }));
@@ -329,14 +349,22 @@ export function AssignmentReviewForm({
                 </div>
             ) : null}
 
-            <div className="flex flex-col sm:flex-row sm:justify-end">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
                     type="button"
-                    onClick={handleSave}
-                    disabled={saving}
+                    onClick={() => void handleSave(false)}
+                    disabled={readOnly || saving}
                     className="w-full sm:w-auto"
                 >
-                    {saving ? 'Saving review...' : 'Save review'}
+                    {saving ? 'Saving review...' : 'Save'}
+                </Button>
+                <Button
+                    type="button"
+                    onClick={() => void handleSave(true)}
+                    disabled={readOnly || saving || !onSaveAndNext}
+                    className="w-full sm:w-auto"
+                >
+                    Save & Next
                 </Button>
             </div>
         </div>

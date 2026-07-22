@@ -24,6 +24,8 @@ import {
   ClassSummary,
   SubjectAnalysis,
   AttendanceScopeReportPayload,
+  LearnerAssignmentReportPayload,
+  LearnerAssignmentReportQueryParams,
   LearnerAssessmentReportPayload,
   LearnerAssessmentReportQueryParams,
   LearnerOverviewReportPayload,
@@ -746,6 +748,51 @@ export const useLearnerAssessmentReport = (
     subjectId,
     termId,
   ]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useLearnerAssignmentReport = (
+  learnerId: number | null,
+  params: LearnerAssignmentReportQueryParams,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [report, setReport] = useState<LearnerAssignmentReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const { cohortSubjectId } = params;
+
+  const fetchReport = useCallback(async () => {
+    if (!learnerId) {
+      setReport(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getLearnerAssignmentReport(learnerId, {
+        cohortSubjectId,
+      }));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setReport(null);
+      setError(resolveErrorMessage(apiError, 'Could not load learner assignment report.'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [cohortSubjectId, enabled, learnerId]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };

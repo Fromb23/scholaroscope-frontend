@@ -302,6 +302,92 @@ export interface ReportAssignmentSummary {
   excused_recipients: number;
 }
 
+export interface LearnerAssignmentReportQueryParams {
+  cohortSubjectId?: number | null;
+}
+
+export interface LearnerAssignmentReportRow {
+  assignment_id: number;
+  assignment_title: string;
+  instructions?: string;
+  delivery_mode: 'INDIVIDUAL' | 'GROUP';
+  evaluation_type: string;
+  total_marks: number | null;
+  due_at: string | null;
+  starts_at: string | null;
+  assignment_status: string;
+  term_id: number | null;
+  term_name: string | null;
+  cohort_subject_id: number;
+  cohort_id: number;
+  cohort_name: string;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  recipient_status: string | null;
+  submission_id: number | null;
+  submitted_at: string | null;
+  response_note: string;
+  attachment_metadata: unknown[];
+  submission_status: string | null;
+  evaluation_id: number | null;
+  evaluation_value: string | null;
+  numeric_score: number | null;
+  rubric_level_id: number | null;
+  rubric_level_code: string | null;
+  rubric_level_label: string | null;
+  narrative: string;
+  feedback: string;
+  competency_state: string | null;
+  evidence_created: boolean | null;
+  evidence_status: string | null;
+  evidence_warning: string;
+  evaluated_at: string | null;
+  projection_mode: string | null;
+  group_id: number | null;
+  group_name: string | null;
+  group_member_id: number | null;
+  group_member_participation_status: string | null;
+  group_member_participation_note: string;
+  group_member_override: Record<string, unknown> | null;
+  group_members: Array<Record<string, unknown>>;
+}
+
+export interface LearnerAssignmentReportPayload {
+  report_type: 'learner_assignment';
+  generated_at: string;
+  learner: StudentInfo;
+  context: {
+    cohort_subject_id: number | null;
+    cohort_id: number | null;
+    cohort_name: string | null;
+    subject_id: number | null;
+    subject_name: string | null;
+    subject_code: string | null;
+  };
+  summary: {
+    assignment_count: number;
+    submitted_count: number;
+    reviewed_count: number;
+    status_counts: Record<string, number>;
+  };
+  assignment_rows: LearnerAssignmentReportRow[];
+  available_filters: {
+    cohort_subjects: Array<{
+      cohort_subject_id: number;
+      cohort_id: number;
+      cohort_name: string;
+      subject_id: number;
+      subject_name: string;
+      subject_code: string;
+    }>;
+  };
+  visibility: {
+    scope: 'admin' | 'instructor';
+    can_compare_subjects: boolean;
+  };
+}
+
 export interface ReportAverageSummary {
   average: number | null;
   records: number;

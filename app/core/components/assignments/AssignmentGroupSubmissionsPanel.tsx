@@ -2,14 +2,13 @@
 
 import { resolveErrorMessage } from '@/app/core/errors';
 
-import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { AssignmentWorkUnitNavigation } from '@/app/core/components/assignments/AssignmentWorkUnitNavigation';
 import {
     formatDateTime,
     getSubmissionStatusBadgeVariant,
@@ -21,242 +20,101 @@ import {
 import type {
     Assignment,
     AssignmentGroup,
-    AssignmentGroupSubmissionStatus,
+    AssignmentGroupSubmission,
 } from '@/app/core/types/assignments';
 
 interface AssignmentGroupSubmissionsPanelProps {
     assignment: Assignment;
     groups: AssignmentGroup[];
     groupsLoading: boolean;
+    activeGroupId?: number | null;
+    currentIndex?: number;
+    totalCount?: number;
+    onPrevious?: () => void;
+    onNext?: () => void;
+    onSaved?: (submission: AssignmentGroupSubmission) => void | Promise<void>;
+    onSaveAndNext?: (submission: AssignmentGroupSubmission) => void | Promise<void>;
+    pending?: boolean;
+    readOnly?: boolean;
 }
-
-const GROUP_SUBMISSION_STATUS_OPTIONS: Array<{
-    value: AssignmentGroupSubmissionStatus;
-    label: string;
-}> = [
-    { value: 'SUBMITTED', label: 'Submitted' },
-    { value: 'LATE', label: 'Late' },
-    { value: 'RETURNED', label: 'Returned' },
-    { value: 'RESUBMITTED', label: 'Resubmitted' },
-    { value: 'REVIEWED', label: 'Reviewed' },
-];
 
 const textareaClassName = [
     'theme-focus-ring theme-input theme-surface-elevated w-full rounded-lg px-4 py-3',
     'placeholder:text-[color:var(--color-text-subtle)]',
 ].join(' ');
 
-const selectClassName = [
-    'theme-focus-ring theme-input theme-surface-elevated w-full rounded-lg px-4 py-3',
-].join(' ');
-
-function toDateTimeLocalValue(value: Date): string {
-    const offset = value.getTimezoneOffset();
-    return new Date(value.getTime() - offset * 60_000).toISOString().slice(0, 16);
-}
-
-function GroupSubmissionCard({
-    assignment,
-    group,
-    expanded,
-    onToggle,
-}: {
-    assignment: Assignment;
-    group: AssignmentGroup;
-    expanded: boolean;
-    onToggle: () => void;
-}) {
-    const submissionsQuery = useAssignmentGroupSubmissions(group.id, { enabled: expanded });
-    const createMutation = useCreateAssignmentGroupSubmission();
-    const [submittedAt, setSubmittedAt] = useState(() => toDateTimeLocalValue(new Date()));
-    const [status, setStatus] = useState<AssignmentGroupSubmissionStatus>('SUBMITTED');
-    const [textResponse, setTextResponse] = useState('');
-    const [formError, setFormError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-    const latestSubmission = useMemo(() => {
-        return [...submissionsQuery.submissions].sort((left, right) => (
-            new Date(right.submitted_at).getTime() - new Date(left.submitted_at).getTime()
-        ))[0] ?? null;
-    }, [submissionsQuery.submissions]);
-
-    const latestSubmissionAt = latestSubmission?.submitted_at ?? group.latest_submission_at ?? null;
-    const latestSubmissionStatus = latestSubmission?.status ?? group.latest_submission_status ?? null;
-    const memberCount = group.member_count ?? group.members?.length ?? 0;
-
-    const handleRecordSubmission = async () => {
-        setFormError(null);
-        setSuccessMessage(null);
-
-        try {
-            await createMutation.mutateAsync({
-                groupId: group.id,
-                data: {
-                    submitted_at: submittedAt ? new Date(submittedAt).toISOString() : undefined,
-                    status,
-                    text_response: textResponse.trim(),
-                },
-            });
-            setTextResponse('');
-            setSubmittedAt(toDateTimeLocalValue(new Date()));
-            setStatus('SUBMITTED');
-            setSuccessMessage('Group submission recorded.');
-        } catch (err) {
-            setFormError(resolveErrorMessage(err, 'Failed to record group submission.'));
-        }
-    };
-
-    return (
-        <Card className="overflow-hidden p-0">
-            <button
-                type="button"
-                onClick={onToggle}
-                className="theme-focus-ring theme-hover-surface flex w-full items-start justify-between gap-4 px-5 py-4 text-left transition-colors"
-            >
-                <div className="min-w-0 space-y-2">
-                    <div className="flex items-center gap-2">
-                        {expanded ? (
-                            <ChevronDown className="h-4 w-4 shrink-0 theme-subtle" />
-                        ) : (
-                            <ChevronRight className="h-4 w-4 shrink-0 theme-subtle" />
-                        )}
-                        <h2 className="truncate text-base font-semibold theme-text">{group.name}</h2>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 text-sm">
-                        <span className="theme-muted">{memberCount} members</span>
-                        {latestSubmissionStatus ? (
-                            <Badge variant={getSubmissionStatusBadgeVariant(latestSubmissionStatus)} size="sm">
-                                {latestSubmissionStatus}
-                            </Badge>
-                        ) : (
-                            <span className="theme-subtle">No submission yet</span>
-                        )}
-                        {latestSubmissionAt ? (
-                            <span className="theme-subtle">Latest {formatDateTime(latestSubmissionAt)}</span>
-                        ) : null}
-                    </div>
-                </div>
-
-                {!latestSubmissionStatus && !expanded ? (
-                    <span className="inline-flex items-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm font-medium theme-text">
-                        <FileText className="h-4 w-4" />
-                        Record submission
-                    </span>
-                ) : null}
-            </button>
-
-            {expanded ? (
-                <div className="border-t theme-border px-5 py-4">
-                    <div className="space-y-4">
-                        {formError ? (
-                            <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
-                        ) : null}
-
-                        {submissionsQuery.error ? (
-                            <ErrorBanner
-                                message={submissionsQuery.error}
-                                onDismiss={() => void submissionsQuery.refetch()}
-                            />
-                        ) : null}
-
-                        {successMessage ? (
-                            <div className="theme-success-surface rounded-lg px-4 py-3 text-sm">
-                                {successMessage}
-                            </div>
-                        ) : null}
-
-                        {submissionsQuery.loading ? (
-                            <LoadingSpinner fullScreen={false} message={`Loading submissions for ${group.name}...`} />
-                        ) : null}
-
-                        {latestSubmission ? (
-                            <div className="rounded-lg border theme-border theme-surface-muted p-4">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <div className="text-sm font-medium theme-text">Latest submission</div>
-                                    <Badge variant={getSubmissionStatusBadgeVariant(latestSubmission.status)} size="sm">
-                                        {latestSubmission.status}
-                                    </Badge>
-                                </div>
-                                <p className="mt-1 text-sm theme-muted">
-                                    Recorded {formatDateTime(latestSubmission.submitted_at)}
-                                </p>
-                                <p className="mt-3 whitespace-pre-wrap text-sm theme-text">
-                                    {latestSubmission.text_response || 'No text notes recorded.'}
-                                </p>
-                            </div>
-                        ) : !submissionsQuery.loading ? (
-                            <div className="rounded-lg border border-dashed theme-border px-4 py-3 text-sm theme-muted">
-                                No submission has been recorded for this group yet.
-                            </div>
-                        ) : null}
-
-                        <div className="rounded-lg border theme-border p-4">
-                            <div className="space-y-1">
-                                <div className="text-sm font-medium theme-text">Record submission</div>
-                                <p className="text-sm theme-muted">
-                                    {assignment.title} can be logged here when the teacher is capturing offline work, presentations, or collected books.
-                                </p>
-                            </div>
-
-                            <div className="mt-4 grid gap-4 md:grid-cols-2">
-                                <Input
-                                    label="Submitted At"
-                                    type="datetime-local"
-                                    value={submittedAt}
-                                    onChange={(event) => setSubmittedAt(event.target.value)}
-                                />
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium theme-text">Status</label>
-                                    <select
-                                        value={status}
-                                        onChange={(event) => setStatus(event.target.value as AssignmentGroupSubmissionStatus)}
-                                        className={selectClassName}
-                                    >
-                                        {GROUP_SUBMISSION_STATUS_OPTIONS.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="mt-4 space-y-2">
-                                <label className="block text-sm font-medium theme-text">Teacher Notes</label>
-                                <textarea
-                                    value={textResponse}
-                                    onChange={(event) => setTextResponse(event.target.value)}
-                                    rows={4}
-                                    placeholder="Record what the group submitted or presented."
-                                    className={textareaClassName}
-                                />
-                            </div>
-
-                            <div className="mt-4 flex flex-col sm:flex-row sm:justify-end">
-                                <Button
-                                    type="button"
-                                    onClick={handleRecordSubmission}
-                                    disabled={createMutation.isPending}
-                                    className="w-full sm:w-auto"
-                                >
-                                    {createMutation.isPending ? 'Saving submission...' : 'Save submission'}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
-        </Card>
-    );
-}
-
 export function AssignmentGroupSubmissionsPanel({
     assignment,
     groups,
     groupsLoading,
+    activeGroupId = null,
+    currentIndex = 0,
+    totalCount,
+    onPrevious = () => undefined,
+    onNext = () => undefined,
+    onSaved,
+    onSaveAndNext,
+    pending = false,
+    readOnly = false,
 }: AssignmentGroupSubmissionsPanelProps) {
-    const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
+    const activeGroup = useMemo(() => (
+        groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null
+    ), [activeGroupId, groups]);
+    const submissionsQuery = useAssignmentGroupSubmissions(activeGroup?.id ?? null, {
+        enabled: Boolean(activeGroup?.id),
+    });
+    const createMutation = useCreateAssignmentGroupSubmission();
+    const [textResponse, setTextResponse] = useState('');
+    const [hydrationKey, setHydrationKey] = useState('');
+    const [formError, setFormError] = useState<string | null>(null);
+
+    const currentSubmission = useMemo(() => (
+        [...submissionsQuery.submissions].sort((left, right) => (
+            new Date(right.submitted_at).getTime() - new Date(left.submitted_at).getTime()
+        ))[0] ?? null
+    ), [submissionsQuery.submissions]);
+    const activeHydrationKey = [
+        assignment.id,
+        activeGroup?.id ?? 'none',
+        currentSubmission?.id ?? 'none',
+        currentSubmission?.updated_at ?? 'none',
+    ].join(':');
+    const saving = pending || createMutation.isPending;
+
+    useEffect(() => {
+        if (hydrationKey === activeHydrationKey) return;
+        setTextResponse(currentSubmission?.text_response ?? '');
+        setFormError(null);
+        setHydrationKey(activeHydrationKey);
+    }, [activeHydrationKey, currentSubmission, hydrationKey]);
+
+    const dirty = textResponse !== (currentSubmission?.text_response ?? '');
+
+    const save = async (advance: boolean) => {
+        if (!activeGroup) return;
+        setFormError(null);
+
+        try {
+            const submission = await createMutation.mutateAsync({
+                groupId: activeGroup.id,
+                data: {
+                    text_response: textResponse.trim(),
+                },
+            });
+            setHydrationKey([
+                assignment.id,
+                activeGroup.id,
+                submission.id,
+                submission.updated_at,
+            ].join(':'));
+            await onSaved?.(submission);
+            if (advance) {
+                await onSaveAndNext?.(submission);
+            }
+        } catch (err) {
+            setFormError(resolveErrorMessage(err, 'Failed to record group submission.'));
+        }
+    };
 
     if (groupsLoading) {
         return (
@@ -266,7 +124,7 @@ export function AssignmentGroupSubmissionsPanel({
         );
     }
 
-    if (groups.length === 0) {
+    if (groups.length === 0 || !activeGroup) {
         return (
             <Card>
                 <div className="py-10 text-center text-sm theme-muted">
@@ -277,20 +135,107 @@ export function AssignmentGroupSubmissionsPanel({
     }
 
     return (
-        <div className="space-y-4">
+        <Card className="space-y-4">
             <div className="theme-info-surface rounded-lg px-4 py-3 text-sm">
-                {assignment.title} is tracked as group work. Expand one group at a time to review the latest submission or record a new one.
+                {assignment.title} is tracked as group work. Record one group at a time and use Previous/Next to move through the work queue.
             </div>
 
-            {groups.map((group) => (
-                <GroupSubmissionCard
-                    key={group.id}
-                    assignment={assignment}
-                    group={group}
-                    expanded={expandedGroupId === group.id}
-                    onToggle={() => setExpandedGroupId((current) => current === group.id ? null : group.id)}
+            <AssignmentWorkUnitNavigation
+                label="Group"
+                currentIndex={currentIndex}
+                totalCount={totalCount ?? groups.length}
+                onPrevious={onPrevious}
+                onNext={onNext}
+                disabled={saving || dirty}
+                queueDescription={dirty ? 'Save or close/discard changes before navigating.' : activeGroup.name}
+            />
+
+            {formError ? (
+                <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
+            ) : null}
+
+            {submissionsQuery.error ? (
+                <ErrorBanner
+                    message={submissionsQuery.error}
+                    onDismiss={() => void submissionsQuery.refetch()}
                 />
-            ))}
-        </div>
+            ) : null}
+
+            {submissionsQuery.loading ? (
+                <LoadingSpinner fullScreen={false} message={`Loading submissions for ${activeGroup.name}...`} />
+            ) : null}
+
+            <div className="rounded-lg border theme-border theme-surface-elevated p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-semibold theme-text">{activeGroup.name}</h2>
+                    <span className="text-sm theme-muted">
+                        {activeGroup.member_count ?? activeGroup.members?.length ?? 0} members
+                    </span>
+                    {currentSubmission ? (
+                        <Badge variant={getSubmissionStatusBadgeVariant(currentSubmission.status)} size="sm">
+                            {currentSubmission.status}
+                        </Badge>
+                    ) : (
+                        <Badge variant="default" size="sm">No submission yet</Badge>
+                    )}
+                </div>
+                {currentSubmission ? (
+                    <p className="mt-1 text-xs theme-muted">
+                        Submitted {formatDateTime(currentSubmission.submitted_at)} · Updated {formatDateTime(currentSubmission.updated_at)}
+                    </p>
+                ) : (
+                    <p className="mt-1 text-xs theme-muted">
+                        Server will record submitted time and status when saved.
+                    </p>
+                )}
+            </div>
+
+            <div className="space-y-3 rounded-lg border theme-border theme-surface-muted p-4">
+                <div className="text-sm font-medium theme-text">Group members</div>
+                {activeGroup.members?.length ? (
+                    <div className="grid gap-2 md:grid-cols-2">
+                        {activeGroup.members.map((member) => (
+                            <div key={member.id} className="rounded-lg border theme-border theme-surface-elevated px-3 py-2">
+                                <div className="text-sm font-medium theme-text">{member.student_name}</div>
+                                <div className="text-xs theme-subtle">{member.admission_number} · {member.participation_status_display}</div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm theme-muted">No group members have been added.</p>
+                )}
+            </div>
+
+            <div className="space-y-2">
+                <label className="block text-sm font-medium theme-text">Teacher Notes</label>
+                <textarea
+                    value={textResponse}
+                    onChange={(event) => setTextResponse(event.target.value)}
+                    rows={4}
+                    disabled={readOnly || saving}
+                    placeholder="Record what the group submitted or presented."
+                    className={textareaClassName}
+                />
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                    type="button"
+                    onClick={() => void save(false)}
+                    disabled={readOnly || saving}
+                    className="w-full sm:w-auto"
+                >
+                    {saving ? 'Saving submission...' : 'Save'}
+                </Button>
+                <Button
+                    type="button"
+                    onClick={() => void save(true)}
+                    disabled={readOnly || saving || currentIndex >= (totalCount ?? groups.length) - 1}
+                    className="w-full sm:w-auto"
+                >
+                    Save & Next
+                </Button>
+            </div>
+        </Card>
     );
 }

@@ -28,6 +28,8 @@ import {
   InstructorAttendanceRiskResponse,
   LearnerOverviewReportPayload,
   LearnerTermProgressReportPayload,
+  LearnerAssignmentReportPayload,
+  LearnerAssignmentReportQueryParams,
   LearnerAssessmentReportPayload,
   LearnerAssessmentReportQueryParams,
   LearnerAvailableReportScopesPayload,
@@ -748,6 +750,21 @@ export const learnerReportingAPI = {
     return response.data;
   },
 
+  getLearnerAssignmentReport: async (
+    learnerId: number,
+    params: LearnerAssignmentReportQueryParams,
+  ) => {
+    const response = await apiClient.get<LearnerAssignmentReportPayload>(
+      `/reporting/learners/${learnerId}/assignment-report/`,
+      {
+        params: {
+          cohort_subject_id: params.cohortSubjectId ?? undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+
   exportLearnerSubjectReport: async (
     learnerId: number,
     params: {
@@ -1124,6 +1141,7 @@ export const reportsAPI = {
   getInstructorCohortSubjectTeachingActivity: instructorReportsAPI.getCohortSubjectTeachingActivity,
   getLearnerSubjectReport: learnerReportingAPI.getLearnerSubjectReport,
   getLearnerAssessmentReport: learnerReportingAPI.getLearnerAssessmentReport,
+  getLearnerAssignmentReport: learnerReportingAPI.getLearnerAssignmentReport,
   getLearnerAvailableScopes: learnerReportingAPI.getLearnerAvailableScopes,
   exportLearnerSubjectReport: learnerReportingAPI.exportLearnerSubjectReport,
   getLearnerOverviewReport: learnerReportingAPI.getLearnerOverviewReport,

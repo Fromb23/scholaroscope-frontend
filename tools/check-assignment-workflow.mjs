@@ -17,11 +17,6 @@ function check(name, passed, detail) {
 const detailPage = read('app/core/components/assignments/CohortAssignmentDetailPage.tsx');
 const groupReviewForm = read('app/core/components/assignments/AssignmentGroupReviewForm.tsx');
 const teachingTodayHook = read('app/core/hooks/useTeachingToday.ts');
-const selectedReviewStart = detailPage.indexOf('const selectedReviewSubmission = useMemo');
-const selectedReviewEnd = detailPage.indexOf('const selectedReviewEvaluation', selectedReviewStart);
-const selectedReviewBlock = selectedReviewStart >= 0 && selectedReviewEnd > selectedReviewStart
-  ? detailPage.slice(selectedReviewStart, selectedReviewEnd)
-  : detailPage;
 
 check(
   'normal assignment workflow must not expose a manual CBC bridge button',
@@ -32,10 +27,14 @@ check(
 );
 
 check(
-  'assignment review panel must not auto-open from pending submissions',
-  !selectedReviewBlock.includes('pendingReviewSubmissions[0]')
-    && !detailPage.includes('reviewPanelManuallyHidden'),
-  'Do not derive selectedReviewSubmission from the first pending submission on page load.',
+  'assignment workflow state must be URL-backed',
+  detailPage.includes("parseWorkflow(searchParams.get('workflow'))")
+    && detailPage.includes("searchParams.get('unit')")
+    && detailPage.includes("searchParams.get('tab')")
+    && detailPage.includes('updateWorkspaceUrl')
+    && !detailPage.includes('recordResponsePanelOpen')
+    && !detailPage.includes('selectedReviewSubmissionId'),
+  'Workflow, unit, and tab must survive refresh through URL query state.',
 );
 
 check(

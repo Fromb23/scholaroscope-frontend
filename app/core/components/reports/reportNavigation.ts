@@ -9,6 +9,7 @@ export interface ReportNavigationState {
   cohortSubject?: number | null;
   instructor?: number | null;
   assessment?: number | null;
+  highlightAssignment?: number | null;
   assessmentType?: string | null;
   session?: number | null;
   q?: string | null;
@@ -189,6 +190,26 @@ export function buildLearnerAssessmentReportHref(
   return query
     ? `/reports/learners/${learnerId}/assessments?${query}`
     : `/reports/learners/${learnerId}/assessments`;
+}
+
+export function buildLearnerAssignmentReportHref(
+  learnerId: number,
+  state?: ReportNavigationState,
+): string {
+  const params = new URLSearchParams();
+  setPositiveParam(
+    params,
+    'cohort_subject',
+    state?.cohortSubject ?? state?.cohortSubjectId ?? null,
+  );
+  setPositiveParam(params, 'highlightAssignment', state?.highlightAssignment ?? null);
+  if (isSafeReturnTo(state?.returnTo)) {
+    params.set('returnTo', state.returnTo);
+  }
+  const query = params.toString();
+  return query
+    ? `/reports/learners/${learnerId}/assignments?${query}`
+    : `/reports/learners/${learnerId}/assignments`;
 }
 
 export function buildCohortReportHref(

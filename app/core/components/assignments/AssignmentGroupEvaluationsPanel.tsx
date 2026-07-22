@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useMemo } from 'react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AssignmentGroupReviewForm } from '@/app/core/components/assignments/AssignmentGroupReviewForm';
+import { AssignmentWorkUnitNavigation } from '@/app/core/components/assignments/AssignmentWorkUnitNavigation';
 import {
     formatDateTime,
     getSubmissionStatusBadgeVariant,
@@ -27,138 +27,15 @@ interface AssignmentGroupEvaluationsPanelProps {
     groups: AssignmentGroup[];
     groupsLoading: boolean;
     rubricLevels?: RubricLevel[];
-}
-
-function GroupEvaluationSection({
-    assignment,
-    group,
-    expanded,
-    onToggle,
-    rubricLevels,
-    evaluationsBySubmissionId,
-}: {
-    assignment: Assignment;
-    group: AssignmentGroup;
-    expanded: boolean;
-    onToggle: () => void;
-    rubricLevels: RubricLevel[];
-    evaluationsBySubmissionId: Map<number, AssignmentGroupEvaluation>;
-}) {
-    const submissionsQuery = useAssignmentGroupSubmissions(group.id, { enabled: expanded });
-    const submissions = useMemo(() => (
-        [...submissionsQuery.submissions].sort((left, right) => (
-            new Date(right.submitted_at).getTime() - new Date(left.submitted_at).getTime()
-        ))
-    ), [submissionsQuery.submissions]);
-
-    const memberCount = group.member_count ?? group.members?.length ?? 0;
-    const submissionCount = group.submission_count ?? submissions.length;
-    const evaluationCount = group.evaluation_count ?? 0;
-
-    return (
-        <Card className="overflow-hidden p-0">
-            <button
-                type="button"
-                onClick={onToggle}
-                className="theme-focus-ring theme-hover-surface flex w-full items-start justify-between gap-4 px-5 py-4 text-left transition-colors"
-            >
-                <div className="min-w-0 space-y-2">
-                    <div className="flex items-center gap-2">
-                        {expanded ? (
-                            <ChevronDown className="h-4 w-4 shrink-0 theme-subtle" />
-                        ) : (
-                            <ChevronRight className="h-4 w-4 shrink-0 theme-subtle" />
-                        )}
-                        <h2 className="truncate text-base font-semibold theme-text">{group.name}</h2>
-                    </div>
-                    <div className="flex flex-wrap gap-2 text-sm">
-                        <span className="theme-muted">{memberCount} members</span>
-                        <span className="theme-muted">{submissionCount} submissions</span>
-                        <span className="theme-muted">{evaluationCount} reviewed</span>
-                        {group.latest_evaluated_at ? (
-                            <span className="theme-subtle">
-                                Latest review {formatDateTime(group.latest_evaluated_at)}
-                            </span>
-                        ) : (
-                            <span className="theme-subtle">No review yet</span>
-                        )}
-                    </div>
-                </div>
-            </button>
-
-            {expanded ? (
-                <div className="border-t theme-border px-5 py-4">
-                    {submissionsQuery.loading ? (
-                        <LoadingSpinner fullScreen={false} message={`Loading submissions for ${group.name}...`} />
-                    ) : submissionsQuery.error ? (
-                        <ErrorBanner
-                            message={submissionsQuery.error}
-                            onDismiss={() => void submissionsQuery.refetch()}
-                        />
-                    ) : submissions.length === 0 ? (
-                        <div className="rounded-lg border border-dashed theme-border px-4 py-6 text-sm theme-muted">
-                            No submissions have been recorded for this group yet.
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {submissions.map((submission) => {
-                                const evaluation = evaluationsBySubmissionId.get(submission.id) ?? null;
-
-                                return (
-                                    <div key={submission.id} className="rounded-lg border theme-border p-4">
-                                        <div className="space-y-4">
-                                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                                <div>
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <h3 className="text-base font-semibold theme-text">
-                                                            {submission.group_name}
-                                                        </h3>
-                                                        <Badge
-                                                            variant={getSubmissionStatusBadgeVariant(submission.status)}
-                                                            size="sm"
-                                                        >
-                                                            {submission.status}
-                                                        </Badge>
-                                                        {evaluation?.evidence_created ? (
-                                                            <Badge variant="green" size="sm">Evidence created</Badge>
-                                                        ) : null}
-                                                    </div>
-                                                    <p className="text-sm theme-muted">
-                                                        Submitted {formatDateTime(submission.submitted_at)}
-                                                    </p>
-                                                </div>
-
-                                                {evaluation?.evaluated_at ? (
-                                                    <div className="text-sm theme-subtle">
-                                                        Latest review {formatDateTime(evaluation.evaluated_at)}
-                                                    </div>
-                                                ) : null}
-                                            </div>
-
-                                            <div className="rounded-lg border theme-border theme-surface-muted p-4">
-                                                <div className="text-sm font-medium theme-text">Submission record</div>
-                                                <p className="mt-2 whitespace-pre-wrap text-sm theme-text">
-                                                    {submission.text_response || 'No text notes recorded.'}
-                                                </p>
-                                            </div>
-
-                                            <AssignmentGroupReviewForm
-                                                assignment={assignment}
-                                                group={group}
-                                                submission={submission}
-                                                evaluation={evaluation}
-                                                rubricLevels={rubricLevels}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            ) : null}
-        </Card>
-    );
+    activeGroupId?: number | null;
+    currentIndex?: number;
+    totalCount?: number;
+    onPrevious?: () => void;
+    onNext?: () => void;
+    onSaved?: () => void | Promise<void>;
+    onSaveAndNext?: () => void | Promise<void>;
+    pending?: boolean;
+    readOnly?: boolean;
 }
 
 export function AssignmentGroupEvaluationsPanel({
@@ -166,19 +43,41 @@ export function AssignmentGroupEvaluationsPanel({
     groups,
     groupsLoading,
     rubricLevels = [],
+    activeGroupId = null,
+    currentIndex = 0,
+    totalCount,
+    onPrevious = () => undefined,
+    onNext = () => undefined,
+    onSaved,
+    onSaveAndNext,
+    pending = false,
+    readOnly = false,
 }: AssignmentGroupEvaluationsPanelProps) {
-    const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null);
+    const activeGroup = useMemo(() => (
+        groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null
+    ), [activeGroupId, groups]);
+    const submissionsQuery = useAssignmentGroupSubmissions(activeGroup?.id ?? null, {
+        enabled: Boolean(activeGroup?.id),
+    });
     const evaluationsQuery = useAssignmentGroupEvaluations({
         assignment: assignment.id,
+        group: activeGroup?.id,
     }, {
-        enabled: groups.length > 0,
+        enabled: Boolean(activeGroup?.id),
     });
-
+    const currentSubmission = useMemo(() => (
+        [...submissionsQuery.submissions].sort((left, right) => (
+            new Date(right.submitted_at).getTime() - new Date(left.submitted_at).getTime()
+        ))[0] ?? null
+    ), [submissionsQuery.submissions]);
     const evaluationsBySubmissionId = useMemo(() => (
-        new Map(
+        new Map<number, AssignmentGroupEvaluation>(
             evaluationsQuery.evaluations.map((evaluation) => [evaluation.group_submission, evaluation])
         )
     ), [evaluationsQuery.evaluations]);
+    const currentEvaluation = currentSubmission
+        ? evaluationsBySubmissionId.get(currentSubmission.id) ?? null
+        : null;
 
     if (groupsLoading) {
         return (
@@ -188,18 +87,35 @@ export function AssignmentGroupEvaluationsPanel({
         );
     }
 
-    if (groups.length === 0) {
+    if (groups.length === 0 || !activeGroup) {
         return (
             <Card>
                 <div className="py-10 text-center text-sm theme-muted">
-                    No groups yet. Create groups before reviewing group work.
+                    Create groups and record group submissions before reviewing group work.
                 </div>
             </Card>
         );
     }
 
     return (
-        <div className="space-y-4">
+        <Card className="space-y-4">
+            <AssignmentWorkUnitNavigation
+                label="Group"
+                currentIndex={currentIndex}
+                totalCount={totalCount ?? groups.length}
+                onPrevious={onPrevious}
+                onNext={onNext}
+                disabled={pending}
+                queueDescription={activeGroup.name}
+            />
+
+            {submissionsQuery.error ? (
+                <ErrorBanner
+                    message={submissionsQuery.error}
+                    onDismiss={() => void submissionsQuery.refetch()}
+                />
+            ) : null}
+
             {evaluationsQuery.error ? (
                 <ErrorBanner
                     message={evaluationsQuery.error}
@@ -207,23 +123,67 @@ export function AssignmentGroupEvaluationsPanel({
                 />
             ) : null}
 
-            {evaluationsQuery.loading ? (
-                <Card>
-                    <LoadingSpinner fullScreen={false} message="Loading group evaluations..." />
-                </Card>
+            {(submissionsQuery.loading || evaluationsQuery.loading) ? (
+                <LoadingSpinner fullScreen={false} message={`Loading review data for ${activeGroup.name}...`} />
             ) : null}
 
-            {groups.map((group) => (
-                <GroupEvaluationSection
-                    key={group.id}
-                    assignment={assignment}
-                    group={group}
-                    expanded={expandedGroupId === group.id}
-                    onToggle={() => setExpandedGroupId((current) => current === group.id ? null : group.id)}
-                    rubricLevels={rubricLevels}
-                    evaluationsBySubmissionId={evaluationsBySubmissionId}
-                />
-            ))}
-        </div>
+            <div className="rounded-lg border theme-border theme-surface-elevated p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-semibold theme-text">{activeGroup.name}</h2>
+                    <span className="text-sm theme-muted">
+                        {activeGroup.member_count ?? activeGroup.members?.length ?? 0} members
+                    </span>
+                    {currentSubmission ? (
+                        <Badge variant={getSubmissionStatusBadgeVariant(currentSubmission.status)} size="sm">
+                            {currentSubmission.status}
+                        </Badge>
+                    ) : (
+                        <Badge variant="default" size="sm">No submission</Badge>
+                    )}
+                    {currentEvaluation ? (
+                        <Badge variant="green" size="sm">Reviewed</Badge>
+                    ) : null}
+                </div>
+                {currentSubmission ? (
+                    <p className="mt-1 text-xs theme-muted">
+                        Submitted {formatDateTime(currentSubmission.submitted_at)}
+                    </p>
+                ) : (
+                    <p className="mt-1 text-xs theme-muted">
+                        Record a group submission before reviewing this group.
+                    </p>
+                )}
+            </div>
+
+            {currentSubmission ? (
+                <>
+                    <div className="space-y-2 rounded-lg border theme-border theme-surface-muted p-4">
+                        <div className="text-sm font-medium theme-text">Recorded group response</div>
+                        <p className="whitespace-pre-wrap text-sm leading-6 theme-muted">
+                            {currentSubmission.text_response || 'No text response submitted.'}
+                        </p>
+                        <p className="text-xs theme-muted">
+                            Attachments {currentSubmission.attachment_metadata.length}
+                        </p>
+                    </div>
+
+                    <AssignmentGroupReviewForm
+                        assignment={assignment}
+                        group={activeGroup}
+                        submission={currentSubmission}
+                        evaluation={currentEvaluation}
+                        rubricLevels={rubricLevels}
+                        onSaved={onSaved}
+                        onSaveAndNext={onSaveAndNext}
+                        pending={pending}
+                        readOnly={readOnly}
+                    />
+                </>
+            ) : (
+                <div className="rounded-lg border border-dashed theme-border px-4 py-6 text-sm theme-muted">
+                    No submissions have been recorded for this group yet.
+                </div>
+            )}
+        </Card>
     );
 }

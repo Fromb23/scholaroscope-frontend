@@ -2,7 +2,7 @@
 
 import { resolveErrorMessage } from '@/app/core/errors';
 
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -18,7 +18,6 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { Select } from '@/app/components/ui/Select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
@@ -32,6 +31,7 @@ import { AssignmentPublishModal } from '@/app/core/components/assignments/Assign
 import { AssignmentReviewForm } from '@/app/core/components/assignments/AssignmentReviewForm';
 import { AssignmentGroupSubmissionsPanel } from '@/app/core/components/assignments/AssignmentGroupSubmissionsPanel';
 import { AssignmentRecordResponsePanel } from '@/app/core/components/assignments/AssignmentRecordResponsePanel';
+import { AssignmentWorkUnitNavigation } from '@/app/core/components/assignments/AssignmentWorkUnitNavigation';
 import {
     getAssignmentDeliveryBadgeVariant,
     getAssignmentDeliveryLabel,
@@ -51,6 +51,7 @@ import { useConfirmAction } from '@/app/core/hooks/useConfirmAction';
 import {
     useArchiveAssignment,
     useAssignmentDetail,
+    useAssignmentBulkReview,
     useAssignmentEvaluations,
     useAssignmentGroups,
     useAssignmentLifecycleState,
@@ -67,9 +68,10 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { resolveReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
-import { buildLearnerAssessmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
+import { buildLearnerAssignmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import type {
     AssignmentEvaluation,
+    AssignmentBulkReviewPayload,
     AssignmentLifecycleAction,
 } from '@/app/core/types/assignments';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
@@ -84,6 +86,34 @@ type DetailTab =
     | 'groups'
     | 'group-submissions'
     | 'group-evaluations';
+
+type AssignmentWorkflow = 'record' | 'review';
+
+const DETAIL_TABS: DetailTab[] = [
+    'overview',
+    'recipients',
+    'submissions',
+    'evaluations',
+    'groups',
+    'group-submissions',
+    'group-evaluations',
+];
+
+function parseDetailTab(value: string | null): DetailTab {
+    return DETAIL_TABS.includes(value as DetailTab) ? value as DetailTab : 'overview';
+}
+
+function parseWorkflow(value: string | null): AssignmentWorkflow | null {
+    return value === 'record' || value === 'review' ? value : null;
+}
+
+function individualUnitValue(studentId: number): string {
+    return `student:${studentId}`;
+}
+
+function groupUnitValue(groupId: number): string {
+    return `group:${groupId}`;
+}
 
 function summarizeEvaluation(
     evaluation: AssignmentEvaluation,
@@ -180,16 +210,13 @@ export default function CohortAssignmentDetailPage() {
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isInstitutionAdminView = activeRole === 'ADMIN' && !isTeachingActor;
     const isValidRoute = Number.isFinite(cohortId) && cohortId > 0 && Number.isFinite(assignmentId) && assignmentId > 0;
-    const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+    const activeTab = parseDetailTab(searchParams.get('tab'));
     const [editOpen, setEditOpen] = useState(false);
     const [publishOpen, setPublishOpen] = useState(false);
     const [publishMode, setPublishMode] = useState<'issue' | 'add_learners'>('issue');
     const confirmAction = useConfirmAction<AssignmentLifecycleAction>();
     const [actionError, setActionError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const [recordResponsePanelOpen, setRecordResponsePanelOpen] = useState(false);
-    const [selectedReviewSubmissionId, setSelectedReviewSubmissionId] = useState<number | null>(null);
-    const [openReviewAfterResponse, setOpenReviewAfterResponse] = useState(false);
     const [advancedDetailsOpen, setAdvancedDetailsOpen] = useState(false);
     const responseWorkflowRef = useRef<HTMLDivElement | null>(null);
     const reviewWorkflowRef = useRef<HTMLDivElement | null>(null);
@@ -243,6 +270,7 @@ export default function CohortAssignmentDetailPage() {
     const archiveMutation = useArchiveAssignment();
     const reopenLearnerWorkMutation = useReopenLearnerWork();
     const restoreToReviewMutation = useRestoreAssignmentToReview();
+    const bulkReviewMutation = useAssignmentBulkReview();
     const deleteMutation = useDeleteAssignment();
     const assignmentsHref = useMemo(
         () => getSafeReturnHref(cohortId, searchParams.get('returnTo')),
@@ -264,6 +292,34 @@ export default function CohortAssignmentDetailPage() {
         capabilities,
     });
     const canOpenLearnerReports = reportSurface !== 'none';
+    const activeWorkflow = parseWorkflow(searchParams.get('workflow'));
+    const unitParam = searchParams.get('unit');
+
+    const updateWorkspaceUrl = useCallback((updates: {
+        workflow?: AssignmentWorkflow | null;
+        unit?: string | null;
+        tab?: DetailTab | null;
+    }) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if ('workflow' in updates) {
+            if (updates.workflow) params.set('workflow', updates.workflow);
+            else params.delete('workflow');
+        }
+        if ('unit' in updates) {
+            if (updates.unit) params.set('unit', updates.unit);
+            else params.delete('unit');
+        }
+        if ('tab' in updates) {
+            if (updates.tab) params.set('tab', updates.tab);
+            else params.delete('tab');
+        }
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }, [pathname, router, searchParams]);
+
+    const setActiveTab = useCallback((tab: DetailTab) => {
+        updateWorkspaceUrl({ tab });
+    }, [updateWorkspaceUrl]);
 
     const visibleCohortSubjects = useMemo(() => (
         isTeachingActor
@@ -274,12 +330,29 @@ export default function CohortAssignmentDetailPage() {
     const recipientByStudentId = useMemo(() => (
         new Map(recipientsQuery.recipients.map((recipient) => [recipient.student, recipient]))
     ), [recipientsQuery.recipients]);
+    const individualWorkUnits = useMemo(() => (
+        [...recipientsQuery.recipients]
+            .filter((recipient) => recipient.status !== 'NOT_APPLICABLE_PRE_ENROLMENT')
+            .sort((left, right) => (
+                left.student_name.localeCompare(right.student_name)
+                || left.student - right.student
+            ))
+    ), [recipientsQuery.recipients]);
+    const groupWorkUnits = useMemo(() => (
+        [...groupsQuery.groups].sort((left, right) => (
+            left.name.localeCompare(right.name) || left.id - right.id
+        ))
+    ), [groupsQuery.groups]);
     const submissionById = useMemo(() => (
         new Map(submissionsQuery.submissions.map((submission) => [submission.id, submission]))
+    ), [submissionsQuery.submissions]);
+    const submissionByStudentId = useMemo(() => (
+        new Map(submissionsQuery.submissions.map((submission) => [submission.student, submission]))
     ), [submissionsQuery.submissions]);
     const evaluationBySubmissionId = useMemo(() => (
         new Map(evaluationsQuery.evaluations.map((evaluation) => [evaluation.submission, evaluation]))
     ), [evaluationsQuery.evaluations]);
+    const isGroupAssignment = assignment?.delivery_mode === 'GROUP';
     const reviewableSubmissions = useMemo(() => (
         [...submissionsQuery.submissions].sort((left, right) => (
             new Date(right.submitted_at).getTime() - new Date(left.submitted_at).getTime()
@@ -288,14 +361,51 @@ export default function CohortAssignmentDetailPage() {
     const pendingReviewSubmissions = useMemo(() => (
         reviewableSubmissions.filter((submission) => !evaluationBySubmissionId.has(submission.id))
     ), [evaluationBySubmissionId, reviewableSubmissions]);
-    const selectedReviewSubmission = useMemo(() => (
-        reviewableSubmissions.find((submission) => submission.id === selectedReviewSubmissionId)
-        ?? null
-    ), [reviewableSubmissions, selectedReviewSubmissionId]);
+    const selectedStudentIdFromUnit = unitParam?.startsWith('student:')
+        ? Number(unitParam.slice('student:'.length))
+        : null;
+    const selectedGroupIdFromUnit = unitParam?.startsWith('group:')
+        ? Number(unitParam.slice('group:'.length))
+        : null;
+    const selectedRecordRecipient = useMemo(() => {
+        if (isGroupAssignment) return null;
+        if (selectedStudentIdFromUnit && Number.isFinite(selectedStudentIdFromUnit)) {
+            const matched = individualWorkUnits.find((recipient) => recipient.student === selectedStudentIdFromUnit);
+            if (matched) return matched;
+        }
+        return individualWorkUnits[0] ?? null;
+    }, [individualWorkUnits, isGroupAssignment, selectedStudentIdFromUnit]);
+    const selectedRecordSubmission = selectedRecordRecipient
+        ? submissionByStudentId.get(selectedRecordRecipient.student) ?? null
+        : null;
+    const selectedReviewSubmission = useMemo(() => {
+        if (isGroupAssignment) return null;
+        if (selectedStudentIdFromUnit && Number.isFinite(selectedStudentIdFromUnit)) {
+            const matched = reviewableSubmissions.find((submission) => submission.student === selectedStudentIdFromUnit);
+            if (matched) return matched;
+        }
+        return pendingReviewSubmissions[0] ?? reviewableSubmissions[0] ?? null;
+    }, [isGroupAssignment, pendingReviewSubmissions, reviewableSubmissions, selectedStudentIdFromUnit]);
     const selectedReviewEvaluation = selectedReviewSubmission
         ? evaluationBySubmissionId.get(selectedReviewSubmission.id) ?? null
         : null;
-    const isGroupAssignment = assignment?.delivery_mode === 'GROUP';
+    const selectedGroup = useMemo(() => {
+        if (!isGroupAssignment) return null;
+        if (selectedGroupIdFromUnit && Number.isFinite(selectedGroupIdFromUnit)) {
+            const matched = groupWorkUnits.find((group) => group.id === selectedGroupIdFromUnit);
+            if (matched) return matched;
+        }
+        return groupWorkUnits[0] ?? null;
+    }, [groupWorkUnits, isGroupAssignment, selectedGroupIdFromUnit]);
+    const recordRecipientIndex = selectedRecordRecipient
+        ? individualWorkUnits.findIndex((recipient) => recipient.student === selectedRecordRecipient.student)
+        : -1;
+    const reviewSubmissionIndex = selectedReviewSubmission
+        ? reviewableSubmissions.findIndex((submission) => submission.id === selectedReviewSubmission.id)
+        : -1;
+    const groupWorkUnitIndex = selectedGroup
+        ? groupWorkUnits.findIndex((group) => group.id === selectedGroup.id)
+        : -1;
     const participatingCohortCount = useMemo(
         () => getAssignmentParticipatingCohortCount(assignment?.curriculum_context),
         [assignment?.curriculum_context]
@@ -354,7 +464,7 @@ export default function CohortAssignmentDetailPage() {
         }
 
         setActiveTab('overview');
-    }, [activeTab, detailTabs]);
+    }, [activeTab, detailTabs, setActiveTab]);
 
     const assistantContext = useMemo(() => ({
         pageKey: 'assignment_detail',
@@ -410,25 +520,48 @@ export default function CohortAssignmentDetailPage() {
     useAssistantPageContext(assistantContext);
 
     useEffect(() => {
-        if (isGroupAssignment) {
-            setSelectedReviewSubmissionId(null);
-            setRecordResponsePanelOpen(false);
-            setOpenReviewAfterResponse(false);
+        const normalizedTab = detailTabs.some((tab) => tab.value === activeTab)
+            ? activeTab
+            : 'overview';
+        if (normalizedTab !== activeTab) {
+            updateWorkspaceUrl({ tab: normalizedTab });
             return;
         }
 
-        if (selectedReviewSubmissionId == null) return;
+        if (!activeWorkflow) return;
 
-        const submissionStillExists = reviewableSubmissions.some(
-            (submission) => submission.id === selectedReviewSubmissionId
-        );
-        if (!submissionStillExists) {
-            setSelectedReviewSubmissionId(null);
+        if (isGroupAssignment) {
+            const nextGroupUnit = selectedGroup ? groupUnitValue(selectedGroup.id) : null;
+            if (!nextGroupUnit) {
+                updateWorkspaceUrl({ workflow: null, unit: null });
+                return;
+            }
+            if (unitParam !== nextGroupUnit) {
+                updateWorkspaceUrl({ unit: nextGroupUnit });
+            }
+            return;
+        }
+
+        const selectedUnit = activeWorkflow === 'record'
+            ? (selectedRecordRecipient ? individualUnitValue(selectedRecordRecipient.student) : null)
+            : (selectedReviewSubmission ? individualUnitValue(selectedReviewSubmission.student) : null);
+        if (!selectedUnit) {
+            updateWorkspaceUrl({ workflow: null, unit: null });
+            return;
+        }
+        if (unitParam !== selectedUnit) {
+            updateWorkspaceUrl({ unit: selectedUnit });
         }
     }, [
+        activeTab,
+        activeWorkflow,
+        detailTabs,
         isGroupAssignment,
-        reviewableSubmissions,
-        selectedReviewSubmissionId,
+        selectedGroup,
+        selectedRecordRecipient,
+        selectedReviewSubmission,
+        unitParam,
+        updateWorkspaceUrl,
     ]);
 
     if (!isValidRoute) {
@@ -469,12 +602,11 @@ export default function CohortAssignmentDetailPage() {
 
     const canChangeActiveAssignment = canManageAssignments && assignment.status !== 'ARCHIVED';
     const assignmentAttachmentSlots = assignment.attachment_slots ?? [];
-    const buildAssignmentLearnerReportHref = (learnerId: number) => buildLearnerAssessmentReportHref(
+    const buildAssignmentLearnerReportHref = (learnerId: number) => buildLearnerAssignmentReportHref(
         learnerId,
         {
-            cohortSubjectId: assignment.cohort_subject,
-            subjectId: assignment.subject_id,
-            cohortId: assignment.cohort_id,
+            cohortSubjectId: isInstitutionAdminView ? null : assignment.cohort_subject,
+            highlightAssignment: assignment.id,
             returnTo: currentReturnTo,
         },
     );
@@ -563,87 +695,141 @@ export default function CohortAssignmentDetailPage() {
         }, 80);
     };
 
-    const openRecordResponsePanel = (options?: { reviewAfterSave?: boolean }) => {
-        if (isGroupAssignment) {
-            setActiveTab('group-submissions');
-            setAdvancedDetailsOpen(true);
-            return;
-        }
-
-        setActionError(null);
-        setSuccessMessage(null);
-        setRecordResponsePanelOpen(true);
-        setSelectedReviewSubmissionId(null);
-        setOpenReviewAfterResponse(Boolean(options?.reviewAfterSave));
-        scrollWorkflowPanel(responseWorkflowRef);
-    };
-
-    const openReviewWorkflow = (submissionId?: number | null) => {
-        if (isGroupAssignment) {
-            setActiveTab('group-evaluations');
-            return;
-        }
-
-        const nextSubmissionId = submissionId
-            ?? pendingReviewSubmissions[0]?.id
-            ?? reviewableSubmissions[0]?.id
-            ?? null;
-
-        setActionError(null);
-        setSuccessMessage(null);
-        setRecordResponsePanelOpen(false);
-        setOpenReviewAfterResponse(false);
-        setSelectedReviewSubmissionId(nextSubmissionId);
-        scrollWorkflowPanel(reviewWorkflowRef);
-    };
-
-    const handleResponseSaved = async (submissionId: number) => {
+    const refetchAssignmentWorkflowData = async () => {
         await Promise.all([
             refetchAssignment(),
             lifecycleQuery.refetch(),
             recipientsQuery.refetch(),
             submissionsQuery.refetch(),
             evaluationsQuery.refetch(),
+            groupsQuery.refetch(),
         ]);
-        setRecordResponsePanelOpen(false);
-        if (openReviewAfterResponse) {
-            setSelectedReviewSubmissionId(submissionId);
-            setSuccessMessage('Learner response recorded. Review it below.');
-            scrollWorkflowPanel(reviewWorkflowRef);
-        } else {
-            setSelectedReviewSubmissionId(null);
-            setSuccessMessage('Learner response recorded.');
+    };
+
+    const openRecordResponsePanel = () => {
+        if (isGroupAssignment) {
+            updateWorkspaceUrl({
+                workflow: 'record',
+                unit: selectedGroup ? groupUnitValue(selectedGroup.id) : groupWorkUnits[0] ? groupUnitValue(groupWorkUnits[0].id) : null,
+                tab: 'group-submissions',
+            });
+            setAdvancedDetailsOpen(true);
+            scrollWorkflowPanel(responseWorkflowRef);
+            return;
         }
-        setOpenReviewAfterResponse(false);
+
+        setActionError(null);
+        setSuccessMessage(null);
+        updateWorkspaceUrl({
+            workflow: 'record',
+            unit: selectedRecordRecipient ? individualUnitValue(selectedRecordRecipient.student) : null,
+            tab: 'submissions',
+        });
+        scrollWorkflowPanel(responseWorkflowRef);
+    };
+
+    const openReviewWorkflow = (submissionId?: number | null) => {
+        if (isGroupAssignment) {
+            const nextReviewGroup = groupWorkUnits.find((group) => (
+                (group.submission_count ?? 0) > (group.evaluation_count ?? 0)
+            )) ?? selectedGroup ?? groupWorkUnits[0] ?? null;
+            updateWorkspaceUrl({
+                workflow: 'review',
+                unit: nextReviewGroup ? groupUnitValue(nextReviewGroup.id) : null,
+                tab: 'group-evaluations',
+            });
+            setAdvancedDetailsOpen(true);
+            scrollWorkflowPanel(reviewWorkflowRef);
+            return;
+        }
+
+        const nextSubmission = submissionId
+            ? reviewableSubmissions.find((submission) => submission.id === submissionId) ?? null
+            : pendingReviewSubmissions[0] ?? reviewableSubmissions[0] ?? null;
+
+        setActionError(null);
+        setSuccessMessage(null);
+        updateWorkspaceUrl({
+            workflow: 'review',
+            unit: nextSubmission ? individualUnitValue(nextSubmission.student) : null,
+            tab: 'evaluations',
+        });
+        scrollWorkflowPanel(reviewWorkflowRef);
+    };
+
+    const handleResponseSaved = async () => {
+        await refetchAssignmentWorkflowData();
+        setSuccessMessage('Learner response recorded.');
     };
 
     const handleReviewSaved = async () => {
-        const [
-            ,
-            ,
-            ,
-            submissionsResult,
-            evaluationsResult,
-        ] = await Promise.all([
-            refetchAssignment(),
-            lifecycleQuery.refetch(),
-            recipientsQuery.refetch(),
-            submissionsQuery.refetch(),
-            evaluationsQuery.refetch(),
-        ]);
-
-        const refreshedSubmissions = submissionsResult.data ?? [];
-        const refreshedEvaluations = new Set(
-            (evaluationsResult.data ?? []).map((evaluation) => evaluation.submission)
-        );
-        const nextPendingSubmission = refreshedSubmissions.find(
-            (submission) => !refreshedEvaluations.has(submission.id)
-        ) ?? refreshedSubmissions.find((submission) => submission.id === selectedReviewSubmission?.id)
-            ?? refreshedSubmissions[0]
-            ?? null;
-
-        setSelectedReviewSubmissionId(nextPendingSubmission?.id ?? null);
+        await refetchAssignmentWorkflowData();
         setSuccessMessage('Learner response reviewed.');
+    };
+
+    const handleApplyReviewToAllPending = async () => {
+        if (isGroupAssignment) {
+            setActionError('Group bulk review needs the active group submission queue loaded before applying shared review values.');
+            return;
+        }
+        const pendingIds = pendingReviewSubmissions.map((submission) => submission.id);
+        if (pendingIds.length === 0) {
+            setSuccessMessage('No pending reviews remain.');
+            return;
+        }
+
+        const payload: AssignmentBulkReviewPayload = {
+            submission_ids: pendingIds,
+            evaluation_type: assignment.evaluation_type,
+        };
+        if (assignment.evaluation_type === 'NUMERIC') {
+            const score = window.prompt(`Numeric score for ${pendingIds.length} pending response(s):`);
+            if (score == null) return;
+            const parsed = Number(score);
+            if (!Number.isFinite(parsed)) {
+                setActionError('Numeric score is required.');
+                return;
+            }
+            payload.numeric_score = parsed;
+        } else if (assignment.evaluation_type === 'RUBRIC') {
+            const levels = rubricScaleQuery.scale?.levels ?? [];
+            const rubricCode = window.prompt(
+                `Rubric level code for ${pendingIds.length} pending response(s): ${
+                    levels.map((level) => level.code).join(', ') || 'load rubric levels first'
+                }`
+            );
+            if (rubricCode == null) return;
+            const level = levels.find((item) => item.code.toLowerCase() === rubricCode.toLowerCase());
+            if (!level) {
+                setActionError('Select a valid rubric level code.');
+                return;
+            }
+            payload.rubric_level = level.id;
+        } else if (assignment.evaluation_type === 'COMPETENCY') {
+            const state = window.prompt(`Competency state for ${pendingIds.length} pending response(s):`);
+            if (!state) return;
+            payload.competency_state = state;
+        }
+        const narrative = window.prompt(`Shared feedback for ${pendingIds.length} pending response(s):`) ?? '';
+        if (assignment.evaluation_type === 'DESCRIPTIVE' && !narrative.trim()) {
+            setActionError('Narrative feedback is required for descriptive assignments.');
+            return;
+        }
+        payload.narrative = narrative.trim();
+        if (!window.confirm(`Apply this review to ${pendingIds.length} pending response(s)?`)) {
+            return;
+        }
+
+        try {
+            await bulkReviewMutation.mutateAsync({
+                assignmentId: assignment.id,
+                data: payload,
+            });
+            await refetchAssignmentWorkflowData();
+            setSuccessMessage(`Bulk review applied to ${pendingIds.length} pending response(s).`);
+        } catch (err) {
+            setActionError(resolveErrorMessage(err, 'Failed to apply bulk review.'));
+        }
     };
 
     const pendingLifecycleAction: AssignmentLifecycleAction | null = deleteMutation.isPending
@@ -945,6 +1131,38 @@ export default function CohortAssignmentDetailPage() {
                 ) : null
             ) : null}
 
+            {canChangeActiveAssignment && !isGroupAssignment ? (
+                <Card className="space-y-3">
+                    <div>
+                        <h2 className="text-base font-semibold theme-text">Review pending responses</h2>
+                        <p className="text-sm theme-muted">
+                            {pendingReviewSubmissions.length > 0
+                                ? `${pendingReviewSubmissions.length} pending response${pendingReviewSubmissions.length === 1 ? '' : 's'} can be reviewed.`
+                                : 'No pending reviews remain.'}
+                        </p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => openReviewWorkflow()}
+                            disabled={reviewableSubmissions.length === 0}
+                            className="w-full sm:w-auto"
+                        >
+                            Review pending
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => void handleApplyReviewToAllPending()}
+                            disabled={pendingReviewSubmissions.length === 0 || bulkReviewMutation.isPending}
+                            className="w-full sm:w-auto"
+                        >
+                            {bulkReviewMutation.isPending ? 'Applying review...' : 'Apply review to all pending'}
+                        </Button>
+                    </div>
+                </Card>
+            ) : null}
+
             <StatStrip mdColumns={2} xlColumns={4}>
                 {isGroupAssignment ? (
                     <>
@@ -1047,24 +1265,35 @@ export default function CohortAssignmentDetailPage() {
                 </Card>
             ) : null}
 
-            {canChangeActiveAssignment && recordResponsePanelOpen && !isGroupAssignment ? (
+            {canChangeActiveAssignment && activeWorkflow === 'record' && !isGroupAssignment ? (
                 <div ref={responseWorkflowRef}>
                     <AssignmentRecordResponsePanel
                         assignment={assignment}
-                        recipients={recipientsQuery.recipients}
-                        submissions={submissionsQuery.submissions}
-                        onClose={() => {
-                            setRecordResponsePanelOpen(false);
-                            setOpenReviewAfterResponse(false);
+                        activeRecipient={selectedRecordRecipient}
+                        currentSubmission={selectedRecordSubmission}
+                        currentIndex={Math.max(recordRecipientIndex, 0)}
+                        totalCount={individualWorkUnits.length}
+                        onPrevious={() => {
+                            const previous = individualWorkUnits[recordRecipientIndex - 1];
+                            if (previous) updateWorkspaceUrl({ unit: individualUnitValue(previous.student) });
                         }}
-                        onSaved={async (submission) => {
-                            await handleResponseSaved(submission.id);
+                        onNext={() => {
+                            const next = individualWorkUnits[recordRecipientIndex + 1];
+                            if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
                         }}
+                        onClose={() => updateWorkspaceUrl({ workflow: null, unit: null })}
+                        onSaved={handleResponseSaved}
+                        onSaveAndNext={async () => {
+                            const next = individualWorkUnits[recordRecipientIndex + 1];
+                            if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
+                        }}
+                        pending={submissionsQuery.loading || recipientsQuery.loading}
+                        readOnly={!canChangeActiveAssignment}
                     />
                 </div>
             ) : null}
 
-            {canChangeActiveAssignment && selectedReviewSubmission && !isGroupAssignment ? (
+            {canChangeActiveAssignment && activeWorkflow === 'review' && selectedReviewSubmission && !isGroupAssignment ? (
                 <div ref={reviewWorkflowRef}>
                     <Card className="theme-info-surface space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1081,28 +1310,27 @@ export default function CohortAssignmentDetailPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="w-full sm:w-auto"
-                                onClick={() => {
-                                    setSelectedReviewSubmissionId(null);
-                                    setOpenReviewAfterResponse(false);
-                                }}
+                                onClick={() => updateWorkspaceUrl({ workflow: null, unit: null })}
                             >
                                 Hide review panel
                             </Button>
                         </div>
 
-                        <div className="grid gap-4 lg:grid-cols-2">
-                            <Select
-                                label="Learner response"
-                                value={String(selectedReviewSubmission.id)}
-                                onChange={(event) => {
-                                    setSelectedReviewSubmissionId(Number(event.target.value));
+                        <div className="grid gap-4">
+                            <AssignmentWorkUnitNavigation
+                                label="Learner"
+                                currentIndex={Math.max(reviewSubmissionIndex, 0)}
+                                totalCount={reviewableSubmissions.length}
+                                onPrevious={() => {
+                                    const previous = reviewableSubmissions[reviewSubmissionIndex - 1];
+                                    if (previous) updateWorkspaceUrl({ unit: individualUnitValue(previous.student) });
                                 }}
-                                options={reviewableSubmissions.map((submission) => ({
-                                    value: String(submission.id),
-                                    label: `${submission.student_name} · ${
-                                        evaluationBySubmissionId.has(submission.id) ? 'Reviewed' : 'Needs review'
-                                    } · ${formatDateTime(submission.submitted_at)}`,
-                                }))}
+                                onNext={() => {
+                                    const next = reviewableSubmissions[reviewSubmissionIndex + 1];
+                                    if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
+                                }}
+                                disabled={evaluationsQuery.loading}
+                                queueDescription={selectedReviewSubmission.student_name}
                             />
                             <div className="rounded-lg border theme-border bg-white/80 px-4 py-3 text-sm">
                                 <div className="font-medium theme-text">
@@ -1131,6 +1359,12 @@ export default function CohortAssignmentDetailPage() {
                             evaluation={selectedReviewEvaluation}
                             rubricLevels={rubricScaleQuery.scale?.levels ?? []}
                             onSaved={handleReviewSaved}
+                            onSaveAndNext={async () => {
+                                const next = reviewableSubmissions[reviewSubmissionIndex + 1];
+                                if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
+                            }}
+                            pending={evaluationsQuery.loading}
+                            readOnly={Boolean(selectedReviewEvaluation?.evidence_created || selectedReviewEvaluation?.evidence_record_id)}
                         />
                     </Card>
                 </div>
@@ -1155,7 +1389,7 @@ export default function CohortAssignmentDetailPage() {
                 </div>
             </Card>
 
-            {advancedDetailsOpen ? (
+            {advancedDetailsOpen || (isGroupAssignment && activeWorkflow) ? (
                 <>
             <Card>
                 <div className="flex flex-wrap gap-2">
@@ -1563,6 +1797,27 @@ export default function CohortAssignmentDetailPage() {
                     assignment={assignment}
                     groups={groupsQuery.groups}
                     groupsLoading={groupsQuery.loading}
+                    activeGroupId={selectedGroup?.id ?? null}
+                    currentIndex={Math.max(groupWorkUnitIndex, 0)}
+                    totalCount={groupWorkUnits.length}
+                    onPrevious={() => {
+                        const previous = groupWorkUnits[groupWorkUnitIndex - 1];
+                        if (previous) updateWorkspaceUrl({ unit: groupUnitValue(previous.id) });
+                    }}
+                    onNext={() => {
+                        const next = groupWorkUnits[groupWorkUnitIndex + 1];
+                        if (next) updateWorkspaceUrl({ unit: groupUnitValue(next.id) });
+                    }}
+                    onSaved={async () => {
+                        await refetchAssignmentWorkflowData();
+                        setSuccessMessage('Group submission recorded.');
+                    }}
+                    onSaveAndNext={async () => {
+                        const next = groupWorkUnits[groupWorkUnitIndex + 1];
+                        if (next) updateWorkspaceUrl({ unit: groupUnitValue(next.id) });
+                    }}
+                    pending={groupsQuery.loading}
+                    readOnly={!canChangeActiveAssignment}
                 />
             ) : null}
 
@@ -1572,6 +1827,27 @@ export default function CohortAssignmentDetailPage() {
                     groups={groupsQuery.groups}
                     groupsLoading={groupsQuery.loading}
                     rubricLevels={rubricScaleQuery.scale?.levels ?? []}
+                    activeGroupId={selectedGroup?.id ?? null}
+                    currentIndex={Math.max(groupWorkUnitIndex, 0)}
+                    totalCount={groupWorkUnits.length}
+                    onPrevious={() => {
+                        const previous = groupWorkUnits[groupWorkUnitIndex - 1];
+                        if (previous) updateWorkspaceUrl({ unit: groupUnitValue(previous.id) });
+                    }}
+                    onNext={() => {
+                        const next = groupWorkUnits[groupWorkUnitIndex + 1];
+                        if (next) updateWorkspaceUrl({ unit: groupUnitValue(next.id) });
+                    }}
+                    onSaved={async () => {
+                        await refetchAssignmentWorkflowData();
+                        setSuccessMessage('Group response reviewed.');
+                    }}
+                    onSaveAndNext={async () => {
+                        const next = groupWorkUnits[groupWorkUnitIndex + 1];
+                        if (next) updateWorkspaceUrl({ unit: groupUnitValue(next.id) });
+                    }}
+                    pending={groupsQuery.loading}
+                    readOnly={!canChangeActiveAssignment}
                 />
             ) : null}
                 </>

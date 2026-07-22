@@ -8,16 +8,13 @@ const source = () => readFileSync(
 );
 
 describe('CohortAssignmentDetailPage behavioral workflow', () => {
-    it('does not auto-open the review panel for pending submissions', () => {
+    it('restores review selection from URL state and falls back to pending submissions', () => {
         const pageSource = source();
-        const selectedReviewStart = pageSource.indexOf('const selectedReviewSubmission = useMemo');
-        const selectedReviewEnd = pageSource.indexOf('const selectedReviewEvaluation', selectedReviewStart);
-        const selectedReviewBlock = pageSource.slice(selectedReviewStart, selectedReviewEnd);
 
         expect(pageSource).toContain('const selectedReviewSubmission = useMemo');
-        expect(selectedReviewBlock).not.toContain('pendingReviewSubmissions[0]');
-        expect(pageSource).not.toContain('setReviewPanelManuallyHidden');
-        expect(pageSource).not.toContain('reviewPanelManuallyHidden');
+        expect(pageSource).toContain("parseWorkflow(searchParams.get('workflow'))");
+        expect(pageSource).toContain("unitParam?.startsWith('student:')");
+        expect(pageSource).toContain('pendingReviewSubmissions[0]');
     });
 
   it('opens review intentionally through the lifecycle action', () => {
@@ -42,8 +39,8 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     const pageSource = source();
 
     expect(pageSource).toContain("assignment.status !== 'ARCHIVED'");
-    expect(pageSource).toContain('canChangeActiveAssignment && selectedReviewSubmission');
-    expect(pageSource).toContain('canChangeActiveAssignment && recordResponsePanelOpen');
+    expect(pageSource).toContain("canChangeActiveAssignment && activeWorkflow === 'review'");
+    expect(pageSource).toContain("canChangeActiveAssignment && activeWorkflow === 'record'");
   });
 
   it('passes lesson-origin metadata when deleting a draft assignment', () => {
@@ -71,14 +68,24 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     expect(pageSource).toContain('unfinished_work_count');
   });
 
-  it('links read-only learner records to assessment reports with return state', () => {
+  it('links read-only learner records to assignment reports with return state', () => {
     const pageSource = source();
 
     expect(pageSource).toContain('resolveReportSurface');
-    expect(pageSource).toContain('buildLearnerAssessmentReportHref');
+    expect(pageSource).toContain('buildLearnerAssignmentReportHref');
+    expect(pageSource).not.toContain('buildLearnerAssessmentReportHref');
+    expect(pageSource).toContain('highlightAssignment: assignment.id');
     expect(pageSource).toContain('returnTo: currentReturnTo');
     expect(pageSource).toContain('renderLearnerReportLink(recipient.student, recipient.student_name');
     expect(pageSource).toContain('renderLearnerReportLink(submission.student, submission.student_name');
     expect(pageSource).toContain('renderLearnerReportLink(');
+  });
+
+  it('exposes sequential and bulk pending review actions', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('Review pending');
+    expect(pageSource).toContain('Apply review to all pending');
+    expect(pageSource).toContain('bulkReviewMutation.mutateAsync');
   });
 });
