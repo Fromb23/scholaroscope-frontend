@@ -80,7 +80,10 @@ export function useAcademicLifecycleContext(options: {
           ...(options.cohortSubjectId ? { cohort_subject: options.cohortSubjectId } : {}),
         });
       } catch (err) {
-        throw new Error(resolveErrorMessage(err as ApiError, 'Failed to load academic context'));
+        throw Object.assign(
+          new Error(resolveErrorMessage(err as ApiError, 'Failed to load academic context')),
+          { cause: err }
+        );
       }
     },
     enabled,

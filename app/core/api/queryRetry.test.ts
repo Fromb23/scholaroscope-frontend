@@ -14,4 +14,21 @@ describe('React Query retry policy', () => {
     expect(shouldRetryQuery(1, { response: { status: 503 } })).toBe(true);
     expect(shouldRetryQuery(2, { response: { status: 503 } })).toBe(false);
   });
+
+  it('does not retry wrapped authorization failures', () => {
+    const wrapped = Object.assign(new Error('Forbidden'), {
+      cause: { response: { status: 403 } },
+    });
+
+    expect(shouldRetryQuery(0, wrapped)).toBe(false);
+  });
+
+  it('keeps retrying wrapped transient server failures within the limit', () => {
+    const wrapped = Object.assign(new Error('Server error'), {
+      cause: { response: { status: 500 } },
+    });
+
+    expect(shouldRetryQuery(0, wrapped)).toBe(true);
+    expect(shouldRetryQuery(2, wrapped)).toBe(false);
+  });
 });

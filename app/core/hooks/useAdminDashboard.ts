@@ -60,6 +60,27 @@ export interface DashboardMetrics {
     };
 }
 
+export interface DashboardAcademicContext {
+    key: string;
+    curriculumName: string;
+    termName: string;
+    yearName: string;
+}
+
+export interface DashboardAttentionItem {
+    id: string;
+    label: string;
+    detail: string;
+    href: string;
+}
+
+export interface DashboardWeekIndicator {
+    id: string;
+    label: string;
+    numerator: number;
+    denominator: number;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function computeMetrics(
@@ -177,6 +198,140 @@ function generateAlerts(metrics: DashboardMetrics): DashboardAlert[] {
     return alerts;
 }
 
+function deriveAcademicContexts(
+    currentTerm: { id: number; name: string; academic_year_name?: string | null } | null,
+    currentYear: { name: string } | null,
+    sessions: Session[],
+    assessments: Assessment[]
+): DashboardAcademicContext[] {
+    const contexts = new Map<string, DashboardAcademicContext>();
+
+    if (currentTerm) {
+        const yearName = currentTerm.academic_year_name ?? currentYear?.name ?? 'Current year';
+        contexts.set(`current-${currentTerm.id}`, {
+            key: `current-${currentTerm.id}`,
+            curriculumName: 'Current academic context',
+            termName: currentTerm.name,
+            yearName,
+        });
+    }
+
+    [...sessions, ...assessments].forEach(item => {
+        const curriculumName = item.curriculum_name ?? null;
+        const termName = item.term_name ?? null;
+        if (!curriculumName || !termName) return;
+        const key = `${curriculumName}:${termName}`;
+        if (!contexts.has(key)) {
+            contexts.set(key, {
+                key,
+                curriculumName,
+                termName,
+                yearName: currentYear?.name ?? 'Current year',
+            });
+        }
+    });
+
+    return Array.from(contexts.values()).sort((left, right) => (
+        left.curriculumName.localeCompare(right.curriculumName)
+        || left.termName.localeCompare(right.termName)
+    ));
+}
+
+function deriveAttentionItems(
+    assessments: Assessment[],
+    reviewSummary: AssessmentReviewSummary | null,
+    unattendedSubjects: { cohort_subject_id: number; cohort_name: string; subject_name: string }[]
+): DashboardAttentionItem[] {
+    const items: DashboardAttentionItem[] = [];
+    const readyToFinalize = assessments.filter(assessment => assessment.can_finalize).length;
+    const pendingReview = reviewSummary?.pending_review_count ?? 0;
+
+    if (pendingReview > 0) {
+        items.push({
+            id: 'assessment-review',
+            label: 'Assessment scores awaiting review',
+            detail: `${pendingReview} score${pendingReview === 1 ? '' : 's'} pending review`,
+            href: '/assessments?status=pending-review',
+        });
+    }
+
+    if (readyToFinalize > 0) {
+        items.push({
+            id: 'assessment-finalization',
+            label: 'Assessments ready for finalization',
+            detail: `${readyToFinalize} assessment${readyToFinalize === 1 ? '' : 's'} ready`,
+            href: '/assessments?can_finalize=true',
+        });
+    }
+
+    unattendedSubjects.slice(0, 3).forEach(subject => {
+        items.push({
+            id: `unattended-${subject.cohort_subject_id}`,
+            label: `${subject.subject_name} has no assigned instructor`,
+            detail: subject.cohort_name,
+            href: `/academic/cohort-subjects/${subject.cohort_subject_id}`,
+        });
+    });
+
+    return items;
+}
+
+function deriveWeekIndicators(sessions: Session[], assessments: Assessment[]): DashboardWeekIndicator[] {
+    const indicators: DashboardWeekIndicator[] = [];
+    const recordedSessions = sessions.filter(session => session.attendance_count.total > 0).length;
+    const completedSessions = sessions.filter(session => (
+        session.status === 'COMPLETED'
+        || session.workflow_summary?.lifecycle_status === 'COMPLETED'
+    )).length;
+    const finalizedAssessments = assessments.filter(assessment => assessment.status === 'FINALIZED').length;
+
+    if (sessions.length > 0) {
+        indicators.push({
+            id: 'attendance-coverage',
+            label: 'Attendance recorded today',
+            numerator: recordedSessions,
+            denominator: sessions.length,
+        });
+        indicators.push({
+            id: 'lesson-completion',
+            label: 'Lessons completed today',
+            numerator: completedSessions,
+            denominator: sessions.length,
+        });
+    }
+
+    if (assessments.length > 0) {
+        indicators.push({
+            id: 'assessment-finalization',
+            label: 'Assessment finalization',
+            numerator: finalizedAssessments,
+            denominator: assessments.length,
+        });
+    }
+
+    return indicators;
+}
+
+function deriveUpcomingAssessments(assessments: Assessment[]): Assessment[] {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const windowEnd = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+    return assessments
+        .filter(assessment => {
+            if (!assessment.assessment_date) return false;
+            const assessmentDate = new Date(assessment.assessment_date);
+            return assessmentDate >= today && assessmentDate <= windowEnd;
+        })
+        .sort((left, right) => (
+            (left.assessment_date ?? '').localeCompare(right.assessment_date ?? '')
+            || left.subject_name.localeCompare(right.subject_name)
+            || left.cohort_name.localeCompare(right.cohort_name)
+            || left.id - right.id
+        ))
+        .slice(0, 6);
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────
 
 export function useAdminDashboard() {
@@ -211,6 +366,26 @@ export function useAdminDashboard() {
     const metrics = useMemo(
         () => computeMetrics(students, assessments, scores, reviewSummary, sessions),
         [students, assessments, scores, reviewSummary, sessions]
+    );
+
+    const academicContexts = useMemo(
+        () => deriveAcademicContexts(currentTerm, currentYear, sessions, assessments),
+        [assessments, currentTerm, currentYear, sessions]
+    );
+
+    const attentionItems = useMemo(
+        () => deriveAttentionItems(assessments, reviewSummary, unattendedSubjects),
+        [assessments, reviewSummary, unattendedSubjects]
+    );
+
+    const weekIndicators = useMemo(
+        () => deriveWeekIndicators(sessions, assessments),
+        [assessments, sessions]
+    );
+
+    const upcomingAssessments = useMemo(
+        () => deriveUpcomingAssessments(assessments),
+        [assessments]
     );
 
     const alerts = useMemo(
@@ -253,6 +428,10 @@ export function useAdminDashboard() {
         cohorts,
         currentTerm,
         currentYear,
+        academicContexts,
+        attentionItems,
+        weekIndicators,
+        upcomingAssessments,
         lastRefresh,
         isLoading,
         refresh,

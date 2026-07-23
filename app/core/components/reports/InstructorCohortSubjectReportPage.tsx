@@ -43,8 +43,8 @@ import {
   useInstructorCohortSubjectPerformance,
   useInstructorCohortSubjectTeachingActivity,
   useInstructorCohortSubjects,
+  useCohortSubjectReportTerms,
 } from '@/app/core/hooks/useReporting';
-import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import {
   countMapFromItems,
   formatPercent,
@@ -177,8 +177,17 @@ export default function InstructorCohortSubjectDetailReportPage() {
   const isValidCohortSubjectId = Number.isFinite(cohortSubjectId) && cohortSubjectId > 0;
   const activeTab: DetailTab = isDetailTab(tabParam) ? tabParam : 'learners';
   const selectedTerm = parsePositiveReportParam(searchParams.get('term'));
-  const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
-  const effectiveTermId = selectedTerm ?? currentTerm?.id ?? null;
+  const {
+    terms,
+    currentTermId,
+    loading: termsLoading,
+    error: termsError,
+  } = useCohortSubjectReportTerms(isValidCohortSubjectId ? cohortSubjectId : null);
+  const authorizedTermIds = new Set(terms.map((term) => term.id));
+  const fallbackTermId = currentTermId ?? terms[0]?.id ?? null;
+  const effectiveTermId = selectedTerm && authorizedTermIds.has(selectedTerm)
+    ? selectedTerm
+    : fallbackTermId;
   const workspaceReturnTo = buildInstructorCohortSubjectDetailHref(cohortSubjectId, effectiveTermId);
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
@@ -212,15 +221,15 @@ export default function InstructorCohortSubjectDetailReportPage() {
     router.replace(nextUrl, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  const { terms, loading: termsLoading } = useTerms();
   useEffect(() => {
-    if (selectedTerm || currentTermLoading) {
+    if (termsLoading || termsError) {
       return;
     }
-    if (currentTerm?.id) {
-      updateSearchParams({ term: currentTerm.id });
+
+    if (effectiveTermId !== selectedTerm) {
+      updateSearchParams({ term: effectiveTermId });
     }
-  }, [currentTerm?.id, currentTermLoading, selectedTerm, updateSearchParams]);
+  }, [effectiveTermId, selectedTerm, termsError, termsLoading, updateSearchParams]);
 
   const {
     cohortSubjects,
@@ -297,6 +306,10 @@ export default function InstructorCohortSubjectDetailReportPage() {
     return <ErrorState message="We could not load this class view. Try reloading." fullScreen={false} />;
   }
 
+  if (termsError && !termsLoading) {
+    return <ErrorState message={termsError} fullScreen={false} />;
+  }
+
   return (
     <ReportPageShell>
       <div className="space-y-3">
@@ -330,7 +343,9 @@ export default function InstructorCohortSubjectDetailReportPage() {
             </p>
             {!effectiveTermId ? (
               <p className="text-sm text-emerald-900/80">
-                Select a term to view class intelligence.
+                {terms.length === 0 && !termsLoading
+                  ? 'No terms configured for this subject.'
+                  : 'Select a term to view class intelligence.'}
               </p>
             ) : null}
           </div>
@@ -370,7 +385,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
               onChange={(event) => updateSearchParams({
                 term: event.target.value ? Number(event.target.value) : null,
               })}
-              disabled={termsLoading || (terms.length === 0 && !currentTerm)}
+              disabled={termsLoading || terms.length === 0}
               options={
                 terms.length > 0
                   ? terms.map((term) => ({
@@ -380,7 +395,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
                   : [
                       {
                         value: '',
-                        label: termsLoading || currentTermLoading ? 'Loading terms...' : 'No terms available',
+                        label: termsLoading ? 'Loading terms...' : 'No terms configured for this subject',
                       },
                     ]
               }

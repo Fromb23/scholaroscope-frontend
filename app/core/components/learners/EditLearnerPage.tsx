@@ -14,6 +14,7 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import type { ApiError } from '@/app/core/types/errors';
 import type { StudentProfileUpdateData } from '@/app/core/types/student';
+import { isManagementStudentDetail } from '@/app/core/types/student';
 
 interface EditForm {
     admission_number: string;
@@ -70,7 +71,7 @@ export default function EditLearnerPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!student) return;
+        if (!isManagementStudentDetail(student)) return;
         const parts = student.full_name.split(' ');
         setForm({
             admission_number: student.admission_number,

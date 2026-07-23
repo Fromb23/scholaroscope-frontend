@@ -28,6 +28,7 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
 import { useAdminBulkFinalize } from '@/app/core/hooks/assessments/useAdminBulkFinalize';
+import { BulkReopenAssessmentAction } from '@/app/core/components/assessments/BulkReopenAssessmentAction';
 import { useCurricula, useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
@@ -538,6 +539,18 @@ function AssessmentCategoryAccordion({
     onToggleCohort: (key: string) => void;
     onBulkSuccess: () => Promise<void> | void;
 }) {
+    const categoryAssessments = category.subjects.flatMap((subject) =>
+        subject.cohorts.flatMap((cohort) => cohort.items)
+    );
+    const allFinalized =
+        categoryAssessments.length > 0 &&
+        categoryAssessments.every((item) => item.status === AssessmentStatus.FINALIZED);
+    const allReopenable =
+        allFinalized &&
+        categoryAssessments.every((item) => item.can_reopen);
+    const reopenBlockReason = categoryAssessments.find((item) => !item.can_reopen)?.reopen_block_reason
+        ?? 'One or more finalized assessments cannot be restored right now.';
+
     return (
         <div className="overflow-hidden rounded-lg border border-gray-200">
             <div className="flex flex-col gap-3 bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
@@ -560,14 +573,27 @@ function AssessmentCategoryAccordion({
                         </p>
                     </div>
                 </button>
-                <BulkFinalizeAssessmentAction
-                    termId={termId}
-                    termName={termName}
-                    categoryType={category.assessmentType}
-                    categoryLabel={category.label}
-                    stalledCount={category.stalledCount}
-                    onSuccess={onBulkSuccess}
-                />
+                {categoryAssessments.length === 0 ? null : allFinalized ? (
+                    <BulkReopenAssessmentAction
+                        termId={termId}
+                        termName={termName}
+                        categoryType={category.assessmentType}
+                        categoryLabel={category.label}
+                        affectedCount={categoryAssessments.length}
+                        disabled={!allReopenable}
+                        disabledReason={!allReopenable ? reopenBlockReason : null}
+                        onSuccess={onBulkSuccess}
+                    />
+                ) : (
+                    <BulkFinalizeAssessmentAction
+                        termId={termId}
+                        termName={termName}
+                        categoryType={category.assessmentType}
+                        categoryLabel={category.label}
+                        stalledCount={category.stalledCount}
+                        onSuccess={onBulkSuccess}
+                    />
+                )}
             </div>
             {isOpen ? (
                 <div className="space-y-3 border-t border-gray-200 bg-gray-50 p-3">

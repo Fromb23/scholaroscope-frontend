@@ -6,7 +6,7 @@ import {
   LearnerDeleteEligibility,
   LearnerLifecyclePayload,
   Student,
-  StudentDetail,
+  StudentDetailResponse,
   StudentStats,
   TransferFormData,
 } from '../types/student';
@@ -145,7 +145,7 @@ export function useStudent(id: number) {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const enabled = Number.isFinite(id) && id > 0;
-  const query = useQuery<StudentDetail, Error>({
+  const query = useQuery<StudentDetailResponse, Error>({
     queryKey: academicKeys.students.detail(id),
     queryFn: async () => learnersAPI.getStudent(id),
     enabled,

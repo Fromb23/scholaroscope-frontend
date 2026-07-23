@@ -32,6 +32,7 @@ import {
 } from '@/app/core/components/learners/LearnerModals';
 import { LearnerAssessmentPickerModal } from '@/app/core/components/learners/LearnerAssessmentPickerModal';
 import type { StudentCohortEnrollment } from '@/app/core/types/student';
+import { isManagementStudentDetail } from '@/app/core/types/student';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { getLearnerProfileBackTarget } from '@/app/core/components/learners/learnerProfileNavigation';
 import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
@@ -212,9 +213,10 @@ export default function LearnerDetailPage() {
     );
     const scrollRestoredRef = useRef(false);
 
-    const canEdit = !!user && hasCapability(activeRole, 'EDIT_LEARNER', capabilities);
-    const canManage = !!user && hasCapability(activeRole, 'MANAGE_ENROLLMENT', capabilities);
-    const canManageSubjectParticipation = capabilities.can_manage_learners ?? isAdminOrAbove(user, activeRole);
+    const managementStudent = isManagementStudentDetail(student) ? student : null;
+    const canEdit = !!user && Boolean(managementStudent) && hasCapability(activeRole, 'EDIT_LEARNER', capabilities);
+    const canManage = !!user && Boolean(managementStudent) && hasCapability(activeRole, 'MANAGE_ENROLLMENT', capabilities);
+    const canManageSubjectParticipation = Boolean(managementStudent) && (capabilities.can_manage_learners ?? isAdminOrAbove(user, activeRole));
     const canUseDangerZone = canManageSubjectParticipation;
     const canGenerateOverviewReport = !!user && capabilities.can_view_reports;
     const canGenerateSubjectReport = !!user && capabilities.can_view_reports;
@@ -235,33 +237,33 @@ export default function LearnerDetailPage() {
     } = useOpenAssessmentsForStudent(studentId, { enabled: canRecordAssessment && sectionState.assessment });
 
     const availableCohorts = useMemo(() => {
-        if (!cohorts || !student) return [];
-        const enrolled = student.enrollments.filter(e => e.is_active).map(e => e.cohort);
+        if (!cohorts || !managementStudent) return [];
+        const enrolled = managementStudent.enrollments.filter(e => e.is_active).map(e => e.cohort);
         return cohorts.filter((c: { id: number }) => !enrolled.includes(c.id));
-    }, [cohorts, student]);
+    }, [cohorts, managementStudent]);
 
     const activeEnrollments = useMemo(
-        () => student?.enrollments.filter(e => e.is_active) ?? [],
-        [student]
+        () => managementStudent?.enrollments.filter(e => e.is_active) ?? [],
+        [managementStudent]
     );
     const historyEnrollments = useMemo(
-        () => student?.enrollments.filter(e => !e.is_active) ?? [],
-        [student]
+        () => managementStudent?.enrollments.filter(e => !e.is_active) ?? [],
+        [managementStudent]
     );
     const currentEnrollment = useMemo(
         () => (
-            activeEnrollments.find((enrollment) => enrollment.cohort === student?.primary_cohort)
+            activeEnrollments.find((enrollment) => enrollment.cohort === managementStudent?.primary_cohort)
             ?? activeEnrollments[0]
             ?? null
         ),
-        [activeEnrollments, student?.primary_cohort]
+        [activeEnrollments, managementStudent?.primary_cohort]
     );
     const currentCohortId = currentEnrollment?.cohort ?? null;
     const currentCohortName = currentEnrollment?.cohort_name ?? null;
     const hasActivePrimaryCohort = activeEnrollments.some(enrollment => (
         enrollment.is_active
         && enrollment.enrollment_type === 'PRIMARY'
-        && enrollment.cohort === student?.primary_cohort
+        && enrollment.cohort === managementStudent?.primary_cohort
     ));
     const activeSubjectNames = useMemo(
         () => (student?.current_subjects ?? []).map(subject => `${subject.code} ${subject.name}`),
@@ -508,7 +510,7 @@ export default function LearnerDetailPage() {
             render: row => (
                 <div className="flex items-center gap-2">
                     <span className="font-medium">{row.cohort_name}</span>
-                    {row.cohort === student?.primary_cohort && (
+                    {row.cohort === managementStudent?.primary_cohort && (
                         <Badge variant="default" size="sm">Primary</Badge>
                     )}
                 </div>
@@ -580,8 +582,8 @@ export default function LearnerDetailPage() {
     const enrollmentsSummary = activeEnrollments.length > 0
         ? `${activeEnrollments.length} active cohort enrollment${activeEnrollments.length === 1 ? '' : 's'}`
         : 'No active cohort enrollments';
-    const contactSummary = student?.primary_cohort_name
-        ? `${student.primary_cohort_name} · ${student.primary_curriculum ?? 'Curriculum not set'}`
+    const contactSummary = managementStudent?.primary_cohort_name
+        ? `${managementStudent.primary_cohort_name} · ${managementStudent.primary_curriculum ?? 'Curriculum not set'}`
         : 'No primary cohort assigned';
     const subjectParticipationSummary = currentCohortName
         ? `${currentSubjectIds.size} enrolled cohort subject${currentSubjectIds.size === 1 ? '' : 's'} in ${currentCohortName}`
@@ -713,21 +715,25 @@ export default function LearnerDetailPage() {
                             <Badge variant={STATUS_VARIANTS[student.status] ?? 'default'}>
                                 {student.status}
                             </Badge>
-                            {student.gender && (
-                                <Badge variant={student.gender.toUpperCase().startsWith('F') ? 'warning' : 'info'}>
-                                    {student.gender}
+                            {managementStudent?.gender ? (
+                                <Badge variant={managementStudent.gender.toUpperCase().startsWith('F') ? 'warning' : 'info'}>
+                                    {managementStudent.gender}
                                 </Badge>
-                            )}
-                            {student.cohort_count > 1 && (
-                                <Badge variant="info">{student.cohort_count} Cohorts</Badge>
-                            )}
+                            ) : null}
+                            {managementStudent && managementStudent.cohort_count > 1 ? (
+                                <Badge variant="info">{managementStudent.cohort_count} Cohorts</Badge>
+                            ) : null}
                         </div>
                         <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
                             {[
                                 { label: 'Admission Number', value: student.admission_number },
-                                { label: 'Date of Birth', value: student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A' },
-                                { label: 'Enrollment Date', value: new Date(student.enrollment_date).toLocaleDateString() },
-                                { label: 'Age', value: calculateAge(student.date_of_birth) },
+                                ...(managementStudent ? [
+                                    { label: 'Date of Birth', value: managementStudent.date_of_birth ? new Date(managementStudent.date_of_birth).toLocaleDateString() : 'N/A' },
+                                    { label: 'Enrollment Date', value: new Date(managementStudent.enrollment_date).toLocaleDateString() },
+                                    { label: 'Age', value: calculateAge(managementStudent.date_of_birth) },
+                                ] : [
+                                    { label: 'Authorized subjects', value: String(student.current_subjects.length) },
+                                ]),
                             ].map(item => (
                                 <div key={item.label}>
                                     <p className="text-sm text-gray-600">{item.label}</p>
@@ -886,6 +892,7 @@ export default function LearnerDetailPage() {
                 </LearnerSectionCard>
             ) : null}
 
+            {managementStudent ? (
             <LearnerSectionCard
                 sectionId="learner-section-enrollments"
                 title="Enrollments"
@@ -918,7 +925,7 @@ export default function LearnerDetailPage() {
                                             <div className="space-y-2">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <p className="font-semibold text-gray-900">{row.cohort_name}</p>
-                                                    {row.cohort === student.primary_cohort ? (
+                                                    {row.cohort === managementStudent.primary_cohort ? (
                                                         <Badge variant="default" size="sm">Primary</Badge>
                                                     ) : null}
                                                     <Badge variant={ENROLLMENT_TYPE_VARIANTS[row.enrollment_type] ?? 'default'}>
@@ -954,7 +961,9 @@ export default function LearnerDetailPage() {
                     )}
                 </div>
             </LearnerSectionCard>
+            ) : null}
 
+            {managementStudent ? (
             <LearnerSectionCard
                 sectionId="learner-section-contact"
                 title="Contact & Primary Cohort"
@@ -966,32 +975,32 @@ export default function LearnerDetailPage() {
                     <div className="rounded-xl border border-gray-200 p-4">
                         <h3 className="mb-4 text-base font-semibold text-gray-900">Contact Information</h3>
                         <div className="space-y-3">
-                            {student.email ? (
+                            {managementStudent.email ? (
                                 <div className="flex items-center gap-3">
                                     <Mail className="h-5 w-5 text-gray-400" />
                                     <div>
                                         <p className="text-sm text-gray-600">Email</p>
-                                        <p className="font-medium text-gray-900">{student.email}</p>
+                                        <p className="font-medium text-gray-900">{managementStudent.email}</p>
                                     </div>
                                 </div>
                             ) : null}
-                            {student.phone ? (
+                            {managementStudent.phone ? (
                                 <div className="flex items-center gap-3">
                                     <Phone className="h-5 w-5 text-gray-400" />
                                     <div>
                                         <p className="text-sm text-gray-600">Phone</p>
-                                        <p className="font-medium text-gray-900">{student.phone}</p>
+                                        <p className="font-medium text-gray-900">{managementStudent.phone}</p>
                                     </div>
                                 </div>
                             ) : null}
-                            {!student.email && !student.phone ? (
+                            {!managementStudent.email && !managementStudent.phone ? (
                                 <p className="text-sm text-gray-500">No contact information available</p>
                             ) : null}
                         </div>
                     </div>
                     <div className="rounded-xl border border-gray-200 p-4">
                         <h3 className="mb-4 text-base font-semibold text-gray-900">Primary Cohort</h3>
-                        {!student.primary_cohort ? (
+                        {!managementStudent.primary_cohort ? (
                             <p className="text-sm text-gray-500">No primary cohort assigned</p>
                         ) : (
                             <div className="space-y-3">
@@ -999,14 +1008,14 @@ export default function LearnerDetailPage() {
                                     <GraduationCap className="h-5 w-5 text-gray-400" />
                                     <div>
                                         <p className="text-sm text-gray-600">Cohort</p>
-                                        <p className="font-medium text-gray-900">{student.primary_cohort_name}</p>
+                                        <p className="font-medium text-gray-900">{managementStudent.primary_cohort_name}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <FileText className="h-5 w-5 text-gray-400" />
                                     <div>
                                         <p className="text-sm text-gray-600">Curriculum</p>
-                                        <p className="font-medium text-gray-900">{student.primary_curriculum}</p>
+                                        <p className="font-medium text-gray-900">{managementStudent.primary_curriculum}</p>
                                     </div>
                                 </div>
                             </div>
@@ -1014,6 +1023,7 @@ export default function LearnerDetailPage() {
                     </div>
                 </div>
             </LearnerSectionCard>
+            ) : null}
 
             <LearnerSectionCard
                 sectionId="learner-section-subjectParticipation"
@@ -1169,11 +1179,11 @@ export default function LearnerDetailPage() {
                     <div className="space-y-2">
                         <div className="flex justify-between">
                             <span className="text-gray-600">Average Score</span>
-                            <span className="font-semibold">{student.grade_summary!.average_score.toFixed(1)}</span>
+                            <span className="font-semibold">{(student.grade_summary?.average_score ?? 0).toFixed(1)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-600">Assessments Recorded</span>
-                            <span className="font-semibold">{student.grade_summary!.total_assessments}</span>
+                            <span className="font-semibold">{student.grade_summary?.total_assessments ?? 0}</span>
                         </div>
                     </div>
                 </LearnerSectionCard>

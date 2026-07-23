@@ -32,6 +32,7 @@ import {
   toneToBadgeVariant,
 } from '@/app/core/components/reports/ReportSummaryPrimitives';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
+import { ClassSubjectAssignmentParticipation } from '@/app/core/components/reports/ClassSubjectAssignmentParticipation';
 import {
   useClassSubjectReport,
   useInstructorCohortSubjects,
@@ -710,6 +711,10 @@ export function ClassSubjectReportPage({
               tone={report.progress.evidence_count > 0 ? 'success' : 'warning'}
             />
           </div>
+
+          {report.assignment_participation ? (
+            <ClassSubjectAssignmentParticipation participation={report.assignment_participation} />
+          ) : null}
 
           <Card className="border theme-border p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

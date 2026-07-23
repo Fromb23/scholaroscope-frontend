@@ -11,8 +11,10 @@ describe('Teaching Today assignment workflow integration', () => {
   it('uses instructor-safe academic context instead of admin setup/year/term requests', () => {
     const hookSource = source();
 
-    expect(hookSource).toContain('useAcademicLifecycleContext');
+    expect(hookSource).toContain('useMyTeachingLoad');
     expect(hookSource).toContain('useAcademicTodayMode');
+    expect(hookSource).toContain('assignment.current_term');
+    expect(hookSource).not.toContain('useAcademicLifecycleContext');
     expect(hookSource).not.toContain('useAcademicSetupStatus');
     expect(hookSource).not.toContain('useCurrentAcademicYear');
     expect(hookSource).not.toContain('useCurrentTerm');

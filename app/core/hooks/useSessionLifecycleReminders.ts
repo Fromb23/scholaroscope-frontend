@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { sessionAPI } from '@/app/core/api/sessions';
-import { useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import type { TeachingAssignment } from '@/app/core/types/academic';
@@ -182,7 +181,6 @@ export function useSessionLifecycleReminders() {
     const [error, setError] = useState<string | null>(null);
     const [clock, setClock] = useState(() => new Date());
 
-    const { currentYear } = useCurrentAcademicYear();
     const instructorAccess = useInstructorCohortAccess();
     const { sessions: todaySessions, loading: todayLoading, error: todayError, refetch: refetchToday } = useTodaySessions();
 
@@ -200,7 +198,18 @@ export function useSessionLifecycleReminders() {
         () => clock.getHours() * 60 + clock.getMinutes(),
         [clock]
     );
-    const rangeStart = currentYear?.start_date ?? formatFallbackStartDate();
+    const rangeStart = useMemo(() => {
+        const termStarts = [
+            ...instructorAccess.assignments.map((assignment) => assignment.current_term?.start_date),
+            ...instructorAccess.cohortAssignments.map((assignment) => assignment.current_term?.start_date),
+        ].filter((value): value is string => Boolean(value));
+
+        if (termStarts.length > 0) {
+            return termStarts.sort()[0];
+        }
+
+        return formatFallbackStartDate();
+    }, [instructorAccess.assignments, instructorAccess.cohortAssignments]);
 
     const fetchRecentSessions = useCallback(async () => {
         try {

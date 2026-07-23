@@ -56,6 +56,16 @@ export interface AssessmentBulkFinalizeResult {
   }>;
 }
 
+export type AssessmentBulkReopenPayload = Omit<AssessmentBulkFinalizePayload, 'finalize_unresolved_absent'>;
+
+export interface AssessmentBulkReopenResult {
+  detail: string;
+  requested: number;
+  reopened_count: number;
+  removed_absent_score_count: number;
+  reopened: AssessmentBulkFinalizeResult['finalized'];
+}
+
 // Rubric Scale API
 export const rubricScaleAPI = {
   getAll: async (params?: { curriculum?: number; is_active?: boolean }) => {
@@ -213,6 +223,15 @@ export const assessmentAPI = {
   ): Promise<AssessmentBulkFinalizeResult> => {
     const response = await apiClient.post<AssessmentBulkFinalizeResult>(
       '/assessments/bulk_finalize/',
+      data
+    );
+    return response.data;
+  },
+  bulkReopen: async (
+    data: AssessmentBulkReopenPayload
+  ): Promise<AssessmentBulkReopenResult> => {
+    const response = await apiClient.post<AssessmentBulkReopenResult>(
+      '/assessments/bulk_reopen/',
       data
     );
     return response.data;

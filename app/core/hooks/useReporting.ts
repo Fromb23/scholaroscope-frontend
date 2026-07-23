@@ -15,6 +15,7 @@ import {
 import {
   AttendanceSummary,
   ClassSubjectReportPayload,
+  CohortSubjectReportTermsResponse,
   GradeSummary,
   CohortSummary,
   SubjectSummary,
@@ -968,6 +969,53 @@ export const useClassSubjectReport = (
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useCohortSubjectReportTerms = (
+  cohortSubjectId: number | null,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [termsResponse, setTermsResponse] = useState<CohortSubjectReportTermsResponse | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled && cohortSubjectId));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const fetchTerms = useCallback(async () => {
+    if (!cohortSubjectId || !enabled) {
+      setTermsResponse(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setTermsResponse(await learnerReportingAPI.getCohortSubjectReportTerms(cohortSubjectId));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setTermsResponse(null);
+      setError(resolveErrorMessage(apiError, 'Failed to load report terms for this subject.'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [cohortSubjectId, enabled]);
+
+  useEffect(() => { fetchTerms(); }, [fetchTerms]);
+
+  return {
+    termsResponse,
+    terms: termsResponse?.available_terms ?? [],
+    currentTermId: termsResponse?.current_term_id ?? null,
+    loading,
+    error,
+    errorStatus,
+    refetch: fetchTerms,
+  };
 };
 
 export const useInstructorTeacherReport = (

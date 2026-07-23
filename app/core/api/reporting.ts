@@ -9,6 +9,7 @@ import {
   AttendanceSummary,
   AttendanceRiskLevel,
   ClassSubjectReportPayload,
+  CohortSubjectReportTermsResponse,
   GradeSummary,
   CohortSummary,
   SubjectSummary,
@@ -849,6 +850,15 @@ export const learnerReportingAPI = {
     return response.data;
   },
 
+  getCohortSubjectReportTerms: async (
+    cohortSubjectId: number,
+  ): Promise<CohortSubjectReportTermsResponse> => {
+    const response = await apiClient.get<CohortSubjectReportTermsResponse>(
+      `/reporting/cohort-subjects/${cohortSubjectId}/terms/`,
+    );
+    return response.data;
+  },
+
   exportClassSubjectReport: async (
     cohortId: number,
     params: {
@@ -1148,6 +1158,7 @@ export const reportsAPI = {
   exportLearnerOverviewReport: learnerReportingAPI.exportLearnerOverviewReport,
   getLearnerTermProgressReport: learnerReportingAPI.getLearnerTermProgressReport,
   exportLearnerTermProgressReport: learnerReportingAPI.exportLearnerTermProgressReport,
+  getCohortSubjectReportTerms: learnerReportingAPI.getCohortSubjectReportTerms,
   getClassSubjectReport: learnerReportingAPI.getClassSubjectReport,
   exportClassSubjectReport: learnerReportingAPI.exportClassSubjectReport,
   getInstructorTeacherReport: learnerReportingAPI.getInstructorTeacherReport,

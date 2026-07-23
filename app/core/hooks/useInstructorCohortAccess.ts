@@ -31,8 +31,9 @@ export function useMyTeachingLoad(options?: { enabled?: boolean; includeProgress
                     options?.includeProgress ? { include_progress: true } : undefined
                 );
             } catch (err) {
-                throw new Error(
-                    resolveErrorMessage(err as ApiError, 'Failed to fetch teaching load.')
+                throw Object.assign(
+                    new Error(resolveErrorMessage(err as ApiError, 'Failed to fetch teaching load.')),
+                    { cause: err }
                 );
             }
         },

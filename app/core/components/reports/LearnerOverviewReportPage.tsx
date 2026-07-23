@@ -435,7 +435,7 @@ export function LearnerOverviewReportPage() {
 
       {effectiveTermId && reportLoading ? (
         <ReportPreparingState
-          title={`Building ${student?.name ?? 'learner'}'s term progress report...`}
+          title={`Building ${student?.full_name ?? 'learner'}'s term progress report...`}
           steps={[
             'Reading learner and term scope',
             'Loading attendance and classroom evidence',

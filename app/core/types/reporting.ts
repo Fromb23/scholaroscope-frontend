@@ -1953,6 +1953,52 @@ export interface ClassSubjectLearnerRow extends LearnerOverviewSubjectSummary {
   learner: LearnerReportLearnerRef;
 }
 
+export interface CohortSubjectReportTerm {
+  id: number;
+  name: string;
+  academic_year_id: number;
+  academic_year_name: string;
+  starts_on: string;
+  ends_on: string;
+  is_current: boolean;
+}
+
+export interface CohortSubjectReportTermsResponse {
+  cohort_subject_id: number;
+  current_term_id: number | null;
+  available_terms: CohortSubjectReportTerm[];
+}
+
+export interface AssignmentParticipationSummary {
+  work_unit_summary: {
+    total: number;
+    submitted: number;
+    reviewed: number;
+    missing: number;
+    excused: number;
+    pending: number;
+  };
+  learner_participation_summary: {
+    learners_in_scope: number;
+    learners_submitted_any: number;
+    learners_missing_any: number;
+    learners_fully_complete: number;
+    learners_with_no_submission: number;
+  };
+  assignment_rows: Array<{
+    assignment_id: number;
+    title: string;
+    delivery_mode: string;
+    due_at: string | null;
+    expected_learners: number;
+    submitted_learners: number;
+    reviewed_learners: number;
+    missing_learners: number;
+    excused_learners: number;
+    pending_learners: number;
+  }>;
+}
+
 export interface ClassSubjectReportPayload {
   report_type: 'class_subject';
   generated_at: string;
@@ -1977,8 +2023,13 @@ export interface ClassSubjectReportPayload {
   assignment_summary: {
     assignments_total: number;
     assignments_submitted: number;
+    assignments_reviewed?: number;
+    assignments_missing?: number;
+    assignments_excused?: number;
+    assignments_pending?: number;
     assignment_completion_rate: number | null;
   };
+  assignment_participation?: AssignmentParticipationSummary | null;
   progress: {
     outcomes_selected: number | null;
     outcomes_taught?: number | null;

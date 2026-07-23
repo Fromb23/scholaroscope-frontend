@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
-import { useAcademicLifecycleContext } from '@/app/core/hooks/useAcademic';
 import { useMyTeachingLoad } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useSessionLifecycleReminders } from '@/app/core/hooks/useSessionLifecycleReminders';
@@ -719,12 +718,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
     const [lastRefresh, setLastRefresh] = useState(() => new Date());
 
     const {
-        data: academicContext,
-        isLoading: academicContextLoading,
-        error: academicContextError,
-        refetch: refetchAcademicContext,
-    } = useAcademicLifecycleContext();
-    const {
         data: teachingLoadData,
         isLoading: teachingLoadLoading,
         error: teachingLoadError,
@@ -748,8 +741,45 @@ export function useTeachingToday(): UseTeachingTodayResult {
         error: remindersError,
         refetch: refetchReminders,
     } = useSessionLifecycleReminders();
-    const currentYear = academicContext?.academic_year ?? null;
-    const currentTerm = academicContext?.current_term ?? academicContext?.active_term ?? null;
+    const currentYear: AcademicYear | null = null;
+    const currentTerm = useMemo<Term | null>(() => {
+        const summary = teachingLoadData?.assignments
+            ?.map((assignment) => assignment.current_term)
+            .find((term): term is NonNullable<TeachingAssignment['current_term']> => Boolean(term)) ?? null;
+
+        if (!summary) {
+            return null;
+        }
+
+        return {
+            id: summary.id,
+            name: summary.name,
+            start_date: summary.start_date,
+            end_date: summary.end_date,
+            academic_year: teachingLoadData?.assignments.find((assignment) => assignment.current_term?.id === summary.id)?.academic_year_id ?? 0,
+            academic_year_name: teachingLoadData?.assignments.find((assignment) => assignment.current_term?.id === summary.id)?.academic_year_name ?? '',
+            sequence: 0,
+            status: 'OPEN',
+            is_frozen: false,
+            calendar_setup_completed_at: null,
+            calendar_setup_completed_by: null,
+            calendar_setup_completed_by_name: '',
+            is_calendar_setup_complete: true,
+            configuration_state: 'SETUP_LOCKED',
+            configuration_actions: {
+                can_edit_term: false,
+                can_delete_term: false,
+                can_add_calendar_event: false,
+                can_edit_calendar_event: false,
+                can_delete_calendar_event: false,
+                can_complete_setup: false,
+                can_reopen_setup: false,
+            },
+            configuration_locked_reason: null,
+            week_count: 0,
+            created_at: '',
+        };
+    }, [teachingLoadData?.assignments]);
     const {
         summary: reviewSummary,
         loading: reviewSummaryLoading,
@@ -790,9 +820,9 @@ export function useTeachingToday(): UseTeachingTodayResult {
 
         return [{
             ...event,
-            organization: academicContext?.organization ?? 0,
-            academic_year: currentYear?.id ?? 0,
-            academic_year_name: currentYear?.name ?? '',
+            organization: 0,
+            academic_year: 0,
+            academic_year_name: '',
             term: currentTerm?.id ?? 0,
             term_name: currentTerm?.name ?? '',
             start_week_number: null,
@@ -804,11 +834,8 @@ export function useTeachingToday(): UseTeachingTodayResult {
             updated_at: '',
         }];
     }, [
-        academicContext?.organization,
         currentTerm?.id,
         currentTerm?.name,
-        currentYear?.id,
-        currentYear?.name,
         todayKey,
         todayMode,
     ]);
@@ -817,8 +844,8 @@ export function useTeachingToday(): UseTeachingTodayResult {
         [currentTerm, todayKey]
     );
     const learningDayState = useMemo(
-        () => deriveLearningDayState(null, currentTerm, calendarEventsToday, todayMode, academicContext?.mode ?? null),
-        [academicContext?.mode, calendarEventsToday, currentTerm, todayMode]
+        () => deriveLearningDayState(null, currentTerm, calendarEventsToday, todayMode, null),
+        [calendarEventsToday, currentTerm, todayMode]
     );
     const normalTeachingExpected = useMemo(
         () => isNormalTeachingExpected(learningDayState),
@@ -881,7 +908,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
 
     const refresh = useCallback(async () => {
         await Promise.allSettled([
-            refetchAcademicContext(),
             refetchTodaySessions(),
             refetchReminders(),
             refetchReviewSummary(),
@@ -894,7 +920,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
         setClock(nextRefresh);
         setLastRefresh(nextRefresh);
     }, [
-        refetchAcademicContext,
         refetchReminders,
         refetchReviewSummary,
         refetchScores,
@@ -913,8 +938,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
     }, [refresh]);
 
     const loading = Boolean(
-        academicContextLoading
-        || sessionsLoading
+        sessionsLoading
         || remindersLoading
         || reviewSummaryLoading
         || scoresLoading
@@ -922,8 +946,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         || todayModeLoading
         || assignmentWorkLoading
     );
-    const error = academicContextError?.message
-        ?? sessionsError
+    const error = sessionsError
         ?? remindersError
         ?? reviewSummaryError
         ?? scoresError

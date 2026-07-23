@@ -80,13 +80,18 @@ export interface StudentCurrentSubject {
   blocked_reason?: string | null;
 }
 
-export interface Student {
+export interface StudentCommon {
   id: number;
   admission_number: string;
   first_name: string;
   middle_name: string;
   last_name: string;
   full_name: string;
+  status: 'ACTIVE' | 'GRADUATED' | 'TRANSFERRED' | 'SUSPENDED' | 'WITHDRAWN' | 'ARCHIVED';
+  status_display: string;
+}
+
+export interface Student extends StudentCommon {
   date_of_birth?: string;
   gender?: string;
 
@@ -100,8 +105,6 @@ export interface Student {
   cohort_count: number;
   current_subject_ids?: number[];
 
-  status: 'ACTIVE' | 'GRADUATED' | 'TRANSFERRED' | 'SUSPENDED' | 'WITHDRAWN' | 'ARCHIVED';
-  status_display: string;
   enrollment_date: string;
   email?: string;
   phone?: string;
@@ -109,11 +112,7 @@ export interface Student {
   updated_at: string;
 }
 
-export interface StudentDetail extends Student {
-  [x: string]: unknown;
-  // All enrollments (active and inactive)
-  enrollments: StudentCohortEnrollment[];
-
+export interface StudentDetailSharedFields {
   // Explicit subject participation. `id` is the CohortSubject id.
   current_subjects: StudentCurrentSubject[];
 
@@ -123,14 +122,31 @@ export interface StudentDetail extends Student {
     absent: number;
     late: number;
     percentage: number;
-  };
+  } | null;
 
   grade_summary?: {
-    average_score: number;
+    average_score: number | null;
     total_assessments: number;
-  };
+  } | null;
 }
 
+export interface ManagementStudentDetail extends Student, StudentDetailSharedFields {
+  [x: string]: unknown;
+  // All enrollments (active and inactive)
+  enrollments: StudentCohortEnrollment[];
+}
+
+export interface InstructorStudentDetail extends StudentCommon, StudentDetailSharedFields {
+  authorized_class_subject_ids: number[];
+}
+
+export type StudentDetailResponse = ManagementStudentDetail | InstructorStudentDetail;
+
+export type StudentDetail = ManagementStudentDetail;
+
+export function isManagementStudentDetail(student: StudentDetailResponse | null | undefined): student is ManagementStudentDetail {
+  return Boolean(student && Array.isArray((student as ManagementStudentDetail).enrollments));
+}
 export interface StudentFormData {
   admission_number: string;
   cohort: number;

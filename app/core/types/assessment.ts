@@ -139,6 +139,7 @@ export interface Assessment {
   can_activate?: boolean;
   can_finalize?: boolean;
   can_reopen?: boolean;
+  reopen_block_reason?: string | null;
   can_score?: boolean;
   created_at: string;
   created_by: number | null;

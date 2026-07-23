@@ -5,7 +5,7 @@ import {
 } from './downloads';
 import {
   Student,
-  StudentDetail,
+  StudentDetailResponse,
   StudentFormData,
   StudentProfileUpdateData,
   StudentStats,
@@ -77,7 +77,7 @@ export const learnersAPI = {
 
   // Get student by ID (detailed)
   getStudent: async (id: number) => {
-    const { data } = await apiClient.get<StudentDetail>(`/students/${id}/`);
+    const { data } = await apiClient.get<StudentDetailResponse>(`/students/${id}/`);
     return data;
   },
 
