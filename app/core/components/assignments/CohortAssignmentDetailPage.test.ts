@@ -74,11 +74,14 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     expect(pageSource).toContain('resolveReportSurface');
     expect(pageSource).toContain('buildLearnerAssignmentReportHref');
     expect(pageSource).not.toContain('buildLearnerAssessmentReportHref');
+    expect(pageSource).toContain('cohortSubjectId: assignment.cohort_subject');
+    expect(pageSource).not.toContain('cohortSubjectId: isInstitutionAdminView ? null : assignment.cohort_subject');
     expect(pageSource).toContain('highlightAssignment: assignment.id');
     expect(pageSource).toContain('returnTo: currentReturnTo');
     expect(pageSource).toContain('renderLearnerReportLink(recipient.student, recipient.student_name');
     expect(pageSource).toContain('renderLearnerReportLink(submission.student, submission.student_name');
     expect(pageSource).toContain('renderLearnerReportLink(');
+    expect(pageSource).toContain('/^\\/learners\\/\\d+\\/portfolio');
   });
 
   it('exposes sequential and bulk pending review actions', () => {

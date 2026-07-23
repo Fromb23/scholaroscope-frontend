@@ -7,6 +7,8 @@ const pageSource = readFileSync(join(root, 'app/core/components/portfolio/Learne
 const cardSource = readFileSync(join(root, 'app/core/components/portfolio/PortfolioEvidenceCard.tsx'), 'utf8');
 const detailSource = readFileSync(join(root, 'app/core/components/portfolio/PortfolioEvidenceDetail.tsx'), 'utf8');
 const filtersSource = readFileSync(join(root, 'app/core/components/portfolio/PortfolioFilters.tsx'), 'utf8');
+const identitySource = readFileSync(join(root, 'app/core/components/learners/LearnerIdentityHeader.tsx'), 'utf8');
+const learnerDetailSource = readFileSync(join(root, 'app/core/components/learners/LearnerDetailPage.tsx'), 'utf8');
 const canonicalPortfolioRoute = join(root, 'app/(dashboard)/learners/[id]/portfolio/page.tsx');
 const conflictingPortfolioRoute = join(root, 'app/(dashboard)/learners/[learnerId]/portfolio/page.tsx');
 const routeSource = readFileSync(canonicalPortfolioRoute, 'utf8');
@@ -117,6 +119,20 @@ describe('Learner Portfolio route and UI contract', () => {
     expect(filtersSource).toContain('Learning area');
     expect(filtersSource).toContain('Outcome');
     expect(filtersSource).toContain('Evidence source');
+  });
+
+  it('uses the shared learner identity silhouette on Portfolio and learner profile', () => {
+    expect(identitySource).toContain('LearnerIdentityHeader');
+    expect(identitySource).toContain('Learner profile image');
+    expect(identitySource).toContain('<User className=');
+    expect(identitySource).not.toContain('initial');
+    expect(pageSource).toContain('LearnerIdentityHeader');
+    expect(pageSource).toContain('title="Learner Portfolio"');
+    expect(pageSource).toContain('admissionNumber={portfolio.learner.admission_number}');
+    expect(identitySource).toContain('sm:flex-row');
+    expect(learnerDetailSource).toContain('LearnerIdentityHeader');
+    expect(learnerDetailSource).toContain('admissionNumber={student.admission_number}');
+    expect(learnerDetailSource).toContain('cohortName={currentCohortName}');
   });
 
   it('preserves existing learner report route wrappers', () => {

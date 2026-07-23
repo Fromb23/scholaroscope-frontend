@@ -151,6 +151,7 @@ function getSafeReturnHref(cohortId: number, returnTo: string | null): string {
         returnTo.startsWith(defaultHref)
         || returnTo.startsWith('/lesson-plans/')
         || returnTo.startsWith('/sessions/')
+        || /^\/learners\/\d+\/portfolio(?:[?#]|$)/.test(returnTo)
     ) {
         return returnTo;
     }
@@ -641,7 +642,7 @@ export default function CohortAssignmentDetailPage() {
     const buildAssignmentLearnerReportHref = (learnerId: number) => buildLearnerAssignmentReportHref(
         learnerId,
         {
-            cohortSubjectId: isInstitutionAdminView ? null : assignment.cohort_subject,
+            cohortSubjectId: assignment.cohort_subject,
             highlightAssignment: assignment.id,
             returnTo: currentReturnTo,
         },

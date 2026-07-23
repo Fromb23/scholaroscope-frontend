@@ -6,6 +6,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { EntityLoadingState } from '@/app/components/ui/loading';
+import { buildPortfolioSourceRecordHref } from '@/app/core/components/portfolio/portfolioSourceNavigation';
 import type { PortfolioEvidence } from '@/app/core/types/portfolio';
 
 function formatDate(value: string | null | undefined): string {
@@ -31,12 +32,14 @@ export function PortfolioEvidenceDetail({
   loading,
   error,
   errorStatus,
+  currentPortfolioHref,
   onClose,
 }: {
   evidence: PortfolioEvidence | null;
   loading: boolean;
   error: string | null;
   errorStatus: number | null;
+  currentPortfolioHref: string | null;
   onClose: () => void;
 }) {
   if (loading) {
@@ -66,6 +69,11 @@ export function PortfolioEvidenceDetail({
     ? evidence.learner_work
     : renderRecord(evidence.learner_work ?? null);
   const provenance = renderRecord(evidence.provenance ?? null);
+  const sourceRoute = evidence.source_route ?? null;
+  const sourceRecordHref = buildPortfolioSourceRecordHref({
+    sourceHref: sourceRoute?.href,
+    portfolioHref: currentPortfolioHref,
+  });
 
   return (
     <Card className="space-y-5 md:sticky md:top-4">
@@ -169,11 +177,11 @@ export function PortfolioEvidenceDetail({
         )}
       </section>
 
-      {evidence.source_route?.href ? (
-        <Link href={evidence.source_route.href}>
+      {sourceRecordHref ? (
+        <Link href={sourceRecordHref}>
           <Button variant="secondary" size="sm">
             <ExternalLink className="h-4 w-4" />
-            {evidence.source_route.label ?? 'Open source record'}
+            {sourceRoute?.label ?? 'Open source record'}
           </Button>
         </Link>
       ) : null}

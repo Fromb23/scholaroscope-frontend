@@ -369,6 +369,13 @@ describe('admin navigation config', () => {
     ]);
   });
 
+  it('labels the instructor cohort navigation as My Class', () => {
+    const nav = getInstructorNav(pluginContext, 'TEACHING');
+
+    expect(nav.primary.some((item) => item.name === 'My Class' && item.href === '/academic/cohorts')).toBe(true);
+    expect(nav.primary.some((item) => item.name === 'My Teaching Load')).toBe(false);
+  });
+
   it('hides instructor internal request navigation when governance marks it not applicable', () => {
     const nav = getInstructorNav({
       ...pluginContext,

@@ -52,6 +52,26 @@ describe('route access', () => {
     expect(resolvedRoute).not.toBe('/reports/instructor');
   });
 
+  it('allows instructors to open learner overview and assignment reports without falling back to instructor reports', () => {
+    const overviewRoute = '/reports/learners/18/overview?returnTo=%2Flearners%2F18%3Fback%3Dsort%253Dadmission_number%253Aasc%2526page%253D1%2526page_size%253D20%26section%3Dreports';
+    const assignmentRoute = '/reports/learners/18/assignments?cohort_subject=26&highlightAssignment=90&returnTo=%2Facademic%2Fcohorts%2F9%2Fassignments%2F90%3Ftab%3Devaluations%26workflow%3Dreview%26unit%3Dstudent%253A18';
+
+    expect(canAccess(overviewRoute, 'INSTRUCTOR')).toBe(true);
+    expect(canAccess(assignmentRoute, 'INSTRUCTOR')).toBe(true);
+    expect(getMatchedRule(overviewRoute)?.allowedRoles).toContain('INSTRUCTOR');
+    expect(getMatchedRule(assignmentRoute)?.allowedRoles).toContain('INSTRUCTOR');
+
+    const resolvedOverview = canAccess(overviewRoute, 'INSTRUCTOR')
+      ? overviewRoute
+      : getUnauthorizedRouteFallback('INSTRUCTOR', overviewRoute);
+    const resolvedAssignment = canAccess(assignmentRoute, 'INSTRUCTOR')
+      ? assignmentRoute
+      : getUnauthorizedRouteFallback('INSTRUCTOR', assignmentRoute);
+
+    expect(resolvedOverview).not.toBe('/reports/instructor');
+    expect(resolvedAssignment).not.toBe('/reports/instructor');
+  });
+
   it('allows scoped instructor learner attendance reports', () => {
     const route = '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance';
 
@@ -77,6 +97,11 @@ describe('route access', () => {
 
   it('allows admins to reach singular instructor routes for capability-scoped report handling', () => {
     expect(canAccess('/reports/instructor', 'ADMIN')).toBe(true);
+  });
+
+  it('allows admins to follow Portfolio source records into instructor lesson surfaces', () => {
+    expect(canAccess('/sessions/42?returnTo=%2Flearners%2F18%2Fportfolio%3Fevidence%3D44', 'ADMIN')).toBe(true);
+    expect(canAccess('/lesson-plans/42?returnTo=%2Flearners%2F18%2Fportfolio%3Fevidence%3D44', 'ADMIN')).toBe(true);
   });
 
   it('redirects instructors away from admin plural instructor report routes', () => {

@@ -479,7 +479,7 @@ export function getInstructorNav(
       { name: 'Lesson Preparation', shortName: 'Prepare', href: '/lesson-plans', icon: FileText, mobilePriority: 2 },
       { name: 'My Lessons', shortName: 'Lessons', href: '/sessions', icon: Calendar, mobilePriority: 3 },
       ...getPluginNavigationItems('instructor.primary.afterMySessions', pluginContext),
-      { name: 'My Teaching Load', href: '/academic/cohorts', icon: Users },
+      { name: 'My Class', href: '/academic/cohorts', icon: Users },
       { name: 'My Learners', href: '/learners', icon: Users },
       {
         name: 'Assessments & Grading',

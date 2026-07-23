@@ -10,6 +10,7 @@ import {
   buildInstructorCohortSubjectDetailHref,
   buildLearnerAssessmentReportHref,
   buildLearnerAssignmentReportHref,
+  buildLearnerOverviewReportHref,
   buildLearnerReportHref,
   buildLearnerSubjectReportHref,
   buildReportReturnTo,
@@ -77,6 +78,14 @@ describe('report navigation helpers', () => {
       returnTo: '/academic/cohorts/5/assignments/99?workflow=review&unit=student%3A12&tab=evaluations&returnTo=%2Facademic%2Fcohorts%2F5%2Fassignments',
     })).toBe(
       '/reports/learners/74/assignments?cohort_subject=3&highlightAssignment=99&returnTo=%2Facademic%2Fcohorts%2F5%2Fassignments%2F99%3Fworkflow%3Dreview%26unit%3Dstudent%253A12%26tab%3Devaluations%26returnTo%3D%252Facademic%252Fcohorts%252F5%252Fassignments',
+    );
+  });
+
+  it('builds learner overview report routes with complete learner profile return state', () => {
+    expect(buildLearnerOverviewReportHref(18, {
+      returnTo: '/learners/18?back=sort%3Dadmission_number%3Aasc%26page%3D1%26page_size%3D20&section=reports',
+    })).toBe(
+      '/reports/learners/18/overview?returnTo=%2Flearners%2F18%3Fback%3Dsort%253Dadmission_number%253Aasc%2526page%253D1%2526page_size%253D20%26section%3Dreports',
     );
   });
 

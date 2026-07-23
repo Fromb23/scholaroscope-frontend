@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useParams, useRouter, useSearchParams, type ReadonlyURLSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-    ArrowLeft, Edit, Mail, Phone, User,
+    ArrowLeft, Edit, Mail, Phone,
     ChevronDown, ChevronRight, ClipboardList, FileBarChart, FileText, GraduationCap,
     Archive, ArrowRightLeft, Trash2, UserPlus, UserMinus, Users, BookOpen,
 } from 'lucide-react';
@@ -31,6 +31,7 @@ import {
     StatusModal, EnrollModal, TransferLearnerModal, UnenrollModal, DeleteStudentModal,
 } from '@/app/core/components/learners/LearnerModals';
 import { LearnerAssessmentPickerModal } from '@/app/core/components/learners/LearnerAssessmentPickerModal';
+import { LearnerIdentityHeader } from '@/app/core/components/learners/LearnerIdentityHeader';
 import type { StudentCohortEnrollment } from '@/app/core/types/student';
 import { isManagementStudentDetail } from '@/app/core/types/student';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
@@ -720,42 +721,44 @@ export default function LearnerDetailPage() {
             )}
 
             <Card>
-                <div className="flex flex-col gap-5 p-1 sm:flex-row sm:items-start">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-blue-600 shrink-0 sm:h-24 sm:w-24">
-                        <User className="h-10 w-10 sm:h-12 sm:w-12" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="mb-2 flex flex-wrap items-center gap-3">
-                            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{student.full_name}</h1>
-                            <Badge variant={STATUS_VARIANTS[student.status] ?? 'default'}>
-                                {student.status}
-                            </Badge>
-                            {managementStudent?.gender ? (
-                                <Badge variant={managementStudent.gender.toUpperCase().startsWith('F') ? 'warning' : 'info'}>
-                                    {managementStudent.gender}
+                <div className="space-y-4 p-1">
+                    <LearnerIdentityHeader
+                        name={student.full_name}
+                        admissionNumber={student.admission_number}
+                        cohortName={currentCohortName}
+                        workspaceName={activeOrg?.name ?? null}
+                        badge={(
+                            <>
+                                <Badge variant={STATUS_VARIANTS[student.status] ?? 'default'}>
+                                    {student.status}
                                 </Badge>
-                            ) : null}
-                            {managementStudent && managementStudent.cohort_count > 1 ? (
-                                <Badge variant="info">{managementStudent.cohort_count} Cohorts</Badge>
-                            ) : null}
-                        </div>
-                        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-                            {[
-                                { label: 'Admission Number', value: student.admission_number },
-                                ...(managementStudent ? [
-                                    { label: 'Date of Birth', value: managementStudent.date_of_birth ? new Date(managementStudent.date_of_birth).toLocaleDateString() : 'N/A' },
-                                    { label: 'Enrollment Date', value: new Date(managementStudent.enrollment_date).toLocaleDateString() },
-                                    { label: 'Age', value: calculateAge(managementStudent.date_of_birth) },
-                                ] : [
-                                    { label: 'Authorized subjects', value: String(student.current_subjects.length) },
-                                ]),
-                            ].map(item => (
-                                <div key={item.label}>
-                                    <p className="text-sm text-gray-600">{item.label}</p>
-                                    <p className="font-semibold text-gray-900">{item.value}</p>
-                                </div>
-                            ))}
-                        </div>
+                                {managementStudent?.gender ? (
+                                    <Badge variant={managementStudent.gender.toUpperCase().startsWith('F') ? 'warning' : 'info'}>
+                                        {managementStudent.gender}
+                                    </Badge>
+                                ) : null}
+                                {managementStudent && managementStudent.cohort_count > 1 ? (
+                                    <Badge variant="info">{managementStudent.cohort_count} Cohorts</Badge>
+                                ) : null}
+                            </>
+                        )}
+                    />
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                        {[
+                            { label: 'Admission Number', value: student.admission_number },
+                            ...(managementStudent ? [
+                                { label: 'Date of Birth', value: managementStudent.date_of_birth ? new Date(managementStudent.date_of_birth).toLocaleDateString() : 'N/A' },
+                                { label: 'Enrollment Date', value: new Date(managementStudent.enrollment_date).toLocaleDateString() },
+                                { label: 'Age', value: calculateAge(managementStudent.date_of_birth) },
+                            ] : [
+                                { label: 'Authorized subjects', value: String(student.current_subjects.length) },
+                            ]),
+                        ].map(item => (
+                            <div key={item.label}>
+                                <p className="text-sm text-gray-600">{item.label}</p>
+                                <p className="font-semibold text-gray-900">{item.value}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </Card>

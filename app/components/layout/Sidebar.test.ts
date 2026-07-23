@@ -45,4 +45,15 @@ describe('Sidebar shell architecture', () => {
     expect(navConfig).toContain('getAdminNav');
     expect(navConfig).toContain('getInstructorNav');
   });
+
+  it('omits the redundant personal name only from instructor sidebar identity', () => {
+    const sidebar = read('app/components/layout/Sidebar.tsx');
+    const header = read('app/components/layout/Header.tsx');
+
+    expect(sidebar).toContain("resolvedRole === 'INSTRUCTOR' ? null");
+    expect(sidebar).toContain('{user.first_name} {user.last_name}');
+    expect(sidebar).toContain('{roleLabel}');
+    expect(sidebar).toContain('activeOrg.name');
+    expect(header).toContain('{user?.full_name}');
+  });
 });

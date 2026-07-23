@@ -13,6 +13,7 @@ import { EntityLoadingState } from '@/app/components/ui/loading';
 import { PortfolioEvidenceCard } from '@/app/core/components/portfolio/PortfolioEvidenceCard';
 import { PortfolioEvidenceDetail } from '@/app/core/components/portfolio/PortfolioEvidenceDetail';
 import { PortfolioFilters } from '@/app/core/components/portfolio/PortfolioFilters';
+import { LearnerIdentityHeader } from '@/app/core/components/learners/LearnerIdentityHeader';
 import { parseAppDestination } from '@/app/core/auth/navigation';
 import { useAcademicYears, useTerms } from '@/app/core/hooks/useAcademic';
 import {
@@ -119,6 +120,10 @@ export function LearnerPortfolioPage() {
     const query = buildPortfolioQuery(nextFilters, nextEvidenceId, returnTo);
     router.push(query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`);
   };
+  const currentPortfolioHref = useMemo(() => {
+    const query = buildPortfolioQuery(filters, selectedEvidenceId, returnTo);
+    return query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`;
+  }, [filters, learnerId, returnTo, selectedEvidenceId]);
 
   const closeDetail = () => navigateWith(filters, null);
   const openDetail = (evidenceId: number) => navigateWith(filters, evidenceId);
@@ -171,7 +176,7 @@ export function LearnerPortfolioPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-4">
         <div>
           <Link href={backHref}>
             <Button variant="ghost" size="sm">
@@ -179,23 +184,21 @@ export function LearnerPortfolioPage() {
               Back
             </Button>
           </Link>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <BookOpenCheck className="h-6 w-6 text-blue-600" />
-            <h1 className="text-2xl font-semibold theme-text">Learner Portfolio</h1>
-          </div>
-          <p className="mt-2 text-sm theme-muted">
-            {portfolio.learner.name}
-            {portfolio.learner.admission_number ? ` · ${portfolio.learner.admission_number}` : ''}
-          </p>
-          <p className="mt-1 text-sm theme-subtle">
-            {portfolio.scope.organization?.name ?? 'Current workspace'}
-            {portfolio.learner.current_cohort?.name ? ` · ${portfolio.learner.current_cohort.name}` : ''}
-          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {portfolio.scope.academic_year?.name ? <Badge variant="default">{portfolio.scope.academic_year.name}</Badge> : null}
-          {portfolio.scope.term?.name ? <Badge variant="info">{portfolio.scope.term.name}</Badge> : null}
-        </div>
+        <LearnerIdentityHeader
+          name={portfolio.learner.name}
+          admissionNumber={portfolio.learner.admission_number}
+          cohortName={portfolio.learner.current_cohort?.name}
+          workspaceName={portfolio.scope.organization?.name ?? 'Current workspace'}
+          title="Learner Portfolio"
+          icon={<BookOpenCheck className="h-5 w-5 text-blue-600" aria-hidden="true" />}
+          actions={(
+            <>
+              {portfolio.scope.academic_year?.name ? <Badge variant="default">{portfolio.scope.academic_year.name}</Badge> : null}
+              {portfolio.scope.term?.name ? <Badge variant="info">{portfolio.scope.term.name}</Badge> : null}
+            </>
+          )}
+        />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -286,6 +289,7 @@ export function LearnerPortfolioPage() {
             loading={detailLoading}
             error={detailError}
             errorStatus={detailErrorStatus}
+            currentPortfolioHref={currentPortfolioHref}
             onClose={closeDetail}
           />
         </aside>

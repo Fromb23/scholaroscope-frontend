@@ -107,9 +107,11 @@ export default function Sidebar({ navConfig }: SidebarProps) {
                 <p className="theme-subtle text-xs font-semibold uppercase tracking-wide">
                   {roleLabel}
                 </p>
-                <p className="text-sm font-bold theme-text">
-                  {user.first_name} {user.last_name}
-                </p>
+                {resolvedRole === 'INSTRUCTOR' ? null : (
+                  <p className="text-sm font-bold theme-text">
+                    {user.first_name} {user.last_name}
+                  </p>
+                )}
               </div>
             </div>
             {!user.is_superadmin && activeOrg && (
