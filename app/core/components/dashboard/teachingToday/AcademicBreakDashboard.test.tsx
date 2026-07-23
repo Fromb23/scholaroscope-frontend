@@ -81,7 +81,20 @@ function buildContext(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM'): TeachingTodayCont
     const pausedSession = buildSession();
     return {
         todayKey: '2026-02-12',
-        currentYear: null,
+        academicContexts: [
+            {
+                key: '1:1:3',
+                curriculumId: 1,
+                curriculumName: 'CBC',
+                academicYearId: 1,
+                academicYearName: '2026',
+                termId: 3,
+                termName: 'Term 2',
+                termStartDate: '2026-01-05',
+                termEndDate: '2026-04-03',
+                currentWeek: 6,
+            },
+        ],
         currentTerm: {
             id: 3,
             academic_year: 1,
@@ -162,28 +175,16 @@ function buildContext(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM'): TeachingTodayCont
         afterTeaching: {
             pendingAssessmentReviewCount: 3,
             assignmentWork: [],
-            pendingReviewRows: [
+            pendingAssessments: [
                 {
-                    id: 201,
-                    assessment: 41,
+                    assessment_id: 41,
                     assessment_name: 'Computer Studies CAT',
+                    cohort_subject_id: 4,
+                    cohort_name: 'Grade 10 East',
                     subject_name: 'Computer Studies',
-                    student: 99,
-                    student_name: 'Brian Otieno',
-                    student_admission: 'ADM-099',
-                    score: null,
-                    total_marks: 30,
-                    percentage: null,
-                    rubric_level: null,
-                    rubric_level_label: null,
-                    rubric_level_code: null,
+                    assessment_date: '2026-02-10',
                     status: AssessmentScoreStatus.PENDING_REVIEW,
-                    status_display: 'Pending review',
-                    is_pending_review: true,
-                    comments: '',
-                    submitted_at: null,
-                    graded_at: '',
-                    graded_by: '',
+                    pending_learner_count: 3,
                 },
             ],
         },
@@ -267,9 +268,9 @@ describe('AcademicBreakDashboard', () => {
     it('renders real context-derived intelligence cards with specific report routes', () => {
         const html = renderDashboard('MIDTERM_BREAK');
 
-        expect(html).toContain('Brian Otieno may need a closer look before learning resumes.');
-        expect(html).toContain('/reports/attendance?student=99&amp;subject=7&amp;term=3&amp;source=midterm');
-        expect(html).toContain('View attendance pattern');
+        expect(html).toContain('Computer Studies CAT has learner records pending.');
+        expect(html).toContain('/assessments/41?focus=score-entry&amp;source=midterm');
+        expect(html).toContain('Open assessment records');
         expect(html).toContain('/reports/intelligence?source=midterm');
     });
 
@@ -304,7 +305,7 @@ describe('AcademicBreakDashboard', () => {
         const context = buildContext('MIDTERM_BREAK');
         context.incomplete = [];
         context.afterTeaching.pendingAssessmentReviewCount = 0;
-        context.afterTeaching.pendingReviewRows = [];
+        context.afterTeaching.pendingAssessments = [];
         context.teachingLoad = [];
 
         const html = renderToStaticMarkup(

@@ -22,7 +22,9 @@ export type AssignmentLifecycleAction =
     | 'REOPEN_LEARNER_WORK'
     | 'STORE_RECORD'
     | 'VIEW_RECORD'
-    | 'RESTORE_TO_REVIEW';
+    | 'RESTORE_TO_REVIEW'
+    | 'RESTORE_EVIDENCE'
+    | 'DELETE_ASSIGNMENT';
 export type AssignmentLifecycleNextAction = AssignmentLifecycleAction | 'NONE';
 export type AssignmentRecipientMode =
     | 'ALL_ACTIVE_COHORT_LEARNERS'
@@ -91,6 +93,46 @@ export interface AssignmentLifecycleState {
     warnings: string[];
     allowed_actions: AssignmentLifecycleAction[];
     summary: AssignmentLifecycleSummary;
+    deletion?: AssignmentDeletionState;
+}
+
+export interface AssignmentDeletionImpact {
+    recipients: number;
+    individual_submissions: number;
+    group_submissions: number;
+    evaluations: number;
+    evidence_records: number;
+    groups: number;
+}
+
+export interface AssignmentDeletionState {
+    can_delete: boolean;
+    requires_restore_to_review: boolean;
+    requires_evidence_restore: boolean;
+    blockers: string[];
+    impact: AssignmentDeletionImpact;
+}
+
+export interface AssignmentRestoreEvidenceResponse {
+    detail: string;
+    assignment_id: number;
+    restored_evaluation_count: number;
+    restored_evidence_count: number;
+    dirty_scope_count: number;
+    deletion: AssignmentDeletionState;
+}
+
+export interface AssignmentDeleteRecordPayload extends ClientMutationFields {
+    confirmation_title: string;
+    reason?: string;
+}
+
+export interface AssignmentDeleteRecordResponse {
+    detail: string;
+    assignment_id: number;
+    assignment_title: string;
+    reason: string;
+    impact: AssignmentDeletionImpact;
 }
 
 export interface AssignmentOutcome {

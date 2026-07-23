@@ -2,7 +2,7 @@
 
 import { resolveErrorMessage } from '@/app/core/errors';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { FormValidationSummary } from '@/app/components/ui/forms';
@@ -34,6 +34,8 @@ interface AssignmentReviewFormProps {
     onSaveAndNext?: () => void | Promise<void>;
     pending?: boolean;
     readOnly?: boolean;
+    embedded?: boolean;
+    onDirtyChange?: (dirty: boolean) => void;
 }
 
 type ReviewField = 'numericScore' | 'rubricLevel' | 'narrative' | 'competencyState';
@@ -100,6 +102,8 @@ export function AssignmentReviewForm({
     onSaveAndNext,
     pending = false,
     readOnly = false,
+    embedded = false,
+    onDirtyChange,
 }: AssignmentReviewFormProps) {
     const createMutation = useCreateAssignmentEvaluation();
     const updateMutation = useUpdateAssignmentEvaluation();
@@ -130,10 +134,20 @@ export function AssignmentReviewForm({
         setFormError(null);
         setFieldErrors({});
         setSuccessMessage(null);
-    }, [evaluation]);
+    }, [evaluation, submission.id]);
 
     const saving = pending || createMutation.isPending || updateMutation.isPending;
     const evaluationType = assignment.evaluation_type;
+    const dirty = useMemo(() => (
+        numericScore !== (evaluation?.numeric_score != null ? String(evaluation.numeric_score) : '')
+        || rubricLevel !== (evaluation?.rubric_level != null ? String(evaluation.rubric_level) : '')
+        || narrative !== (evaluation?.narrative ?? '')
+        || competencyState !== (evaluation?.competency_state ?? '')
+    ), [competencyState, evaluation, narrative, numericScore, rubricLevel]);
+
+    useEffect(() => {
+        onDirtyChange?.(dirty);
+    }, [dirty, onDirtyChange]);
 
     const validate = (): AssignmentEvaluationCreatePayload | AssignmentEvaluationUpdatePayload | null => {
         setFormError(null);
@@ -240,20 +254,22 @@ export function AssignmentReviewForm({
         : 'Enter a score of 0 or above.';
 
     return (
-        <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+        <div className={embedded ? 'space-y-5' : 'space-y-5 rounded-lg border theme-border p-4'}>
+            {!embedded ? (
             <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Review / mark response</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 className="text-sm font-semibold theme-text">Review / mark response</h3>
+                    <p className="text-sm theme-muted">
                         Save marks, rubric decisions, competency judgments, or feedback using the assignment&apos;s evaluation mode.
                     </p>
                 </div>
                 {evaluation?.evaluated_at ? (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs theme-muted">
                         Reviewed {new Date(evaluation.evaluated_at).toLocaleString()}
                     </span>
                 ) : null}
             </div>
+            ) : null}
 
             {formError ? (
                 <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
@@ -322,8 +338,8 @@ export function AssignmentReviewForm({
             ) : null}
 
             {(evaluationType === 'DESCRIPTIVE' || evaluationType === 'COMPETENCY' || evaluationType === 'RUBRIC' || evaluationType === 'NUMERIC') ? (
-                <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
+                <div className="space-y-2 pt-2">
+                    <label className="block text-sm font-medium theme-text">
                         {evaluationType === 'DESCRIPTIVE' ? 'Narrative Feedback' : 'Review Notes'}
                     </label>
                     <textarea
@@ -334,10 +350,10 @@ export function AssignmentReviewForm({
                             setNarrative(event.target.value);
                             setFieldErrors((previous) => ({ ...previous, narrative: undefined }));
                         }}
-                        rows={4}
+                        rows={5}
                         placeholder="Add feedback for the learner."
                         aria-invalid={fieldErrors.narrative ? true : undefined}
-                        className={`w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        className={`theme-focus-ring theme-input theme-surface-elevated min-h-[140px] w-full rounded-lg px-4 py-3 ${
                             fieldErrors.narrative ? 'theme-input-error' : ''
                         }`}
                     />
@@ -349,12 +365,12 @@ export function AssignmentReviewForm({
                 </div>
             ) : null}
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <div className="sticky bottom-0 -mx-4 flex flex-row gap-2 border-t theme-border bg-[color:var(--color-card)] px-4 py-3 sm:static sm:mx-0 sm:justify-end sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
                 <Button
                     type="button"
                     onClick={() => void handleSave(false)}
                     disabled={readOnly || saving}
-                    className="w-full sm:w-auto"
+                    className="flex-1 sm:flex-none"
                 >
                     {saving ? 'Saving review...' : 'Save'}
                 </Button>
@@ -362,7 +378,7 @@ export function AssignmentReviewForm({
                     type="button"
                     onClick={() => void handleSave(true)}
                     disabled={readOnly || saving || !onSaveAndNext}
-                    className="w-full sm:w-auto"
+                    className="flex-1 sm:flex-none"
                 >
                     Save & Next
                 </Button>

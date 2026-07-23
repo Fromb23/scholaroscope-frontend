@@ -5,7 +5,6 @@ import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useSessionLifecycleReminders } from '@/app/core/hooks/useSessionLifecycleReminders';
 import {
     useAssessmentReviewSummary,
-    useAssessmentScores,
 } from '@/app/core/hooks/useAssessments';
 import { useAssignmentTeachingToday } from '@/app/core/hooks/useAssignments';
 import {
@@ -14,15 +13,13 @@ import {
 } from '@/app/core/lib/teachingActionQueue';
 import type {
     AcademicSetupStatus,
-    AcademicYear,
     TeachingAssignment,
     Term,
     TermCalendarEvent,
     TermCalendarEventType,
     AcademicTodayMode,
 } from '@/app/core/types/academic';
-import type { AssessmentScore } from '@/app/core/types/assessment';
-import { AssessmentScoreStatus } from '@/app/core/types/assessment';
+import type { PendingAssessmentReviewWork } from '@/app/core/types/assessment';
 import type {
     Session,
     SessionLifecycleReminder,
@@ -88,7 +85,7 @@ export interface TeachingTodayIncompleteItem {
 
 export interface TeachingTodayContext {
     todayKey: string;
-    currentYear: AcademicYear | null;
+    academicContexts: TeachingAcademicContext[];
     currentTerm: Term | null;
     currentWeek: number | null;
     setupStatus: AcademicSetupStatus | null;
@@ -104,11 +101,24 @@ export interface TeachingTodayContext {
     nextAction: TeachingTodayAction | null;
     afterTeaching: {
         pendingAssessmentReviewCount: number;
-        pendingReviewRows: AssessmentScore[];
+        pendingAssessments: PendingAssessmentReviewWork[];
         assignmentWork: AssignmentTeachingTodayItem[];
         learnerAttentionCount?: number;
     };
     teachingLoad: TeachingAssignment[];
+}
+
+export interface TeachingAcademicContext {
+    key: string;
+    curriculumId: number | null;
+    curriculumName: string | null;
+    academicYearId: number;
+    academicYearName: string;
+    termId: number | null;
+    termName: string | null;
+    termStartDate: string | null;
+    termEndDate: string | null;
+    currentWeek: number | null;
 }
 
 export interface UseTeachingTodayResult {
@@ -151,6 +161,104 @@ function computeCurrentWeek(term: Term | null, todayKey: string): number | null 
     }
 
     return rawWeek;
+}
+
+function computeCurrentWeekFromDates(
+    startDate: string | null,
+    endDate: string | null,
+    todayKey: string
+): number | null {
+    if (!startDate || !endDate) return null;
+    if (todayKey < startDate || todayKey > endDate) return null;
+    const today = dateKeyToTime(todayKey);
+    const termStart = dateKeyToTime(startDate);
+    if (today === null || termStart === null) return null;
+    const rawWeek = Math.floor((today - termStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+    return rawWeek < 1 ? null : rawWeek;
+}
+
+function buildTeachingAcademicContexts(
+    assignments: TeachingAssignment[],
+    todayKey: string
+): TeachingAcademicContext[] {
+    const contexts = new Map<string, TeachingAcademicContext>();
+    assignments.forEach((assignment) => {
+        const academicYearId = assignment.academic_year_id;
+        const academicYearName = assignment.academic_year_name || assignment.academic_year;
+        if (!academicYearId || !academicYearName) {
+            return;
+        }
+        const term = assignment.current_term ?? null;
+        const curriculumId = assignment.curriculum_id ?? null;
+        const key = [
+            curriculumId ?? 'none',
+            academicYearId,
+            term?.id ?? 'none',
+        ].join(':');
+        if (contexts.has(key)) {
+            return;
+        }
+        contexts.set(key, {
+            key,
+            curriculumId,
+            curriculumName: assignment.curriculum_name ?? null,
+            academicYearId,
+            academicYearName,
+            termId: term?.id ?? null,
+            termName: term?.name ?? null,
+            termStartDate: term?.start_date ?? null,
+            termEndDate: term?.end_date ?? null,
+            currentWeek: computeCurrentWeekFromDates(
+                term?.start_date ?? null,
+                term?.end_date ?? null,
+                todayKey
+            ),
+        });
+    });
+    return Array.from(contexts.values()).sort((left, right) => (
+        (left.curriculumName ?? '').localeCompare(right.curriculumName ?? '')
+        || left.academicYearName.localeCompare(right.academicYearName)
+        || (left.termName ?? '').localeCompare(right.termName ?? '')
+        || left.academicYearId - right.academicYearId
+    ));
+}
+
+function termFromSingleContext(contexts: TeachingAcademicContext[]): Term | null {
+    if (contexts.length !== 1) {
+        return null;
+    }
+    const context = contexts[0];
+    if (!context.termId || !context.termName || !context.termStartDate || !context.termEndDate) {
+        return null;
+    }
+    return {
+        id: context.termId,
+        name: context.termName,
+        start_date: context.termStartDate,
+        end_date: context.termEndDate,
+        academic_year: context.academicYearId,
+        academic_year_name: context.academicYearName,
+        sequence: 0,
+        status: 'OPEN',
+        is_frozen: false,
+        calendar_setup_completed_at: null,
+        calendar_setup_completed_by: null,
+        calendar_setup_completed_by_name: '',
+        is_calendar_setup_complete: true,
+        configuration_state: 'SETUP_LOCKED',
+        configuration_actions: {
+            can_edit_term: false,
+            can_delete_term: false,
+            can_add_calendar_event: false,
+            can_edit_calendar_event: false,
+            can_delete_calendar_event: false,
+            can_complete_setup: false,
+            can_reopen_setup: false,
+        },
+        configuration_locked_reason: null,
+        week_count: 0,
+        created_at: '',
+    };
 }
 
 function isClosingEvent(event: TermCalendarEvent): boolean {
@@ -741,63 +849,35 @@ export function useTeachingToday(): UseTeachingTodayResult {
         error: remindersError,
         refetch: refetchReminders,
     } = useSessionLifecycleReminders();
-    const currentYear: AcademicYear | null = null;
-    const currentTerm = useMemo<Term | null>(() => {
-        const summary = teachingLoadData?.assignments
-            ?.map((assignment) => assignment.current_term)
-            .find((term): term is NonNullable<TeachingAssignment['current_term']> => Boolean(term)) ?? null;
-
-        if (!summary) {
-            return null;
-        }
-
-        return {
-            id: summary.id,
-            name: summary.name,
-            start_date: summary.start_date,
-            end_date: summary.end_date,
-            academic_year: teachingLoadData?.assignments.find((assignment) => assignment.current_term?.id === summary.id)?.academic_year_id ?? 0,
-            academic_year_name: teachingLoadData?.assignments.find((assignment) => assignment.current_term?.id === summary.id)?.academic_year_name ?? '',
-            sequence: 0,
-            status: 'OPEN',
-            is_frozen: false,
-            calendar_setup_completed_at: null,
-            calendar_setup_completed_by: null,
-            calendar_setup_completed_by_name: '',
-            is_calendar_setup_complete: true,
-            configuration_state: 'SETUP_LOCKED',
-            configuration_actions: {
-                can_edit_term: false,
-                can_delete_term: false,
-                can_add_calendar_event: false,
-                can_edit_calendar_event: false,
-                can_delete_calendar_event: false,
-                can_complete_setup: false,
-                can_reopen_setup: false,
-            },
-            configuration_locked_reason: null,
-            week_count: 0,
-            created_at: '',
-        };
-    }, [teachingLoadData?.assignments]);
+    const todayKey = useMemo(() => getDateKey(clock), [clock]);
+    const teachingLoad = useMemo(
+        () => teachingLoadData?.assignments ?? [],
+        [teachingLoadData?.assignments]
+    );
+    const academicContexts = useMemo(
+        () => buildTeachingAcademicContexts(teachingLoad, todayKey),
+        [teachingLoad, todayKey]
+    );
+    const currentTerm = useMemo<Term | null>(
+        () => termFromSingleContext(academicContexts),
+        [academicContexts]
+    );
+    const scopedReviewTerm = useMemo(() => {
+        const termIds = Array.from(new Set(
+            academicContexts
+                .map((context) => context.termId)
+                .filter((termId): termId is number => Boolean(termId))
+        ));
+        return termIds.length === 1 ? termIds[0] : undefined;
+    }, [academicContexts]);
     const {
         summary: reviewSummary,
         loading: reviewSummaryLoading,
         error: reviewSummaryError,
         refetch: refetchReviewSummary,
     } = useAssessmentReviewSummary({
-        term: currentTerm?.id,
-        enabled: Boolean(currentTerm?.id),
-    });
-    const {
-        scores,
-        loading: scoresLoading,
-        error: scoresError,
-        refetch: refetchScores,
-    } = useAssessmentScores({
-        assessment__term: currentTerm?.id,
-        page_size: 50,
-        enabled: Boolean(currentTerm?.id),
+        term: scopedReviewTerm,
+        enabled: teachingLoadLoading || teachingLoad.length > 0,
     });
     const {
         items: assignmentWorkItems,
@@ -806,11 +886,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
         refetch: refetchAssignmentWork,
     } = useAssignmentTeachingToday();
 
-    const todayKey = useMemo(() => getDateKey(clock), [clock]);
-    const teachingLoad = useMemo(
-        () => teachingLoadData?.assignments ?? [],
-        [teachingLoadData?.assignments]
-    );
     const todayMode = todayModeData ?? null;
     const calendarEventsToday = useMemo<TermCalendarEvent[]>(() => {
         const event = todayMode?.event;
@@ -867,22 +942,11 @@ export function useTeachingToday(): UseTeachingTodayResult {
         () => sortAssignmentTeachingTodayItems(assignmentWorkItems),
         [assignmentWorkItems]
     );
-    const pendingReviewRows = useMemo<AssessmentScore[]>(() => (
-        scores
-            .filter((score) => (
-                score.is_pending_review
-                || (
-                    score.score == null
-                    && score.rubric_level == null
-                    && score.status === AssessmentScoreStatus.PENDING_REVIEW
-                )
-            ))
-            .sort((left, right) => (
-                left.assessment_name.localeCompare(right.assessment_name)
-                || left.student_name.localeCompare(right.student_name)
-            ))
-    ), [scores]);
-    const pendingAssessmentReviewCount = reviewSummary?.pending_review_count ?? pendingReviewRows.length;
+    const pendingAssessments = useMemo<PendingAssessmentReviewWork[]>(
+        () => reviewSummary?.pending_assessments ?? [],
+        [reviewSummary?.pending_assessments]
+    );
+    const pendingAssessmentReviewCount = reviewSummary?.pending_review_count ?? 0;
     const nextAction = useMemo(
         () => buildNextAction({
             groups: sessionGroups,
@@ -911,7 +975,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
             refetchTodaySessions(),
             refetchReminders(),
             refetchReviewSummary(),
-            refetchScores(),
             refetchTeachingLoad(),
             refetchTodayMode(),
             refetchAssignmentWork(),
@@ -922,7 +985,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
     }, [
         refetchReminders,
         refetchReviewSummary,
-        refetchScores,
         refetchTeachingLoad,
         refetchTodayMode,
         refetchTodaySessions,
@@ -941,7 +1003,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
         sessionsLoading
         || remindersLoading
         || reviewSummaryLoading
-        || scoresLoading
         || teachingLoadLoading
         || todayModeLoading
         || assignmentWorkLoading
@@ -949,7 +1010,6 @@ export function useTeachingToday(): UseTeachingTodayResult {
     const error = sessionsError
         ?? remindersError
         ?? reviewSummaryError
-        ?? scoresError
         ?? teachingLoadError?.message
         ?? todayModeError?.message
         ?? assignmentWorkError
@@ -958,7 +1018,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
     return {
         context: {
             todayKey,
-            currentYear,
+            academicContexts,
             currentTerm,
             currentWeek,
             setupStatus: null,
@@ -974,7 +1034,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
             nextAction,
             afterTeaching: {
                 pendingAssessmentReviewCount,
-                pendingReviewRows,
+                pendingAssessments,
                 assignmentWork,
             },
             teachingLoad,

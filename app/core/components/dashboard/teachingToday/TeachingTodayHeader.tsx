@@ -23,6 +23,7 @@ export function TeachingTodayHeader({
     onRefresh,
     refreshing = false,
 }: TeachingTodayHeaderProps) {
+    const contexts = context.academicContexts;
     return (
         <header className="theme-card rounded-lg border theme-border p-4 sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -44,15 +45,32 @@ export function TeachingTodayHeader({
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
                     <div className="flex flex-wrap gap-2">
-                        <Badge variant="default">
-                            {context.currentYear?.name ?? 'No academic year'}
-                        </Badge>
-                        <Badge variant="default">
-                            {context.currentTerm?.name ?? 'No active term'}
-                        </Badge>
-                        <Badge variant="blue">
-                            {context.currentWeek ? `Week ${context.currentWeek}` : 'Week unavailable'}
-                        </Badge>
+                        {contexts.length === 0 ? (
+                            <>
+                                <Badge variant="default">No academic year</Badge>
+                                <Badge variant="default">No active term</Badge>
+                                <Badge variant="blue">Week unavailable</Badge>
+                            </>
+                        ) : contexts.length === 1 ? (
+                            <>
+                                <Badge variant="default">
+                                    {contexts[0].academicYearName}
+                                </Badge>
+                                <Badge variant="default">
+                                    {contexts[0].termName ?? 'No active term'}
+                                </Badge>
+                                <Badge variant="blue">
+                                    {contexts[0].currentWeek ? `Week ${contexts[0].currentWeek}` : 'Week unavailable'}
+                                </Badge>
+                            </>
+                        ) : contexts.map((academicContext) => (
+                            <Badge key={academicContext.key} variant="default">
+                                {academicContext.curriculumName ? `${academicContext.curriculumName}: ` : ''}
+                                {academicContext.academicYearName}
+                                {academicContext.termName ? ` - ${academicContext.termName}` : ''}
+                                {academicContext.currentWeek ? ` - Week ${academicContext.currentWeek}` : ''}
+                            </Badge>
+                        ))}
                         <Badge variant={learningDayBadgeVariants[context.learningDayState]}>
                             {learningDayLabels[context.learningDayState]}
                         </Badge>

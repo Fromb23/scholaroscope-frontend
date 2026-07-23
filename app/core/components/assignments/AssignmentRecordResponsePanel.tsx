@@ -34,6 +34,8 @@ interface AssignmentRecordResponsePanelProps {
     onSaveAndNext?: (submission: AssignmentSubmission) => void | Promise<void>;
     pending?: boolean;
     readOnly?: boolean;
+    embedded?: boolean;
+    onDirtyChange?: (dirty: boolean) => void;
 }
 
 const textareaClassName = [
@@ -71,6 +73,8 @@ export function AssignmentRecordResponsePanel({
     onSaveAndNext,
     pending = false,
     readOnly = false,
+    embedded = false,
+    onDirtyChange,
 }: AssignmentRecordResponsePanelProps) {
     const createMutation = useCreateAssignmentSubmission();
     const [textResponse, setTextResponse] = useState('');
@@ -128,6 +132,21 @@ export function AssignmentRecordResponsePanel({
         );
     }, [activeRecipient, attachmentNote, attachmentSlotNotes, currentSubmission, textResponse]);
 
+    useEffect(() => {
+        onDirtyChange?.(dirty);
+    }, [dirty, onDirtyChange]);
+
+    const requestClose = () => {
+        if (
+            dirty
+            && typeof window !== 'undefined'
+            && !window.confirm('Discard unsaved learner response changes?')
+        ) {
+            return;
+        }
+        onClose();
+    };
+
     const save = async (advance: boolean) => {
         setFormError(null);
 
@@ -176,8 +195,9 @@ export function AssignmentRecordResponsePanel({
         }
     };
 
-    return (
-        <Card className="theme-info-surface space-y-4" role="region" aria-label="Record learner response">
+    const content = (
+        <div className="space-y-4" role="region" aria-label="Record learner response">
+            {!embedded ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -189,10 +209,11 @@ export function AssignmentRecordResponsePanel({
                     </p>
                 </div>
 
-                <Button type="button" variant="ghost" size="sm" onClick={onClose} className="w-full sm:w-auto">
+                <Button type="button" variant="ghost" size="sm" onClick={requestClose} className="w-full sm:w-auto">
                     Close
                 </Button>
             </div>
+            ) : null}
 
             {formError ? (
                 <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
@@ -242,10 +263,10 @@ export function AssignmentRecordResponsePanel({
                         <textarea
                             value={textResponse}
                             onChange={(event) => setTextResponse(event.target.value)}
-                            rows={5}
+                            rows={6}
                             disabled={readOnly || saving}
                             placeholder="Record what the learner submitted, said, presented, or completed."
-                            className={textareaClassName}
+                            className={`${textareaClassName} min-h-[160px]`}
                         />
                     </div>
 
@@ -294,7 +315,7 @@ export function AssignmentRecordResponsePanel({
                             <textarea
                                 value={attachmentNote}
                                 onChange={(event) => setAttachmentNote(event.target.value)}
-                                rows={2}
+                                rows={3}
                                 disabled={readOnly || saving}
                                 placeholder="Optional placeholder for collected books, photos, files, or practical evidence."
                                 className={textareaClassName}
@@ -302,15 +323,17 @@ export function AssignmentRecordResponsePanel({
                         </div>
                     )}
 
-                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                        <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
+                    <div className="sticky bottom-0 -mx-4 flex flex-row gap-2 border-t theme-border bg-[color:var(--color-card)] px-4 py-3 sm:static sm:mx-0 sm:justify-end sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+                        {!embedded ? (
+                        <Button type="button" variant="secondary" onClick={requestClose} className="hidden sm:inline-flex sm:w-auto">
                             Close
                         </Button>
+                        ) : null}
                         <Button
                             type="button"
                             onClick={() => void save(false)}
                             disabled={readOnly || saving}
-                            className="w-full sm:w-auto"
+                            className="flex-1 sm:flex-none"
                         >
                             {saving ? 'Saving response...' : 'Save'}
                         </Button>
@@ -318,13 +341,14 @@ export function AssignmentRecordResponsePanel({
                             type="button"
                             onClick={() => void save(true)}
                             disabled={readOnly || saving || currentIndex >= totalCount - 1}
-                            className="w-full sm:w-auto"
+                            className="flex-1 sm:flex-none"
                         >
                             Save & Next
                         </Button>
                     </div>
                 </>
             )}
-        </Card>
+        </div>
     );
+    return embedded ? content : <Card className="theme-info-surface">{content}</Card>;
 }

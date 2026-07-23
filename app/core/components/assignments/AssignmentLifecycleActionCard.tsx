@@ -25,6 +25,8 @@ const ACTION_LABELS: Record<AssignmentLifecycleAction, string> = {
     STORE_RECORD: 'Store assignment record',
     VIEW_RECORD: 'View record',
     RESTORE_TO_REVIEW: 'Restore to review',
+    RESTORE_EVIDENCE: 'Restore submitted evidence',
+    DELETE_ASSIGNMENT: 'Delete assignment',
 };
 
 const ACTION_PENDING_LABELS: Partial<Record<AssignmentLifecycleAction, string>> = {
@@ -33,6 +35,8 @@ const ACTION_PENDING_LABELS: Partial<Record<AssignmentLifecycleAction, string>> 
     REOPEN_LEARNER_WORK: 'Reopening learner work...',
     RESTORE_TO_REVIEW: 'Restoring to review...',
     DELETE_DRAFT: 'Deleting draft...',
+    RESTORE_EVIDENCE: 'Restoring evidence...',
+    DELETE_ASSIGNMENT: 'Deleting assignment...',
 };
 
 const ACTION_ORDER: AssignmentLifecycleAction[] = [
@@ -50,6 +54,8 @@ const ACTION_ORDER: AssignmentLifecycleAction[] = [
     'REOPEN_LEARNER_WORK',
     'VIEW_RECORD',
     'RESTORE_TO_REVIEW',
+    'RESTORE_EVIDENCE',
+    'DELETE_ASSIGNMENT',
 ];
 
 function getActionLabel(
@@ -135,7 +141,7 @@ export function AssignmentLifecycleActionCard({
                 : getActionLabel(action, deliveryMode),
             onSelect: () => onAction(action),
             disabled,
-            destructive: action === 'DELETE_DRAFT',
+            destructive: action === 'DELETE_DRAFT' || action === 'DELETE_ASSIGNMENT',
         })),
         ...supplementaryActions.map((action) => ({
             label: action.label,

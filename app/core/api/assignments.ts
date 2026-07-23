@@ -6,6 +6,8 @@ import type {
     AssignmentBulkReviewPayload,
     AssignmentBulkReviewResponse,
     AssignmentCreatePayload,
+    AssignmentDeleteRecordPayload,
+    AssignmentDeleteRecordResponse,
     AssignmentAutoGenerateGroupsPayload,
     AssignmentAutoGenerateGroupsResponse,
     AssignmentEligibleLearnersParams,
@@ -23,6 +25,7 @@ import type {
     AssignmentOutcomeCreatePayload,
     AssignmentPublishPayload,
     AssignmentPublishResponse,
+    AssignmentRestoreEvidenceResponse,
     AssignmentGroup,
     AssignmentGroupCopyFromPayload,
     AssignmentGroupCopyFromResponse,
@@ -180,6 +183,25 @@ export const assignmentsAPI = {
     restoreToReview: async (id: number): Promise<Assignment> => {
         const response = await apiClient.post<Assignment>(
             `${ASSIGNMENTS_BASE}/${id}/restore-to-review/`
+        );
+        return response.data;
+    },
+
+    restoreEvidence: async (id: number): Promise<AssignmentRestoreEvidenceResponse> => {
+        const response = await apiClient.post<AssignmentRestoreEvidenceResponse>(
+            `${ASSIGNMENTS_BASE}/${id}/restore-evidence/`,
+            withClientMutationId({}, 'assignment-restore-evidence')
+        );
+        return response.data;
+    },
+
+    deleteRecord: async (
+        id: number,
+        data: AssignmentDeleteRecordPayload
+    ): Promise<AssignmentDeleteRecordResponse> => {
+        const response = await apiClient.post<AssignmentDeleteRecordResponse>(
+            `${ASSIGNMENTS_BASE}/${id}/delete-record/`,
+            withClientMutationId(data, 'assignment-delete-record')
         );
         return response.data;
     },

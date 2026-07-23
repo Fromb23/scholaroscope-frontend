@@ -1,6 +1,6 @@
 'use client';
 
-import { resolveErrorMessage } from '@/app/core/errors';
+import { resolveAssignmentError, resolveErrorMessage, type AppError } from '@/app/core/errors';
 
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -19,11 +19,13 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
+import { ResponsiveActionSheet } from '@/app/components/ui/actions';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
 import { AssignmentLifecycleActionCard } from '@/app/core/components/assignments/AssignmentLifecycleActionCard';
 import { AssignmentLifecycleConfirmModal } from '@/app/core/components/assignments/AssignmentLifecycleConfirmModal';
+import { AssignmentDeletionWorkflowModal } from '@/app/core/components/assignments/AssignmentDeletionWorkflowModal';
 import { getAssignmentCurrentProgressStage } from '@/app/core/components/assignments/AssignmentProgressTracker';
 import { AssignmentGroupEvaluationsPanel } from '@/app/core/components/assignments/AssignmentGroupEvaluationsPanel';
 import { AssignmentGroupsPanel } from '@/app/core/components/assignments/AssignmentGroupsPanel';
@@ -59,9 +61,12 @@ import {
     useAssignmentSubmissions,
     useCloseAssignment,
     useDeleteAssignment,
+    useDeleteAssignmentRecord,
     useReopenLearnerWork,
     useRestoreAssignmentToReview,
+    useRestoreAssignmentEvidence,
 } from '@/app/core/hooks/useAssignments';
+import { useNarrowViewport } from '@/app/core/hooks/useNarrowViewport';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useRubricScaleDetail } from '@/app/core/hooks/useAssessments';
 import { useAuth } from '@/app/context/AuthContext';
@@ -193,6 +198,10 @@ function getAssistantAssignmentActionLabel(action: AssignmentLifecycleAction): s
             return 'Reopen learner work';
         case 'RESTORE_TO_REVIEW':
             return 'Restore to review';
+        case 'RESTORE_EVIDENCE':
+            return 'Restore submitted evidence';
+        case 'DELETE_ASSIGNMENT':
+            return 'Delete assignment';
         default:
             return action;
     }
@@ -216,10 +225,14 @@ export default function CohortAssignmentDetailPage() {
     const [publishMode, setPublishMode] = useState<'issue' | 'add_learners'>('issue');
     const confirmAction = useConfirmAction<AssignmentLifecycleAction>();
     const [actionError, setActionError] = useState<string | null>(null);
+    const [deletionOpen, setDeletionOpen] = useState(false);
+    const [deletionError, setDeletionError] = useState<AppError | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [advancedDetailsOpen, setAdvancedDetailsOpen] = useState(false);
+    const [workflowDirty, setWorkflowDirty] = useState(false);
     const responseWorkflowRef = useRef<HTMLDivElement | null>(null);
     const reviewWorkflowRef = useRef<HTMLDivElement | null>(null);
+    const useWorkflowSheet = useNarrowViewport('(max-width: 1023px)');
 
     const accessLoading = authLoading || (isTeachingActor && instructorAccess.isLoading);
     const allowed = !user
@@ -272,6 +285,8 @@ export default function CohortAssignmentDetailPage() {
     const restoreToReviewMutation = useRestoreAssignmentToReview();
     const bulkReviewMutation = useAssignmentBulkReview();
     const deleteMutation = useDeleteAssignment();
+    const restoreEvidenceMutation = useRestoreAssignmentEvidence();
+    const deleteRecordMutation = useDeleteAssignmentRecord();
     const assignmentsHref = useMemo(
         () => getSafeReturnHref(cohortId, searchParams.get('returnTo')),
         [cohortId, searchParams]
@@ -320,6 +335,23 @@ export default function CohortAssignmentDetailPage() {
     const setActiveTab = useCallback((tab: DetailTab) => {
         updateWorkspaceUrl({ tab });
     }, [updateWorkspaceUrl]);
+
+    const confirmDiscardWorkflowChanges = useCallback(() => {
+        if (!workflowDirty) return true;
+        if (typeof window === 'undefined') return false;
+        return window.confirm('Discard unsaved assignment workflow changes?');
+    }, [workflowDirty]);
+
+    const closeActiveWorkflow = useCallback(() => {
+        if (!confirmDiscardWorkflowChanges()) return;
+        updateWorkspaceUrl({ workflow: null, unit: null });
+    }, [confirmDiscardWorkflowChanges, updateWorkspaceUrl]);
+
+    const navigateWorkflowUnit = useCallback((unit: string | null) => {
+        if (!unit) return;
+        if (!confirmDiscardWorkflowChanges()) return;
+        updateWorkspaceUrl({ unit });
+    }, [confirmDiscardWorkflowChanges, updateWorkspaceUrl]);
 
     const visibleCohortSubjects = useMemo(() => (
         isTeachingActor
@@ -564,6 +596,10 @@ export default function CohortAssignmentDetailPage() {
         updateWorkspaceUrl,
     ]);
 
+    useEffect(() => {
+        setWorkflowDirty(false);
+    }, [activeWorkflow, unitParam]);
+
     if (!isValidRoute) {
         return (
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -625,7 +661,8 @@ export default function CohortAssignmentDetailPage() {
     );
 
     const handleDelete = async () => {
-        if (!confirm(`Delete draft assignment "${assignment.title}"?`)) {
+        if (assignment.status !== 'DRAFT') {
+            setDeletionOpen(true);
             return;
         }
 
@@ -639,6 +676,46 @@ export default function CohortAssignmentDetailPage() {
             router.push(assignmentsHref);
         } catch (err) {
             setActionError(resolveErrorMessage(err, 'Failed to delete assignment.'));
+        }
+    };
+
+    const handleRestoreEvidenceForDeletion = async () => {
+        setDeletionError(null);
+        try {
+            await restoreEvidenceMutation.mutateAsync({
+                assignmentId: assignment.id,
+                lessonPlanId: assignment.lesson_plan,
+                createdFromSessionId: assignment.created_from_session,
+            });
+            await refetchAssignmentWorkflowData();
+            setSuccessMessage('Assignment evidence restored to review.');
+        } catch (err) {
+            setDeletionError(resolveAssignmentError(err, {
+                action: 'update',
+                entityLabel: 'assignment evidence',
+                entityName: assignment.title,
+                channel: 'banner',
+            }));
+        }
+    };
+
+    const handleDeleteRecord = async (payload: { confirmation_title: string; reason: string }) => {
+        setDeletionError(null);
+        try {
+            await deleteRecordMutation.mutateAsync({
+                assignmentId: assignment.id,
+                lessonPlanId: assignment.lesson_plan,
+                createdFromSessionId: assignment.created_from_session,
+                data: payload,
+            });
+            router.push(assignmentsHref);
+        } catch (err) {
+            setDeletionError(resolveAssignmentError(err, {
+                action: 'delete',
+                entityLabel: 'assignment',
+                entityName: assignment.title,
+                channel: 'banner',
+            }));
         }
     };
 
@@ -834,6 +911,10 @@ export default function CohortAssignmentDetailPage() {
 
     const pendingLifecycleAction: AssignmentLifecycleAction | null = deleteMutation.isPending
         ? 'DELETE_DRAFT'
+        : deleteRecordMutation.isPending
+            ? 'DELETE_ASSIGNMENT'
+        : restoreEvidenceMutation.isPending
+            ? 'RESTORE_EVIDENCE'
         : closeMutation.isPending
             ? 'FINISH_LEARNER_WORK'
             : archiveMutation.isPending
@@ -863,6 +944,9 @@ export default function CohortAssignmentDetailPage() {
             case 'DELETE_DRAFT':
                 void handleDelete();
                 break;
+            case 'DELETE_ASSIGNMENT':
+                setDeletionOpen(true);
+                break;
             case 'MANAGE_GROUPS':
             case 'MARK_PARTICIPATION':
                 setActiveTab('groups');
@@ -890,6 +974,9 @@ export default function CohortAssignmentDetailPage() {
             case 'REOPEN_LEARNER_WORK':
             case 'RESTORE_TO_REVIEW':
                 confirmAction.requestConfirm(action);
+                break;
+            case 'RESTORE_EVIDENCE':
+                setDeletionOpen(true);
                 break;
             default:
                 break;
@@ -1265,7 +1352,7 @@ export default function CohortAssignmentDetailPage() {
                 </Card>
             ) : null}
 
-            {canChangeActiveAssignment && activeWorkflow === 'record' && !isGroupAssignment ? (
+            {canChangeActiveAssignment && activeWorkflow === 'record' && !isGroupAssignment && !useWorkflowSheet ? (
                 <div ref={responseWorkflowRef}>
                     <AssignmentRecordResponsePanel
                         assignment={assignment}
@@ -1275,11 +1362,11 @@ export default function CohortAssignmentDetailPage() {
                         totalCount={individualWorkUnits.length}
                         onPrevious={() => {
                             const previous = individualWorkUnits[recordRecipientIndex - 1];
-                            if (previous) updateWorkspaceUrl({ unit: individualUnitValue(previous.student) });
+                            if (previous) navigateWorkflowUnit(individualUnitValue(previous.student));
                         }}
                         onNext={() => {
                             const next = individualWorkUnits[recordRecipientIndex + 1];
-                            if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
+                            if (next) navigateWorkflowUnit(individualUnitValue(next.student));
                         }}
                         onClose={() => updateWorkspaceUrl({ workflow: null, unit: null })}
                         onSaved={handleResponseSaved}
@@ -1289,11 +1376,12 @@ export default function CohortAssignmentDetailPage() {
                         }}
                         pending={submissionsQuery.loading || recipientsQuery.loading}
                         readOnly={!canChangeActiveAssignment}
+                        onDirtyChange={setWorkflowDirty}
                     />
                 </div>
             ) : null}
 
-            {canChangeActiveAssignment && activeWorkflow === 'review' && selectedReviewSubmission && !isGroupAssignment ? (
+            {canChangeActiveAssignment && activeWorkflow === 'review' && selectedReviewSubmission && !isGroupAssignment && !useWorkflowSheet ? (
                 <div ref={reviewWorkflowRef}>
                     <Card className="theme-info-surface space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1310,7 +1398,7 @@ export default function CohortAssignmentDetailPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="w-full sm:w-auto"
-                                onClick={() => updateWorkspaceUrl({ workflow: null, unit: null })}
+                                onClick={closeActiveWorkflow}
                             >
                                 Hide review panel
                             </Button>
@@ -1323,13 +1411,13 @@ export default function CohortAssignmentDetailPage() {
                                 totalCount={reviewableSubmissions.length}
                                 onPrevious={() => {
                                     const previous = reviewableSubmissions[reviewSubmissionIndex - 1];
-                                    if (previous) updateWorkspaceUrl({ unit: individualUnitValue(previous.student) });
+                                    if (previous) navigateWorkflowUnit(individualUnitValue(previous.student));
                                 }}
                                 onNext={() => {
                                     const next = reviewableSubmissions[reviewSubmissionIndex + 1];
-                                    if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
+                                    if (next) navigateWorkflowUnit(individualUnitValue(next.student));
                                 }}
-                                disabled={evaluationsQuery.loading}
+                                disabled={evaluationsQuery.loading || workflowDirty}
                                 queueDescription={selectedReviewSubmission.student_name}
                             />
                             <div className="rounded-lg border theme-border bg-white/80 px-4 py-3 text-sm">
@@ -1365,10 +1453,94 @@ export default function CohortAssignmentDetailPage() {
                             }}
                             pending={evaluationsQuery.loading}
                             readOnly={Boolean(selectedReviewEvaluation?.evidence_created || selectedReviewEvaluation?.evidence_record_id)}
+                            onDirtyChange={setWorkflowDirty}
                         />
                     </Card>
                 </div>
             ) : null}
+
+            <ResponsiveActionSheet
+                open={Boolean(canChangeActiveAssignment && activeWorkflow && !isGroupAssignment && useWorkflowSheet)}
+                onClose={closeActiveWorkflow}
+                title={activeWorkflow === 'record' ? 'Record learner response' : 'Review learner response'}
+                description={activeWorkflow === 'record'
+                    ? 'Capture learner work without losing the assignment context.'
+                    : 'Review recorded work and keep learner navigation available.'}
+                size="xl"
+                closeLabel="Close assignment workflow"
+                panelClassName="max-h-[94dvh]"
+                bodyClassName="pb-4"
+            >
+                {activeWorkflow === 'record' ? (
+                    <AssignmentRecordResponsePanel
+                        assignment={assignment}
+                        activeRecipient={selectedRecordRecipient}
+                        currentSubmission={selectedRecordSubmission}
+                        currentIndex={Math.max(recordRecipientIndex, 0)}
+                        totalCount={individualWorkUnits.length}
+                        onPrevious={() => {
+                            const previous = individualWorkUnits[recordRecipientIndex - 1];
+                            if (previous) navigateWorkflowUnit(individualUnitValue(previous.student));
+                        }}
+                        onNext={() => {
+                            const next = individualWorkUnits[recordRecipientIndex + 1];
+                            if (next) navigateWorkflowUnit(individualUnitValue(next.student));
+                        }}
+                        onClose={() => updateWorkspaceUrl({ workflow: null, unit: null })}
+                        onSaved={handleResponseSaved}
+                        onSaveAndNext={async () => {
+                            const next = individualWorkUnits[recordRecipientIndex + 1];
+                            if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
+                        }}
+                        pending={submissionsQuery.loading || recipientsQuery.loading}
+                        readOnly={!canChangeActiveAssignment}
+                        onDirtyChange={setWorkflowDirty}
+                        embedded
+                    />
+                ) : selectedReviewSubmission ? (
+                    <div className="space-y-4">
+                        <AssignmentWorkUnitNavigation
+                            label="Learner"
+                            currentIndex={Math.max(reviewSubmissionIndex, 0)}
+                            totalCount={reviewableSubmissions.length}
+                            onPrevious={() => {
+                                const previous = reviewableSubmissions[reviewSubmissionIndex - 1];
+                                if (previous) navigateWorkflowUnit(individualUnitValue(previous.student));
+                            }}
+                            onNext={() => {
+                                const next = reviewableSubmissions[reviewSubmissionIndex + 1];
+                                if (next) navigateWorkflowUnit(individualUnitValue(next.student));
+                            }}
+                            disabled={evaluationsQuery.loading || workflowDirty}
+                            queueDescription={selectedReviewSubmission.student_name}
+                        />
+                        <div className="space-y-2 rounded-lg border theme-border theme-surface-elevated p-4">
+                            <div className="text-sm font-medium theme-text">Recorded response</div>
+                            <p className="whitespace-pre-wrap text-sm leading-6 theme-muted">
+                                {selectedReviewSubmission.text_response || 'No text response submitted.'}
+                            </p>
+                            <p className="text-xs theme-muted">
+                                Submitted {formatDateTime(selectedReviewSubmission.submitted_at)} · Attachments {selectedReviewSubmission.attachment_metadata.length}
+                            </p>
+                        </div>
+                        <AssignmentReviewForm
+                            assignment={assignment}
+                            submission={selectedReviewSubmission}
+                            evaluation={selectedReviewEvaluation}
+                            rubricLevels={rubricScaleQuery.scale?.levels ?? []}
+                            onSaved={handleReviewSaved}
+                            onSaveAndNext={async () => {
+                                const next = reviewableSubmissions[reviewSubmissionIndex + 1];
+                                if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
+                            }}
+                            pending={evaluationsQuery.loading}
+                            readOnly={Boolean(selectedReviewEvaluation?.evidence_created || selectedReviewEvaluation?.evidence_record_id)}
+                            onDirtyChange={setWorkflowDirty}
+                            embedded
+                        />
+                    </div>
+                ) : null}
+            </ResponsiveActionSheet>
 
             <Card>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1899,6 +2071,21 @@ export default function CohortAssignmentDetailPage() {
                 blockingItems={confirmBlockingItems}
                 warnings={confirmWarnings}
                 pending={Boolean(pendingLifecycleAction)}
+            />
+
+            <AssignmentDeletionWorkflowModal
+                assignment={assignment}
+                deletion={lifecycleState?.deletion ?? null}
+                open={deletionOpen}
+                onClose={() => {
+                    if (restoreEvidenceMutation.isPending || deleteRecordMutation.isPending) return;
+                    setDeletionOpen(false);
+                    setDeletionError(null);
+                }}
+                onRestoreEvidence={handleRestoreEvidenceForDeletion}
+                onDelete={handleDeleteRecord}
+                pending={restoreEvidenceMutation.isPending || deleteRecordMutation.isPending}
+                error={deletionError}
             />
         </div>
     );

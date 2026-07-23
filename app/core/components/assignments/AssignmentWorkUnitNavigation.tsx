@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 
 interface AssignmentWorkUnitNavigationProps {
@@ -26,17 +27,19 @@ export function AssignmentWorkUnitNavigation({
     const safeIndex = totalCount > 0 ? currentIndex + 1 : 0;
 
     return (
-        <div className="flex flex-col gap-2 rounded-lg border theme-border theme-surface-elevated px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3 rounded-lg border theme-border theme-surface-elevated px-3 py-2">
             <Button
                 type="button"
                 variant="secondary"
                 onClick={onPrevious}
                 disabled={previousDisabled}
-                className="w-full sm:w-auto"
+                className="min-h-11 min-w-11 px-2"
+                aria-label="Previous learner"
             >
-                Previous
+                <ChevronLeft className="h-5 w-5" />
+                <span className="hidden md:inline">Previous</span>
             </Button>
-            <div className="text-center">
+            <div className="min-w-0 flex-1 text-center">
                 <div className="text-sm font-medium theme-text">
                     {label} {safeIndex} of {totalCount}
                 </div>
@@ -49,9 +52,11 @@ export function AssignmentWorkUnitNavigation({
                 variant="secondary"
                 onClick={onNext}
                 disabled={nextDisabled}
-                className="w-full sm:w-auto"
+                className="min-h-11 min-w-11 px-2"
+                aria-label="Next learner"
             >
-                Next
+                <span className="hidden md:inline">Next</span>
+                <ChevronRight className="h-5 w-5" />
             </Button>
         </div>
     );

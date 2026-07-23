@@ -4,15 +4,15 @@ import Link from 'next/link';
 import { ClipboardList, Inbox } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import type { TeachingTodayContext } from '@/app/core/hooks/useTeachingToday';
-import type { AssessmentScore } from '@/app/core/types/assessment';
+import type { PendingAssessmentReviewWork } from '@/app/core/types/assessment';
 import type { AssignmentTeachingTodayItem } from '@/app/core/types/assignments';
 
 interface TeachingTodayAfterTeachingPanelProps {
     afterTeaching: TeachingTodayContext['afterTeaching'];
 }
 
-function getAssessmentReviewHref(row: AssessmentScore): string {
-    return `/assessments/${row.assessment}?focus=score-entry&student=${row.student}`;
+function getAssessmentReviewHref(row: PendingAssessmentReviewWork): string {
+    return `/assessments/${row.assessment_id}?focus=score-entry`;
 }
 
 function getAssignmentReminderLabel(item: AssignmentTeachingTodayItem): string {
@@ -42,8 +42,9 @@ function getAssignmentBadgeVariant(item: AssignmentTeachingTodayItem): 'green' |
 }
 
 export function TeachingTodayAfterTeachingPanel({ afterTeaching }: TeachingTodayAfterTeachingPanelProps) {
-    const rows = afterTeaching.pendingReviewRows.slice(0, 5);
+    const rows = afterTeaching.pendingAssessments.slice(0, 5);
     const pendingCount = afterTeaching.pendingAssessmentReviewCount;
+    const pendingAssessmentCount = afterTeaching.pendingAssessments.length;
     const assignmentRows = afterTeaching.assignmentWork.slice(0, 5);
     const hasAssignmentWork = assignmentRows.length > 0;
     const hasAssessmentWork = pendingCount > 0;
@@ -60,9 +61,9 @@ export function TeachingTodayAfterTeachingPanel({ afterTeaching }: TeachingToday
                     </p>
                 </div>
                 {pendingCount > 0 || hasAssignmentWork ? (
-                    <Badge variant="orange">
-                        Pending records
-                    </Badge>
+                <Badge variant="orange">
+                    Pending records
+                </Badge>
                 ) : null}
             </div>
 
@@ -110,7 +111,7 @@ export function TeachingTodayAfterTeachingPanel({ afterTeaching }: TeachingToday
                         {pendingCount} assessment record{pendingCount === 1 ? '' : 's'} need review.
                     </p>
                     <p className="mt-1 text-sm theme-muted">
-                        Open the assessment queue to see the learner rows.
+                        Open the assessment queue to see the pending assessment work.
                     </p>
                     <Link
                         href="/assessments?status=pending"
@@ -123,21 +124,21 @@ export function TeachingTodayAfterTeachingPanel({ afterTeaching }: TeachingToday
                 <div className="mt-5 space-y-3">
                     {rows.map((row) => (
                         <Link
-                            key={row.id}
+                            key={row.assessment_id}
                             href={getAssessmentReviewHref(row)}
                             className="teaching-today-nested-card block rounded-lg p-3 transition-colors theme-hover-surface"
                         >
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div className="min-w-0">
                                     <p className="break-words text-sm font-semibold theme-text">
-                                        {row.student_name}
+                                        {row.assessment_name}
                                     </p>
                                     <p className="mt-1 break-words text-sm theme-muted">
-                                        {row.assessment_name} - {row.subject_name}
+                                        {row.subject_name} - {row.cohort_name}
                                     </p>
                                 </div>
                                 <Badge variant="orange" size="sm" className="self-start sm:self-center">
-                                    {row.status_display || 'Pending review'}
+                                    {row.pending_learner_count} learner record{row.pending_learner_count === 1 ? '' : 's'} pending
                                 </Badge>
                             </div>
                         </Link>
@@ -146,6 +147,7 @@ export function TeachingTodayAfterTeachingPanel({ afterTeaching }: TeachingToday
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs theme-subtle">
                             Showing {rows.length} of {pendingCount} pending record{pendingCount === 1 ? '' : 's'}.
+                            {pendingAssessmentCount !== pendingCount ? ` ${pendingAssessmentCount} assessment${pendingAssessmentCount === 1 ? '' : 's'} in queue.` : ''}
                         </p>
                         <Link
                             href="/assessments?status=pending"

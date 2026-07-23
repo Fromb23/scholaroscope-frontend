@@ -24,6 +24,8 @@ import type {
     AssignmentBulkReviewPayload,
     AssignmentBulkReviewResponse,
     AssignmentCreatePayload,
+    AssignmentDeleteRecordPayload,
+    AssignmentDeleteRecordResponse,
     AssignmentEligibleLearnersParams,
     AssignmentEligibleLearnersResponse,
     AssignmentEvidenceBridgeResponse,
@@ -54,6 +56,7 @@ import type {
     AssignmentLifecycleState,
     AssignmentPublishPayload,
     AssignmentPublishResponse,
+    AssignmentRestoreEvidenceResponse,
     IssuePreparedAssignmentPayload,
     IssuePreparedAssignmentResponse,
     PrepareAssignmentFromLessonPlanPayload,
@@ -888,6 +891,61 @@ export function useDeleteAssignment() {
             emitAssignmentOriginChanged({
                 lesson_plan: lessonPlanId,
                 created_from_session: createdFromSessionId,
+            });
+        },
+    });
+}
+
+export function useRestoreAssignmentEvidence() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (variables: {
+            assignmentId: number;
+            lessonPlanId?: number | null;
+            createdFromSessionId?: number | null;
+        }): Promise<AssignmentRestoreEvidenceResponse> => {
+            try {
+                return await assignmentsAPI.restoreEvidence(variables.assignmentId);
+            } catch (err) {
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to restore assignment evidence.'));
+            }
+        },
+        onSuccess: async (_result, variables) => {
+            await invalidateAssignmentDependencies(queryClient, variables.assignmentId, variables.lessonPlanId);
+            emitAssignmentOriginChanged({
+                lesson_plan: variables.lessonPlanId ?? null,
+                created_from_session: variables.createdFromSessionId ?? null,
+            });
+        },
+    });
+}
+
+export function useDeleteAssignmentRecord() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (variables: {
+            assignmentId: number;
+            lessonPlanId?: number | null;
+            createdFromSessionId?: number | null;
+            data: AssignmentDeleteRecordPayload;
+        }): Promise<AssignmentDeleteRecordResponse> => {
+            try {
+                return await assignmentsAPI.deleteRecord(variables.assignmentId, {
+                    ...variables.data,
+                    clientMutationId: variables.data.clientMutationId
+                        ?? getStableClientMutationId(variables.data, 'assignment-delete-record'),
+                });
+            } catch (err) {
+                throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete assignment.'));
+            }
+        },
+        onSuccess: async (_result, variables) => {
+            await invalidateAssignmentDependencies(queryClient, variables.assignmentId, variables.lessonPlanId);
+            emitAssignmentOriginChanged({
+                lesson_plan: variables.lessonPlanId ?? null,
+                created_from_session: variables.createdFromSessionId ?? null,
             });
         },
     });

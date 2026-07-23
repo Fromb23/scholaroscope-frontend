@@ -217,12 +217,24 @@ export interface AssessmentScoreDraft {
 
 export interface AssessmentReviewSummary {
   pending_review_count: number;
+  pending_assessments: PendingAssessmentReviewWork[];
   graded_count: number;
   absent_count: number;
   excused_count: number;
   late_enrolled_count: number;
   not_assigned_count: number;
   not_admitted_yet_count: number;
+}
+
+export interface PendingAssessmentReviewWork {
+  assessment_id: number;
+  assessment_name: string;
+  cohort_subject_id: number;
+  cohort_name: string;
+  subject_name: string;
+  assessment_date: string | null;
+  status: AssessmentStatus | string;
+  pending_learner_count: number;
 }
 
 export interface AssessmentParticipationSummary {

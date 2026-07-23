@@ -165,22 +165,20 @@ export function deriveMidtermInsights(context: TeachingTodayContext, limit = 4):
   const insights: MidtermInsight[] = [];
   const pendingSessionItems = getPendingSessionItems(context);
   const firstAssignment = getPrimaryTeachingAssignment(context);
-  const firstPendingReviewRow = context.afterTeaching.pendingReviewRows[0] ?? null;
+  const firstPendingAssessment = context.afterTeaching.pendingAssessments[0] ?? null;
 
-  if (firstPendingReviewRow && context.currentTerm?.id && firstAssignment?.subject_id) {
+  if (firstPendingAssessment) {
     insights.push({
-      id: `attendance-${firstPendingReviewRow.student}`,
-      title: `${firstPendingReviewRow.student_name} may need a closer look before learning resumes.`,
-      body: `Open the current term attendance pattern alongside ${firstAssignment.subject_name}.`,
-      actionLabel: 'View attendance pattern',
-      href: appendQuery('/reports/attendance', {
-        student: firstPendingReviewRow.student,
-        subject: firstAssignment.subject_id,
-        term: context.currentTerm.id,
+      id: `assessment-${firstPendingAssessment.assessment_id}`,
+      title: `${firstPendingAssessment.assessment_name} has learner records pending.`,
+      body: `${firstPendingAssessment.pending_learner_count} learner record${firstPendingAssessment.pending_learner_count === 1 ? '' : 's'} need review for ${firstPendingAssessment.subject_name}.`,
+      actionLabel: 'Open assessment records',
+      href: appendQuery(`/assessments/${firstPendingAssessment.assessment_id}`, {
+        focus: 'score-entry',
         source: 'midterm',
         returnTo: MIDTERM_DASHBOARD_RETURN_TO,
       }),
-      kind: 'attendance',
+      kind: 'assessments',
       featured: true,
     });
   }
@@ -217,14 +215,14 @@ export function deriveMidtermInsights(context: TeachingTodayContext, limit = 4):
   }
 
   if (context.afterTeaching.pendingAssessmentReviewCount > 0) {
-    const row = firstPendingReviewRow;
+    const row = firstPendingAssessment;
     insights.push({
       id: 'assessment-review',
       title: `${context.afterTeaching.pendingAssessmentReviewCount} assessment record${context.afterTeaching.pendingAssessmentReviewCount === 1 ? '' : 's'} are ready for review.`,
-      body: row ? `${row.assessment_name} can be opened from the learner row.` : 'Assessment review remains available during the break.',
-      actionLabel: row ? 'Review learner row' : 'Open assessments',
+      body: row ? `${row.assessment_name} has ${row.pending_learner_count} learner record${row.pending_learner_count === 1 ? '' : 's'} pending.` : 'Assessment review remains available during the break.',
+      actionLabel: row ? 'Review assessment records' : 'Open assessments',
       href: row
-        ? buildMidtermReturnHref(`/assessments/${row.assessment}?focus=score-entry&student=${row.student}`)
+        ? buildMidtermReturnHref(`/assessments/${row.assessment_id}?focus=score-entry`)
         : buildMidtermReturnHref('/assessments?status=pending'),
       kind: 'assessments',
     });
