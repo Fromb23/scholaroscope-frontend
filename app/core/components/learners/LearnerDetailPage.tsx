@@ -34,7 +34,10 @@ import { LearnerAssessmentPickerModal } from '@/app/core/components/learners/Lea
 import type { StudentCohortEnrollment } from '@/app/core/types/student';
 import { isManagementStudentDetail } from '@/app/core/types/student';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
-import { getLearnerProfileBackTarget } from '@/app/core/components/learners/learnerProfileNavigation';
+import {
+    buildLearnerPortfolioHref,
+    getLearnerProfileBackTarget,
+} from '@/app/core/components/learners/learnerProfileNavigation';
 import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
@@ -220,6 +223,7 @@ export default function LearnerDetailPage() {
     const canUseDangerZone = canManageSubjectParticipation;
     const canGenerateOverviewReport = !!user && capabilities.can_view_reports;
     const canGenerateSubjectReport = !!user && capabilities.can_view_reports;
+    const canViewPortfolio = canGenerateOverviewReport || canGenerateSubjectReport;
     const canRecordAssessment = capabilities.can_manage_assessments;
     const { data: attendanceData } = useStudentAttendanceHistory(
         sectionState.attendance ? studentId : null,
@@ -296,6 +300,12 @@ export default function LearnerDetailPage() {
     );
     const overviewReportHref = useMemo(
         () => buildLearnerOverviewReportHref(studentId, {
+            returnTo: buildLearnerDetailHref(studentId, searchParams, 'reports'),
+        }),
+        [searchParams, studentId],
+    );
+    const portfolioHref = useMemo(
+        () => buildLearnerPortfolioHref(studentId, {
             returnTo: buildLearnerDetailHref(studentId, searchParams, 'reports'),
         }),
         [searchParams, studentId],
@@ -637,6 +647,11 @@ export default function LearnerDetailPage() {
         }] : []),
     ];
     const mobileMoreMenuItems = [
+        ...(canViewPortfolio ? [{
+            label: 'Open Portfolio',
+            href: portfolioHref,
+            icon: <BookOpen className="h-4 w-4" />,
+        }] : []),
         ...(canGenerateOverviewReport && reportScopes?.can_view_overview ? [{
             label: 'Open Overall Report',
             href: overviewReportHref,
@@ -876,14 +891,24 @@ export default function LearnerDetailPage() {
                                         </Badge>
                                     ))}
                                 </div>
-                                {canGenerateOverviewReport && reportScopes?.can_view_overview ? (
-                                    <div className="hidden md:block">
-                                        <Link href={overviewReportHref}>
-                                            <Button variant="secondary">
-                                                <FileText className="mr-2 h-4 w-4" />
-                                                Open Overall Report
-                                            </Button>
-                                        </Link>
+                                {canViewPortfolio || (canGenerateOverviewReport && reportScopes?.can_view_overview) ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {canViewPortfolio ? (
+                                            <Link href={portfolioHref}>
+                                                <Button variant="secondary">
+                                                    <BookOpen className="mr-2 h-4 w-4" />
+                                                    Open Portfolio
+                                                </Button>
+                                            </Link>
+                                        ) : null}
+                                        {canGenerateOverviewReport && reportScopes?.can_view_overview ? (
+                                            <Link href={overviewReportHref}>
+                                                <Button variant="secondary">
+                                                    <FileText className="mr-2 h-4 w-4" />
+                                                    Open Overall Report
+                                                </Button>
+                                            </Link>
+                                        ) : null}
                                     </div>
                                 ) : null}
                             </>

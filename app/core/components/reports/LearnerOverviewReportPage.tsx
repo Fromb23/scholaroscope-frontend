@@ -30,6 +30,7 @@ import {
   buildLearnerSubjectReportHref,
   parsePositiveReportParam,
 } from '@/app/core/components/reports/reportNavigation';
+import { buildLearnerPortfolioHref } from '@/app/core/components/learners/learnerProfileNavigation';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import { useLearnerTermProgressReport } from '@/app/core/hooks/useReporting';
@@ -96,30 +97,49 @@ function CoverageSummary({ area }: { area: LearnerTermProgressLearningArea }) {
   );
 }
 
-function EvidenceSummary({ area }: { area: LearnerTermProgressLearningArea }) {
+function EvidenceSummary({
+  area,
+  portfolioHref,
+}: {
+  area: LearnerTermProgressLearningArea;
+  portfolioHref: string;
+}) {
   const evidence = area.evidence_summary;
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {[
-        ['Assessments', evidence.assessments],
-        ['Assignments', evidence.assignments],
-        ['Group assignments', evidence.group_assignments],
-        ['Observations', evidence.observations],
-        ['Projects', evidence.projects],
-        ['Practicals', evidence.practicals],
-        ['Portfolio items', evidence.portfolio_items],
-        ['Total evidence', evidence.total],
-      ].map(([label, value]) => (
-        <div key={label} className="rounded-lg border theme-border p-3">
-          <p className="text-xs font-medium uppercase tracking-wide theme-subtle">{label}</p>
-          <p className="mt-1 text-lg font-semibold theme-text">{String(value)}</p>
-        </div>
-      ))}
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ['Assessments', evidence.assessments],
+          ['Assignments', evidence.assignments],
+          ['Group assignments', evidence.group_assignments],
+          ['Observations', evidence.observations],
+          ['Projects', evidence.projects],
+          ['Practicals', evidence.practicals],
+          ['Evidence references', evidence.portfolio_items],
+          ['Total evidence', evidence.total],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-lg border theme-border p-3">
+            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">{label}</p>
+            <p className="mt-1 text-lg font-semibold theme-text">{String(value)}</p>
+          </div>
+        ))}
+      </div>
+      {evidence.total > 0 ? (
+        <Link className="inline-flex text-sm font-medium text-blue-600 hover:underline" href={portfolioHref}>
+          View supporting evidence
+        </Link>
+      ) : null}
     </div>
   );
 }
 
-function OutcomesTable({ outcomes }: { outcomes: LearnerTermProgressOutcome[] }) {
+function OutcomesTable({
+  outcomes,
+  buildOutcomeHref,
+}: {
+  outcomes: LearnerTermProgressOutcome[];
+  buildOutcomeHref: (outcomeId: number) => string;
+}) {
   if (outcomes.length === 0) {
     return (
       <p className="rounded-lg border theme-border theme-surface-muted p-4 text-sm theme-muted">
@@ -160,7 +180,19 @@ function OutcomesTable({ outcomes }: { outcomes: LearnerTermProgressOutcome[] })
                   {labelize(outcome.status)}
                 </Badge>
               </td>
-              <td className="px-3 py-3 text-right align-top theme-muted">{outcome.evidence_count}</td>
+              <td className="px-3 py-3 text-right align-top">
+                <div className="flex flex-col items-end gap-1">
+                  <span className="theme-muted">{outcome.evidence_count}</span>
+                  {outcome.evidence_count > 0 && outcome.outcome_id ? (
+                    <Link
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                      href={buildOutcomeHref(outcome.outcome_id)}
+                    >
+                      View supporting evidence
+                    </Link>
+                  ) : null}
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -172,14 +204,27 @@ function OutcomesTable({ outcomes }: { outcomes: LearnerTermProgressOutcome[] })
 function LearningAreaCard({
   area,
   learnerId,
+  termId,
   returnTo,
 }: {
   area: LearnerTermProgressLearningArea;
   learnerId: number;
+  termId: number | null;
   returnTo: string;
 }) {
   const nextSteps = area.teacher_review.recommended_next_steps ?? [];
   const subjectHref = buildLearnerSubjectReportHref(learnerId, area.cohort_subject_id, { returnTo });
+  const portfolioHref = buildLearnerPortfolioHref(learnerId, {
+    term: termId,
+    cohortSubject: area.cohort_subject_id,
+    returnTo,
+  });
+  const buildOutcomeHref = (outcomeId: number) => buildLearnerPortfolioHref(learnerId, {
+    term: termId,
+    cohortSubject: area.cohort_subject_id,
+    outcome: outcomeId,
+    returnTo,
+  });
 
   return (
     <Card className="space-y-5">
@@ -230,7 +275,7 @@ function LearningAreaCard({
           Evidence Summary
         </h3>
         <div className="mt-3">
-          <EvidenceSummary area={area} />
+          <EvidenceSummary area={area} portfolioHref={portfolioHref} />
         </div>
       </section>
 
@@ -248,7 +293,7 @@ function LearningAreaCard({
           Outcomes
         </h3>
         <div className="mt-3">
-          <OutcomesTable outcomes={area.outcomes} />
+          <OutcomesTable outcomes={area.outcomes} buildOutcomeHref={buildOutcomeHref} />
         </div>
       </section>
 
@@ -325,11 +370,13 @@ export function LearnerOverviewReportPage() {
     { enabled: Boolean(effectiveTermId) },
   );
 
-  const returnToQuery = useMemo(() => {
+  const reportSelfReturnTo = useMemo(() => {
     const next = new URLSearchParams();
+    if (effectiveTermId) next.set('term', String(effectiveTermId));
     if (returnTo) next.set('returnTo', returnTo);
-    return next.toString();
-  }, [returnTo]);
+    const query = next.toString();
+    return `/reports/learners/${learnerId}/overview${query ? `?${query}` : ''}`;
+  }, [effectiveTermId, learnerId, returnTo]);
 
   useEffect(() => {
     if (selectedTermId || currentTermLoading || !currentTerm?.id) {
@@ -537,7 +584,8 @@ export function LearnerOverviewReportPage() {
                 key={area.cohort_subject_id}
                 area={area}
                 learnerId={learnerId}
-                returnTo={`/reports/learners/${learnerId}/overview${returnToQuery ? `?${returnToQuery}` : ''}`}
+                termId={effectiveTermId}
+                returnTo={reportSelfReturnTo}
               />
             ))}
           </section>

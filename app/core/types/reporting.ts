@@ -1881,6 +1881,7 @@ export interface LearnerTermProgressPerformance {
 }
 
 export interface LearnerTermProgressOutcome {
+  outcome_id?: number | null;
   strand: string;
   sub_strand: string;
   outcome_code: string;

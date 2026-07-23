@@ -70,6 +70,50 @@ export function buildLearnerProfileHref(learnerId: number, returnTo?: string | n
     return `/learners/${learnerId}?${new URLSearchParams({ returnTo: safeReturnTo }).toString()}`;
 }
 
+export interface LearnerPortfolioHrefOptions {
+    returnTo?: string | null;
+    academicYear?: number | null;
+    term?: number | null;
+    cohortSubject?: number | null;
+    outcome?: number | null;
+    source?: string | null;
+    evidence?: number | null;
+}
+
+function setPositiveParam(
+    params: URLSearchParams,
+    key: string,
+    value: number | null | undefined,
+): void {
+    if (value && Number.isInteger(value) && value > 0) {
+        params.set(key, String(value));
+    }
+}
+
+export function buildLearnerPortfolioHref(
+    learnerId: number,
+    options?: LearnerPortfolioHrefOptions,
+): string {
+    const params = new URLSearchParams();
+    setPositiveParam(params, 'academic_year', options?.academicYear ?? null);
+    setPositiveParam(params, 'term', options?.term ?? null);
+    setPositiveParam(params, 'cohort_subject', options?.cohortSubject ?? null);
+    setPositiveParam(params, 'outcome', options?.outcome ?? null);
+    setPositiveParam(params, 'evidence', options?.evidence ?? null);
+
+    if (options?.source) {
+        params.set('source', options.source);
+    }
+
+    const safeReturnTo = isSafeNextPath(options?.returnTo) ? options?.returnTo : null;
+    if (safeReturnTo) {
+        params.set('returnTo', safeReturnTo);
+    }
+
+    const query = params.toString();
+    return query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`;
+}
+
 export function buildClassLearnerProfileHref(learnerId: number, cohortId: number): string {
     return buildLearnerProfileHref(learnerId, `/academic/cohorts/${cohortId}`);
 }
