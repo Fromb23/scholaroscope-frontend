@@ -83,10 +83,10 @@ function filtersFromSearchParams(searchParams: URLSearchParams): LearnerPortfoli
 }
 
 export function LearnerPortfolioPage() {
-  const params = useParams();
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const learnerId = Number(params.learnerId);
+  const learnerId = Number(params.id);
   const selectedEvidenceId = parsePositive(searchParams.get('evidence'));
   const returnTo = parseAppDestination(searchParams.get('returnTo'));
   const filters = useMemo(() => filtersFromSearchParams(new URLSearchParams(searchParams.toString())), [searchParams]);
