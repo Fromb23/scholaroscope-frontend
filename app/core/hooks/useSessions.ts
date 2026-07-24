@@ -199,6 +199,7 @@ export const useSessionDetail = (
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const includeOperationalData = options?.includeOperationalData ?? true;
 
   const fetchClosureState = useCallback(async (): Promise<SessionClosureState | null> => {
@@ -273,8 +274,14 @@ export const useSessionDetail = (
         totalPages: 1,
       });
       setError(null);
+      setErrorStatus(null);
     } catch (err) {
-      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch session details'));
+      const apiError = err as ApiError;
+      setSession(null);
+      setAttendanceRecords([]);
+      setClosureState(null);
+      setError(resolveErrorMessage(apiError, 'Failed to fetch session details'));
+      setErrorStatus(typeof apiError.response?.status === 'number' ? apiError.response.status : null);
     } finally {
       setLoading(false);
     }
@@ -374,7 +381,7 @@ export const useSessionDetail = (
   return {
     session, attendanceRecords, pagination,
     closureState,
-    loading, error,
+    loading, error, errorStatus,
     refetch: () => fetchSession(),
     refetchClosureState: fetchClosureState,
     markAttendance,

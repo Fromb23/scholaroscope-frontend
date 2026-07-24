@@ -773,7 +773,7 @@ function buildNextAction(args: {
                 : 'The school calendar changes the normal teaching flow today. Check any sessions that are still listed.',
             primaryLabel: "Open today's sessions",
             primaryHref: '/sessions/today',
-            secondaryLabel: teachingLoad.length > 0 ? 'View teaching load' : 'Prepare lesson',
+            secondaryLabel: teachingLoad.length > 0 ? 'View classes' : 'Prepare lesson',
             secondaryHref: teachingLoad.length > 0 ? '/academic/cohorts' : '/lesson-plans/new',
             tone: 'success',
         };
@@ -786,7 +786,7 @@ function buildNextAction(args: {
             description: 'The school calendar affects normal lessons today. Keep an eye on unfinished records, but a standard lesson flow is not expected.',
             primaryLabel: "Open today's sessions",
             primaryHref: '/sessions/today',
-            secondaryLabel: 'View teaching load',
+            secondaryLabel: 'View classes',
             secondaryHref: '/academic/cohorts',
             tone: 'info',
         };
@@ -795,9 +795,9 @@ function buildNextAction(args: {
     if (teachingLoad.length === 0) {
         return {
             key: 'teaching-load-not-assigned',
-            title: 'Your teaching load is not assigned yet',
+            title: 'Your classes are not assigned yet',
             description: 'Once classes or subjects are assigned to you, daily lessons and reminders will appear here.',
-            primaryLabel: 'View teaching load',
+            primaryLabel: 'View classes',
             primaryHref: '/academic/cohorts',
             secondaryLabel: 'Submit request',
             secondaryHref: '/requests/new',
@@ -809,7 +809,7 @@ function buildNextAction(args: {
         key: 'quiet-day',
         title: 'Nothing needs action right now',
         description: 'No lesson is scheduled today and no unfinished teaching record is waiting in this diary.',
-        primaryLabel: 'View teaching load',
+        primaryLabel: 'View classes',
         primaryHref: '/academic/cohorts',
         secondaryLabel: 'Prepare lesson',
         secondaryHref: '/lesson-plans/new',

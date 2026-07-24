@@ -458,7 +458,7 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl">
                         <Users className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold theme-text">My Teaching Load</h3>
+                    <h3 className="text-xl font-bold theme-text">My Classes</h3>
                 </div>
                 <button
                     onClick={() => router.push('/academic/cohorts')}
@@ -470,7 +470,7 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
             {preview.length === 0 ? (
                 <div className="py-10 text-center">
                     <Users className="mx-auto mb-3 h-10 w-10 theme-subtle" />
-                    <p className="text-sm font-medium theme-text">Your teaching load is not assigned yet.</p>
+                    <p className="text-sm font-medium theme-text">Your classes are not assigned yet.</p>
                     <p className="mt-1 text-sm theme-muted">
                         Once your administrator assigns classes or subjects, they will appear here.
                     </p>
@@ -508,7 +508,7 @@ export function NoCohortsAssignedCard() {
         <div className={dashboardCardClass}>
             <div className="py-10 text-center">
                 <Users className="mx-auto mb-3 h-12 w-12 theme-subtle" />
-                <p className="text-lg font-semibold theme-text">Your teaching load is not assigned yet.</p>
+                <p className="text-lg font-semibold theme-text">Your classes are not assigned yet.</p>
                 <p className="mt-2 text-sm theme-muted">
                     Once your administrator assigns classes or subjects, your lessons, learners, and progress tools will appear here.
                 </p>

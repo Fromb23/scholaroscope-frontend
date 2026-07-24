@@ -41,7 +41,7 @@ export function PortfolioFilters({
   const learningAreaOptions = [
     { value: '', label: 'All areas' },
     ...learningAreas.flatMap((area) => {
-      const id = area.cbc_cohort_subject_id ?? area.cohort_subject_id ?? area.id;
+      const id = area.cohort_subject_id ?? area.id;
       return id ? [{ value: id, label: `${area.code ? `${area.code} ` : ''}${area.name}` }] : [];
     }),
   ];

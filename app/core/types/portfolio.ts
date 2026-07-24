@@ -54,6 +54,14 @@ export interface PortfolioArtifact {
   size?: number | null;
   missing?: boolean;
   accessible?: boolean;
+  available?: boolean;
+}
+
+export interface PortfolioLearnerWorkPayload {
+  status?: string | null;
+  submitted_at?: string | null;
+  text?: string | null;
+  attachments?: PortfolioArtifact[];
 }
 
 export interface PortfolioOfficialSnapshotReference {
@@ -84,7 +92,7 @@ export interface PortfolioEvidence {
   competency_judgement: PortfolioCompetencyJudgement | null;
   teacher_feedback_summary?: string | null;
   teacher_feedback?: string | null;
-  learner_work?: string | Record<string, unknown> | null;
+  learner_work?: string | PortfolioLearnerWorkPayload | Record<string, unknown> | null;
   learner_reflection?: string | null;
   artifacts: PortfolioArtifact[];
   artifact_missing?: boolean;

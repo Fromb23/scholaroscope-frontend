@@ -156,7 +156,7 @@ export function InstructorReportsOverviewPage() {
             <BookOpen className="mx-auto h-12 w-12 text-gray-300" />
             <p className="mt-3 text-sm font-medium text-gray-900">No reportable classes are available yet</p>
             <p className="mt-1 text-xs text-gray-500">
-              Your teaching load is not assigned yet. Once your administrator assigns classes or subjects, progress tools will appear here.
+              Your classes are not assigned yet. Once your administrator assigns classes or subjects, progress tools will appear here.
             </p>
           </div>
         </Card>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookOpenCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -106,8 +106,7 @@ export function LearnerPortfolioPage() {
   const backHref = returnTo || `/learners/${learnerId}`;
   const learningAreas = useMemo<PortfolioLearningArea[]>(() => {
     const represented = portfolio?.filters.represented_learning_areas ?? [];
-    const fromEvidence = portfolio?.results.map((evidence) => evidence.learning_area).filter(Boolean) as PortfolioLearningArea[] | undefined;
-    return distinctById([...(represented ?? []), ...(fromEvidence ?? [])]);
+    return distinctById(represented);
   }, [portfolio]);
   const outcomes = useMemo<PortfolioLearningOutcome[]>(() => {
     const represented = portfolio?.filters.represented_outcomes ?? [];
@@ -124,6 +123,28 @@ export function LearnerPortfolioPage() {
     const query = buildPortfolioQuery(filters, selectedEvidenceId, returnTo);
     return query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`;
   }, [filters, learnerId, returnTo, selectedEvidenceId]);
+
+  useEffect(() => {
+    if (!portfolio || !learnerId) {
+      return;
+    }
+    if (searchParams.get('academic_year') || searchParams.get('term')) {
+      return;
+    }
+    const applied = portfolio.filters.applied;
+    const resolvedAcademicYear = applied.academic_year ?? portfolio.scope.academic_year?.id ?? null;
+    const resolvedTerm = applied.term ?? portfolio.scope.term?.id ?? null;
+    if (!resolvedAcademicYear && !resolvedTerm) {
+      return;
+    }
+    const resolvedFilters: LearnerPortfolioFilters = {
+      ...filters,
+      academic_year: resolvedAcademicYear,
+      term: resolvedTerm,
+    };
+    const query = buildPortfolioQuery(resolvedFilters, selectedEvidenceId, returnTo);
+    router.replace(query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`, { scroll: false });
+  }, [filters, learnerId, portfolio, returnTo, router, searchParams, selectedEvidenceId]);
 
   const closeDetail = () => navigateWith(filters, null);
   const openDetail = (evidenceId: number) => navigateWith(filters, evidenceId);
@@ -171,7 +192,9 @@ export function LearnerPortfolioPage() {
   const summary = portfolio.summary;
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => key !== 'page' && Boolean(value));
   const noEvidenceMessage = summary.total_evidence === 0 && !hasActiveFilters
-    ? 'No visible learner evidence has been recorded for this portfolio.'
+    ? portfolio.scope.term
+      ? 'No visible learner evidence has been recorded for this portfolio.'
+      : 'No visible learner evidence has been recorded for the selected academic year. No active current term is available, so all terms in the year are included.'
     : 'No visible evidence matches the active portfolio filters.';
 
   return (

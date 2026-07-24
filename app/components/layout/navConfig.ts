@@ -73,6 +73,7 @@ export interface ResolveNavConfigInput {
   academicSetup?: AdminAcademicSetupNavStatus | null;
   capabilities?: WorkspaceCapabilities | null;
   academicTodayMode?: AcademicTodayModeValue | null;
+  instructorAssignedCohortCount?: number | null;
 }
 
 export interface RoleColorScheme {
@@ -160,6 +161,7 @@ export function resolveNavConfig({
   academicSetup = null,
   capabilities = null,
   academicTodayMode = null,
+  instructorAssignedCohortCount = null,
 }: ResolveNavConfigInput): NavigationConfig {
   if (!user) return { primary: [] };
   if (user.is_superadmin) return { primary: [] };
@@ -173,7 +175,7 @@ export function resolveNavConfig({
         capabilities,
       );
     case 'INSTRUCTOR':
-      return getInstructorNav(pluginNavigationContext, academicTodayMode);
+      return getInstructorNav(pluginNavigationContext, academicTodayMode, instructorAssignedCohortCount);
     default:
       return { primary: [] };
   }
@@ -462,10 +464,16 @@ function getInstructorDashboardLabel(todayMode?: AcademicTodayModeValue | null):
   return 'Teaching Today';
 }
 
+export function getInstructorClassesLabel(cohortCount?: number | null): string {
+  return cohortCount === 1 ? 'My Class' : 'My Classes';
+}
+
 export function getInstructorNav(
   pluginContext: PluginNavigationContext,
   todayMode?: AcademicTodayModeValue | null,
+  assignedCohortCount?: number | null,
 ): NavigationConfig {
+  const classesLabel = getInstructorClassesLabel(assignedCohortCount);
   return {
     primary: [
       {
@@ -479,7 +487,7 @@ export function getInstructorNav(
       { name: 'Lesson Preparation', shortName: 'Prepare', href: '/lesson-plans', icon: FileText, mobilePriority: 2 },
       { name: 'My Lessons', shortName: 'Lessons', href: '/sessions', icon: Calendar, mobilePriority: 3 },
       ...getPluginNavigationItems('instructor.primary.afterMySessions', pluginContext),
-      { name: 'My Class', href: '/academic/cohorts', icon: Users },
+      { name: classesLabel, href: '/academic/cohorts', icon: Users },
       { name: 'My Learners', href: '/learners', icon: Users },
       {
         name: 'Assessments & Grading',

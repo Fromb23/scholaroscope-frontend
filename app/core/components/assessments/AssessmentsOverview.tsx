@@ -1358,7 +1358,7 @@ export function AssessmentsOverview() {
                         </h3>
                         <p className="mt-1 text-sm text-gray-500">
                             {isTeachingActor && !instructorAccess.hasAssignedCohortSubjects
-                                ? 'Your teaching load is not assigned yet. Assessments will appear once your classes and subjects are assigned.'
+                                ? 'Your classes are not assigned yet. Assessments will appear once your classes and subjects are assigned.'
                                 : isAdminSupervisionMode
                                     ? 'No assessments are visible for the selected term.'
                                     : 'Try adjusting your filters.'}

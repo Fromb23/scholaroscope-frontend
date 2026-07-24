@@ -759,7 +759,7 @@ function LearnersPageInner() {
             {isInstructor && !instructorAssignmentsLoading && !hasInstructorLearnerScope ? (
                 <Card>
                     <p className="py-10 text-center text-sm theme-muted">
-                        Your teaching load is not assigned yet. Once your administrator assigns classes or subjects, your learners will appear here.
+                        Your classes are not assigned yet. Once your administrator assigns classes or subjects, your learners will appear here.
                     </p>
                 </Card>
             ) : isAdmin && !filters.cohort ? (

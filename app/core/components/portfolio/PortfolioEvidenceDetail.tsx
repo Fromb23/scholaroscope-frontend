@@ -7,12 +7,18 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { EntityLoadingState } from '@/app/components/ui/loading';
 import { buildPortfolioSourceRecordHref } from '@/app/core/components/portfolio/portfolioSourceNavigation';
-import type { PortfolioEvidence } from '@/app/core/types/portfolio';
+import type { PortfolioArtifact, PortfolioEvidence, PortfolioLearnerWorkPayload } from '@/app/core/types/portfolio';
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return 'Date not recorded';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return 'Submission time not recorded';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function sourceLabel(value: string | undefined): string {
@@ -22,9 +28,99 @@ function sourceLabel(value: string | undefined): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function renderRecord(value: Record<string, unknown> | null | undefined): string | null {
-  if (!value || Object.keys(value).length === 0) return null;
-  return JSON.stringify(value, null, 2);
+function isLearnerWorkPayload(value: unknown): value is PortfolioLearnerWorkPayload {
+  return Boolean(value && typeof value === 'object' && (
+    'text' in value
+    || 'status' in value
+    || 'submitted_at' in value
+    || 'attachments' in value
+  ));
+}
+
+function readableStatus(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function AttachmentList({ attachments }: { attachments: PortfolioArtifact[] }) {
+  if (attachments.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul className="space-y-2">
+      {attachments.map((attachment, index) => {
+        const href = attachment.download_url ?? attachment.preview_url ?? attachment.url ?? null;
+        const label = attachment.name ?? attachment.filename ?? `Attachment ${index + 1}`;
+        const inaccessible = attachment.accessible === false || attachment.available === false;
+        return (
+          <li key={`${attachment.id ?? index}-${label}`} className="flex items-center gap-2 text-sm">
+            <Paperclip className="h-4 w-4 theme-muted" />
+            {href && !inaccessible ? (
+              <a className="text-blue-600 hover:underline" href={href} target="_blank" rel="noreferrer">
+                {label}
+              </a>
+            ) : (
+              <span className="theme-muted">{label} is not accessible.</span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function LearnerWorkSection({ value }: { value: PortfolioEvidence['learner_work'] }) {
+  if (typeof value === 'string') {
+    const text = value.trim();
+    return (
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold theme-text">Learner work</h3>
+        {text ? (
+          <p className="whitespace-pre-wrap text-sm theme-text">{text}</p>
+        ) : (
+          <p className="rounded-lg border theme-border theme-surface-muted p-3 text-sm theme-muted">
+            No response text or artifact was submitted for this evidence record.
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  if (!isLearnerWorkPayload(value)) {
+    return (
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold theme-text">Learner work</h3>
+        <p className="rounded-lg border theme-border theme-surface-muted p-3 text-sm theme-muted">
+          No response text or artifact was submitted for this evidence record.
+        </p>
+      </section>
+    );
+  }
+
+  const text = typeof value.text === 'string' ? value.text.trim() : '';
+  const attachments = Array.isArray(value.attachments) ? value.attachments : [];
+  const status = readableStatus(value.status);
+  const hasContent = Boolean(text || attachments.length > 0);
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold theme-text">Learner work</h3>
+        {status ? <Badge variant="default">{status}</Badge> : null}
+      </div>
+      {value.submitted_at ? (
+        <p className="text-xs theme-muted">Submitted {formatDateTime(value.submitted_at)}</p>
+      ) : null}
+      {text ? <p className="whitespace-pre-wrap text-sm theme-text">{text}</p> : null}
+      <AttachmentList attachments={attachments} />
+      {!hasContent ? (
+        <p className="rounded-lg border theme-border theme-surface-muted p-3 text-sm theme-muted">
+          No response text or artifact was submitted for this evidence record.
+        </p>
+      ) : null}
+    </section>
+  );
 }
 
 export function PortfolioEvidenceDetail({
@@ -65,10 +161,6 @@ export function PortfolioEvidenceDetail({
   }
 
   const competency = evidence.competency_judgement;
-  const learnerWork = typeof evidence.learner_work === 'string'
-    ? evidence.learner_work
-    : renderRecord(evidence.learner_work ?? null);
-  const provenance = renderRecord(evidence.provenance ?? null);
   const sourceRoute = evidence.source_route ?? null;
   const sourceRecordHref = buildPortfolioSourceRecordHref({
     sourceHref: sourceRoute?.href,
@@ -131,14 +223,7 @@ export function PortfolioEvidenceDetail({
         </section>
       ) : null}
 
-      {learnerWork ? (
-        <section className="space-y-2">
-          <h3 className="text-sm font-semibold theme-text">Learner work</h3>
-          <pre className="whitespace-pre-wrap rounded-lg border theme-border theme-surface-muted p-3 text-sm theme-text">
-            {learnerWork}
-          </pre>
-        </section>
-      ) : null}
+      <LearnerWorkSection value={evidence.learner_work} />
 
       {evidence.learner_reflection ? (
         <section className="space-y-2">
@@ -154,24 +239,7 @@ export function PortfolioEvidenceDetail({
             An artifact was referenced for this evidence record, but it is missing or inaccessible.
           </p>
         ) : evidence.artifacts.length > 0 ? (
-          <ul className="space-y-2">
-            {evidence.artifacts.map((artifact, index) => {
-              const href = artifact.download_url ?? artifact.preview_url ?? artifact.url ?? null;
-              const label = artifact.name ?? artifact.filename ?? `Artifact ${index + 1}`;
-              return (
-                <li key={`${artifact.id ?? index}-${label}`} className="flex items-center gap-2 text-sm">
-                  <Paperclip className="h-4 w-4 theme-muted" />
-                  {href && artifact.accessible !== false ? (
-                    <a className="text-blue-600 hover:underline" href={href} target="_blank" rel="noreferrer">
-                      {label}
-                    </a>
-                  ) : (
-                    <span className="theme-muted">{label} is not accessible.</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <AttachmentList attachments={evidence.artifacts} />
         ) : (
           <p className="text-sm theme-muted">No artifact is attached to this visible evidence record.</p>
         )}
@@ -202,14 +270,6 @@ export function PortfolioEvidenceDetail({
         </section>
       ) : null}
 
-      {provenance ? (
-        <section className="space-y-2">
-          <h3 className="text-sm font-semibold theme-text">Provenance</h3>
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border theme-border theme-surface-muted p-3 text-xs theme-muted">
-            {provenance}
-          </pre>
-        </section>
-      ) : null}
     </Card>
   );
 }

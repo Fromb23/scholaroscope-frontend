@@ -121,6 +121,30 @@ describe('Learner Portfolio route and UI contract', () => {
     expect(filtersSource).toContain('Evidence source');
   });
 
+  it('renders learner work without raw JSON or production provenance', () => {
+    expect(detailSource).toContain('LearnerWorkSection');
+    expect(detailSource).toContain('whitespace-pre-wrap text-sm theme-text');
+    expect(detailSource).toContain('Submitted {formatDateTime(value.submitted_at)}');
+    expect(detailSource).toContain('AttachmentList attachments={attachments}');
+    expect(detailSource).toContain('No response text or artifact was submitted');
+    expect(detailSource).not.toContain('JSON.stringify');
+    expect(detailSource).not.toContain('<pre');
+    expect(detailSource).not.toContain('Provenance');
+  });
+
+  it('uses backend available learning areas and kernel cohort-subject identifiers', () => {
+    expect(pageSource).toContain('const represented = portfolio?.filters.represented_learning_areas ?? []');
+    expect(pageSource).not.toContain('portfolio?.results.map((evidence) => evidence.learning_area)');
+    expect(filtersSource).toContain('const id = area.cohort_subject_id ?? area.id');
+    expect(filtersSource).not.toContain('area.cbc_cohort_subject_id ?? area.cohort_subject_id');
+  });
+
+  it('reconciles unscoped portfolio URLs to the backend-resolved current context', () => {
+    expect(pageSource).toContain("if (searchParams.get('academic_year') || searchParams.get('term'))");
+    expect(pageSource).toContain('portfolio.filters.applied');
+    expect(pageSource).toContain('router.replace(query ? `/learners/${learnerId}/portfolio?${query}`');
+  });
+
   it('uses the shared learner identity silhouette on Portfolio and learner profile', () => {
     expect(identitySource).toContain('LearnerIdentityHeader');
     expect(identitySource).toContain('Learner profile image');

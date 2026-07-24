@@ -137,6 +137,7 @@ function DashboardContent({
       academicSetup: academicSetupQuery.data ?? null,
       capabilities,
       academicTodayMode: academicTodayModeQuery.data?.mode ?? null,
+      instructorAssignedCohortCount: instructorAccess.cohortIds.length,
     }),
     [
       user,
@@ -146,6 +147,7 @@ function DashboardContent({
       academicSetupQuery.data,
       capabilities,
       academicTodayModeQuery.data?.mode,
+      instructorAccess.cohortIds.length,
     ],
   );
 

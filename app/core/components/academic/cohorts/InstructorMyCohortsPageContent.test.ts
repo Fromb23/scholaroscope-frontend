@@ -7,7 +7,7 @@ const source = () => readFileSync(
   'utf8',
 );
 
-describe('InstructorMyCohortsPageContent teaching-load contract', () => {
+describe('InstructorMyCohortsPageContent class-list contract', () => {
   it('builds academic-year filters from my teaching load data only', () => {
     const pageSource = source();
 
@@ -16,5 +16,17 @@ describe('InstructorMyCohortsPageContent teaching-load contract', () => {
     expect(pageSource).toContain('academic_year_id');
     expect(pageSource).toContain('academic_year_name');
     expect(pageSource).toContain('is_current_year');
+  });
+
+  it('uses class terminology and preserves class-list URL state in detail links', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('getInstructorClassesLabel');
+    expect(pageSource).toContain('pageTitle: classLabel');
+    expect(pageSource).toContain("workflowStep: filteredGroups.length > 0 ? 'open_assigned_class' : 'await_assigned_classes'");
+    expect(pageSource).toContain("new URLSearchParams({ returnTo: currentListHref })");
+    expect(pageSource).toContain('buildClassDetailHref(group.cohort_id)');
+    expect(pageSource).not.toContain('My Teaching Load');
+    expect(pageSource).not.toContain('No teaching load found');
   });
 });

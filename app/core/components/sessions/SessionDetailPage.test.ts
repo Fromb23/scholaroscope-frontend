@@ -50,6 +50,17 @@ describe('SessionDetailPage attendance learner links', () => {
     expect(component).not.toContain('returnTo?.startsWith(\'/\') ? returnTo : \'/sessions\'');
   });
 
+  it('renders contextual source-record failure states for Portfolio navigation', () => {
+    const component = source();
+
+    expect(component).toContain('Source record unavailable');
+    expect(component).toContain('Back to portfolio');
+    expect(component).toContain('isPortfolioReturnTarget(backHref)');
+    expect(component).toContain('sourceRecordUnavailableMessage(errorStatus, !hasValidSessionId)');
+    expect(component).not.toContain('response.data');
+    expect(component).not.toContain('Lesson not found.</div>\\n            </div>\\n        );\\n    }\\n\\n    if (!isStaffAcademicViewer)');
+  });
+
   it('does not render an empty internal request panel', () => {
     const component = source();
 

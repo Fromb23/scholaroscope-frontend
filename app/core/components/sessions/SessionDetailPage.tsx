@@ -282,6 +282,23 @@ function withReturnTo(href: string, returnTo: string) {
     return `${href}${separator}${new URLSearchParams({ returnTo }).toString()}`;
 }
 
+function isPortfolioReturnTarget(value: string): boolean {
+    return /^\/learners\/\d+\/portfolio(?:[?#]|$)/.test(value);
+}
+
+function sourceRecordUnavailableMessage(statusCode: number | null, malformedIdentifier: boolean): string {
+    if (malformedIdentifier || statusCode === 400) {
+        return 'The source record link is malformed. Return to the portfolio and open the evidence again.';
+    }
+    if (statusCode === 403) {
+        return 'This source session exists, but your account cannot view it in the current workspace.';
+    }
+    if (statusCode === 404) {
+        return 'This source session is missing or is not visible in the current workspace.';
+    }
+    return 'This source session cannot be opened right now.';
+}
+
 function lowerFirst(value: string) {
     return value.length > 0 ? `${value.charAt(0).toLowerCase()}${value.slice(1)}` : value;
 }
@@ -313,6 +330,7 @@ export function SessionDetailPage() {
     const searchParams = useSearchParams();
     const sessionId = Number(params.id);
     const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const hasValidSessionId = Number.isInteger(sessionId) && sessionId > 0;
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
     const canCreateTeachingRecords = canCreateTeachingRecord({
@@ -361,6 +379,7 @@ export function SessionDetailPage() {
         closureState,
         pagination,
         loading,
+        errorStatus,
         markAttendance,
         refetch,
         refetchClosureState,
@@ -370,7 +389,7 @@ export function SessionDetailPage() {
         cancelSession,
         rescheduleSession,
         confirmTaughtOutcomes,
-    } = useSessionDetail(sessionId, {
+    } = useSessionDetail(hasValidSessionId ? sessionId : null, {
         includeOperationalData: isStaffAcademicViewer,
     });
     const issuePreparedAssignmentMutation = useIssuePreparedAssignment();
@@ -1805,11 +1824,31 @@ export function SessionDetailPage() {
         }
     };
 
-    if (loading && !session) {
+    const sourceReturnToPortfolio = isPortfolioReturnTarget(backHref);
+
+    if (loading && !session && hasValidSessionId) {
         return <SessionDetailSkeleton />;
     }
 
     if (!session) {
+        if (sourceReturnToPortfolio) {
+            return (
+                <div className="mx-auto w-full max-w-3xl space-y-4 pb-8">
+                    <Link href={backHref}>
+                        <Button variant="ghost" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to portfolio
+                        </Button>
+                    </Link>
+                    <Card className="space-y-2">
+                        <h1 className="text-xl font-semibold theme-text">Source record unavailable</h1>
+                        <p className="text-sm theme-muted">
+                            {sourceRecordUnavailableMessage(errorStatus, !hasValidSessionId)}
+                        </p>
+                    </Card>
+                </div>
+            );
+        }
         return (
             <div className="mx-auto w-full max-w-6xl pb-8">
                 <div className="p-10 text-gray-500">Lesson not found.</div>

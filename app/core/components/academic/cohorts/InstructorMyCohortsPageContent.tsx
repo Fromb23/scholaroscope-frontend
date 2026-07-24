@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
     BookOpen,
     ClipboardList,
@@ -25,6 +26,7 @@ import {
     type InstructorTeachingLoadGroup,
     useInstructorMyCohorts,
 } from '@/app/core/hooks/useInstructorMyCohorts';
+import { getInstructorClassesLabel } from '@/app/components/layout/navConfig';
 import {
     buildAcademicYearOptions,
     getInstructorAcademicYearFilterNotice,
@@ -32,8 +34,11 @@ import {
 } from '@/app/core/components/academic/cohorts/cohortsPageShared';
 
 export function InstructorMyCohortsPageContent() {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [filters, updateFilters] = usePersistedFilters('/academic/cohorts', {
         academic_year: '',
+        search: '',
     });
     const {
         cohortSubjectGroups,
@@ -43,7 +48,7 @@ export function InstructorMyCohortsPageContent() {
         missingCohortSubjectIdCount,
     } = useInstructorMyCohorts();
     const [isErrorDismissed, setIsErrorDismissed] = useState(false);
-    const [search, setSearch] = useState('');
+    const search = typeof filters.search === 'string' ? filters.search : '';
 
     const academicYears = useMemo(() => {
         const yearMap = new Map<number, { id: number; name: string; is_current: boolean }>();
@@ -149,6 +154,7 @@ export function InstructorMyCohortsPageContent() {
         () => filteredGroups.reduce((count, group) => count + group.subjects.length, 0),
         [filteredGroups]
     );
+    const classLabel = getInstructorClassesLabel(cohortSubjectGroups.length);
     const currentYearCohortCount = useMemo(
         () => filteredGroups.filter((group) => group.is_current_year).length,
         [filteredGroups]
@@ -158,9 +164,28 @@ export function InstructorMyCohortsPageContent() {
         () => filteredGroups.reduce((count, group) => count + (group.learner_count ?? 0), 0),
         [filteredGroups]
     );
+    const currentListHref = useMemo(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (filters.academic_year) {
+            params.set('academic_year', String(filters.academic_year));
+        } else {
+            params.delete('academic_year');
+        }
+        if (search.trim()) {
+            params.set('search', search);
+        } else {
+            params.delete('search');
+        }
+        const query = params.toString();
+        return query ? `${pathname}?${query}` : pathname;
+    }, [filters.academic_year, pathname, search, searchParams]);
+    const buildClassDetailHref = useCallback((cohortId: number) => {
+        const params = new URLSearchParams({ returnTo: currentListHref });
+        return `/academic/cohorts/${cohortId}?${params.toString()}`;
+    }, [currentListHref]);
     const assistantContext = useMemo(() => ({
         pageKey: 'my_classes_overview',
-        pageTitle: 'My Teaching Load',
+        pageTitle: classLabel,
         state: {
             academic_year: selectedYear?.name ?? selectedYearId ?? null,
             is_empty: !loading && filteredGroups.length === 0,
@@ -173,25 +198,27 @@ export function InstructorMyCohortsPageContent() {
         visibleActions: [
             ...(filteredGroups[0]
                 ? [{
-                    label: 'Open Cohort',
+                    label: 'Open Class',
                     type: 'navigate' as const,
-                    href: `/academic/cohorts/${filteredGroups[0].cohort_id}`,
+                    href: buildClassDetailHref(filteredGroups[0].cohort_id),
                 }]
                 : []),
         ],
         nextSafeAction: filteredGroups[0]
             ? {
-                label: 'Open Cohort',
+                label: 'Open Class',
                 type: 'navigate' as const,
-                href: `/academic/cohorts/${filteredGroups[0].cohort_id}`,
+                href: buildClassDetailHref(filteredGroups[0].cohort_id),
             }
             : undefined,
-        workflowStep: filteredGroups.length > 0 ? 'open_assigned_class' : 'await_teaching_load',
+        workflowStep: filteredGroups.length > 0 ? 'open_assigned_class' : 'await_assigned_classes',
         emptyStateReason: !loading && filteredGroups.length === 0
-            ? 'No teaching assignments match the current academic year or search filters.'
+            ? 'No assigned classes match the current academic year or search filters.'
             : undefined,
     }), [
         assignedSubjectCount,
+        classLabel,
+        buildClassDetailHref,
         filteredGroups,
         learnerCount,
         loading,
@@ -205,7 +232,7 @@ export function InstructorMyCohortsPageContent() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">My Teaching Load</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">{classLabel}</h1>
                     <p className="mt-1 text-gray-500">
                         Your assigned classes and subjects for lesson preparation, teaching, learners, and follow-up work.
                     </p>
@@ -238,7 +265,7 @@ export function InstructorMyCohortsPageContent() {
                         />
                         <Input
                             value={search}
-                            onChange={(event) => setSearch(event.target.value)}
+                            onChange={(event) => updateFilters({ search: event.target.value })}
                             placeholder="Search classes or subjects..."
                         />
                         {isHistoricalView && (
@@ -265,19 +292,19 @@ export function InstructorMyCohortsPageContent() {
 
             {loading ? (
                 <Card>
-                    <LoadingSpinner fullScreen={false} message="Loading assigned cohorts..." />
+                    <LoadingSpinner fullScreen={false} message="Loading assigned classes..." />
                 </Card>
             ) : filteredGroups.length === 0 ? (
                 <Card>
                     <div className="py-12 text-center">
                         <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No teaching load found</h3>
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No assigned classes found</h3>
                         <p className="mt-1 text-sm text-gray-500">
                             {selectedYearId && canFilterByAcademicYear
-                                ? 'No teaching assignments match the selected academic year.'
+                                ? 'No assigned classes match the selected academic year.'
                                 : normalizedSearch
-                                    ? 'No teaching assignments match your search.'
-                                    : 'Your teaching load is not assigned yet. Once your administrator assigns classes or subjects, your lessons, learners, and progress tools will appear here.'}
+                                    ? 'No assigned classes match your search.'
+                                    : 'Your classes are not assigned yet. Once your administrator assigns classes or subjects, your lessons, learners, and progress tools will appear here.'}
                         </p>
                     </div>
                 </Card>
@@ -302,7 +329,7 @@ export function InstructorMyCohortsPageContent() {
                                         </div>
                                         <div>
                                             <Link
-                                                href={`/academic/cohorts/${group.cohort_id}`}
+                                                href={buildClassDetailHref(group.cohort_id)}
                                                 className="text-lg font-semibold text-blue-600 hover:underline"
                                             >
                                                 {group.cohort_name}
@@ -316,9 +343,9 @@ export function InstructorMyCohortsPageContent() {
                                         </div>
                                     </div>
 
-                                    <Link href={`/academic/cohorts/${group.cohort_id}`} className="w-full lg:w-auto">
+                                    <Link href={buildClassDetailHref(group.cohort_id)} className="w-full lg:w-auto">
                                         <Button variant="secondary" size="sm" className="w-full lg:w-auto">
-                                            Open Cohort
+                                            Open Class
                                         </Button>
                                     </Link>
                                 </div>
@@ -344,7 +371,7 @@ export function InstructorMyCohortsPageContent() {
                                                     </div>
                                                     {!subject.cohort_subject_id ? (
                                                         <p className="text-xs text-amber-700">
-                                                            Learner management link unavailable until teaching load exposes a kernel cohort subject id for this assignment.
+                                                            Learner management link unavailable until the assignment exposes a kernel class-subject id.
                                                         </p>
                                                     ) : null}
                                                 </div>

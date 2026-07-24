@@ -42,6 +42,7 @@ import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/l
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { getInstructorClassesLabel } from '@/app/components/layout/navConfig';
 import { getCohortDetailCardExtensions } from '@/app/core/registry/cohortDetailCards';
 import {
     buildCohortSubjectReturnTo,
@@ -500,9 +501,10 @@ export default function CohortHubPage() {
         : defaultCohortHref;
     const backHref = safeReturnTo
         ?? (effectiveSetupMode ? withAcademicSetupMode('/academic/cohorts') : '/academic/cohorts');
+    const instructorClassesLabel = getInstructorClassesLabel(instructorAccess.cohortIds.length);
     const backLabel = safeReturnTo
         ? 'Back'
-        : (isTeachingActor ? 'Back to My Teaching Load' : 'Back to Cohorts');
+        : (isTeachingActor ? `Back to ${instructorClassesLabel}` : 'Back to Cohorts');
     const cbcBrowserHref = `${'/cbc/browser'}?${new URLSearchParams({
         cohort: String(cohortId),
         returnTo: cohortReturnTo,

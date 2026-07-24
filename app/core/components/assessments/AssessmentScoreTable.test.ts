@@ -16,6 +16,19 @@ describe('AssessmentScoreTable learner reporting links', () => {
     expect(tableSource).not.toContain('href={`/learners/${row.student}`}');
   });
 
+  it('does not expand assessment score rows from a separate learner source', () => {
+    const detailHookSource = readFileSync(
+      join(process.cwd(), 'app/core/hooks/assessments/useAssessmentDetailPage.ts'),
+      'utf8',
+    );
+
+    expect(detailHookSource).toContain('useAssessmentScores({');
+    expect(detailHookSource).toContain('assessment: assessmentId');
+    expect(detailHookSource).not.toContain('useLearners');
+    expect(detailHookSource).not.toContain('learnersAPI');
+    expect(detailHookSource).not.toContain('attendanceRecords');
+  });
+
   it('passes term-scoped cohort subject context and returnTo into the learner assessment report link', () => {
     const tableSource = source();
 

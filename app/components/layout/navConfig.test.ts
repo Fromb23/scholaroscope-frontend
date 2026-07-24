@@ -369,11 +369,20 @@ describe('admin navigation config', () => {
     ]);
   });
 
-  it('labels the instructor cohort navigation as My Class', () => {
-    const nav = getInstructorNav(pluginContext, 'TEACHING');
+  it('labels one distinct instructor cohort as My Class', () => {
+    const nav = getInstructorNav(pluginContext, 'TEACHING', 1);
 
     expect(nav.primary.some((item) => item.name === 'My Class' && item.href === '/academic/cohorts')).toBe(true);
     expect(nav.primary.some((item) => item.name === 'My Teaching Load')).toBe(false);
+  });
+
+  it('labels zero or multiple distinct instructor cohorts as My Classes', () => {
+    expect(getInstructorNav(pluginContext, 'TEACHING', 0).primary.some((item) => (
+      item.name === 'My Classes' && item.href === '/academic/cohorts'
+    ))).toBe(true);
+    expect(getInstructorNav(pluginContext, 'TEACHING', 2).primary.some((item) => (
+      item.name === 'My Classes' && item.href === '/academic/cohorts'
+    ))).toBe(true);
   });
 
   it('hides instructor internal request navigation when governance marks it not applicable', () => {
