@@ -223,6 +223,11 @@ describe('commercial onboarding contract', () => {
     expect(registerHookSource).toContain('Commercial quote required');
     expect(registerHookSource).toContain('invite_code: inviteToken');
     expect(registerHookSource).toContain('quote_token: quoteToken');
+    expect(registerHookSource).toContain('completion_operation: completionOperation');
+    expect(registerHookSource).toContain("REGISTER_INITIAL_WORKSPACE");
+    expect(registerHookSource).toContain("CREATE_ADDITIONAL_WORKSPACE");
+    expect(registerHookSource).toContain('isCommercialWorkspaceFlow && user');
+    expect(registerHookSource).not.toContain("mode === 'new_workspace'");
   });
 
   it('routes workspace switcher creation through commercial onboarding', () => {

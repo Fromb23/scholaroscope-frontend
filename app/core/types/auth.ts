@@ -215,6 +215,7 @@ export interface RegisterPayload {
   org_type?: RegisterOrgType;
   quote_token?: string;
   idempotency_key?: string;
+  completion_operation?: 'REGISTER_INITIAL_WORKSPACE' | 'CREATE_ADDITIONAL_WORKSPACE';
 }
 
 export interface RegisterResponse {

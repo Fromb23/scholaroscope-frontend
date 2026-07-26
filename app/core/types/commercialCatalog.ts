@@ -1,6 +1,9 @@
 import type { OrgType } from '@/app/core/types/auth';
 
 export type CommercialMode = 'STANDARD' | 'PREMIUM';
+export type CommercialOnboardingCompletionOperation =
+  | 'REGISTER_INITIAL_WORKSPACE'
+  | 'CREATE_ADDITIONAL_WORKSPACE';
 
 export interface CommercialCapability {
   key: string;
@@ -87,4 +90,5 @@ export interface CommercialQuote {
   included_standard_capabilities: CommercialCapability[];
   selected_premium_capabilities: CommercialCapability[];
   available_next_step: string;
+  available_completion_operations?: CommercialOnboardingCompletionOperation[];
 }

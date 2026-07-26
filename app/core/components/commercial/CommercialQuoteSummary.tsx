@@ -57,7 +57,7 @@ export function CommercialQuoteSummary({
       : 'Confirm price and continue';
 
   return (
-    <aside className={`sticky top-24 rounded-xl border p-5 shadow-sm theme-card ${className}`}>
+    <aside className={`rounded-xl border p-5 shadow-sm theme-card lg:sticky lg:top-24 lg:self-start ${className}`}>
       <div className="border-b pb-4 theme-border">
         <h2 id={headingId} className="text-sm font-semibold theme-text">Quote summary</h2>
         <p className="theme-subtle mt-1 text-xs">Scholaroscope confirms the final price before registration.</p>

@@ -103,6 +103,8 @@ function RegisterForm() {
     quoteToken,
     commercialQuote,
     missingCommercialQuote,
+    completionOperation,
+    authLoading,
   } = useRegister();
   const [workspaceStep, setWorkspaceStep] = useState<'mode' | 'details'>('details');
   const isWorkspaceSetupFlow = isDirectSignupFlow || isNewWorkspaceFlow;
@@ -143,6 +145,16 @@ function RegisterForm() {
       <AuthFrame>
         <div className="theme-card rounded-2xl p-8">
           <LoadingSpinner fullScreen={false} message="Validating invite..." />
+        </div>
+      </AuthFrame>
+    );
+  }
+
+  if (!isInviteFlow && authLoading) {
+    return (
+      <AuthFrame>
+        <div className="theme-card rounded-2xl p-8">
+          <LoadingSpinner fullScreen={false} message="Checking account state..." />
         </div>
       </AuthFrame>
     );
@@ -410,10 +422,10 @@ function RegisterForm() {
           ? 'Enter your account and workspace details for the quoted commercial selection.'
           : selectedWorkspace.description;
 
-  const submitLabel = isFreelanceTeacherWorkspace
-    ? 'Create Freelance Teacher Workspace'
-    : isNewWorkspaceFlow
-      ? 'Request Workspace'
+  const submitLabel = isNewWorkspaceFlow
+    ? 'Create this workspace'
+    : isFreelanceTeacherWorkspace
+      ? 'Create Freelance Teacher Workspace'
     : isInviteFlow
       ? isExistingUser
         ? 'Accept & Sign In'
@@ -422,11 +434,11 @@ function RegisterForm() {
 
   const pendingLabel = isInviteFlow
     ? `Accepting invitation to ${invite?.organization ?? 'workspace'}...`
+    : isNewWorkspaceFlow
+      ? `Creating ${form.workspace_name || 'this workspace'}...`
     : isFreelanceTeacherWorkspace
       ? 'Creating your freelance teacher workspace...'
-      : isNewWorkspaceFlow
-        ? `Requesting ${form.workspace_name || 'workspace'} approval...`
-        : 'Creating your account...';
+      : 'Creating your account...';
 
   return (
     <AuthFrame>
@@ -683,6 +695,11 @@ function RegisterForm() {
                     {submitLabel}
                   </ButtonPendingContent>
                 </Button>
+                {!isInviteFlow && completionOperation === 'CREATE_ADDITIONAL_WORKSPACE' ? (
+                  <p className="theme-subtle text-xs">
+                    Scholaroscope will use your signed-in account as the owner for this workspace.
+                  </p>
+                ) : null}
               </>
             )}
           </div>

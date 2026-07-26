@@ -6,7 +6,10 @@ import { readStoredCommercialQuote } from '@/app/core/api/commercialCatalog';
 import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvites';
 import { ENABLE_MULTI_WORKSPACE_SIGNUP } from '@/app/core/lib/workspaces';
 import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
-import type { CommercialQuote } from '@/app/core/types/commercialCatalog';
+import type {
+    CommercialOnboardingCompletionOperation,
+    CommercialQuote,
+} from '@/app/core/types/commercialCatalog';
 import { resolveRegistrationError, resolveWorkspaceError, type AppError } from '@/app/core/errors';
 import {
     createFormValidationAppError,
@@ -34,6 +37,9 @@ export interface SuspendedOrg {
     org_type: OrgType;
 }
 
+const REGISTER_INITIAL_WORKSPACE: CommercialOnboardingCompletionOperation = 'REGISTER_INITIAL_WORKSPACE';
+const CREATE_ADDITIONAL_WORKSPACE: CommercialOnboardingCompletionOperation = 'CREATE_ADDITIONAL_WORKSPACE';
+
 function makeRegisterError(title: string, message: string, kind: AppError['kind'] = 'server'): AppError {
     return {
         kind,
@@ -58,17 +64,36 @@ function mapRegisterFieldErrors(fieldErrors: Record<string, string[]>): Register
 export function useRegister() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { login, logout, register: ctxRegister, restoreWorkspace, memberships } = useAuth();
+    const {
+        user,
+        loading: authLoading,
+        login,
+        logout,
+        register: ctxRegister,
+        restoreWorkspace,
+        memberships,
+    } = useAuth();
 
     const inviteToken = searchParams.get('invite');
-    const mode = searchParams.get('mode');
     const reason = searchParams.get('reason');
     const quoteToken = searchParams.get('quote') ?? searchParams.get('quote_token');
 
-    const isNewWorkspaceFlow = mode === 'new_workspace';
     const isInviteFlow = !!inviteToken;
     const isSuspendedRecovery = reason === 'suspended';
-    const isDirectSignupFlow = !isInviteFlow && !isNewWorkspaceFlow;
+    const isCommercialWorkspaceFlow = !isInviteFlow && !isSuspendedRecovery;
+    const completionOperation: CommercialOnboardingCompletionOperation = (
+        isCommercialWorkspaceFlow && user
+            ? CREATE_ADDITIONAL_WORKSPACE
+            : REGISTER_INITIAL_WORKSPACE
+    );
+    const isNewWorkspaceFlow = (
+        isCommercialWorkspaceFlow
+        && completionOperation === CREATE_ADDITIONAL_WORKSPACE
+    );
+    const isDirectSignupFlow = (
+        isCommercialWorkspaceFlow
+        && completionOperation === REGISTER_INITIAL_WORKSPACE
+    );
 
     const [invite, setInvite] = useState<ValidatedInvite | null>(null);
     const [commercialQuote, setCommercialQuote] = useState<CommercialQuote | null>(null);
@@ -216,6 +241,7 @@ export function useRegister() {
                     workspace_name: form.workspace_name,
                     quote_token: quoteToken,
                     idempotency_key: quoteToken,
+                    completion_operation: completionOperation,
                 });
                 if (!res.organization) {
                     setApiError(makeRegisterError(
@@ -285,6 +311,7 @@ export function useRegister() {
                 org_type: form.org_type,
                 quote_token: quoteToken,
                 idempotency_key: quoteToken,
+                completion_operation: completionOperation,
             });
 
             if (res.status === 'pending') {
@@ -312,7 +339,13 @@ export function useRegister() {
                     action: 'verify',
                     entityLabel: 'account invitation',
                 })
-                : resolveRegistrationError(err, {
+                : completionOperation === CREATE_ADDITIONAL_WORKSPACE
+                  ? resolveWorkspaceError(err, {
+                    action: 'create',
+                    entityLabel: 'additional workspace',
+                    workspaceBehavior: 'FREELANCE_TEACHER',
+                })
+                  : resolveRegistrationError(err, {
                     action: 'submit',
                     entityLabel: 'workspace registration',
                     workspaceBehavior: form.org_type === 'PERSONAL' ? 'FREELANCE_TEACHER' : null,
@@ -367,6 +400,8 @@ export function useRegister() {
         submitting, apiError, setApiError, success,
         handleSubmit, handleRestore, handleLogout, isPending,
         isDirectSignupFlow,
+        completionOperation,
+        authLoading,
         isPersonalFlow: commercialQuote?.workspace_type === 'PERSONAL' || isDirectSignupFlow,
         hasPersonalWorkspace,
         quoteToken,

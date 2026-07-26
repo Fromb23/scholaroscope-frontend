@@ -40,11 +40,24 @@ describe('RegisterPage form validation feedback', () => {
     expect(pageSource).toContain('Platform approval is required before this workspace becomes active.');
   });
 
-  it('classifies public registration errors by account state, not workspace switching', () => {
+  it('classifies initial registration and additional-workspace failures separately', () => {
     expect(hookSource).toContain('resolveRegistrationError(err,');
     expect(hookSource).toContain("action: 'submit'");
     expect(hookSource).toContain("entityLabel: 'workspace registration'");
+    expect(hookSource).toContain("completionOperation === CREATE_ADDITIONAL_WORKSPACE");
+    expect(hookSource).toContain('resolveWorkspaceError(err,');
+    expect(hookSource).toContain("action: 'create'");
+    expect(hookSource).toContain("entityLabel: 'additional workspace'");
     expect(hookSource).not.toContain("action: 'switch',\n                    entityLabel: 'workspace registration'");
-    expect(hookSource).not.toContain("resolveWorkspaceError(err, {\n                    action: 'create'");
+    expect(hookSource).not.toContain("Registration could not be submitted");
+  });
+
+  it('derives onboarding completion operation from AuthContext instead of URL mode', () => {
+    expect(hookSource).toContain('CommercialOnboardingCompletionOperation');
+    expect(hookSource).toContain("REGISTER_INITIAL_WORKSPACE");
+    expect(hookSource).toContain("CREATE_ADDITIONAL_WORKSPACE");
+    expect(hookSource).toContain('isCommercialWorkspaceFlow && user');
+    expect(hookSource).not.toContain("mode === 'new_workspace'");
+    expect(pageSource).toContain('Checking account state...');
   });
 });
