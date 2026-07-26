@@ -136,6 +136,10 @@ describe('resolveAppError', () => {
       'curriculum_not_entitled',
       'curriculum_not_installed',
       'curriculum_not_enabled',
+      'curriculum_not_active',
+      'curriculum_activation_failed',
+      'curriculum_deactivation_blocked',
+      'curriculum_setup_required',
       'curriculum_configuration_incomplete',
     ];
 
@@ -152,7 +156,7 @@ describe('resolveAppError', () => {
 
       expect(error.message).not.toBe('An unexpected error occurred.');
       expect(`${error.title} ${error.message}`.toLowerCase()).toMatch(/curriculum|cbc/);
-      expect(error.retryable).toBe(code.includes('installed') || code.includes('configuration'));
+      expect(error.retryable).toBe(code.includes('installed') || code.includes('configuration') || code.includes('activation_failed'));
     }
   });
 

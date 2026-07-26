@@ -5,7 +5,8 @@
 import { apiClient } from './client';
 import { unwrapPaginated } from './unwrap';
 import type {
-    Plugin, InstalledPlugin, InstalledPluginToggleResponse, CurriculumCatalog, SeedCurriculumPayload,
+    Plugin, InstalledPlugin, InstalledPluginToggleResponse, CurriculumCatalog, CurriculumPluginActivationResponse,
+    CurriculumPluginCatalogItem, SeedCurriculumPayload,
     SeedCurriculumResult, RegisterSubjectPayload,
     RegisteredSubject, CurriculumCatalogDetail
 } from '@/app/core/types/plugins';
@@ -49,6 +50,27 @@ export const pluginAPI = {
     },
 
     // ── Installed plugins (org-scoped, used by admins) ────────────────────
+
+    getCurriculumCatalog: async (): Promise<CurriculumPluginCatalogItem[]> => {
+        const response = await apiClient.get<CurriculumPluginCatalogItem[]>('/plugins/curriculum-catalog/');
+        return response.data;
+    },
+
+    activateCurriculum: async (pluginId: number): Promise<CurriculumPluginActivationResponse> => {
+        const response = await apiClient.post<CurriculumPluginActivationResponse>(
+            `/plugins/${pluginId}/activate-curriculum/`,
+            {}
+        );
+        return response.data;
+    },
+
+    deactivateCurriculum: async (pluginId: number): Promise<CurriculumPluginActivationResponse> => {
+        const response = await apiClient.post<CurriculumPluginActivationResponse>(
+            `/plugins/${pluginId}/deactivate-curriculum/`,
+            {}
+        );
+        return response.data;
+    },
 
     getInstalled: async (organizationId?: number): Promise<InstalledPlugin[]> => {
         const response = await apiClient.get<InstalledPlugin[]>(

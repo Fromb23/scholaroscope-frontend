@@ -30,4 +30,12 @@ describe('AcademicYearsPage curriculum entitlement contract', () => {
     expect(pageSource).toContain('disabled={saving || curriculaLoading}');
     expect(pageSource).toContain("label: curriculaLoading ? 'Loading curricula...' : 'Select curriculum'");
   });
+
+  it('requires explicit curriculum activation before academic-year creation', () => {
+    expect(pageSource).toContain('Activate a curriculum first.');
+    expect(pageSource).toContain('No curriculum is active for this workspace.');
+    expect(pageSource).toContain('/admin/settings?tab=plugins&from=academic-setup');
+    expect(pageSource).toContain('disabled={!hasActiveCurricula || curriculaLoading}');
+    expect(pageSource).toContain('disabled={!hasActiveCurricula}');
+  });
 });

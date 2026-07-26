@@ -57,6 +57,47 @@ export interface Plugin {
     installation_count: number;
 }
 
+export interface CurriculumPluginCatalogItem {
+    code: string;
+    plugin_id: number;
+    plugin_key: string;
+    name: string;
+    description: string;
+    curriculum_type: string;
+    curriculum_id: number | null;
+    tier: WorkspacePluginClassification;
+    entitled: boolean;
+    installed: boolean;
+    enabled: boolean;
+    active: boolean;
+    can_activate: boolean;
+    can_deactivate: boolean;
+    reason: string | null;
+}
+
+export interface CurriculumPluginActivationResponse {
+    plugin: {
+        id: number;
+        key: string;
+        name: string;
+    };
+    installed_plugin_id: number | null;
+    curriculum: {
+        id: number;
+        name: string;
+        curriculum_type: string;
+        is_active: boolean;
+        offering_status: string;
+    };
+    state: {
+        entitled: boolean;
+        installed: boolean;
+        enabled: boolean;
+        active: boolean;
+    };
+    impact_snapshot?: Record<string, unknown>;
+}
+
 export interface UninstallImpact {
     plugin_name: string;
     active_count: number;

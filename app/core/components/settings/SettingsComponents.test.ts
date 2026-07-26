@@ -62,11 +62,30 @@ describe('workspace feature settings policy UI', () => {
   it('reconciles plugin mutations without reloading the page', () => {
     const source = settingsSource();
 
-    expect(source).toContain('Promise.all([refetch(), refetchDisableRequests()])');
+    expect(source).toContain('refetchCurricula()');
+    expect(source).toContain('loadCurriculumCatalog()');
     expect(source).not.toContain('window.location.reload');
   });
 
   it('uses effective plugin state in plugin hooks', () => {
     expect(usePluginsSource()).toContain('p.effective_enabled ??');
+  });
+
+  it('shows entitled inactive curriculum choices without auto-activating CBC', () => {
+    const source = settingsSource();
+    const apiSource = readFileSync(
+      join(process.cwd(), 'app/core/api/plugins.ts'),
+      'utf8',
+    );
+    const types = pluginTypesSource();
+
+    expect(types).toContain('CurriculumPluginCatalogItem');
+    expect(apiSource).toContain('/plugins/curriculum-catalog/');
+    expect(apiSource).toContain('/activate-curriculum/');
+    expect(source).toContain('Included in Standard');
+    expect(source).toContain('No curriculum is active for this workspace.');
+    expect(source).toContain('Activation installs and enables it for this workspace only.');
+    expect(source).toContain('disabled={activating || !canActivate || locked}');
+    expect(source).not.toContain('activateCurriculum(item.plugin_id);\\n            activateCurriculum(item.plugin_id)');
   });
 });

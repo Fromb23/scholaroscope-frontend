@@ -3,6 +3,7 @@
 import { extractFieldErrors, resolveAppError, resolveErrorMessage } from '@/app/core/errors';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import NextLink from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, Plus, Edit2, Trash2, CheckCircle } from 'lucide-react';
 import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
@@ -55,6 +56,7 @@ export function AcademicYearsPage() {
     } | null>(null);
     const setupStatus = setupStatusQuery.data ?? null;
     const setupPageState = getAcademicSetupPageState(setupStatus, 'ACADEMIC_YEAR');
+    const hasActiveCurricula = curricula.length > 0;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -161,6 +163,10 @@ export function AcademicYearsPage() {
     };
 
     const openCreateModal = useCallback(() => {
+        if (!hasActiveCurricula) {
+            setPageError('Activate a curriculum first.');
+            return;
+        }
         setEditingYear(null);
         setModalError(null);
         setFieldErrors({});
@@ -178,7 +184,7 @@ export function AcademicYearsPage() {
             is_current: false,
         });
         setIsModalOpen(true);
-    }, [curricula, searchParams]);
+    }, [curricula, hasActiveCurricula, searchParams]);
 
     const closeModal = useCallback(() => {
         setIsModalOpen(false);
@@ -265,11 +271,27 @@ export function AcademicYearsPage() {
                     <h1 className="text-2xl font-semibold text-gray-900">Academic Years</h1>
                     <p className="text-gray-600 mt-1">Manage academic year configurations</p>
                 </div>
-                <Button onClick={openCreateModal}>
+                <Button onClick={openCreateModal} disabled={!hasActiveCurricula || curriculaLoading}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Academic Year
                 </Button>
             </div>
+
+            {!hasActiveCurricula && !curriculaLoading ? (
+                <Card>
+                    <div className="space-y-3 p-5">
+                        <div>
+                            <h2 className="text-base font-semibold text-gray-900">Activate a curriculum first</h2>
+                            <p className="mt-1 text-sm text-gray-600">
+                                No curriculum is active for this workspace. Activate a curriculum before configuring the academic year.
+                            </p>
+                        </div>
+                        <NextLink href="/admin/settings?tab=plugins&from=academic-setup">
+                            <Button type="button">Choose curriculum</Button>
+                        </NextLink>
+                    </div>
+                </Card>
+            ) : null}
 
             {/* Table */}
             <Card>
@@ -283,7 +305,7 @@ export function AcademicYearsPage() {
                         <Calendar className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">No academic years found</h3>
                         <p className="mt-1 text-sm text-gray-500">Get started by adding a new academic year</p>
-                        <Button className="mt-4" onClick={openCreateModal}>
+                        <Button className="mt-4" onClick={openCreateModal} disabled={!hasActiveCurricula}>
                             <Plus className="mr-2 h-4 w-4" />
                             Add Academic Year
                         </Button>

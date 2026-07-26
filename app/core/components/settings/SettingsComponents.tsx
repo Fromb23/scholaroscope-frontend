@@ -46,7 +46,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { hasWorkspacePermission } from '@/app/core/lib/productCapabilities';
 import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 import {
-    CurriculumCatalogDetail, InstalledPlugin,
+    CurriculumCatalogDetail, CurriculumPluginCatalogItem, InstalledPlugin,
     PluginManagementContract, SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
 } from '@/app/core/types/plugins';
 import { pluginModalSlots } from '@/app/core/registry/pluginModalSlots';
@@ -663,6 +663,64 @@ export function MembersTab() {
 
 // ── InstalledPluginCard ───────────────────────────────────────────────────
 
+interface CurriculumActivationCardProps {
+    item: CurriculumPluginCatalogItem;
+    activating: boolean;
+    canActivate: boolean;
+    onActivate: (item: CurriculumPluginCatalogItem) => void;
+}
+
+function CurriculumActivationCard({
+    item,
+    activating,
+    canActivate,
+    onActivate,
+}: CurriculumActivationCardProps) {
+    const displayName = item.code === 'cbc' ? 'CBC' : item.name;
+    const policyLabel = item.tier === 'WORKSPACE_STANDARD'
+        ? 'Included in Standard'
+        : POLICY_LABELS[item.tier] ?? 'Workspace curriculum';
+    const locked = !item.entitled || !item.can_activate;
+    return (
+        <div className="flex w-full min-w-0 max-w-full flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-1 items-start gap-4">
+                <div className="shrink-0 rounded-xl bg-blue-100 p-2.5">
+                    <BookOpen className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <h3 className="break-words text-sm font-semibold text-gray-900">{displayName}</h3>
+                        <Badge variant={item.tier === 'PREMIUM' ? 'purple' : 'info'} size="sm">
+                            {policyLabel}
+                        </Badge>
+                        <Badge variant="default" size="sm">Inactive</Badge>
+                        {!item.entitled ? (
+                            <Badge variant="warning" size="sm">Locked</Badge>
+                        ) : null}
+                    </div>
+                    <p className="max-w-md break-words text-xs text-gray-500">{item.description}</p>
+                    <p className="mt-2 text-xs text-gray-500">
+                        {item.entitled
+                            ? 'Available for this workspace. Activation installs and enables it for this workspace only.'
+                            : item.reason ?? 'This curriculum is not included in this workspace plan.'}
+                    </p>
+                </div>
+            </div>
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:ml-4 sm:w-auto sm:items-end">
+                <Button
+                    size="sm"
+                    type="button"
+                    disabled={activating || !canActivate || locked}
+                    onClick={() => onActivate(item)}
+                    className="w-full sm:w-auto"
+                >
+                    {activating ? 'Activating...' : item.entitled ? 'Activate' : 'Upgrade required'}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 interface InstalledPluginCardProps {
     plugin: InstalledPlugin;
     curriculum: Curriculum | null;
@@ -1029,8 +1087,8 @@ export function InstalledPluginCard({
 export function PluginsTab() {
     const { plugins, loading, error, refetch } = usePlugins();
     const searchParams = useSearchParams();
-    const { capabilities } = useAuth();
-    const { curricula } = useCurricula();
+    const { capabilities, activeOrg } = useAuth();
+    const { curricula, refetch: refetchCurricula } = useCurricula();
     const canManagePluginConfiguration = hasWorkspacePermission(
         capabilities,
         'plugins.manage_workspace_configuration',
@@ -1052,6 +1110,9 @@ export function PluginsTab() {
     } = useCurriculumDisableRequests();
     const [toggling, setToggling] = useState(false);
     const [localPlugins, setLocalPlugins] = useState<InstalledPlugin[]>([]);
+    const [curriculumCatalog, setCurriculumCatalog] = useState<CurriculumPluginCatalogItem[]>([]);
+    const [curriculumCatalogLoading, setCurriculumCatalogLoading] = useState(false);
+    const [activatingCurriculumKey, setActivatingCurriculumKey] = useState<string | null>(null);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [highlightedPluginKey, setHighlightedPluginKey] = useState<string | null>(null);
     const pluginCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -1069,6 +1130,25 @@ export function PluginsTab() {
     useEffect(() => {
         setLocalPlugins(plugins);
     }, [plugins]);
+
+    const loadCurriculumCatalog = useCallback(async () => {
+        setCurriculumCatalogLoading(true);
+        try {
+            const data = await pluginAPI.getCurriculumCatalog();
+            setCurriculumCatalog(data);
+        } catch (err) {
+            setFeedback({
+                type: 'error',
+                message: resolveErrorMessage(err as ApiError, 'Failed to load curriculum options.'),
+            });
+        } finally {
+            setCurriculumCatalogLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadCurriculumCatalog();
+    }, [activeOrg?.id, loadCurriculumCatalog]);
 
     useEffect(() => {
         if (!pluginQuery || localPlugins.length === 0) {
@@ -1157,9 +1237,35 @@ export function PluginsTab() {
         } finally { setToggling(false); }
     };
 
-    const handleWorkflowChanged = async () => {
-        await Promise.all([refetch(), refetchDisableRequests()]);
+    const handleActivateCurriculum = async (item: CurriculumPluginCatalogItem) => {
+        if (!canManagePluginConfiguration || activatingCurriculumKey) {
+            return;
+        }
+        setActivatingCurriculumKey(item.code);
+        try {
+            await pluginAPI.activateCurriculum(item.plugin_id);
+            await Promise.all([
+                refetch(),
+                refetchCurricula(),
+                loadCurriculumCatalog(),
+                refetchDisableRequests(),
+                setupStatusQuery.refetch(),
+            ]);
+            flash('success', `${item.name} activated for this workspace.`);
+        } catch (err) {
+            flash('error', resolveErrorMessage(err as ApiError, 'Failed to activate curriculum.'));
+        } finally {
+            setActivatingCurriculumKey(null);
+        }
     };
+
+    const handleWorkflowChanged = async () => {
+        await Promise.all([refetch(), refetchCurricula(), loadCurriculumCatalog(), refetchDisableRequests()]);
+    };
+
+    const inactiveCurriculumOptions = useMemo(() => (
+        curriculumCatalog.filter((item) => !item.active && !localPlugins.some((plugin) => plugin.key === item.code))
+    ), [curriculumCatalog, localPlugins]);
 
     const featureGroups = useMemo(() => (
         FEATURE_GROUPS.map((group) => ({
@@ -1214,7 +1320,7 @@ export function PluginsTab() {
         );
     };
 
-    if (loading || disableRequestsLoading) return <LoadingSpinner fullScreen={false} message="Loading features..." />;
+    if (loading || disableRequestsLoading || curriculumCatalogLoading) return <LoadingSpinner fullScreen={false} message="Loading features..." />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
 
     return (
@@ -1234,7 +1340,29 @@ export function PluginsTab() {
                 </p>
             </div>
 
-            {featureGroups.length === 0 ? (
+            {inactiveCurriculumOptions.length > 0 ? (
+                <section>
+                    <div className="mb-3">
+                        <h3 className="text-sm font-semibold text-gray-900">Curriculum setup</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            No curriculum is active for this workspace. Activate a curriculum to configure academic years, subjects and curriculum-based records.
+                        </p>
+                    </div>
+                    <div className="space-y-2">
+                        {inactiveCurriculumOptions.map((item) => (
+                            <CurriculumActivationCard
+                                key={item.code}
+                                item={item}
+                                activating={activatingCurriculumKey === item.code}
+                                canActivate={canManagePluginConfiguration}
+                                onActivate={handleActivateCurriculum}
+                            />
+                        ))}
+                    </div>
+                </section>
+            ) : null}
+
+            {featureGroups.length === 0 && inactiveCurriculumOptions.length === 0 ? (
                 <div className="py-8 text-center border border-dashed border-gray-200 rounded-xl">
                     <Puzzle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-gray-500">No manageable features are available for this workspace.</p>
