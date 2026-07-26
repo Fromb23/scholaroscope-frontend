@@ -59,6 +59,7 @@ const institutionWorkspace = {
   key: 'INSTITUTION' as const,
   name: 'Institution',
   description: 'For schools.',
+  is_publicly_selectable: false,
   standard: {
     ...personalWorkspace.standard,
     plan_id: 2,
@@ -165,7 +166,7 @@ describe('CommercialRateCards workspace onboarding interaction', () => {
     vi.clearAllMocks();
   });
 
-  it('renders only the freelance onboarding option and requests its quote when selected', async () => {
+  it('renders all onboarding workspace options but only allows freelance quote activation', async () => {
     await act(async () => {
       renderer = create(
         <CommercialRateCards continueBasePath="/register" workspaceOnboarding />,
@@ -174,7 +175,19 @@ describe('CommercialRateCards workspace onboarding interaction', () => {
 
     expect(useCommercialCatalogMock).toHaveBeenCalledWith({ context: 'workspace_onboarding' });
     expect(textContent(renderer!.root)).toContain('Freelance Teacher Workspace');
-    expect(textContent(renderer!.root)).not.toContain('Institution');
+    expect(textContent(renderer!.root)).toContain('Institution');
+    expect(textContent(renderer!.root)).toContain('Coming soon');
+
+    const institutionButton = findButton(renderer!, 'Institution');
+    expect(institutionButton.props.disabled).toBe(true);
+    expect(institutionButton.props['aria-pressed']).toBeUndefined();
+
+    await act(async () => {
+      institutionButton.props.onClick();
+      await Promise.resolve();
+    });
+
+    expect(mutateAsync).not.toHaveBeenCalled();
 
     await act(async () => {
       findButton(renderer!, 'Choose this workspace').props.onClick();

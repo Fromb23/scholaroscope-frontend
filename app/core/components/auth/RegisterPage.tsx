@@ -28,6 +28,7 @@ import { ENABLE_MULTI_WORKSPACE_SIGNUP, ORG_TYPE_LABELS, WORKSPACE_MODE_COPY } f
 import { authAPI } from '@/app/core/api/auth';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 import type { WorkspaceMode } from '@/app/core/types/auth';
+import { ScholaroscopeHomeLogo } from '@/app/core/components/public/ScholaroscopeHomeLogo';
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Administrator',
@@ -55,7 +56,7 @@ const REGISTER_FIELD_LABELS: Record<RegisterField, string> = {
 function AuthBrand() {
   return (
     <div className="mb-8 text-center">
-      <h1 className="text-4xl font-bold theme-text">ScholaroScope</h1>
+      <ScholaroscopeHomeLogo variant="auth" className="mx-auto" />
       <p className="mt-2 theme-muted">Academic Operations System</p>
     </div>
   );
@@ -386,7 +387,7 @@ function RegisterForm() {
   const title = missingCommercialQuote
     ? 'Choose a workspace plan first'
     : isWorkspaceSetupFlow && workspaceStep === 'mode'
-    ? 'How will you use ScholaroScope?'
+    ? 'How will you use Scholaroscope?'
     : isNewWorkspaceFlow
       ? commercialWorkspaceLabel
       : isInviteFlow
@@ -660,7 +661,7 @@ function RegisterForm() {
                       required
                     />
                     <p className="theme-subtle -mt-2 text-xs">
-                      This becomes your workspace name on ScholaroScope.
+                      This becomes your workspace name on Scholaroscope.
                     </p>
                   </>
                 )}
@@ -714,7 +715,7 @@ function RegisterForm() {
 
         {!isNewWorkspaceFlow && (
           <div className="theme-subtle mt-8 text-center text-sm">
-            <p>&copy; {new Date().getFullYear()} ScholaroScope. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Scholaroscope. All rights reserved.</p>
           </div>
         )}
       </div>

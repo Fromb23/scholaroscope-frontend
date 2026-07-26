@@ -6,7 +6,7 @@ const steps = [
 
 export function WorkflowSection() {
   return (
-    <section id="how-it-works" className="theme-surface py-16 sm:py-20" aria-labelledby="workflow-heading">
+    <section id="how-it-works" className="scroll-mt-24 theme-surface py-16 sm:py-20" aria-labelledby="workflow-heading">
       <div className="mx-auto max-w-[1100px] px-4 sm:px-6 lg:px-8">
         <h2 id="workflow-heading" className="text-3xl font-bold tracking-tight theme-text sm:text-4xl">
           How Scholaroscope works

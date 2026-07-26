@@ -5,7 +5,7 @@ import { CommercialRateCards } from '@/app/core/components/commercial/Commercial
 export function PublicGetStartedPage() {
   return (
     <div className="min-h-screen theme-app-bg theme-text">
-      <PublicHeader />
+      <PublicHeader variant="minimal" />
       <main className="pt-16">
         <CommercialRateCards workspaceOnboarding />
       </main>

@@ -151,6 +151,7 @@ describe('commercial onboarding contract', () => {
     expect(commercialSectionSource).not.toContain('CommercialRateCards');
     expect(commercialSectionSource).toContain('Start with what you need. Add capabilities as you grow.');
     expect(commercialSource).toContain('Get started with the right workspace');
+    expect(commercialSource).not.toContain('Plans and quote');
     expect(commercialSource).toContain('1. Choose workspace type');
     expect(commercialSource).toContain('2. Compare Standard and Premium');
     expect(commercialSource).toContain('3. Choose premium capabilities');
@@ -238,9 +239,13 @@ describe('commercial onboarding contract', () => {
     expect(legacyWorkspaceNewPageSource).not.toContain('useCommercialCatalog');
   });
 
-  it('limits get-started onboarding to the canonical freelance workspace key without changing the public catalog flow', () => {
+  it('keeps all get-started workspace cards visible while only canonical freelance can be selected', () => {
     expect(commercialSource).toContain("SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY: OrgType = 'PERSONAL'");
     expect(commercialSource).toContain('item.key === SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY');
+    expect(commercialSource).toContain('is_publicly_selectable');
+    expect(commercialSource).toContain('disabled={disabled}');
+    expect(commercialSource).toContain('Coming soon');
+    expect(commercialSource).not.toContain('types.filter');
     expect(commercialSource).not.toContain("item.name === 'Freelance Teacher Workspace'");
     expect(commercialApiSource).toContain("context?: 'workspace_onboarding'");
     expect(commercialApiSource).toContain("params: options.context ? { context: options.context } : undefined");

@@ -14,6 +14,7 @@ import { AuthFrame } from './AuthFrame';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { getPlatformAppUrl } from '@/app/core/auth/platformRedirect';
+import { ScholaroscopeHomeLogo } from '@/app/core/components/public/ScholaroscopeHomeLogo';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -141,7 +142,7 @@ function LoginForm() {
     <AuthFrame>
       <div className={themeClasses.authShell}>
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold theme-text">ScholaroScope</h1>
+          <ScholaroscopeHomeLogo variant="auth" className="mx-auto" />
           <p className="mt-2 theme-muted">Academic Operations System</p>
         </div>
 
@@ -149,7 +150,7 @@ function LoginForm() {
           <h2 className="mb-2 text-2xl font-semibold theme-text">
             {inviteToken ? 'Sign in to accept invite' : 'Admin Login'}
           </h2>
-          <p className="mb-6 text-sm theme-muted">Use your ScholaroScope account to continue.</p>
+          <p className="mb-6 text-sm theme-muted">Use your Scholaroscope account to continue.</p>
 
           {inviteToken && orgName && (
             <p className="theme-info-surface mb-6 rounded-lg px-3 py-2 text-sm">
@@ -251,7 +252,7 @@ function LoginForm() {
         </div>
 
         <div className="theme-subtle mt-8 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} ScholaroScope. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Scholaroscope. All rights reserved.</p>
         </div>
       </div>
     </AuthFrame>

@@ -20,9 +20,16 @@ export const metadata: Metadata = {
     title: 'Scholaroscope',
   },
   icons: {
+    icon: [
+      {
+        url: '/icon.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+    ],
     apple: [
       {
-        url: '/icons/apple-touch-icon.png',
+        url: '/apple-icon.png',
         sizes: '180x180',
         type: 'image/png',
       },

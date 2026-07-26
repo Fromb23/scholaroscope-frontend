@@ -22,6 +22,16 @@ describe('RegisterPage form validation feedback', () => {
     expect(hookSource).not.toContain('if (!validate()) return');
   });
 
+  it('maps backend field validation to one form summary without retaining a duplicate API banner', () => {
+    expect(hookSource).toContain('if (appError.fieldErrors)');
+    expect(hookSource).toContain('const mappedErrors = mapRegisterFieldErrors(appError.fieldErrors)');
+    expect(hookSource).toContain('setFormValidationError(createFormValidationAppError');
+    expect(hookSource).toContain('setApiError(null);');
+    expect(pageSource).toContain('{apiError && (');
+    expect(pageSource).toContain('{hasVisibleFieldErrors && (');
+    expect(pageSource).toContain('error={getFormFieldErrorMessage(fieldErrors.email)}');
+  });
+
   it('treats pending workspace approval as a submitted state instead of a red failure', () => {
     expect(hookSource).toContain("if (res.status === 'pending')");
     expect(hookSource).toContain('setIsPending(true);');

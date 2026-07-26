@@ -80,6 +80,10 @@ function capabilityCategoryPreview(workspaceType: CommercialWorkspaceType) {
   return categories.slice(0, 4);
 }
 
+function isWorkspaceOnboardingTypeSelectable(item: CommercialWorkspaceType) {
+  return item.key === SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY && item.is_publicly_selectable;
+}
+
 export function CommercialRateCards({
   authenticated,
   continueBasePath = '/register',
@@ -107,13 +111,9 @@ export function CommercialRateCards({
 
   const workspaceTypes = useMemo(
     () => {
-      const types = catalogQuery.data?.workspace_types ?? [];
-      if (!workspaceOnboarding) {
-        return types;
-      }
-      return types.filter((item) => item.key === SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY);
+      return catalogQuery.data?.workspace_types ?? [];
     },
-    [catalogQuery.data, workspaceOnboarding],
+    [catalogQuery.data],
   );
   const workspaceType = useMemo(
     () => {
@@ -129,9 +129,10 @@ export function CommercialRateCards({
     [selectedPremiumIds, workspaceType],
   );
   const billingPeriodLabel = catalogQuery.data?.billing_period.description ?? 'Three-month period';
+  const workspaceTypeSelectable = !workspaceOnboarding || (workspaceType ? isWorkspaceOnboardingTypeSelectable(workspaceType) : false);
   const premiumUnavailable = mode === 'PREMIUM' && !workspaceType?.premium_available;
   const premiumMissing = mode === 'PREMIUM' && selectedPremiumIds.length === 0;
-  const actionDisabled = !workspaceType || premiumUnavailable || premiumMissing;
+  const actionDisabled = !workspaceType || !workspaceTypeSelectable || premiumUnavailable || premiumMissing;
   const quoteSummaryActive = workspaceOnboarding && activeStage === 'summary' && Boolean(workspaceType);
 
   const resetQuote = useCallback(() => {
@@ -155,7 +156,11 @@ export function CommercialRateCards({
     const selectedPremiumMissing = selectedMode === 'PREMIUM' && selectedIds.length === 0;
     const selectedActionDisabled = !selectedWorkspaceType || selectedPremiumUnavailable || selectedPremiumMissing;
 
-    if (!selectedWorkspaceType || selectedActionDisabled) return null;
+    if (
+      !selectedWorkspaceType
+      || selectedActionDisabled
+      || (workspaceOnboarding && !isWorkspaceOnboardingTypeSelectable(selectedWorkspaceType))
+    ) return null;
     const payload = {
       commercial_mode: selectedMode,
       workspace_type: selectedWorkspaceType.key,
@@ -175,9 +180,12 @@ export function CommercialRateCards({
       promise,
     };
     return promise;
-  }, [mode, quoteMutation, selectedPremiumIds, workspaceType]);
+  }, [mode, quoteMutation, selectedPremiumIds, workspaceOnboarding, workspaceType]);
 
   const selectWorkspaceType = (item: CommercialWorkspaceType) => {
+    if (workspaceOnboarding && !isWorkspaceOnboardingTypeSelectable(item)) {
+      return;
+    }
     setWorkspaceTypeKey(item.key);
     setMode('STANDARD');
     setSelectedPremiumIds([]);
@@ -278,7 +286,6 @@ export function CommercialRateCards({
   return (
     <section id="commercial-rate-card" className="mx-auto w-full max-w-[1220px] px-4 py-16 sm:px-6 lg:px-8">
       <div className="mb-10 max-w-4xl">
-        <p className="text-sm font-semibold text-[color:var(--color-primary)]">Plans and quote</p>
         <h2 className="mt-3 text-3xl font-bold tracking-tight theme-text sm:text-4xl">
           Get started with the right workspace
         </h2>
@@ -304,15 +311,21 @@ export function CommercialRateCards({
               {workspaceTypes.map((item) => {
                 const Icon = workspaceIcons[item.key] ?? Building2;
                 const selected = workspaceType?.key === item.key;
+                const disabled = workspaceOnboarding
+                  ? !isWorkspaceOnboardingTypeSelectable(item)
+                  : !item.is_publicly_selectable;
                 const categoryPreview = capabilityCategoryPreview(item);
                 return (
                   <button
                     key={item.key}
                     type="button"
-                    aria-pressed={selected}
+                    aria-pressed={disabled ? undefined : selected}
+                    disabled={disabled}
                     onClick={() => selectWorkspaceType(item)}
                     className={`min-h-[180px] rounded-xl border p-5 text-left transition ${
-                      selected
+                      disabled
+                        ? 'theme-card-muted cursor-not-allowed opacity-75'
+                        : selected
                         ? 'theme-brand-selected shadow-sm'
                         : 'theme-card theme-hover-surface'
                     }`}
@@ -329,6 +342,11 @@ export function CommercialRateCards({
                     <p className="theme-muted mt-2 line-clamp-3 text-sm leading-6">{item.description}</p>
                     <p className="mt-5 text-2xl font-bold">{formatMoney(item.standard.price, item.standard.currency)}</p>
                     <p className="theme-subtle text-xs">{billingPeriodLabel}</p>
+                    {disabled ? (
+                      <span className="mt-3 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide theme-border theme-subtle">
+                        Coming soon
+                      </span>
+                    ) : null}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {categoryPreview.slice(0, 3).map((category) => (
                         <span key={category} className="rounded-full px-2 py-1 text-xs font-medium theme-card-muted theme-muted">
@@ -336,9 +354,11 @@ export function CommercialRateCards({
                         </span>
                       ))}
                     </div>
-                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--color-primary)]">
-                      {selected ? 'Selected workspace' : 'Choose this workspace'}
-                      <ArrowRight className="h-4 w-4" />
+                    <span className={`mt-5 inline-flex items-center gap-2 text-sm font-semibold ${
+                      disabled ? 'theme-subtle' : 'text-[color:var(--color-primary)]'
+                    }`}>
+                      {disabled ? 'Unavailable for onboarding' : selected ? 'Selected workspace' : 'Choose this workspace'}
+                      {!disabled ? <ArrowRight className="h-4 w-4" /> : null}
                     </span>
                   </button>
                 );

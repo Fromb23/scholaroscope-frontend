@@ -17,7 +17,7 @@ const previews = [
 
 export function ProductPreviewSection() {
   return (
-    <section className="theme-surface-muted py-16 sm:py-20" aria-labelledby="product-proof-heading">
+    <section id="product" className="scroll-mt-24 theme-surface-muted py-16 sm:py-20" aria-labelledby="product-proof-heading">
       <div className="mx-auto max-w-[1220px] px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           <h2 id="product-proof-heading" className="text-3xl font-bold tracking-tight theme-text sm:text-4xl">

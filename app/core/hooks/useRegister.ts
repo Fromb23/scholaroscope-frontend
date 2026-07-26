@@ -317,10 +317,18 @@ export function useRegister() {
                     entityLabel: 'workspace registration',
                     workspaceBehavior: form.org_type === 'PERSONAL' ? 'FREELANCE_TEACHER' : null,
                 });
-            setApiError(appError);
             if (appError.fieldErrors) {
-                setFieldErrors(mapRegisterFieldErrors(appError.fieldErrors));
+                const mappedErrors = mapRegisterFieldErrors(appError.fieldErrors);
+                if (hasFormFieldErrors(mappedErrors)) {
+                    setFieldErrors(mappedErrors);
+                    setFormValidationError(createFormValidationAppError({
+                        fieldErrors: normalizeFormFieldErrors(mappedErrors),
+                    }));
+                    setApiError(null);
+                    return;
+                }
             }
+            setApiError(appError);
         } finally {
             setSubmitting(false);
         }

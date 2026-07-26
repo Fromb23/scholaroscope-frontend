@@ -19,7 +19,7 @@ const faqs = [
 
 export function FaqSection() {
   return (
-    <section id="faq" className="theme-surface-muted py-16 sm:py-20" aria-labelledby="faq-heading">
+    <section id="faq" className="scroll-mt-24 theme-surface-muted py-16 sm:py-20" aria-labelledby="faq-heading">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 id="faq-heading" className="text-3xl font-bold tracking-tight theme-text sm:text-4xl">
