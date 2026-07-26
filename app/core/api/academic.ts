@@ -36,8 +36,8 @@ import { CohortSubjectOption } from '@/app/core/types/session';
 import { PaginatedResponse } from './sessions';
 
 interface CurriculumQuery {
-  organization?: number;
-  is_active?: boolean;
+  organization?: number | string;
+  is_active?: boolean | string;
 }
 
 const KERNEL_COHORT_SUBJECTS_BASE = '/cohort-subjects';

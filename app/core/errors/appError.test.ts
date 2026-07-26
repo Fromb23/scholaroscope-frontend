@@ -131,6 +131,31 @@ describe('resolveAppError', () => {
     expect(error.channel).toBe('banner');
   });
 
+  it('uses structured curriculum error copy instead of generic unexpected-error copy', () => {
+    const codes = [
+      'curriculum_not_entitled',
+      'curriculum_not_installed',
+      'curriculum_not_enabled',
+      'curriculum_configuration_incomplete',
+    ];
+
+    for (const code of codes) {
+      const error = resolveAppError(
+        {
+          response: {
+            status: code === 'curriculum_not_entitled' ? 403 : 409,
+            data: { error: { code } },
+          },
+        },
+        { domain: 'academic_setup', action: 'create', entityLabel: 'academic year' },
+      );
+
+      expect(error.message).not.toBe('An unexpected error occurred.');
+      expect(`${error.title} ${error.message}`.toLowerCase()).toMatch(/curriculum|cbc/);
+      expect(error.retryable).toBe(code.includes('installed') || code.includes('configuration'));
+    }
+  });
+
   it('classifies personal workspace single-teacher codes as workspace boundaries', () => {
     const error = resolveAppError(
       { response: { status: 400, data: { error: { code: 'personal_workspace_single_teacher' } } } },

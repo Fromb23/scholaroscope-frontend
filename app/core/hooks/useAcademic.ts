@@ -122,7 +122,7 @@ export const useAcademicYears = () => {
       setAcademicYears(prev => [newYear, ...prev]);
       return newYear;
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create academic year'));
+      throw wrapApiMutationError(err, 'Failed to create academic year');
     }
   };
 
@@ -132,7 +132,7 @@ export const useAcademicYears = () => {
       setAcademicYears(prev => prev.map(y => y.id === id ? updated : y));
       return updated;
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update academic year'));
+      throw wrapApiMutationError(err, 'Failed to update academic year');
     }
   };
 
@@ -402,16 +402,19 @@ export const useTermCalendarEvents = (termId: number | null) => {
 
 // ── useCurricula ──────────────────────────────────────────────────────────
 
-export const useCurricula = (options: { enabled?: boolean } = {}) => {
+export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean } = {}) => {
   const { organizationId } = useOrganizationContext();
   const qc = useQueryClient();
   const enabled = options.enabled ?? true;
+  const activeOnly = options.activeOnly ?? false;
   const query = useQuery<Curriculum[], Error>({
-    queryKey: academicKeys.curricula.list(organizationId),
+    queryKey: [...academicKeys.curricula.list(organizationId), activeOnly ? 'active' : 'all'],
     queryFn: async () => {
       const params: Record<string, string> = {};
       if (organizationId) params.organization = String(organizationId);
-      const data = await curriculumAPI.getAll(params);
+      const data = activeOnly
+        ? await curriculumAPI.getActive(params)
+        : await curriculumAPI.getAll(params);
       return Array.isArray(data)
         ? data
         : (data as { results?: Curriculum[] })?.results ?? [];

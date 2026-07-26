@@ -35,7 +35,7 @@ export function AcademicYearsPage() {
     const blockedNotice = searchParams.get('blocked') === '1';
     const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const { academicYears, loading, createAcademicYear, updateAcademicYear, deleteAcademicYear, setCurrentYear } = useAcademicYears();
-    const { curricula } = useCurricula();
+    const { curricula, loading: curriculaLoading } = useCurricula({ activeOnly: true });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
     const [formData, setFormData] = useState<AcademicYearFormData>({
@@ -393,10 +393,13 @@ export function AcademicYearsPage() {
                         label="Curriculum"
                         value={String(formData.curriculum)}
                         onChange={(e) => updateField('curriculum', e.target.value ? Number(e.target.value) : '')}
-                        disabled={Boolean(editingYear)}
+                        disabled={Boolean(editingYear) || curriculaLoading}
                         error={fieldErrors.curriculum?.[0]}
                         options={[
-                            { value: '', label: 'Select curriculum' },
+                            {
+                                value: '',
+                                label: curriculaLoading ? 'Loading curricula...' : 'Select curriculum',
+                            },
                             ...curricula.map((curriculum) => ({
                                 value: String(curriculum.id),
                                 label: curriculum.name,
@@ -443,7 +446,7 @@ export function AcademicYearsPage() {
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={saving}>
+                        <Button type="submit" disabled={saving || curriculaLoading}>
                             {saving ? 'Saving...' : editingYear ? 'Update' : 'Create'}
                         </Button>
                     </div>
