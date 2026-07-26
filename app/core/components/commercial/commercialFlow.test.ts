@@ -10,10 +10,6 @@ const commercialSource = readFileSync(
   join(process.cwd(), 'app/core/components/commercial/CommercialRateCards.tsx'),
   'utf8',
 );
-const commercialWorkspaceOnboardingSource = readFileSync(
-  join(process.cwd(), 'app/core/components/commercial/CommercialWorkspaceOnboardingPage.tsx'),
-  'utf8',
-);
 const premiumPluginSelectorSource = readFileSync(
   join(process.cwd(), 'app/core/components/commercial/PremiumPluginSelector.tsx'),
   'utf8',
@@ -70,6 +66,10 @@ const getStartedPageSource = readFileSync(
   join(process.cwd(), 'app/get-started/page.tsx'),
   'utf8',
 );
+const legacyWorkspaceNewPageSource = readFileSync(
+  join(process.cwd(), 'app/(dashboard)/workspaces/new/page.tsx'),
+  'utf8',
+);
 const getStartedComponentSource = readFileSync(
   join(process.cwd(), 'app/core/components/commercial/PublicGetStartedPage.tsx'),
   'utf8',
@@ -100,7 +100,6 @@ describe('commercial onboarding contract', () => {
     const publicSources = [
       landingSource,
       getStartedComponentSource,
-      commercialWorkspaceOnboardingSource,
       publicHeaderSource,
       heroSource,
       problemSource,
@@ -226,17 +225,26 @@ describe('commercial onboarding contract', () => {
   });
 
   it('routes workspace switcher creation through commercial onboarding', () => {
-    expect(headerSource).toContain("router.push('/workspaces/new')");
+    expect(headerSource).toContain("router.push('/get-started')");
+    expect(headerSource).not.toContain("router.push('/workspaces/new')");
     expect(headerSource).not.toContain("router.push('/register?mode=new_workspace')");
   });
 
-  it('limits workspace onboarding to the canonical freelance workspace key without changing the public catalog flow', () => {
-    expect(commercialWorkspaceOnboardingSource).toContain('workspaceOnboarding');
+  it('uses get-started as the only workspace onboarding implementation', () => {
+    expect(getStartedComponentSource).toContain('<CommercialRateCards workspaceOnboarding');
+    expect(legacyWorkspaceNewPageSource).toContain("redirect('/get-started')");
+    expect(legacyWorkspaceNewPageSource).not.toContain('CommercialRateCards');
+    expect(legacyWorkspaceNewPageSource).not.toContain('CommercialWorkspaceOnboardingPage');
+    expect(legacyWorkspaceNewPageSource).not.toContain('useCommercialCatalog');
+  });
+
+  it('limits get-started onboarding to the canonical freelance workspace key without changing the public catalog flow', () => {
     expect(commercialSource).toContain("SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY: OrgType = 'PERSONAL'");
     expect(commercialSource).toContain('item.key === SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY');
     expect(commercialSource).not.toContain("item.name === 'Freelance Teacher Workspace'");
     expect(commercialApiSource).toContain("context?: 'workspace_onboarding'");
     expect(commercialApiSource).toContain("params: options.context ? { context: options.context } : undefined");
+    expect(commercialSource).toContain("workspaceOnboarding ? { context: 'workspace_onboarding' } : {}");
   });
 
   it('activates quote review after onboarding workspace selection without scroll/focus timeouts', () => {

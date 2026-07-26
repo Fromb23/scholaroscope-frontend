@@ -7,7 +7,7 @@ export function PublicGetStartedPage() {
     <div className="min-h-screen theme-app-bg theme-text">
       <PublicHeader />
       <main className="pt-16">
-        <CommercialRateCards />
+        <CommercialRateCards workspaceOnboarding />
       </main>
       <PublicFooter />
     </div>

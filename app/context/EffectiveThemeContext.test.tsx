@@ -30,7 +30,7 @@ const themeState = vi.hoisted(() => ({
 }));
 
 const navigationState = vi.hoisted(() => ({
-  pathname: '/workspaces/new',
+  pathname: '/get-started',
 }));
 
 vi.mock('next/navigation', () => ({
@@ -63,7 +63,7 @@ function organizationTheme(): EffectiveThemeResponse {
   };
 }
 
-describe('EffectiveThemeProvider workspace onboarding isolation', () => {
+describe('EffectiveThemeProvider get-started onboarding isolation', () => {
   let renderer: ReactTestRenderer | null = null;
   let storage: Map<string, string>;
 
@@ -99,7 +99,7 @@ describe('EffectiveThemeProvider workspace onboarding isolation', () => {
         },
       },
     });
-    navigationState.pathname = '/workspaces/new';
+    navigationState.pathname = '/get-started';
     authState.user = { id: 1, email: 'teacher@example.com' };
     authState.activeOrg = { id: 10, name: 'Branded Workspace' };
     authState.loading = false;
@@ -115,7 +115,7 @@ describe('EffectiveThemeProvider workspace onboarding isolation', () => {
     vi.unstubAllGlobals();
   });
 
-  it('uses the default system theme on create-workspace routes without applying the active workspace theme', async () => {
+  it('uses the default system theme on get-started without applying the active workspace theme', async () => {
     const observed = vi.fn();
 
     await act(async () => {
@@ -131,7 +131,7 @@ describe('EffectiveThemeProvider workspace onboarding isolation', () => {
     });
   });
 
-  it('does not mutate stored theme preferences when visiting create-workspace routes', async () => {
+  it('does not mutate stored theme preferences when visiting get-started', async () => {
     const storedPreference = 'DARK';
     const storedWorkspaceTheme = JSON.stringify(organizationTheme());
     storage.set('scholaroscope_theme_mode', storedPreference);

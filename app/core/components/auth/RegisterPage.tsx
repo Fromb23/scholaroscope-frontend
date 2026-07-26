@@ -581,7 +581,7 @@ function RegisterForm() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => router.push(isNewWorkspaceFlow ? '/workspaces/new' : '/get-started')}
+                        onClick={() => router.push('/get-started')}
                         className="theme-link text-sm font-medium"
                       >
                         Change quote

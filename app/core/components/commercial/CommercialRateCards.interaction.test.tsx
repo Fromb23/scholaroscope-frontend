@@ -14,6 +14,7 @@ import type {
 const routerPush = vi.hoisted(() => vi.fn());
 const useCommercialCatalogMock = vi.hoisted(() => vi.fn());
 const useCommercialQuoteMock = vi.hoisted(() => vi.fn());
+const useAuthMock = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPush }),
@@ -22,6 +23,10 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/app/core/hooks/useCommercialCatalog', () => ({
   useCommercialCatalog: useCommercialCatalogMock,
   useCommercialQuote: useCommercialQuoteMock,
+}));
+
+vi.mock('@/app/context/AuthContext', () => ({
+  useAuth: useAuthMock,
 }));
 
 const personalWorkspace = {
@@ -132,10 +137,16 @@ describe('CommercialRateCards workspace onboarding interaction', () => {
     routerPush.mockReset();
     mutateAsync = vi.fn<(payload: CommercialQuoteRequest) => Promise<CommercialQuote>>()
       .mockResolvedValue(quote);
+    useAuthMock.mockReturnValue({
+      user: null,
+      loading: false,
+    });
     useCommercialCatalogMock.mockReturnValue({
       data: catalog,
       isLoading: false,
       isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
     });
     useCommercialQuoteMock.mockReturnValue({
       data: null,
@@ -157,7 +168,7 @@ describe('CommercialRateCards workspace onboarding interaction', () => {
   it('renders only the freelance onboarding option and requests its quote when selected', async () => {
     await act(async () => {
       renderer = create(
-        <CommercialRateCards authenticated continueBasePath="/register" workspaceOnboarding />,
+        <CommercialRateCards continueBasePath="/register" workspaceOnboarding />,
       );
     });
 
@@ -178,5 +189,79 @@ describe('CommercialRateCards workspace onboarding interaction', () => {
     });
     expect(textContent(renderer!.root)).toContain('Quote summary is now active.');
     expect(textContent(renderer!.root)).toContain('Change workspace');
+  });
+
+  it('uses the same get-started flow and changes only the final action by authentication state', async () => {
+    useCommercialQuoteMock.mockReturnValue({
+      data: quote,
+      isPending: false,
+      isError: false,
+      mutateAsync,
+      reset: vi.fn(),
+    });
+
+    await act(async () => {
+      renderer = create(
+        <CommercialRateCards continueBasePath="/register" workspaceOnboarding />,
+      );
+    });
+    await act(async () => {
+      findButton(renderer!, 'Choose this workspace').props.onClick();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      findButton(renderer!, 'Create account').props.onClick();
+      await Promise.resolve();
+    });
+
+    expect(routerPush).toHaveBeenLastCalledWith('/register?quote=quote-token&mode=signup');
+
+    await act(async () => {
+      renderer?.unmount();
+      useAuthMock.mockReturnValue({
+        user: { id: 1, email: 'teacher@example.com' },
+        loading: false,
+      });
+      renderer = create(
+        <CommercialRateCards continueBasePath="/register" workspaceOnboarding />,
+      );
+    });
+    await act(async () => {
+      findButton(renderer!, 'Choose this workspace').props.onClick();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      findButton(renderer!, 'Create this workspace').props.onClick();
+      await Promise.resolve();
+    });
+
+    expect(routerPush).toHaveBeenLastCalledWith('/register?quote=quote-token&mode=new_workspace');
+  });
+
+  it('renders a recoverable catalogue error and Retry creates one new request', async () => {
+    const refetch = vi.fn();
+    useCommercialCatalogMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      isFetching: false,
+      refetch,
+    });
+
+    await act(async () => {
+      renderer = create(
+        <CommercialRateCards continueBasePath="/register" workspaceOnboarding />,
+      );
+    });
+
+    expect(textContent(renderer!.root)).toContain('Plan information is unavailable.');
+
+    await act(async () => {
+      findButton(renderer!, 'Retry').props.onClick();
+    });
+
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });

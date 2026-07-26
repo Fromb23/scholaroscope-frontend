@@ -30,7 +30,7 @@ export function TenantGuard({ children }: TenantGuardProps) {
     }
 
     if (!activeOrg) {
-        router.replace('/workspaces/new?reason=suspended');
+        router.replace('/get-started?reason=suspended');
         return <PermissionResolvingState message="Switching workspace..." />;
     }
 

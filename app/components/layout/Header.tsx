@@ -151,7 +151,7 @@ export default function Header() {
                     <button
                       onClick={() => {
                         setOrgDropdownOpen(false);
-                        router.push('/workspaces/new');
+                        router.push('/get-started');
                       }}
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-sm theme-link theme-hover-surface"
                     >

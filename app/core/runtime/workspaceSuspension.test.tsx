@@ -51,7 +51,7 @@ describe('runtime workspace suspension boundaries', () => {
       </TenantGuard>,
     );
 
-    expect(mocks.replace).toHaveBeenCalledWith('/workspaces/new?reason=suspended');
+    expect(mocks.replace).toHaveBeenCalledWith('/get-started?reason=suspended');
     expect(html).toContain('Switching workspace...');
     expect(html).not.toContain('Protected learner operations');
   });

@@ -189,7 +189,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isWorkspaceCreationRoute = pathname === '/workspaces/new';
+  const isLegacyWorkspaceCreationRedirectRoute = pathname === '/workspaces/new';
   const previousOrganizationIdRef = useRef<number | null | undefined>(undefined);
 
   useEffect(() => {
@@ -234,7 +234,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (isWorkspaceCreationRoute) {
+    if (isLegacyWorkspaceCreationRedirectRoute) {
       return;
     }
 
@@ -280,7 +280,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     activeOrg,
     activeRole,
     capabilities,
-    isWorkspaceCreationRoute,
+    isLegacyWorkspaceCreationRedirectRoute,
     loading,
     loggingOut,
     offline,
@@ -344,7 +344,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     return <PluginRouteLoadingState pluginIds={pluginRegistry.pendingRoutePluginIds} />;
   }
 
-  if (isWorkspaceCreationRoute) {
+  if (isLegacyWorkspaceCreationRedirectRoute) {
     return <>{children}</>;
   }
 

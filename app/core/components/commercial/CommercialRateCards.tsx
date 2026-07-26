@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
+import { useAuth } from '@/app/context/AuthContext';
 import { useCommercialCatalog, useCommercialQuote } from '@/app/core/hooks/useCommercialCatalog';
 import type {
   CommercialMode,
@@ -80,11 +81,14 @@ function capabilityCategoryPreview(workspaceType: CommercialWorkspaceType) {
 }
 
 export function CommercialRateCards({
-  authenticated = false,
+  authenticated,
   continueBasePath = '/register',
   workspaceOnboarding = false,
 }: CommercialRateCardsProps) {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const isAuthenticated = authenticated ?? Boolean(user);
+  const authResolutionPending = authenticated === undefined && authLoading;
   const catalogQuery = useCommercialCatalog(
     workspaceOnboarding ? { context: 'workspace_onboarding' } : {},
   );
@@ -194,7 +198,7 @@ export function CommercialRateCards({
     if (!quote) return;
     const params = new URLSearchParams({
       quote: quote.token,
-      mode: authenticated ? 'new_workspace' : 'signup',
+      mode: isAuthenticated ? 'new_workspace' : 'signup',
     });
     router.push(`${continueBasePath}?${params.toString()}`);
   };
@@ -244,7 +248,18 @@ export function CommercialRateCards({
     return (
       <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-16">
         <div className="rounded-xl border p-6 text-sm theme-danger-surface">
-          Plan information is unavailable. Try again shortly.
+          <p className="font-semibold">Plan information is unavailable.</p>
+          <p className="mt-2">Try again shortly.</p>
+          <button
+            type="button"
+            className="mt-4 inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-semibold theme-button-primary"
+            disabled={catalogQuery.isFetching}
+            onClick={() => {
+              void catalogQuery.refetch();
+            }}
+          >
+            {catalogQuery.isFetching ? 'Retrying...' : 'Retry'}
+          </button>
         </div>
       </section>
     );
@@ -481,8 +496,8 @@ export function CommercialRateCards({
               quote={quoteMutation.data ?? null}
               loading={quoteMutation.isPending}
               billingPeriodLabel={billingPeriodLabel}
-              authenticated={authenticated}
-              disabled={actionDisabled}
+              authenticated={isAuthenticated}
+              disabled={actionDisabled || authResolutionPending}
               onQuote={() => {
                 if (workspaceOnboarding) setActiveStage('summary');
                 void requestQuote();

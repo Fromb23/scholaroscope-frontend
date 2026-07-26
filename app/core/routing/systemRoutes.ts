@@ -4,6 +4,7 @@ const SYSTEM_OWNED_ROUTE_PREFIXES = [
   '/forgot-password',
   '/reset-password',
   '/verify-email',
+  '/get-started',
   '/workspaces/new',
 ] as const;
 

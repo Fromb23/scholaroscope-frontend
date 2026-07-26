@@ -1,5 +1,5 @@
-import { CommercialWorkspaceOnboardingPage } from '@/app/core/components/commercial/CommercialWorkspaceOnboardingPage';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <CommercialWorkspaceOnboardingPage />;
+  redirect('/get-started');
 }
