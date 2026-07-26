@@ -32,6 +32,7 @@ interface AttendanceTableProps {
     saving: boolean;
     saveError: string | null;
     isComplete?: boolean;
+    finalSheet?: boolean;
     unmarkedLearners?: AttendanceRecord[];
     readOnly: boolean;
     pagination?: PaginationState;
@@ -48,7 +49,7 @@ type AttendanceWithIndex = { [key: string]: unknown } & AttendanceRecord;
 
 export function AttendanceTable({
     records, draft, loading, saving, saveError, isComplete = true, unmarkedLearners = [],
-    readOnly, pagination,
+    finalSheet = false, readOnly, pagination,
     onUpdateStatus, onUpdateNotes, onMarkAll, onSave,
     onDismissError, onPaginationChange, learnerHrefBuilder,
 }: AttendanceTableProps) {
@@ -100,37 +101,52 @@ export function AttendanceTable({
         {
             key: 'status',
             header: 'Status',
-            render: r => (
-                <div className="flex gap-1 flex-nowrap">
-                    {STATUSES.map(s => (
-                        <button
-                            key={s}
-                            onClick={() => !readOnly && onUpdateStatus(r.student, s)}
-                            disabled={readOnly}
-                            className={`px-2 py-1 text-xs rounded-lg border transition-colors whitespace-nowrap ${draft[r.student]?.status === s
-                                ? 'border-gray-900 bg-gray-900 text-white'
-                                : 'border-gray-200 hover:border-gray-400'
-                                } ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
-                        >
-                            {s}
-                        </button>
-                    ))}
-                </div>
-            ),
+            render: r => {
+                if (readOnly) {
+                    const status = draft[r.student]?.status ?? r.status ?? 'UNMARKED';
+                    return (
+                        <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700">
+                            {status === 'UNMARKED' ? '—' : status}
+                        </span>
+                    );
+                }
+
+                return (
+                    <div className="flex gap-1 flex-nowrap">
+                        {STATUSES.map(s => (
+                            <button
+                                key={s}
+                                onClick={() => onUpdateStatus(r.student, s)}
+                                className={`px-2 py-1 text-xs rounded-lg border transition-colors whitespace-nowrap ${draft[r.student]?.status === s
+                                    ? 'border-gray-900 bg-gray-900 text-white'
+                                    : 'border-gray-200 hover:border-gray-400'
+                                    }`}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                );
+            },
         },
         {
             key: 'notes',
             header: 'Notes',
-            render: r => (
-                <input
-                    value={draft[r.student]?.notes ?? ''}
-                    onChange={e => onUpdateNotes(r.student, e.target.value)}
-                    disabled={readOnly}
-                    className={`border rounded-lg px-3 py-1.5 text-sm w-full ${readOnly ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''
-                        }`}
-                    placeholder="Optional note..."
-                />
-            ),
+            render: r => {
+                if (readOnly) {
+                    const note = (draft[r.student]?.notes ?? r.notes ?? '').trim();
+                    return <span className="text-sm text-gray-700">{note || '—'}</span>;
+                }
+
+                return (
+                    <input
+                        value={draft[r.student]?.notes ?? ''}
+                        onChange={e => onUpdateNotes(r.student, e.target.value)}
+                        className="w-full rounded-lg border px-3 py-1.5 text-sm"
+                        placeholder="Optional note..."
+                    />
+                );
+            },
         },
     ];
 
@@ -138,7 +154,7 @@ export function AttendanceTable({
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900">
-                    {readOnly ? 'Attendance Records' : 'Mark Attendance'}
+                    {finalSheet ? 'Final attendance sheet' : readOnly ? 'Attendance Records' : 'Mark Attendance'}
                 </h2>
                 {!readOnly && (
                     <Button onClick={onSave} disabled={saving || !isComplete} className="hidden sm:inline-flex">

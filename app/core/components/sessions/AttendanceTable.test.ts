@@ -21,4 +21,13 @@ describe('AttendanceTable learner navigation', () => {
 
     expect(component).toContain('?? `/learners/${r.student}`');
   });
+
+  it('renders final read-only attendance as text instead of disabled mutation controls', () => {
+    const component = source();
+
+    expect(component).toContain("finalSheet ? 'Final attendance sheet'");
+    expect(component).toContain("if (readOnly) {");
+    expect(component).toContain("return <span className=\"text-sm text-gray-700\">{note || '—'}</span>;");
+    expect(component).not.toContain('disabled={readOnly}');
+  });
 });

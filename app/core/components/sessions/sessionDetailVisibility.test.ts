@@ -4,6 +4,7 @@ import {
   getDefaultOpenLessonWorkflowSection,
   getLessonWorkflowStep,
   shouldRenderAttendanceEditor,
+  shouldRenderFinalAttendanceSheet,
   shouldRenderTaughtOutcomesConfirmationSummary,
   shouldRenderTaughtOutcomesEditor,
   shouldShowMergedCohortBadge,
@@ -190,6 +191,41 @@ describe('session detail progressive disclosure visibility', () => {
       isAttendanceReviewRequested: false,
       canAdvanceTeachingWorkflow: false,
       isHistorical: false,
+    })).toBe(false);
+  });
+
+  it('shows completed final attendance independently from editor authority and historical state', () => {
+    const completedWorkflowStep = getLessonWorkflowStep({
+      status: 'COMPLETED',
+      closureNextStep: 'READY',
+      hasMarkedAttendance: true,
+      hasConfirmedTaughtOutcomes: true,
+    });
+
+    expect(shouldRenderAttendanceEditor({
+      workflowStep: completedWorkflowStep,
+      isAttendanceReviewRequested: false,
+      canAdvanceTeachingWorkflow: false,
+      isHistorical: true,
+    })).toBe(false);
+    expect(shouldRenderFinalAttendanceSheet({
+      status: 'COMPLETED',
+      hasAttendanceRecords: true,
+    })).toBe(true);
+  });
+
+  it('does not invent final attendance for scheduled or cancelled sessions', () => {
+    expect(shouldRenderFinalAttendanceSheet({
+      status: 'SCHEDULED',
+      hasAttendanceRecords: true,
+    })).toBe(false);
+    expect(shouldRenderFinalAttendanceSheet({
+      status: 'CANCELLED',
+      hasAttendanceRecords: true,
+    })).toBe(false);
+    expect(shouldRenderFinalAttendanceSheet({
+      status: 'COMPLETED',
+      hasAttendanceRecords: false,
     })).toBe(false);
   });
 });

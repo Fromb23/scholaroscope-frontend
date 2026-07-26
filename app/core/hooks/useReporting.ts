@@ -384,6 +384,7 @@ export const useAdminAttendanceScopeReport = (params?: {
   cohortId?: number | null;
   subjectId?: number | null;
   cohortSubjectId?: number | null;
+  sessionId?: number | null;
   enabled?: boolean;
 }) => {
   const [report, setReport] = useState<AttendanceScopeReportPayload | null>(null);
@@ -405,6 +406,7 @@ export const useAdminAttendanceScopeReport = (params?: {
         cohortId: params?.cohortId,
         subjectId: params?.subjectId,
         cohortSubjectId: params?.cohortSubjectId,
+        sessionId: params?.sessionId,
       });
       setReport(nextReport);
       setError(null);
@@ -418,6 +420,7 @@ export const useAdminAttendanceScopeReport = (params?: {
     params?.cohortId,
     params?.cohortSubjectId,
     params?.enabled,
+    params?.sessionId,
     params?.studentId,
     params?.subjectId,
     params?.termId,

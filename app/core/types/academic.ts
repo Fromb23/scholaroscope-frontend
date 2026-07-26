@@ -80,7 +80,25 @@ export type AcademicLifecycleMode =
   | 'BETWEEN_TERMS'
   | 'CLOSURE_GRACE'
   | 'HISTORICAL'
+  | 'TERM_ENDED'
+  | 'ACADEMIC_YEAR_ENDED'
   | 'NO_ACADEMIC_SETUP';
+
+export type AcademicLifecycleTransitionKind =
+  | 'NONE'
+  | 'WAIT_FOR_UPCOMING_TERM'
+  | 'CREATE_TERM'
+  | 'CREATE_ACADEMIC_YEAR'
+  | 'COMPLETE_INITIAL_SETUP';
+
+export interface AcademicLifecycleTransition {
+  kind: AcademicLifecycleTransitionKind;
+  curriculum_id?: number | null;
+  academic_year_id?: number | null;
+  term_id?: number | null;
+  reason?: string;
+  starts_on?: string | null;
+}
 
 export interface AcademicLifecycleContext {
   mode: AcademicLifecycleMode;
@@ -104,6 +122,7 @@ export interface AcademicLifecycleContext {
   allows_current_work?: boolean;
   allows_new_teaching?: boolean;
   allows_cleanup?: boolean;
+  transition?: AcademicLifecycleTransition;
   actions?: Array<{
     key: string;
     label: string;

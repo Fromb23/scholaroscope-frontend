@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     AlertTriangle,
@@ -464,29 +464,58 @@ export function TermsPage() {
             }
             : {
                 name: '',
-                academic_year: currentYear ? String(currentYear.id) : '',
+                academic_year: selectedYearId ? String(selectedYearId) : currentYear ? String(currentYear.id) : '',
                 start_date: '',
                 end_date: '',
                 sequence: visibleTerms.length + 1,
             }
-    ), [editingTerm, currentYear, visibleTerms.length]);
+    ), [editingTerm, currentYear, selectedYearId, visibleTerms.length]);
 
     const selectedTermCalendarBadge = selectedTerm ? getCalendarSetupBadge(selectedTerm) : null;
 
-    const openCreate = () => {
+    const openCreate = useCallback(() => {
         setEditingTerm(null);
         setShowModal(true);
-    };
+    }, []);
 
     const openEdit = (term: Term) => {
         setEditingTerm(term);
         setShowModal(true);
     };
 
-    const closeModal = () => {
+    const closeModal = useCallback(() => {
         setShowModal(false);
         setEditingTerm(null);
-    };
+        if (searchParams.get('action') === 'create') {
+            const nextParams = new URLSearchParams(searchParams.toString());
+            nextParams.delete('action');
+            const query = nextParams.toString();
+            router.replace(query ? `/academic/terms?${query}` : '/academic/terms', { scroll: false });
+        }
+    }, [router, searchParams]);
+
+    useEffect(() => {
+        if (loading || !currentYear || searchParams.get('action') !== 'create' || showModal) {
+            return;
+        }
+        const requestedAcademicYear = Number(
+            searchParams.get('academicYear') ?? searchParams.get('academic_year') ?? '',
+        );
+        if (Number.isInteger(requestedAcademicYear) && requestedAcademicYear > 0) {
+            const year = academicYears.find((item) => item.id === requestedAcademicYear);
+            if (!year || !year.is_current) {
+                return;
+            }
+            if (selectedYearId !== year.id) {
+                setSelectedYearId(year.id);
+                return;
+            }
+        } else if (selectedYearId === undefined) {
+            setSelectedYearId(currentYear.id);
+            return;
+        }
+        openCreate();
+    }, [academicYears, currentYear, loading, openCreate, searchParams, selectedYearId, showModal]);
 
     const openCreateEvent = () => {
         setEditingEvent(null);

@@ -1,8 +1,8 @@
 'use client';
 
-import { resolveErrorMessage } from '@/app/core/errors';
+import { extractFieldErrors, resolveAppError, resolveErrorMessage } from '@/app/core/errors';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, Plus, Edit2, Trash2, CheckCircle } from 'lucide-react';
 import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
@@ -12,8 +12,10 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { Badge } from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import { useAcademicYears, useCurricula } from '@/app/core/hooks/useAcademic';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import {
@@ -44,6 +46,10 @@ export function AcademicYearsPage() {
         is_current: false
     });
     const [saving, setSaving] = useState(false);
+    const [modalError, setModalError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+    const [pageError, setPageError] = useState<string | null>(null);
+    const validationSummaryRef = useRef<HTMLDivElement | null>(null);
     const [setupCurrentYearNotice, setSetupCurrentYearNotice] = useState<{
         yearId: number;
     } | null>(null);
@@ -53,6 +59,8 @@ export function AcademicYearsPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
+        setModalError(null);
+        setFieldErrors({});
         try {
             const payload = {
                 ...formData,
@@ -81,7 +89,18 @@ export function AcademicYearsPage() {
             setIsModalOpen(false);
             resetForm();
         } catch (error: unknown) {
-            alert(getErrorMessage(error));
+            const resolved = resolveAppError(error, {
+                domain: 'academic_setup',
+                action: editingYear ? 'update' : 'create',
+            });
+            const nextFieldErrors = extractFieldErrors((error as { response?: { data?: unknown } })?.response?.data);
+            setFieldErrors(nextFieldErrors);
+            if (Object.keys(nextFieldErrors).length === 0) {
+                setModalError(resolved.message || getErrorMessage(error));
+            }
+            window.setTimeout(() => {
+                validationSummaryRef.current?.focus();
+            }, 0);
         } finally {
             setSaving(false);
         }
@@ -89,6 +108,8 @@ export function AcademicYearsPage() {
 
     const handleEdit = (year: AcademicYear) => {
         setEditingYear(year);
+        setModalError(null);
+        setFieldErrors({});
         setFormData({
             name: year.name,
             curriculum: year.curriculum ?? '',
@@ -104,7 +125,7 @@ export function AcademicYearsPage() {
             try {
                 await deleteAcademicYear(id);
             } catch (error: unknown) {
-                alert(getErrorMessage(error));
+                setPageError(getErrorMessage(error));
             }
         }
     };
@@ -122,7 +143,7 @@ export function AcademicYearsPage() {
                 );
             }
         } catch (error: unknown) {
-            alert(getErrorMessage(error));
+            setPageError(getErrorMessage(error));
         }
     };
 
@@ -135,7 +156,58 @@ export function AcademicYearsPage() {
             is_current: false
         });
         setEditingYear(null);
+        setModalError(null);
+        setFieldErrors({});
     };
+
+    const openCreateModal = useCallback(() => {
+        setEditingYear(null);
+        setModalError(null);
+        setFieldErrors({});
+        const curriculumParam = Number(searchParams.get('curriculum') ?? '');
+        const safeCurriculum = Number.isInteger(curriculumParam)
+            && curriculumParam > 0
+            && curricula.some((curriculum) => curriculum.id === curriculumParam)
+            ? curriculumParam
+            : '';
+        setFormData({
+            name: '',
+            curriculum: safeCurriculum,
+            start_date: '',
+            end_date: '',
+            is_current: false,
+        });
+        setIsModalOpen(true);
+    }, [curricula, searchParams]);
+
+    const closeModal = useCallback(() => {
+        setIsModalOpen(false);
+        resetForm();
+        if (searchParams.get('action') === 'create') {
+            const nextParams = new URLSearchParams(searchParams.toString());
+            nextParams.delete('action');
+            const query = nextParams.toString();
+            router.replace(query ? `/academic/years?${query}` : '/academic/years', { scroll: false });
+        }
+    }, [router, searchParams]);
+
+    const updateField = useCallback(<K extends keyof AcademicYearFormData>(field: K, value: AcademicYearFormData[K]) => {
+        setFormData((current) => ({ ...current, [field]: value }));
+        setFieldErrors((current) => {
+            if (!current[field as string]) return current;
+            const next = { ...current };
+            delete next[field as string];
+            return next;
+        });
+        setModalError(null);
+    }, []);
+
+    useEffect(() => {
+        if (loading || curricula.length === 0 || searchParams.get('action') !== 'create' || isModalOpen) {
+            return;
+        }
+        openCreateModal();
+    }, [curricula.length, isModalOpen, loading, openCreateModal, searchParams]);
 
     if (setupMode && setupStatusQuery.isLoading && !setupStatus) {
         return (
@@ -167,6 +239,9 @@ export function AcademicYearsPage() {
                 setupMode={setupMode}
                 blockedNotice={blockedNotice}
             />
+            {pageError ? (
+                <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />
+            ) : null}
             {setupMode && setupCurrentYearNotice ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -190,7 +265,7 @@ export function AcademicYearsPage() {
                     <h1 className="text-2xl font-semibold text-gray-900">Academic Years</h1>
                     <p className="text-gray-600 mt-1">Manage academic year configurations</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)}>
+                <Button onClick={openCreateModal}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Academic Year
                 </Button>
@@ -208,7 +283,7 @@ export function AcademicYearsPage() {
                         <Calendar className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">No academic years found</h3>
                         <p className="mt-1 text-sm text-gray-500">Get started by adding a new academic year</p>
-                        <Button className="mt-4" onClick={() => setIsModalOpen(true)}>
+                        <Button className="mt-4" onClick={openCreateModal}>
                             <Plus className="mr-2 h-4 w-4" />
                             Add Academic Year
                         </Button>
@@ -291,29 +366,35 @@ export function AcademicYearsPage() {
             {/* Create/Edit Modal */}
             <Modal
                 isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false);
-                    resetForm();
-                }}
+                onClose={closeModal}
                 title={editingYear ? 'Edit Academic Year' : 'Create Academic Year'}
             >
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {modalError ? (
+                        <div ref={validationSummaryRef}>
+                            <FormValidationSummary
+                                id="academic-year-modal-error"
+                                fieldErrors={{ correction: modalError }}
+                                title="Correction needed"
+                                description=""
+                            />
+                        </div>
+                    ) : null}
                     <Input
                         label="Name"
                         placeholder="e.g., 2024, 2024-2025"
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) => updateField('name', e.target.value)}
+                        error={fieldErrors.name?.[0]}
                         required
                     />
 
                     <Select
                         label="Curriculum"
                         value={String(formData.curriculum)}
-                        onChange={(e) => setFormData({
-                            ...formData,
-                            curriculum: e.target.value ? Number(e.target.value) : '',
-                        })}
+                        onChange={(e) => updateField('curriculum', e.target.value ? Number(e.target.value) : '')}
                         disabled={Boolean(editingYear)}
+                        error={fieldErrors.curriculum?.[0]}
                         options={[
                             { value: '', label: 'Select curriculum' },
                             ...curricula.map((curriculum) => ({
@@ -329,7 +410,8 @@ export function AcademicYearsPage() {
                             label="Start Date"
                             type="date"
                             value={formData.start_date}
-                            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                            onChange={(e) => updateField('start_date', e.target.value)}
+                            error={fieldErrors.start_date?.[0]}
                             required
                         />
 
@@ -337,7 +419,8 @@ export function AcademicYearsPage() {
                             label="End Date"
                             type="date"
                             value={formData.end_date}
-                            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                            onChange={(e) => updateField('end_date', e.target.value)}
+                            error={fieldErrors.end_date?.[0]}
                             required
                         />
                     </div>
@@ -346,7 +429,7 @@ export function AcademicYearsPage() {
                         <input
                             type="checkbox"
                             checked={formData.is_current}
-                            onChange={(e) => setFormData({ ...formData, is_current: e.target.checked })}
+                            onChange={(e) => updateField('is_current', e.target.checked)}
                             className="rounded border-gray-300"
                         />
                         <span className="text-sm text-gray-700">Set as current academic year</span>
@@ -356,10 +439,7 @@ export function AcademicYearsPage() {
                         <Button
                             type="button"
                             variant="primary"
-                            onClick={() => {
-                                setIsModalOpen(false);
-                                resetForm();
-                            }}
+                            onClick={closeModal}
                         >
                             Cancel
                         </Button>

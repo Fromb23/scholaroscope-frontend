@@ -15,6 +15,7 @@ import {
     ChevronRight,
     ClipboardCheck,
     Clock,
+    Download,
     Edit,
     FilePlus2,
     FileText,
@@ -43,6 +44,8 @@ import { RescheduleLessonModal } from '@/app/core/components/sessions/Reschedule
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
+import { adminReportsAPI } from '@/app/core/api/reporting';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import {
     usesExpandedSessionScope,
 } from '@/app/core/components/assignments/assignmentUtils';
@@ -74,6 +77,7 @@ import {
     shouldShowParticipatingCohorts,
     shouldShowPostLessonAssignmentActions,
     shouldRenderAttendanceEditor,
+    shouldRenderFinalAttendanceSheet,
     shouldRenderTaughtOutcomesConfirmationSummary,
     shouldRenderTaughtOutcomesEditor,
 } from '@/app/core/components/sessions/sessionDetailVisibility';
@@ -579,6 +583,11 @@ export function SessionDetailPage() {
         canAdvanceTeachingWorkflow,
         isHistorical,
     });
+    const showFinalAttendanceSheet = shouldRenderFinalAttendanceSheet({
+        status: sessionStatus,
+        hasAttendanceRecords: attendanceRecords.length > 0,
+    });
+    const renderAttendanceSection = showAttendanceSection || showFinalAttendanceSheet;
     const showTaughtOutcomesSection = shouldRenderTaughtOutcomesEditor({
         workflowStep: currentWorkflowStep,
         hasLessonPlan,
@@ -610,6 +619,17 @@ export function SessionDetailPage() {
             cohortSubjectId: session.cohort_subject,
         });
     }, [session]);
+    const { handleExport: handleFinalAttendanceExport, exporting: exportingFinalAttendance } = useReportExport(
+        (format) => {
+            if (!session) {
+                throw new Error('Open a completed session before downloading attendance.');
+            }
+            return adminReportsAPI.exportAttendanceScope(format, {
+                sessionId: session.id,
+            });
+        },
+        'final attendance sheet',
+    );
     const completionReturnTo = session ? `/sessions/${session.id}?section=complete` : '/sessions';
     const defaultTeachingWorkflowHref = teachingWorkflow
         ? withReturnTo(teachingWorkflow.href, completionReturnTo)
@@ -769,14 +789,14 @@ export function SessionDetailPage() {
             canAdvanceTeachingWorkflow,
             isHistorical,
         });
-        if (!canRenderRequestedAttendance) {
+        if (!canRenderRequestedAttendance && !showFinalAttendanceSheet) {
             return;
         }
-        setAttendanceReviewRequested(currentWorkflowStep !== 'attendance');
+        setAttendanceReviewRequested(!showFinalAttendanceSheet && currentWorkflowStep !== 'attendance');
         setAttendanceOpen(true);
         setTaughtOutcomesOpen(false);
         setGuidedSection('attendance');
-    }, [canAdvanceTeachingWorkflow, currentWorkflowStep, isHistorical]);
+    }, [canAdvanceTeachingWorkflow, currentWorkflowStep, isHistorical, showFinalAttendanceSheet]);
 
     const revealTaughtOutcomesSection = useCallback(() => {
         const canRenderRequestedTaughtOutcomes = shouldRenderTaughtOutcomesEditor({
@@ -1135,6 +1155,14 @@ export function SessionDetailPage() {
     }, [sessionId]);
 
     useEffect(() => {
+        if (showFinalAttendanceSheet) {
+            setLessonPreparationOpen(false);
+            setAttendanceOpen(true);
+            setTaughtOutcomesOpen(false);
+            setAttendanceReviewRequested(false);
+            return;
+        }
+
         if (currentWorkflowStep === 'scheduled') {
             setLessonPreparationOpen(hasLessonPlan);
             setAttendanceOpen(false);
@@ -1169,7 +1197,7 @@ export function SessionDetailPage() {
         setAttendanceOpen(false);
         setTaughtOutcomesOpen(false);
         setAttendanceReviewRequested(false);
-    }, [currentWorkflowStep, defaultOpenWorkflowSection, hasLessonPlan]);
+    }, [currentWorkflowStep, defaultOpenWorkflowSection, hasLessonPlan, showFinalAttendanceSheet]);
 
     useEffect(() => {
         const section = searchParams.get('section');
@@ -1324,7 +1352,7 @@ export function SessionDetailPage() {
     const completedWorkflowSteps = workflowSteps.filter((step) => step.complete).length;
     const attendanceMarkedCount = Math.max(0, attendanceStats.total - attendanceStats.unmarked);
     const attendanceSectionTitle = isCompleted
-        ? 'Attendance records'
+        ? 'Final attendance sheet'
         : needsCompletion
             ? 'Review attendance'
             : 'Take attendance';
@@ -2820,7 +2848,7 @@ export function SessionDetailPage() {
                 <AttendanceStatsStrip stats={attendanceStats} />
             ) : null}
 
-            {showAttendanceSection ? (
+            {renderAttendanceSection ? (
                 <CollapsibleSection
                     sectionId="attendance-section"
                     title={attendanceSectionTitle}
@@ -2828,6 +2856,23 @@ export function SessionDetailPage() {
                     open={attendanceOpen}
                     onToggle={toggleAttendanceOpen}
                 >
+                    {showFinalAttendanceSheet ? (
+                        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-900 sm:flex-row sm:items-center sm:justify-between">
+                            <span>
+                                This completed lesson has a final attendance sheet. It is read-only and can be used for attendance analysis or export.
+                            </span>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => void handleFinalAttendanceExport('pdf')}
+                                disabled={exportingFinalAttendance}
+                            >
+                                <Download className="mr-1.5 h-4 w-4" />
+                                {exportingFinalAttendance ? 'Downloading...' : 'Download'}
+                            </Button>
+                        </div>
+                    ) : null}
                     {attendanceReviewRequested && currentWorkflowStep === 'confirm_taught' ? (
                         <div className="mb-4 flex flex-col gap-3 rounded-lg border px-3 py-3 text-sm theme-border theme-surface-muted theme-muted sm:flex-row sm:items-center sm:justify-between">
                             <span>Review attendance, then return to confirming what was taught.</span>
@@ -2849,6 +2894,7 @@ export function SessionDetailPage() {
                         onUpdateNotes={updateNotes}
                         onMarkAll={markAll}
                         readOnly={!canEditAttendance}
+                        finalSheet={showFinalAttendanceSheet}
                         onSave={async () => {
                             const saveResult = await save();
                             if (!saveResult.ok) {

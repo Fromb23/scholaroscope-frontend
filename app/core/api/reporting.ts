@@ -607,9 +607,10 @@ export const adminReportsAPI = {
     cohortId?: number | null;
     subjectId?: number | null;
     cohortSubjectId?: number | null;
+    sessionId?: number | null;
   }) => {
     const response = await apiClient.get<AttendanceScopeReportPayload>(
-      '/reports/admin/attendance/',
+      '/reports/attendance/',
       {
         params: {
           term_id: params?.termId ?? undefined,
@@ -617,6 +618,7 @@ export const adminReportsAPI = {
           cohort_id: params?.cohortId ?? undefined,
           subject_id: params?.subjectId ?? undefined,
           cohort_subject_id: params?.cohortSubjectId ?? undefined,
+          session_id: params?.sessionId ?? undefined,
         },
       },
     );
@@ -631,9 +633,10 @@ export const adminReportsAPI = {
       cohortId?: number | null;
       subjectId?: number | null;
       cohortSubjectId?: number | null;
+      sessionId?: number | null;
     },
   ) => fetchReportDownload(
-    '/reports/admin/attendance/',
+    '/reports/attendance/',
     {
       format,
       term_id: params?.termId ?? undefined,
@@ -641,6 +644,7 @@ export const adminReportsAPI = {
       cohort_id: params?.cohortId ?? undefined,
       subject_id: params?.subjectId ?? undefined,
       cohort_subject_id: params?.cohortSubjectId ?? undefined,
+      session_id: params?.sessionId ?? undefined,
     },
     `attendance-report.${format}`,
   ),

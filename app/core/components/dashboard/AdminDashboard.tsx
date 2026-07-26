@@ -9,9 +9,11 @@ import { LoadingMessage, PageSkeleton } from '@/app/components/ui/loading';
 import { AcademicSetupDashboard } from '@/app/core/components/academic/setup/AcademicSetupDashboard';
 import { useAdminDashboard } from '@/app/core/hooks/useAdminDashboard';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import { useAcademicLifecycleContext } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { InstructorDashboard } from '@/app/core/components/dashboard/InstructorDashboard';
+import { AcademicTransitionPrompt } from '@/app/core/components/academic/AcademicTransitionPrompt';
 import type { Session } from '@/app/core/types/session';
 import type { Assessment } from '@/app/core/types/assessment';
 import type {
@@ -216,6 +218,9 @@ export function AdminDashboard() {
     const academicSetupQuery = useAcademicSetupStatus({
         enabled: activeRole === 'ADMIN' && Boolean(activeOrg),
     });
+    const academicLifecycleQuery = useAcademicLifecycleContext({
+        enabled: activeRole === 'ADMIN' && Boolean(activeOrg),
+    });
 
     const {
         sessions,
@@ -322,6 +327,11 @@ export function AdminDashboard() {
                 </div>
                 <AcademicContextStrip contexts={academicContexts} />
             </header>
+
+            <AcademicTransitionPrompt
+                context={academicLifecycleQuery.data}
+                actor="admin"
+            />
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <TodayTeachingActivity sessions={sessions} />

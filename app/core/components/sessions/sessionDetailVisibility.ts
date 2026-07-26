@@ -102,6 +102,16 @@ export function shouldRenderAttendanceEditor({
   return isAttendanceCurrentStep(workflowStep) || isAttendanceReviewRequested;
 }
 
+export function shouldRenderFinalAttendanceSheet({
+  status,
+  hasAttendanceRecords,
+}: {
+  status: SessionLifecycleStatus | null | undefined;
+  hasAttendanceRecords: boolean;
+}): boolean {
+  return status === 'COMPLETED' && hasAttendanceRecords;
+}
+
 export function shouldRenderTaughtOutcomesEditor({
   workflowStep,
   hasLessonPlan,

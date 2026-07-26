@@ -60,6 +60,7 @@ export function AttendanceReportPage() {
   const selectedCohortId = parsePositiveReportParam(searchParams.get('cohort'));
   const selectedSubjectId = parsePositiveReportParam(searchParams.get('subject'));
   const selectedCohortSubjectId = parsePositiveReportParam(searchParams.get('cohortSubject'));
+  const selectedSessionId = parsePositiveReportParam(searchParams.get('session'));
   const source = searchParams.get('source');
   const learnerQuery = searchParams.get('q') ?? '';
   const currentReportPath = `${pathname}?${searchParams.toString()}`;
@@ -68,7 +69,8 @@ export function AttendanceReportPage() {
     selectedStudentId
     || selectedCohortId
     || selectedSubjectId
-    || selectedCohortSubjectId,
+    || selectedCohortSubjectId
+    || selectedSessionId
   );
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
@@ -97,7 +99,8 @@ export function AttendanceReportPage() {
     cohortId: selectedCohortId,
     subjectId: selectedSubjectId,
     cohortSubjectId: selectedCohortSubjectId,
-    enabled: hasScope && Boolean(selectedTermId || currentTerm?.id),
+    sessionId: selectedSessionId,
+    enabled: hasScope && Boolean(selectedSessionId || selectedTermId || currentTerm?.id),
   });
 
   const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
@@ -142,6 +145,7 @@ export function AttendanceReportPage() {
       cohortId: selectedCohortId,
       subjectId: selectedSubjectId,
       cohortSubjectId: selectedCohortSubjectId,
+      sessionId: selectedSessionId,
     })
   ), 'attendance report');
 

@@ -23,6 +23,7 @@ import { Card } from '@/app/components/ui/Card';
 import { ActionMenu, type ActionMenuItem } from '@/app/components/ui/ActionMenu';
 import { LoadingMessage, PageSkeleton } from '@/app/components/ui/loading';
 import { useInstructorDashboard } from '@/app/core/hooks/useInstructorDashboard';
+import { useAcademicLifecycleContext } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useSessionLifecycleReminders } from '@/app/core/hooks/useSessionLifecycleReminders';
 import { SessionReminderPanelContent } from '@/app/core/components/dashboard/SessionReminderPanel';
@@ -37,6 +38,7 @@ import {
     shouldRenderAssessmentsSummaryCard,
 } from '@/app/core/components/dashboard/InstructorDashboardWidgets';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import { AcademicTransitionPrompt } from '@/app/core/components/academic/AcademicTransitionPrompt';
 import {
     buildTeachingActionQueue,
     type TeachingActionItem,
@@ -491,6 +493,9 @@ export function InstructorDashboard() {
         pendingReviewRows,
         assignmentWork,
     } = useInstructorDashboard();
+    const academicLifecycleQuery = useAcademicLifecycleContext({
+        enabled: Boolean(activeOrg) && Boolean(activeRole),
+    });
     const sessionReminderState = useSessionLifecycleReminders();
 
     const hasTeachingAssignments = teachingLoad.length > 0;
@@ -626,6 +631,10 @@ export function InstructorDashboard() {
                 yearName={currentYear?.name ?? String(new Date().getFullYear())}
                 lastRefresh={lastRefresh}
                 onRefresh={refresh}
+            />
+            <AcademicTransitionPrompt
+                context={academicLifecycleQuery.data}
+                actor={instructorAccess.isSelfManagedTeachingAdmin ? 'self_managed' : 'instructor'}
             />
             <TeacherNextActionPanel
                 queue={teachingActionQueue}

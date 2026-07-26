@@ -8,7 +8,9 @@ import { Button } from '@/app/components/ui/Button';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { useAcademicLifecycleContext } from '@/app/core/hooks/useAcademic';
 import { useTeachingToday } from '@/app/core/hooks/useTeachingToday';
+import { AcademicTransitionPrompt } from '@/app/core/components/academic/AcademicTransitionPrompt';
 import { AcademicBreakDashboard } from './AcademicBreakDashboard';
 import { TeachingTodayAfterTeachingPanel } from './TeachingTodayAfterTeachingPanel';
 import { TeachingTodayCalendarNotice } from './TeachingTodayCalendarNotice';
@@ -29,6 +31,9 @@ export function TeachingTodayPage() {
         lastRefresh,
         refresh,
     } = useTeachingToday();
+    const academicLifecycleQuery = useAcademicLifecycleContext({
+        enabled: Boolean(activeRole),
+    });
     const [refreshing, setRefreshing] = useState(false);
     const isTeachingActor = instructorAccess.isTeachingActor;
 
@@ -121,6 +126,11 @@ export function TeachingTodayPage() {
                 lastRefresh={lastRefresh}
                 onRefresh={() => void handleRefresh()}
                 refreshing={refreshing}
+            />
+
+            <AcademicTransitionPrompt
+                context={academicLifecycleQuery.data}
+                actor={instructorAccess.isSelfManagedTeachingAdmin ? 'self_managed' : 'instructor'}
             />
 
             {error ? (
