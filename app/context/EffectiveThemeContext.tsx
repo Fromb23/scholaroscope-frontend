@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -22,6 +23,7 @@ import {
   applyThemeTokens,
   normalizeEffectiveTheme,
 } from '@/app/core/theme/effectiveTheme';
+import { isSystemOwnedRoute } from '@/app/core/routing/systemRoutes';
 import type { EffectiveThemeResponse } from '@/app/core/types/theme';
 
 interface EffectiveThemeContextValue {
@@ -53,23 +55,11 @@ function storeLastOrgThemeSnapshot(theme: EffectiveThemeResponse) {
   window.localStorage.setItem(LAST_ORG_THEME_STORAGE_KEY, JSON.stringify(theme));
 }
 
-function shouldUseSystemTheme(pathname: string | null): boolean {
-  if (!pathname || pathname === '/') {
-    return true;
-  }
-  return [
-    '/login',
-    '/register',
-    '/forgot-password',
-    '/reset-password',
-    '/verify-email',
-  ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
-
 export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
   const { user, activeOrg, loading: authLoading } = useAuth();
   const { themeMode } = useTheme();
   const pathname = usePathname();
+  const systemOwnedRoute = isSystemOwnedRoute(pathname);
   const [effectiveTheme, setEffectiveTheme] = useState<EffectiveThemeResponse>(DEFAULT_EFFECTIVE_THEME);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,13 +75,17 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
     const requestId = themeRequestIdRef.current + 1;
     themeRequestIdRef.current = requestId;
 
+    if (systemOwnedRoute) {
+      setLoading(false);
+      setError(null);
+      return applyResolvedTheme(DEFAULT_EFFECTIVE_THEME);
+    }
+
     if (!user) {
       setError(null);
-      if (!shouldUseSystemTheme(pathname)) {
-        const storedTheme = readLastOrgThemeSnapshot();
-        if (storedTheme) {
-          return applyResolvedTheme(storedTheme);
-        }
+      const storedTheme = readLastOrgThemeSnapshot();
+      if (storedTheme) {
+        return applyResolvedTheme(storedTheme);
       }
       return applyResolvedTheme(DEFAULT_EFFECTIVE_THEME);
     }
@@ -117,15 +111,29 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }
-  }, [applyResolvedTheme, pathname, themeMode, user]);
+  }, [applyResolvedTheme, systemOwnedRoute, themeMode, user]);
+
+  useLayoutEffect(() => {
+    if (!systemOwnedRoute) {
+      return;
+    }
+
+    themeRequestIdRef.current += 1;
+    setLoading(false);
+    setError(null);
+    applyResolvedTheme(DEFAULT_EFFECTIVE_THEME);
+  }, [applyResolvedTheme, systemOwnedRoute]);
 
   useEffect(() => {
     if (authLoading) {
       return;
     }
+    if (systemOwnedRoute) {
+      return;
+    }
 
     void refetch();
-  }, [activeOrg?.id, authLoading, pathname, refetch]);
+  }, [activeOrg?.id, authLoading, pathname, refetch, systemOwnedRoute]);
 
   useEffect(() => {
     applyThemeTokens(effectiveTheme, undefined, themeMode);

@@ -12,7 +12,7 @@ export function CommercialWorkspaceOnboardingPage() {
           Select the workspace type and confirm a quote before creating the new workspace under your account.
         </p>
       </div>
-      <CommercialRateCards authenticated continueBasePath="/register" />
+      <CommercialRateCards authenticated continueBasePath="/register" workspaceOnboarding />
     </main>
   );
 }

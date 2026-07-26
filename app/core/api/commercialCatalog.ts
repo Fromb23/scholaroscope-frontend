@@ -7,9 +7,15 @@ import type {
 
 const QUOTE_STORAGE_PREFIX = 'commercial_quote:';
 
+export interface CommercialCatalogRequestOptions {
+  context?: 'workspace_onboarding';
+}
+
 export const commercialCatalogAPI = {
-  getCatalog: async (): Promise<CommercialCatalog> => {
-    const response = await apiClient.get<CommercialCatalog>('/subscriptions/catalog/');
+  getCatalog: async (options: CommercialCatalogRequestOptions = {}): Promise<CommercialCatalog> => {
+    const response = await apiClient.get<CommercialCatalog>('/subscriptions/catalog/', {
+      params: options.context ? { context: options.context } : undefined,
+    });
     return response.data;
   },
 

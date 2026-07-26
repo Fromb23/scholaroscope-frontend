@@ -18,6 +18,9 @@ interface CommercialQuoteSummaryProps {
   billingPeriodLabel: string;
   authenticated?: boolean;
   disabled?: boolean;
+  headingId?: string;
+  className?: string;
+  onChangeWorkspace?: () => void;
   onQuote: () => void;
   onContinue: () => void;
 }
@@ -39,6 +42,9 @@ export function CommercialQuoteSummary({
   billingPeriodLabel,
   authenticated = false,
   disabled = false,
+  headingId = 'commercial-quote-summary-heading',
+  className = '',
+  onChangeWorkspace,
   onQuote,
   onContinue,
 }: CommercialQuoteSummaryProps) {
@@ -51,9 +57,9 @@ export function CommercialQuoteSummary({
       : 'Confirm price and continue';
 
   return (
-    <aside className="sticky top-24 rounded-xl border p-5 shadow-sm theme-card">
+    <aside className={`sticky top-24 rounded-xl border p-5 shadow-sm theme-card ${className}`}>
       <div className="border-b pb-4 theme-border">
-        <p className="text-sm font-semibold theme-text">Quote summary</p>
+        <h2 id={headingId} className="text-sm font-semibold theme-text">Quote summary</h2>
         <p className="theme-subtle mt-1 text-xs">Scholaroscope confirms the final price before registration.</p>
       </div>
 
@@ -152,6 +158,17 @@ export function CommercialQuoteSummary({
             onClick={onQuote}
           >
             Refresh quote
+          </Button>
+        ) : null}
+        {onChangeWorkspace ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            disabled={loading}
+            onClick={onChangeWorkspace}
+          >
+            Change workspace
           </Button>
         ) : null}
       </div>

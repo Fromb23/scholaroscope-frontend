@@ -229,4 +229,28 @@ describe('commercial onboarding contract', () => {
     expect(headerSource).toContain("router.push('/workspaces/new')");
     expect(headerSource).not.toContain("router.push('/register?mode=new_workspace')");
   });
+
+  it('limits workspace onboarding to the canonical freelance workspace key without changing the public catalog flow', () => {
+    expect(commercialWorkspaceOnboardingSource).toContain('workspaceOnboarding');
+    expect(commercialSource).toContain("SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY: OrgType = 'PERSONAL'");
+    expect(commercialSource).toContain('item.key === SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY');
+    expect(commercialSource).not.toContain("item.name === 'Freelance Teacher Workspace'");
+    expect(commercialApiSource).toContain("context?: 'workspace_onboarding'");
+    expect(commercialApiSource).toContain("params: options.context ? { context: options.context } : undefined");
+  });
+
+  it('activates quote review after onboarding workspace selection without scroll/focus timeouts', () => {
+    expect(commercialSource).toContain("type OnboardingActiveStage = 'selection' | 'summary'");
+    expect(commercialSource).toContain("setActiveStage('summary')");
+    expect(commercialSource).toContain("void requestQuote({");
+    expect(commercialSource).toContain("commercial_mode: selectedMode");
+    expect(commercialSource).toContain('activeQuoteRequestRef');
+    expect(commercialSource).toContain('quoteSummaryFocusRef');
+    expect(commercialSource).toContain("target.scrollIntoView({ block: 'start', behavior: 'smooth' })");
+    expect(commercialSource).toContain('target.focus({ preventScroll: true })');
+    expect(commercialSource).toContain('aria-live="polite"');
+    expect(commercialSource).toContain('returnToSelection');
+    expect(commercialSource).not.toContain('setTimeout');
+    expect(commercialSummarySource).toContain('Change workspace');
+  });
 });
