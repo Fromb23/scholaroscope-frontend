@@ -40,3 +40,8 @@ export function readStoredCommercialQuote(token: string | null): CommercialQuote
     return null;
   }
 }
+
+export function clearStoredCommercialQuote(token: string | null): void {
+  if (typeof window === 'undefined' || !token) return;
+  window.sessionStorage.removeItem(`${QUOTE_STORAGE_PREFIX}${token}`);
+}

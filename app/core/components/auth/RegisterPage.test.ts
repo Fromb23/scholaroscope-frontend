@@ -10,6 +10,10 @@ const hookSource = readFileSync(
   join(process.cwd(), 'app/core/hooks/useRegister.ts'),
   'utf8',
 );
+const provisioningApiSource = readFileSync(
+  join(process.cwd(), 'app/core/api/workspaceProvisioning.ts'),
+  'utf8',
+);
 
 describe('RegisterPage form validation feedback', () => {
   it('renders a validation summary and focuses invalid account/workspace fields', () => {
@@ -56,8 +60,18 @@ describe('RegisterPage form validation feedback', () => {
     expect(hookSource).toContain('CommercialOnboardingCompletionOperation');
     expect(hookSource).toContain("REGISTER_INITIAL_WORKSPACE");
     expect(hookSource).toContain("CREATE_ADDITIONAL_WORKSPACE");
-    expect(hookSource).toContain('isCommercialWorkspaceFlow && user');
+    expect(hookSource).toContain('operationForCurrentAuthState');
+    expect(hookSource).toContain('setLockedCompletionOperation');
     expect(hookSource).not.toContain("mode === 'new_workspace'");
     expect(pageSource).toContain('Checking account state...');
+  });
+
+  it('routes additional workspace creation through authenticated provisioning and canonical switching', () => {
+    expect(hookSource).toContain('workspaceProvisioningAPI.createWorkspace');
+    expect(provisioningApiSource).toContain("'/workspace-provisioning/workspaces/'");
+    expect(hookSource).not.toContain('completion_operation: completionOperation,\\n                    });\\n                    const newOrganizationId');
+    expect(hookSource).toContain('await switchOrg(newOrganizationId)');
+    expect(hookSource).toContain('handleOpenCreatedWorkspace');
+    expect(pageSource).toContain('handleOpenExistingPersonalWorkspace');
   });
 });

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { authAPI } from '@/app/core/api/auth';
-import { readStoredCommercialQuote } from '@/app/core/api/commercialCatalog';
+import { clearStoredCommercialQuote, readStoredCommercialQuote } from '@/app/core/api/commercialCatalog';
+import { workspaceProvisioningAPI } from '@/app/core/api/workspaceProvisioning';
 import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvites';
 import { ENABLE_MULTI_WORKSPACE_SIGNUP } from '@/app/core/lib/workspaces';
 import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
@@ -70,6 +71,7 @@ export function useRegister() {
         login,
         logout,
         register: ctxRegister,
+        switchOrg,
         restoreWorkspace,
         memberships,
     } = useAuth();
@@ -81,17 +83,25 @@ export function useRegister() {
     const isInviteFlow = !!inviteToken;
     const isSuspendedRecovery = reason === 'suspended';
     const isCommercialWorkspaceFlow = !isInviteFlow && !isSuspendedRecovery;
+    const authResolved = !isCommercialWorkspaceFlow || !authLoading;
+    const operationForCurrentAuthState: CommercialOnboardingCompletionOperation = user
+        ? CREATE_ADDITIONAL_WORKSPACE
+        : REGISTER_INITIAL_WORKSPACE;
+    const [lockedCompletionOperation, setLockedCompletionOperation] = useState<CommercialOnboardingCompletionOperation | null>(null);
+    const [operationStateChanged, setOperationStateChanged] = useState(false);
     const completionOperation: CommercialOnboardingCompletionOperation = (
-        isCommercialWorkspaceFlow && user
-            ? CREATE_ADDITIONAL_WORKSPACE
+        isCommercialWorkspaceFlow
+            ? lockedCompletionOperation ?? operationForCurrentAuthState
             : REGISTER_INITIAL_WORKSPACE
     );
     const isNewWorkspaceFlow = (
         isCommercialWorkspaceFlow
+        && authResolved
         && completionOperation === CREATE_ADDITIONAL_WORKSPACE
     );
     const isDirectSignupFlow = (
         isCommercialWorkspaceFlow
+        && authResolved
         && completionOperation === REGISTER_INITIAL_WORKSPACE
     );
 
@@ -117,6 +127,9 @@ export function useRegister() {
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState<AppError | null>(null);
     const [success, setSuccess] = useState(false);
+    const [createdWorkspace, setCreatedWorkspace] = useState<{ id: number; name: string } | null>(null);
+    const idempotencyKeyRef = useRef<string | null>(null);
+    const idempotencyScopeRef = useRef<string | null>(null);
     const hasPersonalWorkspace = memberships.some(
         (membership) => membership.organization.org_type === 'PERSONAL'
     );
@@ -129,6 +142,30 @@ export function useRegister() {
         }
         setCommercialQuote(readStoredCommercialQuote(quoteToken));
     }, [quoteToken]);
+
+    useEffect(() => {
+        if (!authResolved || !isCommercialWorkspaceFlow) return;
+        setLockedCompletionOperation((current) => {
+            if (!current) return operationForCurrentAuthState;
+            if (current !== operationForCurrentAuthState) {
+                setOperationStateChanged(true);
+                setApiError(makeRegisterError(
+                    'Account state changed.',
+                    'Your sign-in state changed while this setup page was open. Restart setup so the correct workspace path is used.',
+                    'authentication',
+                ));
+            }
+            return current;
+        });
+    }, [authResolved, isCommercialWorkspaceFlow, operationForCurrentAuthState]);
+
+    useEffect(() => {
+        const scope = `${quoteToken ?? ''}:${completionOperation}`;
+        if (idempotencyScopeRef.current !== scope) {
+            idempotencyScopeRef.current = scope;
+            idempotencyKeyRef.current = null;
+        }
+    }, [completionOperation, quoteToken]);
 
     useEffect(() => {
         if (isInviteFlow || quoteToken) return;
@@ -179,6 +216,24 @@ export function useRegister() {
         }
     };
 
+    const getSubmissionIdempotencyKey = () => {
+        if (!idempotencyKeyRef.current) {
+            idempotencyKeyRef.current = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
+        return idempotencyKeyRef.current;
+    };
+
+    const resetSubmissionIdempotencyKey = () => {
+        idempotencyKeyRef.current = null;
+    };
+
+    const quoteSupportsOperation = () => {
+        if (!commercialQuote?.available_completion_operations?.length) return true;
+        return commercialQuote.available_completion_operations.includes(completionOperation);
+    };
+
     const validate = (): FormFieldErrors<RegisterField> => {
         const e: RegisterFieldErrors = {};
 
@@ -214,6 +269,30 @@ export function useRegister() {
     };
 
     const handleSubmit = async () => {
+        if (!authResolved) {
+            setApiError(makeRegisterError(
+                'Checking account state.',
+                'Wait for account restoration to finish before continuing.',
+                'authentication',
+            ));
+            return;
+        }
+        if (operationStateChanged) {
+            setApiError(makeRegisterError(
+                'Restart workspace setup.',
+                'Your sign-in state changed while this setup page was open. Restart setup so the correct workspace path is used.',
+                'authentication',
+            ));
+            return;
+        }
+        if (isCommercialWorkspaceFlow && !quoteSupportsOperation()) {
+            setApiError(makeRegisterError(
+                'This quote cannot be used for this step.',
+                'Return to the rate card and create a quote for the current workspace setup step.',
+                'validation',
+            ));
+            return;
+        }
         const validationErrors = validate();
         setFieldErrors(validationErrors);
         if (hasFormFieldErrors(validationErrors)) {
@@ -237,10 +316,50 @@ export function useRegister() {
                     ));
                     return;
                 }
+                if (isNewWorkspaceFlow) {
+                    const res = await workspaceProvisioningAPI.createWorkspace({
+                        workspace_name: form.workspace_name,
+                        quote_token: quoteToken,
+                        idempotency_key: getSubmissionIdempotencyKey(),
+                    });
+                    const newOrganizationId = res.organization?.id;
+                    if (!newOrganizationId) {
+                        setApiError(makeRegisterError(
+                            'Workspace was created but could not be opened.',
+                            'The server did not return the new workspace ID. Use the workspace selector, or contact platform support if it does not appear.',
+                        ));
+                        return;
+                    }
+                    setCreatedWorkspace({
+                        id: newOrganizationId,
+                        name: res.organization.name,
+                    });
+                    try {
+                        await switchOrg(newOrganizationId);
+                    } catch (switchError: unknown) {
+                        const switchAppError = resolveWorkspaceError(switchError, {
+                            action: 'switch',
+                            entityLabel: 'new freelance workspace',
+                        });
+                        setApiError({
+                            ...switchAppError,
+                            title: 'Workspace was created but could not be opened.',
+                            message: 'The freelance workspace was created. We could not switch into it automatically. Retry opening it, or use the workspace selector.',
+                            actionLabel: 'Open workspace',
+                            retryable: true,
+                        });
+                        return;
+                    }
+                    clearStoredCommercialQuote(quoteToken);
+                    resetSubmissionIdempotencyKey();
+                    setSuccess(true);
+                    router.replace('/dashboard');
+                    return;
+                }
                 const res = await ctxRegister({
                     workspace_name: form.workspace_name,
                     quote_token: quoteToken,
-                    idempotency_key: quoteToken,
+                    idempotency_key: getSubmissionIdempotencyKey(),
                     completion_operation: completionOperation,
                 });
                 if (!res.organization) {
@@ -310,7 +429,7 @@ export function useRegister() {
                 workspace_name: form.workspace_name,
                 org_type: form.org_type,
                 quote_token: quoteToken,
-                idempotency_key: quoteToken,
+                idempotency_key: getSubmissionIdempotencyKey(),
                 completion_operation: completionOperation,
             });
 
@@ -327,10 +446,14 @@ export function useRegister() {
                     message: res.message ?? 'Check your email to activate your Freelance Teacher Workspace.',
                 });
                 setSuccess(true);
+                clearStoredCommercialQuote(quoteToken);
+                resetSubmissionIdempotencyKey();
                 return;
             }
 
             setSuccess(true);
+            clearStoredCommercialQuote(quoteToken);
+            resetSubmissionIdempotencyKey();
             setTimeout(() => router.replace('/dashboard'), 1500);
 
         } catch (err: unknown) {
@@ -362,6 +485,59 @@ export function useRegister() {
                 }
             }
             setApiError(appError);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleOpenCreatedWorkspace = async () => {
+        if (!createdWorkspace) return;
+        setSubmitting(true);
+        setApiError(null);
+        try {
+            await switchOrg(createdWorkspace.id);
+            clearStoredCommercialQuote(quoteToken);
+            resetSubmissionIdempotencyKey();
+            setSuccess(true);
+            router.replace('/dashboard');
+        } catch (err: unknown) {
+            const switchAppError = resolveWorkspaceError(err, {
+                action: 'switch',
+                entityLabel: 'new freelance workspace',
+            });
+            setApiError({
+                ...switchAppError,
+                title: 'Workspace was created but could not be opened.',
+                message: 'The freelance workspace was created. We could not switch into it automatically. Retry opening it, or use the workspace selector.',
+                actionLabel: 'Open workspace',
+                retryable: true,
+            });
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleOpenExistingPersonalWorkspace = async () => {
+        const existingWorkspace = apiError?.serverContext?.existing_workspace;
+        const existingWorkspaceId = (
+            existingWorkspace
+            && typeof existingWorkspace === 'object'
+            && 'id' in existingWorkspace
+            && typeof existingWorkspace.id === 'number'
+        ) ? existingWorkspace.id : null;
+        if (!existingWorkspaceId) {
+            router.push('/dashboard');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await switchOrg(existingWorkspaceId);
+            router.replace('/dashboard');
+        } catch (err: unknown) {
+            setApiError(resolveWorkspaceError(err, {
+                action: 'switch',
+                entityLabel: 'existing freelance workspace',
+            }));
         } finally {
             setSubmitting(false);
         }
@@ -399,6 +575,9 @@ export function useRegister() {
         formValidationError,
         submitting, apiError, setApiError, success,
         handleSubmit, handleRestore, handleLogout, isPending,
+        handleOpenCreatedWorkspace,
+        handleOpenExistingPersonalWorkspace,
+        createdWorkspace,
         isDirectSignupFlow,
         completionOperation,
         authLoading,

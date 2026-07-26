@@ -64,6 +64,86 @@ export const ERROR_CODE_COPY: Record<string, ErrorCodeCopyEntry> = {
     retryable: false,
     severity: 'warning',
   },
+  commercial_quote_consumed: {
+    kind: 'setup_required',
+    title: 'This quote has already been used.',
+    message:
+      'Return to the rate card and request a new quote before continuing.',
+    actionLabel: 'Request new quote',
+    retryable: false,
+    severity: 'warning',
+  },
+  commercial_quote_operation_invalid: {
+    kind: 'validation',
+    title: 'This quote cannot be used for this step.',
+    message:
+      'Return to the rate card and start this workspace step again.',
+    actionLabel: 'Review quote',
+    retryable: false,
+    severity: 'warning',
+  },
+  commercial_completion_operation_invalid: {
+    kind: 'validation',
+    title: 'This workspace step does not match your account state.',
+    message:
+      'Start the workspace setup again so Scholaroscope can use the correct account path.',
+    actionLabel: 'Restart setup',
+    retryable: false,
+    severity: 'warning',
+  },
+  personal_workspace_exists: {
+    kind: 'workspace_boundary',
+    title: 'You already have a freelance workspace.',
+    message:
+      'You already have a freelance workspace. Open your existing workspace instead.',
+    actionLabel: 'Open workspace',
+    retryable: false,
+    severity: 'warning',
+  },
+  workspace_name_taken: {
+    kind: 'validation',
+    title: 'Workspace name is already taken.',
+    message:
+      'Choose a different workspace name and try again.',
+    retryable: false,
+    severity: 'warning',
+  },
+  email_already_exists: {
+    kind: 'conflict',
+    title: 'An account already exists for this email.',
+    message:
+      'Sign in with that account or use a different email address.',
+    actionLabel: 'Sign in',
+    retryable: false,
+    severity: 'warning',
+  },
+  email_delivery_failed: {
+    kind: 'server',
+    title: 'Verification email could not be sent.',
+    message:
+      'Your account setup may have completed, but the verification email could not be sent. Use resend verification or try again shortly.',
+    actionLabel: 'Resend verification',
+    retryable: true,
+    severity: 'warning',
+  },
+  email_verification_dispatch_failed: {
+    kind: 'server',
+    title: 'Verification email could not be queued.',
+    message:
+      'Your account and workspace were created, but the verification email could not be queued. Use resend verification or try again shortly.',
+    actionLabel: 'Resend verification',
+    retryable: true,
+    severity: 'warning',
+  },
+  provisioning_failed: {
+    kind: 'server',
+    title: 'Workspace could not be created.',
+    message:
+      'The workspace request could not be completed. Try again later, or contact platform support if it continues.',
+    actionLabel: 'Try again',
+    retryable: true,
+    severity: 'error',
+  },
   workspace_provisioning_failed: {
     kind: 'server',
     title: 'Workspace could not be created.',

@@ -98,6 +98,9 @@ function RegisterForm() {
     handleSubmit,
     handleRestore,
     handleLogout,
+    handleOpenCreatedWorkspace,
+    handleOpenExistingPersonalWorkspace,
+    createdWorkspace,
     isPending,
     hasPersonalWorkspace,
     quoteToken,
@@ -139,6 +142,11 @@ function RegisterForm() {
   }, [fieldErrors, focusFirstError, formValidationError]);
 
   const hasVisibleFieldErrors = hasFormFieldErrors(fieldErrors);
+  const apiErrorAction = apiError?.serverCode === 'personal_workspace_exists'
+    ? handleOpenExistingPersonalWorkspace
+    : createdWorkspace
+      ? handleOpenCreatedWorkspace
+      : undefined;
 
   if (inviteLoading) {
     return (
@@ -292,7 +300,11 @@ function RegisterForm() {
 
             {apiError && (
               <div className="mb-4">
-                <AppErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
+                <AppErrorBanner
+                  error={apiError}
+                  onDismiss={() => setApiError(null)}
+                  onAction={apiErrorAction}
+                />
               </div>
             )}
 
@@ -521,7 +533,11 @@ function RegisterForm() {
 
           {apiError && (
             <div className="mb-4">
-              <AppErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
+              <AppErrorBanner
+                error={apiError}
+                onDismiss={() => setApiError(null)}
+                onAction={apiErrorAction}
+              />
             </div>
           )}
 

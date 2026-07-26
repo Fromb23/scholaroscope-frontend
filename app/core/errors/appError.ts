@@ -21,6 +21,7 @@ export interface AppError {
   title: string;
   message: string;
   fieldErrors?: Record<string, string[]>;
+  serverContext?: Record<string, unknown>;
   retryable: boolean;
   severity: AppErrorSeverity;
   channel?: ErrorChannel;

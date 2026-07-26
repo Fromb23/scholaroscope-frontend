@@ -70,6 +70,11 @@ function getSupportCode(data: unknown): string | undefined {
     : undefined;
 }
 
+function getServerContext(data: unknown): Record<string, unknown> | undefined {
+  const nested = getNestedError(data);
+  return isRecord(nested?.context) ? nested.context : undefined;
+}
+
 function getServerMessage(data: unknown, err: unknown): string | undefined {
   const nested = getNestedError(data);
   if (typeof data === 'string') return data;
@@ -161,6 +166,7 @@ export function resolveAppError(err: unknown, context: ResolveAppErrorContext): 
     title: registryCopy?.title ?? titleForKind(kind, context),
     message,
     fieldErrors: hasFieldErrors ? fieldErrors : undefined,
+    serverContext: getServerContext(data),
     retryable: registryCopy?.retryable ?? isRetryable(kind, context),
     severity: registryCopy?.severity ?? severityForKind(kind),
     actionLabel: registryCopy?.actionLabel ?? actionLabelForKind(kind, context),
