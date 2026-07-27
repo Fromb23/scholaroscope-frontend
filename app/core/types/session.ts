@@ -116,6 +116,7 @@ export interface Session {
   lesson_plan_id: number | null;
   lesson_plan_title: string | null;
   lesson_plan_status: string | null;
+  scheme_entry?: number | null;
   planned_outcomes: PlannedOutcome[];
   taught_outcomes: PlannedOutcome[];
   is_unplanned: boolean;
@@ -245,6 +246,7 @@ export interface LearnerSessionDetail {
   description: string;
   venue: string;
   is_unplanned: boolean;
+  scheme_entry?: number | null;
   status: string;
   attendance_records: LearnerAttendanceRecord[];
   created_at: string;
@@ -776,6 +778,7 @@ export interface SessionFormData {
   venue: string;
   auto_create_attendance: boolean;
   is_unplanned?: boolean;
+  scheme_entry?: number | null;
   practical_context?: SessionPracticalContext;
 }
 

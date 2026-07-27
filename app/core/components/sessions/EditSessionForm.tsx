@@ -19,6 +19,8 @@ import {
 } from '@/app/core/forms';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useSessions } from '@/app/core/hooks/useSessions';
+import { useSchemeEntryOptions } from '@/app/core/hooks/useInstitutionalRevenue';
+import { Select } from '@/app/components/ui/Select';
 import {
     validateSessionEditForm,
     type SessionEditField,
@@ -46,7 +48,12 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
         title: session.title ?? '',
         description: session.description ?? '',
         venue: session.venue ?? '',
+        scheme_entry: session.scheme_entry ?? null,
     });
+    const { options: schemeEntryOptions, loading: loadingSchemeEntries } = useSchemeEntryOptions(
+        session.cohort_subject,
+        session.term,
+    );
     const [errors, setErrors] = useState<FormFieldErrors<SessionEditField>>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -68,10 +75,14 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
             title: session.title ?? '',
             description: session.description ?? '',
             venue: session.venue ?? '',
+            scheme_entry: session.scheme_entry ?? null,
         });
-    }, [session.description, session.id, session.title, session.venue]);
+    }, [session.description, session.id, session.scheme_entry, session.title, session.venue]);
 
-    const handleChange = (field: keyof SessionEditFormState, value: string) => {
+    const handleChange = <K extends keyof SessionEditFormState>(
+        field: K,
+        value: SessionEditFormState[K],
+    ) => {
         setFormData((current) => ({ ...current, [field]: value }));
         setErrors((current) => {
             const next = { ...current };
@@ -97,6 +108,7 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
                 title: formData.title,
                 description: formData.description,
                 venue: formData.venue,
+                scheme_entry: formData.scheme_entry,
             });
             router.push(`/sessions/${session.id}`);
         } catch (err) {
@@ -200,6 +212,29 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
                             placeholder="Lesson notes, venue details, or brief context..."
                         />
                     </div>
+
+                    <Select
+                        label="Scheme implementation"
+                        value={formData.scheme_entry?.toString() ?? ''}
+                        onChange={(event) => handleChange('scheme_entry', event.target.value ? Number(event.target.value) : null)}
+                        disabled={!session.cohort_subject || !session.term || loadingSchemeEntries}
+                        optional
+                        helperText="Link this session to the exact scheme entry it implements."
+                        options={[
+                            {
+                                value: '',
+                                label: !session.cohort_subject || !session.term
+                                    ? 'Session needs a subject and term first'
+                                    : loadingSchemeEntries
+                                        ? 'Loading scheme entries...'
+                                        : 'No scheme entry linked',
+                            },
+                            ...schemeEntryOptions.map((option) => ({
+                                value: option.id,
+                                label: option.label,
+                            })),
+                        ]}
+                    />
                 </div>
             </Card>
 

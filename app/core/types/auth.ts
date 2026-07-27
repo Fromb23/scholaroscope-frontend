@@ -69,9 +69,23 @@ export interface WorkspaceCapabilities {
   can_manage_announcements?: boolean;
   can_manage_references?: boolean;
   can_approve_references?: boolean;
+  can_view_revenue_program?: boolean;
+  can_manage_revenue_policy?: boolean;
+  can_manage_revenue_cycles?: boolean;
+  can_run_revenue_calculations?: boolean;
+  can_review_revenue_statements?: boolean;
+  can_approve_revenue_cycles?: boolean;
   is_workspace_owner: boolean;
   workspace_mode: string | null;
   workspace_behavior: string | null;
+  revenue?: {
+    can_view_program?: boolean;
+    can_manage_policy?: boolean;
+    can_manage_cycles?: boolean;
+    can_run_calculations?: boolean;
+    can_review_statements?: boolean;
+    can_approve_cycles?: boolean;
+  };
   can_manage_report_policy?: boolean;
   report_policy_mode?: 'INSTITUTION_GOVERNANCE' | 'CLASS_CONFIGURATION' | string | null;
   report_computation_class_scoped_only?: boolean;

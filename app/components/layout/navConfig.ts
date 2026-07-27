@@ -24,6 +24,7 @@ import {
   UserCog,
   Database,
   CalendarDays,
+  CircleDollarSign,
 } from 'lucide-react';
 import type { OrgType, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import {
@@ -120,6 +121,14 @@ export function getRoleColorScheme(role: Role, orgType?: OrgType | null): RoleCo
     return FREELANCER_WORKSPACE_COLORS;
   }
   return ROLE_COLORS[role] ?? ROLE_COLORS.ADMIN;
+}
+
+export function canViewRevenueProgram(capabilities?: WorkspaceCapabilities | null): boolean {
+  return Boolean(
+    capabilities?.can_view_revenue_program
+    || capabilities?.revenue?.can_view_program
+    || capabilities?.authorization?.permission_keys.includes('revenue.program.view')
+  );
 }
 
 // ── Role icon lookup ──────────────────────────────────────────────────────
@@ -435,6 +444,9 @@ export function getAdminNav(
         ],
       },
       ...getPluginNavigationItems('admin.primary.afterAssessments', pluginContext),
+      ...(canViewRevenueProgram(capabilities)
+        ? [{ name: 'Revenue cycle', href: '/revenue', icon: CircleDollarSign }]
+        : []),
       {
         name: 'Reports',
         shortName: 'Reports',

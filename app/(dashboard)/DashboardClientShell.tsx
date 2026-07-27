@@ -27,7 +27,7 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
 import { useNavBadges } from '@/app/core/registry/navBadges';
-import { resolveNavConfig, type NavigationConfig } from '@/app/components/layout/navConfig';
+import { canViewRevenueProgram, resolveNavConfig, type NavigationConfig } from '@/app/components/layout/navConfig';
 import { RegistrySlotProvider } from '@/app/core/registry/slots';
 import { NavBadgeProvider } from '@/app/core/registry/navBadges';
 import { AssistantProvider } from '@/app/core/components/assistant/AssistantProvider';
@@ -68,6 +68,9 @@ function routeAllowedByCapabilities(pathname: string, capabilities: ReturnType<t
   }
   if (/^\/reports/.test(pathname)) {
     return capabilities.can_view_reports;
+  }
+  if (/^\/revenue/.test(pathname)) {
+    return canViewRevenueProgram(capabilities);
   }
   return true;
 }
