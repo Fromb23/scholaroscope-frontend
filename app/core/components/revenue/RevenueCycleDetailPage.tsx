@@ -105,7 +105,6 @@ export function RevenueCycleDetailPage({ cycleId }: { cycleId: string }) {
     loading,
     error,
     openCycle,
-    refreshRoster,
     runCalculation,
     markUnderReview,
     approveCycle,
@@ -148,7 +147,6 @@ export function RevenueCycleDetailPage({ cycleId }: { cycleId: string }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusAction label="Open Revenue cycle" enabled={canManageCycles && actions.canOpen} onClick={openCycle} />
-          <StatusAction label="Refresh roster projection" enabled={canManageCycles && cycle.status === 'OPEN'} onClick={refreshRoster} />
           <StatusAction label="Calculate" enabled={canCalculate && actions.canCalculate} onClick={() => runCalculation()} />
           <StatusAction
             label="Recalculate"
@@ -180,7 +178,7 @@ export function RevenueCycleDetailPage({ cycleId }: { cycleId: string }) {
           />
         </div>
         {cycle.status === 'CALCULATED' ? (
-          <p className="text-xs theme-muted">Recalculation is available before review begins and requires a reason.</p>
+          <p className="text-xs theme-muted">Recalculation keeps the learner roster frozen and requires a reason before review begins.</p>
         ) : null}
       </div>
 
@@ -221,6 +219,9 @@ export function RevenueCycleDetailPage({ cycleId }: { cycleId: string }) {
 
       <Card>
         <h2 className="text-lg font-semibold theme-text">Roster projection</h2>
+        <p className="mt-1 text-sm theme-muted">
+          Opening the cycle freezes the eligible learner roster. Later admissions, transfers and withdrawals affect later term cycles only.
+        </p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <p className="rounded-xl border theme-border p-3 text-sm">Included: {rosterCount(roster, 'INCLUDED') || cycle.projected_eligible_learner_count}</p>
           <p className="rounded-xl border theme-border p-3 text-sm">Excluded: {rosterCount(roster, 'EXCLUDED')}</p>

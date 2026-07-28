@@ -83,7 +83,12 @@ export interface InstitutionRevenueCycle {
 }
 
 export interface RevenueCycleOverview {
-  overview_state: 'NO_CURRENT_TERM' | 'CURRENT_TERM_WITHOUT_CYCLE' | 'CURRENT_TERM_WITH_CYCLE';
+  overview_state:
+    | 'NO_CURRENT_TERM'
+    | 'CURRENT_TERM_WITHOUT_CYCLE'
+    | 'CURRENT_TERM_WITH_CYCLE'
+    | 'EXPLICIT_TERM_WITHOUT_CYCLE'
+    | 'EXPLICIT_TERM_WITH_CYCLE';
   current_term: RevenueOverviewTerm | null;
   active_revenue_cycle: InstitutionRevenueCycle | null;
   cycle_status?: RevenueCycleStatus;
@@ -131,6 +136,8 @@ export interface TeacherContributionStatement {
   id: string;
   cycle: string;
   calculation_run: string;
+  cycle_status?: RevenueCycleStatus;
+  is_current_run_statement?: boolean;
   teacher: number;
   teacher_name?: string | null;
   active_assignment_count: number;

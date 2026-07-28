@@ -108,4 +108,13 @@ describe('route access', () => {
     expect(canAccess('/reports/instructors', 'INSTRUCTOR')).toBe(false);
     expect(getUnauthorizedRouteFallback('INSTRUCTOR', '/reports/instructors')).toBe('/reports/instructor');
   });
+
+  it('does not hard-code revenue routes to ADMIN role', () => {
+    const matchedRule = getMatchedRule('/revenue');
+
+    expect(matchedRule).toBeDefined();
+    expect(matchedRule?.allowedRoles).toContain('ADMIN');
+    expect(matchedRule?.allowedRoles).toContain('INSTRUCTOR');
+    expect(canAccess('/revenue', 'INSTRUCTOR')).toBe(true);
+  });
 });
