@@ -40,7 +40,7 @@ import {
   usePluginRegistryStatus,
 } from '@/app/plugins/PluginRegistryProvider';
 import { AlertTriangle } from 'lucide-react';
-import type { AccessNotice, Role } from '@/app/core/types/auth';
+import type { AccessNotice, OrgType, Role } from '@/app/core/types/auth';
 import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
@@ -50,7 +50,11 @@ import { WorkspaceGenerationBoundary } from '@/app/core/runtime/workspaceGenerat
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
 
-function routeAllowedByCapabilities(pathname: string, capabilities: ReturnType<typeof useAuth>['capabilities']): boolean {
+function routeAllowedByCapabilities(
+  pathname: string,
+  capabilities: ReturnType<typeof useAuth>['capabilities'],
+  orgType?: OrgType | null,
+): boolean {
   if (/^\/announcements/.test(pathname)) {
     return canUseAnnouncements(capabilities);
   }
@@ -70,7 +74,7 @@ function routeAllowedByCapabilities(pathname: string, capabilities: ReturnType<t
     return capabilities.can_view_reports;
   }
   if (/^\/revenue/.test(pathname)) {
-    return canViewRevenueProgram(capabilities);
+    return canViewRevenueProgram(capabilities, orgType);
   }
   return true;
 }
@@ -258,7 +262,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (!routeAllowedByCapabilities(pathname, capabilities)) {
+    if (!routeAllowedByCapabilities(pathname, capabilities, activeOrg?.org_type ?? null)) {
       if (activeRole === 'ADMIN' && isAcademicSetupAdminPath(pathname)) {
         return;
       }

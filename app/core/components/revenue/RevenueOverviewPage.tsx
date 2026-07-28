@@ -8,7 +8,6 @@ import { Card } from '@/app/components/ui/Card';
 import { LoadingMessage } from '@/app/components/ui/loading';
 import { institutionalRevenueAPI } from '@/app/core/api/institutionalRevenue';
 import { useInstitutionalRevenueOverview } from '@/app/core/hooks/useInstitutionalRevenue';
-import { useAcademicLifecycleContext } from '@/app/core/hooks/useAcademic';
 import { formatDateTime, money, revenueCapability } from './RevenueFormat';
 import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
@@ -26,19 +25,19 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 export function RevenueOverviewPage() {
   const { capabilities } = useAuth();
   const { overview, cycles, policies, loading, error, refetch } = useInstitutionalRevenueOverview();
-  const academicLifecycle = useAcademicLifecycleContext({ enabled: true });
   const [actionError, setActionError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const canManageCycles = revenueCapability(capabilities, 'cycles');
   const canManagePolicy = revenueCapability(capabilities, 'policy');
   const activePolicy = policies.find((policy) => policy.status === 'ACTIVE') ?? null;
   const activeCycle = overview?.active_revenue_cycle ?? null;
-  const currentTerm = activeCycle
-    ? { id: activeCycle.academic_term, name: activeCycle.term_name ?? `Term ${activeCycle.academic_term}` }
-    : academicLifecycle.data?.current_term ?? academicLifecycle.data?.active_term ?? academicLifecycle.data?.term ?? null;
-  const blockerMessages = overview?.compliance_blocker_summary
-    ?? overview?.blockers?.map((blocker) => blocker.message)
-    ?? [];
+  const currentTerm = overview?.current_term ?? null;
+  const blockerMessages = (
+    overview?.compliance_blocker_summary?.length
+      ? overview.compliance_blocker_summary
+      : overview?.blockers ?? []
+  ).map((blocker) => blocker.message);
+  const balance = overview?.projected_balance_summary ?? activeCycle?.projected_balance_summary ?? null;
 
   const createCurrentCycle = async () => {
     if (!currentTerm?.id) return;
@@ -72,7 +71,7 @@ export function RevenueOverviewPage() {
               <Button variant="secondary"><Settings className="h-4 w-4" /> Policies</Button>
             </Link>
           ) : null}
-          {canManageCycles && currentTerm ? (
+          {canManageCycles && currentTerm && !activeCycle ? (
             <Button onClick={createCurrentCycle} disabled={creating}>
               <Calculator className="h-4 w-4" />
               {creating ? 'Creating...' : 'Create current Revenue cycle'}
@@ -108,9 +107,26 @@ export function RevenueOverviewPage() {
         <Metric label="Projected gross contribution" value={money(overview?.projected_gross_contribution ?? activeCycle?.projected_gross_contribution, activePolicy?.currency ?? 'KES')} />
         <Metric label="Eligible teacher count" value={overview?.eligible_teacher_count ?? 0} />
         <Metric label="Projected teacher contribution" value={money(overview?.projected_total_teacher_contribution, activePolicy?.currency ?? 'KES')} />
+        <Metric label="Projected balance" value={money(balance?.projected_balance, activePolicy?.currency ?? 'KES')} />
         <Metric label="Calculation run" value={formatDateTime(overview?.latest_calculation_timestamp)} />
         <Metric label="Current term" value={currentTerm?.name ?? 'No current term'} />
       </div>
+
+      {overview?.overview_state === 'NO_CURRENT_TERM' ? (
+        <Card className="border border-amber-200 bg-amber-50 text-sm text-amber-900">
+          No current academic term is active for this institution.
+        </Card>
+      ) : null}
+      {overview?.overview_state === 'CURRENT_TERM_WITHOUT_CYCLE' ? (
+        <Card className="border border-amber-200 bg-amber-50 text-sm text-amber-900">
+          The current term does not have a revenue cycle.
+        </Card>
+      ) : null}
+      {balance?.state === 'DEFICIT' ? (
+        <Card className="border border-amber-300 bg-amber-50 text-sm text-amber-900">
+          Projected deficit: teacher projections exceed projected learner contribution.
+        </Card>
+      ) : null}
 
       <Card>
         <div className="flex items-center justify-between gap-3">

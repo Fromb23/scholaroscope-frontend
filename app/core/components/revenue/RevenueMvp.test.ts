@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DEFAULT_REVENUE_TIERS, money, percent } from './RevenueFormat';
+import {
+  DEFAULT_REVENUE_TIERS,
+  blockersFrom,
+  money,
+  percent,
+  tierFromForm,
+  tierToForm,
+} from './RevenueFormat';
 
 function source(path: string): string {
   return readFileSync(join(process.cwd(), path), 'utf8');
@@ -13,13 +20,36 @@ describe('institutional revenue MVP frontend', () => {
     expect(percent('0.755')).toBe('75.5%');
   });
 
-  it('keeps default tier boundaries visible for policy management', () => {
-    expect(DEFAULT_REVENUE_TIERS.map((tier) => `${tier.lower_bound}-${tier.upper_bound}`)).toEqual([
-      '0.00-49.99',
-      '50.00-74.99',
-      '75.00-89.99',
-      '90.00-100.00',
+  it('keeps canonical 0-1 default tier boundaries at the API boundary', () => {
+    expect(DEFAULT_REVENUE_TIERS.map((tier) => `${tier.minimum_ratio}-${tier.maximum_ratio}`)).toEqual([
+      '0.0000-0.4999',
+      '0.5000-0.7499',
+      '0.7500-0.8999',
+      '0.9000-1.0000',
     ]);
+  });
+
+  it('converts 0-1 backend ratios to 0-100 form percentages and back', () => {
+    const form = tierToForm({
+      minimum_ratio: '0.5000',
+      maximum_ratio: '0.7499',
+      projected_amount: '3000.00',
+      label: 'Middle',
+    });
+    expect(form.minimum_percentage).toBe('50');
+    expect(form.maximum_percentage).toBe('74.99');
+    expect(tierFromForm(form)).toEqual({
+      minimum_ratio: '0.5000',
+      maximum_ratio: '0.7499',
+      projected_amount: '3000.00',
+      label: 'Middle',
+    });
+  });
+
+  it('normalizes structured blockers without rendering object strings', () => {
+    const blockers = blockersFrom([{ code: 'missing_required_assessment', message: 'Required finalized assessment components are missing.', details: {} }]);
+    expect(blockers[0].message).toBe('Required finalized assessment components are missing.');
+    expect(blockers.map((blocker) => blocker.message)).not.toContain('[object Object]');
   });
 
   it('uses required projected and governance terminology in revenue surfaces', () => {
@@ -60,5 +90,7 @@ describe('institutional revenue MVP frontend', () => {
     expect(editForm).toContain('Scheme implementation');
     expect(createForm).toContain('scheme_entry');
     expect(editForm).toContain('scheme_entry');
+    expect(createForm).toContain('teaching_assignment');
+    expect(editForm).toContain('teaching_assignment');
   });
 });

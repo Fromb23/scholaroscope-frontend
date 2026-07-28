@@ -58,7 +58,8 @@ function StatusAction({
 function nextActions(status: RevenueCycleStatus) {
   return {
     canOpen: status === 'DRAFT',
-    canCalculate: status === 'OPEN' || status === 'CALCULATED',
+    canCalculate: status === 'OPEN',
+    canRecalculate: status === 'CALCULATED',
     canReview: status === 'CALCULATED',
     canApprove: status === 'UNDER_REVIEW',
     canClose: status === 'APPROVED',
@@ -128,8 +129,14 @@ export function RevenueCycleDetailPage({ cycleId }: { cycleId: string }) {
   const blockers = [
     ...runs.flatMap((run) => blockersFrom(run.aggregate_projected_results)),
     ...statements.flatMap((statement) => blockersFrom(statement.assessment_compliance_result)),
+    ...statements.flatMap((statement) => blockersFrom(statement.calculation_details)),
   ];
-  const projectedTotalTeacherContribution = statements.reduce((total, statement) => total + Number(statement.projected_amount ?? 0), 0);
+  const projectedBalance = cycle.projected_balance_summary;
+  const projectedTotalTeacherContribution = projectedBalance.projected_total_teacher_contribution;
+  const requireReason = (label: string): string | null => {
+    const reason = window.prompt(`${label} reason`);
+    return reason && reason.trim() ? reason.trim() : null;
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -142,11 +149,39 @@ export function RevenueCycleDetailPage({ cycleId }: { cycleId: string }) {
         <div className="flex flex-wrap gap-2">
           <StatusAction label="Open Revenue cycle" enabled={canManageCycles && actions.canOpen} onClick={openCycle} />
           <StatusAction label="Refresh roster projection" enabled={canManageCycles && cycle.status === 'OPEN'} onClick={refreshRoster} />
-          <StatusAction label="Run Calculation run" enabled={canCalculate && actions.canCalculate} onClick={runCalculation} />
+          <StatusAction label="Calculate" enabled={canCalculate && actions.canCalculate} onClick={() => runCalculation()} />
+          <StatusAction
+            label="Recalculate"
+            enabled={canCalculate && actions.canRecalculate}
+            onClick={async () => {
+              const reason = requireReason('Recalculation');
+              if (!reason) return;
+              await runCalculation(reason);
+            }}
+          />
           <StatusAction label="Move under review" enabled={canManageCycles && actions.canReview} onClick={markUnderReview} />
-          <StatusAction label="Approve Revenue cycle" enabled={canApprove && actions.canApprove} onClick={approveCycle} />
-          <StatusAction label="Close Revenue cycle" enabled={canApprove && actions.canClose} onClick={closeCycle} />
+          <StatusAction
+            label="Approve Revenue cycle"
+            enabled={canApprove && actions.canApprove}
+            onClick={async () => {
+              const reason = requireReason('Approval');
+              if (!reason) return;
+              await approveCycle(reason);
+            }}
+          />
+          <StatusAction
+            label="Close Revenue cycle"
+            enabled={canApprove && actions.canClose}
+            onClick={async () => {
+              const reason = requireReason('Closure');
+              if (!reason) return;
+              await closeCycle(reason);
+            }}
+          />
         </div>
+        {cycle.status === 'CALCULATED' ? (
+          <p className="text-xs theme-muted">Recalculation is available before review begins and requires a reason.</p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -165,6 +200,15 @@ export function RevenueCycleDetailPage({ cycleId }: { cycleId: string }) {
         <Card>
           <p className="text-xs font-medium uppercase theme-subtle">Projected teacher contribution</p>
           <p className="mt-2 text-2xl font-semibold theme-text">{money(projectedTotalTeacherContribution)}</p>
+        </Card>
+        <Card className={projectedBalance.state === 'DEFICIT' ? 'border border-amber-300 bg-amber-50' : undefined}>
+          <p className="text-xs font-medium uppercase theme-subtle">Projected balance</p>
+          <p className="mt-2 text-2xl font-semibold theme-text">{money(projectedBalance.projected_balance)}</p>
+          {projectedBalance.state === 'DEFICIT' ? (
+            <p className="mt-1 text-xs text-amber-800">Projected deficit: teacher projections exceed projected learner contribution.</p>
+          ) : (
+            <p className="mt-1 text-xs theme-muted">{projectedBalance.state}</p>
+          )}
         </Card>
       </div>
 
@@ -189,9 +233,9 @@ export function RevenueCycleDetailPage({ cycleId }: { cycleId: string }) {
         <div className="mt-3 space-y-2">
           {blockers.length === 0 ? (
             <p className="text-sm theme-muted">No blockers returned.</p>
-          ) : Array.from(new Set(blockers)).map((blocker) => (
-            <p key={blocker} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              {blocker}
+          ) : Array.from(new Map(blockers.map((blocker) => [blocker.code, blocker])).values()).map((blocker) => (
+            <p key={blocker.code} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {blocker.message}
             </p>
           ))}
         </div>

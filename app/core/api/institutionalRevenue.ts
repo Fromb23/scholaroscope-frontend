@@ -63,8 +63,11 @@ export const institutionalRevenueAPI = {
     const response = await apiClient.post<RosterProjectionSummary>(`/revenue/cycles/${cycleId}/roster-projection/`);
     return response.data;
   },
-  runCalculation: async (cycleId: string): Promise<InstitutionRevenueCalculationRun> => {
-    const response = await apiClient.post<InstitutionRevenueCalculationRun>(`/revenue/cycles/${cycleId}/run-calculation/`);
+  runCalculation: async (cycleId: string, reason?: string): Promise<InstitutionRevenueCalculationRun> => {
+    const response = await apiClient.post<InstitutionRevenueCalculationRun>(
+      `/revenue/cycles/${cycleId}/run-calculation/`,
+      { reason: reason ?? '' },
+    );
     return response.data;
   },
   listCalculationRuns: async (cycleId: string): Promise<InstitutionRevenueCalculationRun[]> => {
@@ -94,12 +97,18 @@ export const institutionalRevenueAPI = {
     const response = await apiClient.post<InstitutionRevenueCycle>(`/revenue/cycles/${cycleId}/under-review/`);
     return response.data;
   },
-  approveCycle: async (cycleId: string): Promise<InstitutionRevenueCycle> => {
-    const response = await apiClient.post<InstitutionRevenueCycle>(`/revenue/cycles/${cycleId}/approve/`);
+  approveCycle: async (cycleId: string, reason: string): Promise<InstitutionRevenueCycle> => {
+    const response = await apiClient.post<InstitutionRevenueCycle>(
+      `/revenue/cycles/${cycleId}/approve/`,
+      { reason },
+    );
     return response.data;
   },
-  closeCycle: async (cycleId: string): Promise<InstitutionRevenueCycle> => {
-    const response = await apiClient.post<InstitutionRevenueCycle>(`/revenue/cycles/${cycleId}/close/`);
+  closeCycle: async (cycleId: string, reason: string): Promise<InstitutionRevenueCycle> => {
+    const response = await apiClient.post<InstitutionRevenueCycle>(
+      `/revenue/cycles/${cycleId}/close/`,
+      { reason },
+    );
     return response.data;
   },
   listSchemeEntryOptions: async (params: { cohort_subject?: number | null; term?: number | null }): Promise<SchemeEntryOption[]> => {

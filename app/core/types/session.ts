@@ -113,6 +113,9 @@ export interface Session {
   created_by_id?: number | null;
   created_by_name?: string | null;
   created_by_email?: string | null;
+  teaching_assignment?: number | null;
+  teaching_assignment_teacher_id?: number | null;
+  teaching_assignment_teacher_name?: string | null;
   lesson_plan_id: number | null;
   lesson_plan_title: string | null;
   lesson_plan_status: string | null;
@@ -779,7 +782,18 @@ export interface SessionFormData {
   auto_create_attendance: boolean;
   is_unplanned?: boolean;
   scheme_entry?: number | null;
+  teaching_assignment?: number | null;
   practical_context?: SessionPracticalContext;
+}
+
+export interface SessionTeachingAssignmentOption {
+  id: number;
+  teacher: number;
+  teacher_name: string;
+  teacher_email: string;
+  cohort_subject: number;
+  assigned_at: string;
+  unassigned_at: string | null;
 }
 
 export interface CohortSubjectOption {

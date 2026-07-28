@@ -19,6 +19,7 @@ import {
 } from '@/app/core/forms';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useSessions } from '@/app/core/hooks/useSessions';
+import { sessionAPI } from '@/app/core/api/sessions';
 import { useSchemeEntryOptions } from '@/app/core/hooks/useInstitutionalRevenue';
 import { Select } from '@/app/components/ui/Select';
 import {
@@ -28,7 +29,7 @@ import {
 } from '@/app/core/components/sessions/sessionFormValidation';
 import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
-import type { SessionDetail } from '@/app/core/types/session';
+import type { SessionDetail, SessionTeachingAssignmentOption } from '@/app/core/types/session';
 
 interface EditSessionFormProps {
     session: SessionDetail;
@@ -49,7 +50,9 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
         description: session.description ?? '',
         venue: session.venue ?? '',
         scheme_entry: session.scheme_entry ?? null,
+        teaching_assignment: session.teaching_assignment ?? null,
     });
+    const [teachingAssignmentOptions, setTeachingAssignmentOptions] = useState<SessionTeachingAssignmentOption[]>([]);
     const { options: schemeEntryOptions, loading: loadingSchemeEntries } = useSchemeEntryOptions(
         session.cohort_subject,
         session.term,
@@ -76,8 +79,29 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
             description: session.description ?? '',
             venue: session.venue ?? '',
             scheme_entry: session.scheme_entry ?? null,
+            teaching_assignment: session.teaching_assignment ?? null,
         });
-    }, [session.description, session.id, session.scheme_entry, session.title, session.venue]);
+    }, [session.description, session.id, session.scheme_entry, session.teaching_assignment, session.title, session.venue]);
+
+    useEffect(() => {
+        if (!session.cohort_subject || !session.term || !session.session_date) {
+            setTeachingAssignmentOptions([]);
+            return;
+        }
+        let cancelled = false;
+        sessionAPI.listTeachingAssignmentOptions({
+            cohort_subject: session.cohort_subject,
+            term: session.term,
+            session_date: session.session_date,
+        }).then((items) => {
+            if (!cancelled) setTeachingAssignmentOptions(items);
+        }).catch(() => {
+            if (!cancelled) setTeachingAssignmentOptions([]);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [session.cohort_subject, session.session_date, session.term]);
 
     const handleChange = <K extends keyof SessionEditFormState>(
         field: K,
@@ -109,6 +133,7 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
                 description: formData.description,
                 venue: formData.venue,
                 scheme_entry: formData.scheme_entry,
+                teaching_assignment: formData.teaching_assignment,
             });
             router.push(`/sessions/${session.id}`);
         } catch (err) {
@@ -232,6 +257,27 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
                             ...schemeEntryOptions.map((option) => ({
                                 value: option.id,
                                 label: option.label,
+                            })),
+                        ]}
+                    />
+
+                    <Select
+                        label="Assigned teacher"
+                        value={formData.teaching_assignment?.toString() ?? ''}
+                        onChange={(event) => handleChange('teaching_assignment', event.target.value ? Number(event.target.value) : null)}
+                        disabled={!session.cohort_subject || !session.term || teachingAssignmentOptions.length === 0}
+                        optional
+                        helperText="Explicit teaching attribution used by projection evidence."
+                        options={[
+                            {
+                                value: '',
+                                label: teachingAssignmentOptions.length === 0
+                                    ? 'No valid assigned teacher for this date'
+                                    : 'No assigned teacher selected',
+                            },
+                            ...teachingAssignmentOptions.map((option) => ({
+                                value: option.id,
+                                label: option.teacher_name || option.teacher_email,
                             })),
                         ]}
                     />

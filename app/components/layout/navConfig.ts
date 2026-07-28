@@ -123,7 +123,13 @@ export function getRoleColorScheme(role: Role, orgType?: OrgType | null): RoleCo
   return ROLE_COLORS[role] ?? ROLE_COLORS.ADMIN;
 }
 
-export function canViewRevenueProgram(capabilities?: WorkspaceCapabilities | null): boolean {
+export function canViewRevenueProgram(
+  capabilities?: WorkspaceCapabilities | null,
+  orgType?: OrgType | null,
+): boolean {
+  if (isSelfManagedWorkspace(orgType) || isLearnerCenteredWorkspace(orgType) || orgType === 'HOMESCHOOL') {
+    return false;
+  }
   return Boolean(
     capabilities?.can_view_revenue_program
     || capabilities?.revenue?.can_view_program
@@ -444,7 +450,7 @@ export function getAdminNav(
         ],
       },
       ...getPluginNavigationItems('admin.primary.afterAssessments', pluginContext),
-      ...(canViewRevenueProgram(capabilities)
+      ...(canViewRevenueProgram(capabilities, orgType)
         ? [{ name: 'Revenue cycle', href: '/revenue', icon: CircleDollarSign }]
         : []),
       {
