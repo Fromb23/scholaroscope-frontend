@@ -226,7 +226,7 @@ describe('commercial onboarding contract', () => {
     expect(registerHookSource).toContain('completion_operation: completionOperation');
     expect(registerHookSource).toContain("REGISTER_INITIAL_WORKSPACE");
     expect(registerHookSource).toContain("CREATE_ADDITIONAL_WORKSPACE");
-    expect(registerHookSource).toContain('isCommercialWorkspaceFlow && user');
+    expect(registerHookSource).toContain('completionOperation === CREATE_ADDITIONAL_WORKSPACE');
     expect(registerHookSource).not.toContain("mode === 'new_workspace'");
   });
 
@@ -244,9 +244,9 @@ describe('commercial onboarding contract', () => {
     expect(legacyWorkspaceNewPageSource).not.toContain('useCommercialCatalog');
   });
 
-  it('keeps all get-started workspace cards visible while only canonical freelance can be selected', () => {
-    expect(commercialSource).toContain("SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY: OrgType = 'PERSONAL'");
-    expect(commercialSource).toContain('item.key === SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY');
+  it('keeps all get-started workspace cards visible and uses backend onboarding eligibility', () => {
+    expect(commercialSource).not.toContain('SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY');
+    expect(commercialSource).not.toContain('item.key === SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY');
     expect(commercialSource).toContain('is_publicly_selectable');
     expect(commercialSource).toContain('disabled={disabled}');
     expect(commercialSource).toContain('Coming soon');

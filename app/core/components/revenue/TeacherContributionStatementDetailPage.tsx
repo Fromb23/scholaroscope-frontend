@@ -31,6 +31,11 @@ export function TeacherContributionStatementDetailPage({ statementId }: { statem
     ...blockersFrom(statement.assessment_compliance_result),
     ...blockersFrom(statement.calculation_details),
   ];
+  const reviewAvailable = Boolean(
+    canReview
+    && statement.cycle_status === 'UNDER_REVIEW'
+    && statement.is_current_run_statement !== false
+  );
 
   const saveReview = async () => {
     setSaving(true);
@@ -90,11 +95,16 @@ export function TeacherContributionStatementDetailPage({ statementId }: { statem
         <p className="mt-1 text-sm theme-muted">
           Reviewers may update review state and note only. Calculated counts, ratios, tiers and projected amounts are read-only.
         </p>
+        {!reviewAvailable ? (
+          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Statement review is available only for current-run statements while the cycle is UNDER_REVIEW.
+          </p>
+        ) : null}
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <Select
             label="Review state"
             value={reviewState}
-            disabled={!canReview}
+            disabled={!reviewAvailable}
             onChange={(event) => setReviewState(event.target.value as StatementReviewState)}
             options={REVIEW_STATES.map((state) => ({ value: state, label: state }))}
           />
@@ -102,14 +112,14 @@ export function TeacherContributionStatementDetailPage({ statementId }: { statem
             <label className="mb-1 block text-sm font-medium theme-text">Review note</label>
             <textarea
               value={reviewNote}
-              disabled={!canReview}
+              disabled={!reviewAvailable}
               onChange={(event) => setReviewNote(event.target.value)}
               className="theme-input w-full rounded-lg px-4 py-2 text-sm"
               rows={4}
             />
           </div>
         </div>
-        {canReview ? (
+        {reviewAvailable ? (
           <div className="mt-4 flex justify-end">
             <Button onClick={saveReview} disabled={saving}>{saving ? 'Saving...' : 'Save review'}</Button>
           </div>

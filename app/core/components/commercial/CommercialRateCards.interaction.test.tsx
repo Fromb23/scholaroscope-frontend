@@ -59,7 +59,7 @@ const institutionWorkspace = {
   key: 'INSTITUTION' as const,
   name: 'Institution',
   description: 'For schools.',
-  is_publicly_selectable: false,
+  is_publicly_selectable: true,
   standard: {
     ...personalWorkspace.standard,
     plan_id: 2,
@@ -166,7 +166,7 @@ describe('CommercialRateCards workspace onboarding interaction', () => {
     vi.clearAllMocks();
   });
 
-  it('renders all onboarding workspace options but only allows freelance quote activation', async () => {
+  it('renders backend-eligible onboarding workspace options and allows institution quote activation', async () => {
     await act(async () => {
       renderer = create(
         <CommercialRateCards continueBasePath="/register" workspaceOnboarding />,
@@ -176,28 +176,20 @@ describe('CommercialRateCards workspace onboarding interaction', () => {
     expect(useCommercialCatalogMock).toHaveBeenCalledWith({ context: 'workspace_onboarding' });
     expect(textContent(renderer!.root)).toContain('Freelance Teacher Workspace');
     expect(textContent(renderer!.root)).toContain('Institution');
-    expect(textContent(renderer!.root)).toContain('Coming soon');
+    expect(textContent(renderer!.root)).not.toContain('Coming soon');
 
     const institutionButton = findButton(renderer!, 'Institution');
-    expect(institutionButton.props.disabled).toBe(true);
-    expect(institutionButton.props['aria-pressed']).toBeUndefined();
+    expect(institutionButton.props.disabled).toBe(false);
 
     await act(async () => {
       institutionButton.props.onClick();
       await Promise.resolve();
     });
 
-    expect(mutateAsync).not.toHaveBeenCalled();
-
-    await act(async () => {
-      findButton(renderer!, 'Choose this workspace').props.onClick();
-      await Promise.resolve();
-    });
-
     expect(mutateAsync).toHaveBeenCalledTimes(1);
     expect(mutateAsync).toHaveBeenCalledWith({
       commercial_mode: 'STANDARD',
-      workspace_type: 'PERSONAL',
+      workspace_type: 'INSTITUTION',
       premium_plugin_price_ids: [],
     });
     expect(textContent(renderer!.root)).toContain('Quote summary is now active.');

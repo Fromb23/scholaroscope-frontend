@@ -36,7 +36,6 @@ interface CommercialRateCardsProps {
   workspaceOnboarding?: boolean;
 }
 
-const SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY: OrgType = 'PERSONAL';
 type OnboardingActiveStage = 'selection' | 'summary';
 
 const workspaceIcons: Partial<Record<OrgType, LucideIcon>> = {
@@ -81,7 +80,7 @@ function capabilityCategoryPreview(workspaceType: CommercialWorkspaceType) {
 }
 
 function isWorkspaceOnboardingTypeSelectable(item: CommercialWorkspaceType) {
-  return item.key === SUPPORTED_WORKSPACE_ONBOARDING_TYPE_KEY && item.is_publicly_selectable;
+  return item.is_publicly_selectable;
 }
 
 export function CommercialRateCards({
@@ -482,7 +481,7 @@ export function CommercialRateCards({
             <section className="rounded-xl border border-dashed p-6 theme-card">
               <p className="text-sm font-semibold theme-text">Select a workspace to continue</p>
               <p className="theme-muted mt-2 text-sm leading-6">
-                Choose the freelance workspace option above to request and review a quote.
+                Choose an available workspace option above to request and review a backend-confirmed quote.
               </p>
             </section>
           )}

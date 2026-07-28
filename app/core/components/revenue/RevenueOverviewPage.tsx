@@ -122,6 +122,11 @@ export function RevenueOverviewPage() {
           The current term does not have a revenue cycle.
         </Card>
       ) : null}
+      {overview?.overview_state === 'EXPLICIT_TERM_WITHOUT_CYCLE' ? (
+        <Card className="border border-amber-200 bg-amber-50 text-sm text-amber-900">
+          The selected term does not have a revenue cycle.
+        </Card>
+      ) : null}
       {balance?.state === 'DEFICIT' ? (
         <Card className="border border-amber-300 bg-amber-50 text-sm text-amber-900">
           Projected deficit: teacher projections exceed projected learner contribution.
