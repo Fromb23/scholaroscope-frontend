@@ -22,6 +22,7 @@ export interface SessionEditFormState {
   title: string;
   description: string;
   venue: string;
+  scheme_entry?: number | null;
 }
 
 export type SessionEditField = 'title' | 'venue';

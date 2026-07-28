@@ -337,6 +337,39 @@ describe('admin navigation config', () => {
     ]);
   });
 
+  it('shows Revenue cycle navigation only from backend revenue capability', () => {
+    const withoutRevenue = getAdminNav(pluginContext, 'INSTITUTION', null, {
+      can_teach: false,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: true,
+      is_workspace_owner: false,
+      workspace_mode: 'SCHOOL',
+      workspace_behavior: 'MANAGED_TEAM',
+    });
+    const withRevenue = getAdminNav(pluginContext, 'INSTITUTION', null, {
+      can_teach: false,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: true,
+      can_view_revenue_program: true,
+      is_workspace_owner: false,
+      workspace_mode: 'SCHOOL',
+      workspace_behavior: 'MANAGED_TEAM',
+    });
+
+    expect(withoutRevenue.primary.some((item) => item.href === '/revenue')).toBe(false);
+    expect(withRevenue.primary.find((item) => item.href === '/revenue')?.name).toBe('Revenue cycle');
+  });
+
   it('renames instructor dashboard navigation during midterm modes', () => {
     expect(getInstructorNav(pluginContext, 'MIDTERM_BREAK').primary[0]).toMatchObject({
       name: 'Midterm Break',

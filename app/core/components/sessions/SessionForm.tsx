@@ -27,6 +27,7 @@ import {
 } from '@/app/core/forms';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessions';
+import { useSchemeEntryOptions } from '@/app/core/hooks/useInstitutionalRevenue';
 import { useCurricula, useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
@@ -77,6 +78,7 @@ const DEFAULT_FORM: SessionFormData = {
     description: '',
     venue: '',
     auto_create_attendance: true,
+    scheme_entry: null,
 };
 
 const SESSION_FIELD_ORDER: SessionCreateField[] = [
@@ -159,6 +161,10 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
     const selectedSubjectOption = filteredSubjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
     const [formData, setFormData] = useState<SessionFormData>(DEFAULT_FORM);
+    const { options: schemeEntryOptions, loading: loadingSchemeEntries } = useSchemeEntryOptions(
+        formData.cohort_subject,
+        formData.term,
+    );
     const [errors, setErrors] = useState<FormFieldErrors<SessionCreateField>>({});
     const [saving, setSaving] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -200,6 +206,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             ...prev,
             [field]: value,
             ...(field === 'session_type' ? { practical_context: undefined } : {}),
+            ...(field === 'term' ? { scheme_entry: null } : {}),
         }));
         setErrors(prev => {
             const next = { ...prev };
@@ -220,6 +227,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             cohort_subject: null,
             subject_source: undefined,
             subject_id: null,
+            scheme_entry: null,
             title: '',
             practical_context: undefined,
         }));
@@ -242,6 +250,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                 ? (option.source === 'cambridge' ? 'cambridge' : 'kernel')
                 : undefined,
             subject_id: option?.session_supported ? (option.subject_id ?? null) : null,
+            scheme_entry: null,
             title: '',
             practical_context: undefined,
         }));
@@ -394,6 +403,31 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                 onChange={e => handleChange('session_type', e.target.value)}
                                 required
                                 options={SESSION_TYPES}
+                            />
+                        </div>
+
+                        <div>
+                            <Select
+                                label="Scheme implementation"
+                                value={formData.scheme_entry?.toString() ?? ''}
+                                onChange={e => handleChange('scheme_entry', e.target.value ? Number(e.target.value) : null)}
+                                disabled={!formData.cohort_subject || !formData.term || loadingSchemeEntries}
+                                optional
+                                helperText="Link this session to the exact scheme entry it implements."
+                                options={[
+                                    {
+                                        value: '',
+                                        label: !formData.cohort_subject || !formData.term
+                                            ? 'Select a subject and term first'
+                                            : loadingSchemeEntries
+                                                ? 'Loading scheme entries...'
+                                                : 'No scheme entry linked',
+                                    },
+                                    ...schemeEntryOptions.map((option) => ({
+                                        value: option.id,
+                                        label: option.label,
+                                    })),
+                                ]}
                             />
                         </div>
 
