@@ -4,10 +4,30 @@ export type CalculationRunStatus = 'RUNNING' | 'COMPLETED' | 'FAILED';
 export type StatementReviewState = 'PENDING' | 'REVIEWED' | 'FLAGGED';
 
 export interface TeacherContributionTier {
-  lower_bound: string;
-  upper_bound: string;
-  amount: string;
+  minimum_ratio: string;
+  maximum_ratio: string;
+  projected_amount: string;
   label?: string;
+}
+
+export interface RevenueBlocker {
+  code: string;
+  message: string;
+  details: Record<string, unknown>;
+}
+
+export interface ProjectedBalanceSummary {
+  projected_gross_learner_contribution: string;
+  projected_total_teacher_contribution: string;
+  projected_balance: string;
+  state: 'SURPLUS' | 'BALANCED' | 'DEFICIT';
+}
+
+export interface RevenueOverviewTerm {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
 }
 
 export interface InstitutionRevenuePolicy {
@@ -54,6 +74,7 @@ export interface InstitutionRevenueCycle {
   status: RevenueCycleStatus;
   projected_eligible_learner_count: number;
   projected_gross_contribution: string;
+  projected_balance_summary: ProjectedBalanceSummary;
   latest_run_id: string | null;
   calculation_metadata: Record<string, unknown>;
   status_transition_metadata: Record<string, unknown>;
@@ -62,16 +83,19 @@ export interface InstitutionRevenueCycle {
 }
 
 export interface RevenueCycleOverview {
+  overview_state: 'NO_CURRENT_TERM' | 'CURRENT_TERM_WITHOUT_CYCLE' | 'CURRENT_TERM_WITH_CYCLE';
+  current_term: RevenueOverviewTerm | null;
   active_revenue_cycle: InstitutionRevenueCycle | null;
   cycle_status?: RevenueCycleStatus;
   projected_learner_contribution?: string;
   eligible_learner_seat_count?: number;
   projected_gross_contribution?: string;
-  eligible_teacher_count: number;
-  projected_total_teacher_contribution: string;
-  compliance_blocker_summary: string[];
-  latest_calculation_timestamp: string | null;
-  blockers?: Array<{ code: string; message: string }>;
+  eligible_teacher_count?: number;
+  projected_total_teacher_contribution?: string;
+  projected_balance_summary?: ProjectedBalanceSummary;
+  compliance_blocker_summary?: RevenueBlocker[];
+  latest_calculation_timestamp?: string | null;
+  blockers?: RevenueBlocker[];
 }
 
 export interface RosterProjectionSummary {
@@ -94,7 +118,8 @@ export interface InstitutionRevenueCalculationRun {
   aggregate_projected_results: {
     eligible_teacher_count?: number;
     projected_total_teacher_contribution?: string;
-    blockers?: string[];
+    projected_balance_summary?: ProjectedBalanceSummary;
+    blockers?: RevenueBlocker[];
     [key: string]: unknown;
   };
   diagnostics: Record<string, unknown>;
@@ -114,13 +139,13 @@ export interface TeacherContributionStatement {
   scheme_implementation_ratio: string;
   assessment_compliance_result: {
     passed?: boolean;
-    blockers?: string[];
+    blockers?: RevenueBlocker[];
     [key: string]: unknown;
   };
   missing_required_assessment_components: unknown[];
   matched_policy_tier: TeacherContributionTier | null;
   projected_amount: string;
-  calculation_details: Record<string, unknown>;
+  calculation_details: Record<string, unknown> & { blockers?: RevenueBlocker[] };
   review_state: StatementReviewState;
   reviewer_name?: string | null;
   reviewed_at?: string | null;

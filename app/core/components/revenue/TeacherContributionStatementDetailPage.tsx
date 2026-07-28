@@ -64,8 +64,8 @@ export function TeacherContributionStatementDetailPage({ statementId }: { statem
         <div className="mt-3 space-y-2">
           {blockers.length === 0 ? (
             <p className="text-sm theme-muted">No blocking reasons returned.</p>
-          ) : Array.from(new Set(blockers)).map((blocker) => (
-            <p key={blocker} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{blocker}</p>
+          ) : Array.from(new Map(blockers.map((blocker) => [blocker.code, blocker])).values()).map((blocker) => (
+            <p key={blocker.code} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{blocker.message}</p>
           ))}
         </div>
       </Card>

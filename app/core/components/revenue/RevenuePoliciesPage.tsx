@@ -8,10 +8,17 @@ import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingMessage } from '@/app/components/ui/loading';
 import { useRevenuePolicies } from '@/app/core/hooks/useInstitutionalRevenue';
-import { DEFAULT_REVENUE_TIERS, money, revenueCapability } from './RevenueFormat';
+import {
+  DEFAULT_REVENUE_TIERS,
+  money,
+  revenueCapability,
+  tierFromForm,
+  tierToForm,
+  type RevenueTierFormRow,
+} from './RevenueFormat';
 import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
-import type { RevenuePolicyPayload, TeacherContributionTier } from '@/app/core/types/institutionalRevenue';
+import type { RevenuePolicyPayload } from '@/app/core/types/institutionalRevenue';
 
 export function RevenuePoliciesPage() {
   const { capabilities } = useAuth();
@@ -21,7 +28,9 @@ export function RevenuePoliciesPage() {
   const editableDraft = policies.find((policy) => policy.id === draftId && policy.status === 'DRAFT') ?? null;
   const [learnerContribution, setLearnerContribution] = useState('400.00');
   const [minimumContribution, setMinimumContribution] = useState('400.00');
-  const [tiers, setTiers] = useState<TeacherContributionTier[]>(DEFAULT_REVENUE_TIERS);
+  const [tiers, setTiers] = useState<RevenueTierFormRow[]>(
+    DEFAULT_REVENUE_TIERS.map(tierToForm),
+  );
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -36,14 +45,14 @@ export function RevenuePoliciesPage() {
     setDraftId(policy.id);
     setLearnerContribution(policy.learner_contribution_amount);
     setMinimumContribution(policy.minimum_learner_contribution_amount);
-    setTiers(policy.teacher_payout_tiers);
+    setTiers(policy.teacher_payout_tiers.map(tierToForm));
     setActionError(null);
   };
 
   const payload = (): RevenuePolicyPayload => ({
     learner_contribution_amount: learnerContribution,
     minimum_learner_contribution_amount: minimumContribution,
-    teacher_payout_tiers: tiers,
+    teacher_payout_tiers: tiers.map(tierFromForm),
     currency: 'KES',
   });
 
@@ -77,7 +86,7 @@ export function RevenuePoliciesPage() {
     }
   };
 
-  const updateTier = (index: number, field: keyof TeacherContributionTier, value: string) => {
+  const updateTier = (index: number, field: keyof RevenueTierFormRow, value: string) => {
     setTiers((current) => current.map((tier, tierIndex) => (
       tierIndex === index ? { ...tier, [field]: value } : tier
     )));
@@ -126,9 +135,9 @@ export function RevenuePoliciesPage() {
             <div className="mt-3 space-y-3">
               {tiers.map((tier, index) => (
                 <div key={`${tier.label}-${index}`} className="grid gap-3 rounded-xl border theme-border p-3 md:grid-cols-4">
-                  <Input label="Lower %" type="number" step="0.01" value={tier.lower_bound} onChange={(event) => updateTier(index, 'lower_bound', event.target.value)} />
-                  <Input label="Upper %" type="number" step="0.01" value={tier.upper_bound} onChange={(event) => updateTier(index, 'upper_bound', event.target.value)} />
-                  <Input label="Projected teacher contribution" type="number" step="0.01" value={tier.amount} onChange={(event) => updateTier(index, 'amount', event.target.value)} />
+                  <Input label="Lower %" type="number" step="0.01" value={tier.minimum_percentage} onChange={(event) => updateTier(index, 'minimum_percentage', event.target.value)} />
+                  <Input label="Upper %" type="number" step="0.01" value={tier.maximum_percentage} onChange={(event) => updateTier(index, 'maximum_percentage', event.target.value)} />
+                  <Input label="Projected teacher contribution" type="number" step="0.01" value={tier.projected_amount} onChange={(event) => updateTier(index, 'projected_amount', event.target.value)} />
                   <Input label="Tier label" value={tier.label ?? ''} onChange={(event) => updateTier(index, 'label', event.target.value)} />
                 </div>
               ))}
@@ -157,7 +166,7 @@ export function RevenuePoliciesPage() {
                   Projected learner contribution: {money(policy.learner_contribution_amount, policy.currency)}
                 </p>
                 <p className="text-xs theme-subtle">
-                  Tier boundaries: {policy.teacher_payout_tiers.map((tier) => `${tier.lower_bound}%–${tier.upper_bound}%`).join(', ')}
+                  Tier boundaries: {policy.teacher_payout_tiers.map((tier) => `${Number(tier.minimum_ratio) * 100}%–${Number(tier.maximum_ratio) * 100}%`).join(', ')}
                 </p>
               </div>
               <div className="flex gap-2">

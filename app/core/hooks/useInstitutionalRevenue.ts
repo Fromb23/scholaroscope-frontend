@@ -141,10 +141,10 @@ export function useRevenueCycleDetail(cycleId: string | null) {
     refetch,
     openCycle: () => action(() => institutionalRevenueAPI.openCycle(cycleId as string)),
     refreshRoster: () => action(() => institutionalRevenueAPI.refreshRosterProjection(cycleId as string)),
-    runCalculation: () => action(() => institutionalRevenueAPI.runCalculation(cycleId as string)),
+    runCalculation: (reason?: string) => action(() => institutionalRevenueAPI.runCalculation(cycleId as string, reason)),
     markUnderReview: () => action(() => institutionalRevenueAPI.markUnderReview(cycleId as string)),
-    approveCycle: () => action(() => institutionalRevenueAPI.approveCycle(cycleId as string)),
-    closeCycle: () => action(() => institutionalRevenueAPI.closeCycle(cycleId as string)),
+    approveCycle: (reason: string) => action(() => institutionalRevenueAPI.approveCycle(cycleId as string, reason)),
+    closeCycle: (reason: string) => action(() => institutionalRevenueAPI.closeCycle(cycleId as string, reason)),
   };
 }
 

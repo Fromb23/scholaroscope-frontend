@@ -27,6 +27,7 @@ import {
 } from '@/app/core/forms';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessions';
+import { sessionAPI } from '@/app/core/api/sessions';
 import { useSchemeEntryOptions } from '@/app/core/hooks/useInstitutionalRevenue';
 import { useCurricula, useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -39,7 +40,7 @@ import {
 import { useAuth } from '@/app/context/AuthContext';
 import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
-import type { SessionFormData } from '@/app/core/types/session';
+import type { SessionFormData, SessionTeachingAssignmentOption } from '@/app/core/types/session';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ const DEFAULT_FORM: SessionFormData = {
     venue: '',
     auto_create_attendance: true,
     scheme_entry: null,
+    teaching_assignment: null,
 };
 
 const SESSION_FIELD_ORDER: SessionCreateField[] = [
@@ -161,6 +163,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
     const selectedSubjectOption = filteredSubjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
     const [formData, setFormData] = useState<SessionFormData>(DEFAULT_FORM);
+    const [teachingAssignmentOptions, setTeachingAssignmentOptions] = useState<SessionTeachingAssignmentOption[]>([]);
     const { options: schemeEntryOptions, loading: loadingSchemeEntries } = useSchemeEntryOptions(
         formData.cohort_subject,
         formData.term,
@@ -206,7 +209,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             ...prev,
             [field]: value,
             ...(field === 'session_type' ? { practical_context: undefined } : {}),
-            ...(field === 'term' ? { scheme_entry: null } : {}),
+            ...(field === 'term' || field === 'session_date' ? { scheme_entry: null, teaching_assignment: null } : {}),
         }));
         setErrors(prev => {
             const next = { ...prev };
@@ -228,6 +231,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             subject_source: undefined,
             subject_id: null,
             scheme_entry: null,
+            teaching_assignment: null,
             title: '',
             practical_context: undefined,
         }));
@@ -251,6 +255,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                 : undefined,
             subject_id: option?.session_supported ? (option.subject_id ?? null) : null,
             scheme_entry: null,
+            teaching_assignment: null,
             title: '',
             practical_context: undefined,
         }));
@@ -298,6 +303,30 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             setSaving(false);
         }
     };
+
+    useEffect(() => {
+        if (!formData.cohort_subject || !formData.term || !formData.session_date) {
+            setTeachingAssignmentOptions([]);
+            return;
+        }
+        let cancelled = false;
+        sessionAPI.listTeachingAssignmentOptions({
+            cohort_subject: formData.cohort_subject,
+            term: formData.term,
+            session_date: formData.session_date,
+        }).then((items) => {
+            if (cancelled) return;
+            setTeachingAssignmentOptions(items);
+            if (!formData.teaching_assignment && items.length === 1 && activeRole !== 'ADMIN') {
+                setFormData((prev) => ({ ...prev, teaching_assignment: items[0].id }));
+            }
+        }).catch(() => {
+            if (!cancelled) setTeachingAssignmentOptions([]);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [activeRole, formData.cohort_subject, formData.session_date, formData.teaching_assignment, formData.term]);
 
     if (cohorts.length > 0 && availableCohorts.length === 0) {
         return (
@@ -426,6 +455,31 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                     ...schemeEntryOptions.map((option) => ({
                                         value: option.id,
                                         label: option.label,
+                                    })),
+                                ]}
+                            />
+                        </div>
+
+                        <div>
+                            <Select
+                                label="Assigned teacher"
+                                value={formData.teaching_assignment?.toString() ?? ''}
+                                onChange={e => handleChange('teaching_assignment', e.target.value ? Number(e.target.value) : null)}
+                                disabled={!formData.cohort_subject || !formData.term || !formData.session_date || teachingAssignmentOptions.length === 0}
+                                optional={activeRole !== 'ADMIN'}
+                                helperText={activeRole === 'ADMIN'
+                                    ? 'Administrators must select the assigned teacher who delivered the session.'
+                                    : 'Defaults to your valid teaching assignment when available.'}
+                                options={[
+                                    {
+                                        value: '',
+                                        label: teachingAssignmentOptions.length === 0
+                                            ? 'No valid assigned teacher for this date'
+                                            : 'Select assigned teacher',
+                                    },
+                                    ...teachingAssignmentOptions.map((option) => ({
+                                        value: option.id,
+                                        label: `${option.teacher_name || option.teacher_email}`,
                                     })),
                                 ]}
                             />

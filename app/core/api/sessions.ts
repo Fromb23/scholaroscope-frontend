@@ -31,6 +31,7 @@ import {
   SessionFormData,
   SessionIssuePreparedAssignmentPayload,
   SessionIssuePreparedAssignmentResponse,
+  SessionTeachingAssignmentOption,
 } from '../types/session';
 import { CohortSubject } from '../types/academic';
 
@@ -170,6 +171,18 @@ export const sessionAPI = {
 
   create: async (data: SessionFormData): Promise<Session> => {
     const res = await apiClient.post<Session>('/sessions/', data);
+    return res.data;
+  },
+
+  listTeachingAssignmentOptions: async (params: {
+    cohort_subject: number;
+    term: number;
+    session_date: string;
+  }): Promise<SessionTeachingAssignmentOption[]> => {
+    const res = await apiClient.get<SessionTeachingAssignmentOption[]>(
+      '/sessions/teaching_assignment_options/',
+      { params },
+    );
     return res.data;
   },
 
