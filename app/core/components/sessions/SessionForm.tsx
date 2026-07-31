@@ -57,12 +57,8 @@ interface SessionFormProps {
 // ── Constants ─────────────────────────────────────────────────────────────
 
 const SESSION_TYPES = [
-    { value: 'LESSON', label: 'Lesson' },
     { value: 'PRACTICAL', label: 'Practical' },
     { value: 'PROJECT', label: 'Project' },
-    { value: 'EXAM', label: 'Exam' },
-    { value: 'FIELD_TRIP', label: 'Field Trip' },
-    { value: 'ASSEMBLY', label: 'Assembly' },
     { value: 'OTHER', label: 'Other' },
 ];
 
@@ -71,7 +67,7 @@ const DEFAULT_FORM: SessionFormData = {
     subject_source: undefined,
     subject_id: null,
     term: null,
-    session_type: 'LESSON',
+    session_type: 'OTHER',
     session_date: new Date().toISOString().split('T')[0],
     start_time: '08:00',
     end_time: '09:30',
@@ -90,6 +86,7 @@ const SESSION_FIELD_ORDER: SessionCreateField[] = [
     'start_time',
     'end_time',
     'title',
+    'description',
     'venue',
 ];
 
@@ -100,6 +97,7 @@ const SESSION_FIELD_LABELS: Partial<Record<SessionCreateField, string>> = {
     start_time: 'Start time',
     end_time: 'End time',
     title: 'Session title',
+    description: 'Description',
     venue: 'Venue',
 };
 
@@ -128,7 +126,11 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
     const activeTerm = useMemo(() => {
         const today = new Date();
-        return terms.find(t => today >= new Date(t.start_date) && today <= new Date(t.end_date));
+        return terms.find(t => (
+            t.status === 'OPEN'
+            && today >= new Date(t.start_date)
+            && today <= new Date(t.end_date)
+        ));
     }, [terms]);
 
     const [selectedCohort, setSelectedCohort] = useState<number>(0);
@@ -160,6 +162,10 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         return curricula.find((entry) => entry.id === cohort.curriculum) ?? null;
     }, [availableCohorts, curricula, selectedCohort]);
     const isSelectedCurriculumWritable = selectedCurriculum ? canCreateCurriculumWork(selectedCurriculum) : true;
+    const selectedTerm = terms.find((term) => term.id === formData.term) ?? null;
+    const isSelectedTermWritable = selectedTerm
+        ? selectedTerm.status === 'OPEN' && !selectedTerm.is_frozen
+        : true;
 
     const selectedSubjectOption = filteredSubjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
     const [formData, setFormData] = useState<SessionFormData>(DEFAULT_FORM);
@@ -283,7 +289,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!isSelectedCurriculumWritable) return;
+        if (!isSelectedCurriculumWritable || !isSelectedTermWritable) return;
         const validationErrors = validateForm();
         setErrors(validationErrors);
         if (hasFormFieldErrors(validationErrors)) {
@@ -409,12 +415,26 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                 label="Term"
                                 value={formData.term?.toString() ?? ''}
                                 onChange={e => handleChange('term', e.target.value ? Number(e.target.value) : null)}
+                                helperText={
+                                    selectedTerm && !isSelectedTermWritable
+                                        ? 'This term has ended. New academic work must be created in an open term.'
+                                        : undefined
+                                }
                                 options={[
                                     { value: '', label: terms.length === 0 ? 'No terms configured' : 'Select Term' },
                                     ...terms.map(t => {
                                         const today = new Date();
-                                        const isActive = today >= new Date(t.start_date) && today <= new Date(t.end_date);
-                                        return { value: String(t.id), label: isActive ? `${t.name} (Active)` : t.name };
+                                        const isActive = t.status === 'OPEN' && today >= new Date(t.start_date) && today <= new Date(t.end_date);
+                                        const isEnded = t.status === 'ENDED_GRACE_PERIOD' || t.status === 'CLOSED_HISTORICAL';
+                                        return {
+                                            value: String(t.id),
+                                            label: isActive
+                                                ? `${t.name} (Active)`
+                                                : isEnded
+                                                    ? `${t.name} (Ended - read only)`
+                                                    : t.name,
+                                            disabled: isEnded || t.is_frozen,
+                                        };
                                     }),
                                 ]}
                             />
@@ -431,6 +451,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                 value={formData.session_type}
                                 onChange={e => handleChange('session_type', e.target.value)}
                                 required
+                                helperText="Lesson sessions are scheduled from reviewed lesson plans."
                                 options={SESSION_TYPES}
                             />
                         </div>
@@ -518,17 +539,29 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                             required
                             error={errors.title as string | undefined}
                         />
+                        <p className="text-xs text-gray-500">
+                            Need a lesson? Start from a lesson plan so the session inherits the plan&apos;s subject, term, and outcomes.
+                        </p>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Description <span className="text-gray-400 font-normal">(optional)</span>
+                                Description {formData.session_type === 'OTHER' ? (
+                                    <span className="text-red-600 font-normal">(required for Other)</span>
+                                ) : (
+                                    <span className="text-gray-400 font-normal">(optional)</span>
+                                )}
                             </label>
                             <textarea
                                 value={formData.description}
                                 onChange={e => handleChange('description', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                    errors.description ? 'border-red-300' : 'border-gray-300'
+                                }`}
                                 rows={3}
                                 placeholder="Session objectives or additional notes..."
                             />
+                            {errors.description ? (
+                                <p className="mt-1 text-sm text-red-600">{errors.description as string}</p>
+                            ) : null}
                         </div>
                     </div>
                 </div>
@@ -628,7 +661,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                 <Link href="/sessions">
                     <Button type="button" variant="secondary">Cancel</Button>
                 </Link>
-                <Button type="submit" disabled={saving || !isSelectedCurriculumWritable}>
+                <Button type="submit" disabled={saving || !isSelectedCurriculumWritable || !isSelectedTermWritable}>
                     <Save className="w-4 h-4 mr-2" />
                     {saving ? 'Creating...' : 'Create Session'}
                 </Button>

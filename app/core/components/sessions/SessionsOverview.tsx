@@ -50,9 +50,6 @@ const SESSION_TYPES = [
     { value: 'LESSON', label: 'Lesson' },
     { value: 'PRACTICAL', label: 'Practical' },
     { value: 'PROJECT', label: 'Project' },
-    { value: 'EXAM', label: 'Exam' },
-    { value: 'FIELD_TRIP', label: 'Field Trip' },
-    { value: 'ASSEMBLY', label: 'Assembly' },
     { value: 'OTHER', label: 'Other' },
 ];
 

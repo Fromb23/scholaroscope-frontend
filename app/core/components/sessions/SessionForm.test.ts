@@ -26,7 +26,7 @@ function validCreateForm(overrides: Partial<SessionFormData> = {}): SessionFormD
     subject_source: 'kernel',
     subject_id: 12,
     term: 3,
-    session_type: 'LESSON',
+    session_type: 'PRACTICAL',
     session_date: '2026-06-14',
     start_time: '08:00',
     end_time: '09:00',
@@ -79,6 +79,26 @@ describe('session form validation', () => {
     expect(errors).toEqual({});
   });
 
+  it('other sessions require a purpose or description', () => {
+    const missingPurpose = validateSessionCreateForm({
+      formData: validCreateForm({ session_type: 'OTHER', description: ' ' }),
+      selectedCohort: 8,
+      selectedSubjectOption: validSubjectOption,
+    });
+
+    const withPurpose = validateSessionCreateForm({
+      formData: validCreateForm({
+        session_type: 'OTHER',
+        description: 'Catch-up activity for the selected subject.',
+      }),
+      selectedCohort: 8,
+      selectedSubjectOption: validSubjectOption,
+    });
+
+    expect(missingPurpose.description).toBe('Purpose or description is required for Other sessions.');
+    expect(withPurpose).toEqual({});
+  });
+
   it('edit session requires session title and venue', () => {
     expect(validateSessionEditForm({
       title: '',
@@ -114,6 +134,12 @@ describe('session form validation', () => {
     expect(createSource).toContain('<FormValidationSummary');
     expect(createSource).toContain('focusFirstError(validationErrors)');
     expect(createSource).toContain('createSession(formData)');
+    expect(createSource).toContain("session_type: 'OTHER'");
+    expect(createSource).toContain('Lesson sessions are scheduled from reviewed lesson plans.');
+    expect(createSource).not.toContain("{ value: 'LESSON'");
+    expect(createSource).not.toContain("{ value: 'EXAM'");
+    expect(createSource).not.toContain("{ value: 'FIELD_TRIP'");
+    expect(createSource).not.toContain("{ value: 'ASSEMBLY'");
     expect(createSource).not.toContain('created_by: user');
     expect(createSource).not.toContain('if (!validate()) return');
 
