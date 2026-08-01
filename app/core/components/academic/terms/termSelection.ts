@@ -9,6 +9,12 @@ interface TermCalendarAccessContext {
     term: Term | null;
 }
 
+export interface WorkTermSelectionInput {
+    requestedTermId?: number | null;
+    existingSelectedTermId?: number | null;
+    terms: Term[];
+}
+
 export function termHasHistoricalLifecycle(term: Term): boolean {
     return (
         term.status === 'ENDED_GRACE_PERIOD'
@@ -66,6 +72,68 @@ export function resolveSelectedTermId(
     }
 
     return resolveDefaultSelectedTerm(terms)?.id ?? null;
+}
+
+export function resolveAvailableWorkTerms(terms: Term[]): Term[] {
+    return terms;
+}
+
+function resolveCurrentWorkTerm(terms: Term[]): Term | null {
+    return terms.find((term) => (
+        !termHasHistoricalLifecycle(term) && isTermActive(term)
+    )) ?? null;
+}
+
+function resolveLatestAccessibleHistoricalTerm(terms: Term[]): Term | null {
+    return [...terms]
+        .filter(termHasHistoricalLifecycle)
+        .sort((left, right) => (
+            right.end_date.localeCompare(left.end_date)
+            || right.start_date.localeCompare(left.start_date)
+            || right.id - left.id
+        ))[0] ?? null;
+}
+
+export function resolveWorkSelectedTermId({
+    requestedTermId,
+    existingSelectedTermId,
+    terms,
+}: WorkTermSelectionInput): number | null {
+    const validTermIds = new Set(terms.map((term) => term.id));
+
+    if (requestedTermId && validTermIds.has(requestedTermId)) {
+        return requestedTermId;
+    }
+
+    if (existingSelectedTermId && validTermIds.has(existingSelectedTermId)) {
+        return existingSelectedTermId;
+    }
+
+    return (
+        resolveCurrentWorkTerm(terms)
+        ?? resolveLatestAccessibleHistoricalTerm(terms)
+    )?.id ?? null;
+}
+
+export function canCreateWorkForTerm(term: Term | null): boolean {
+    return Boolean(
+        term
+        && isTermActive(term)
+        && !termHasHistoricalLifecycle(term)
+        && term.status === 'OPEN'
+        && term.configuration_state !== 'HISTORICAL_LOCKED'
+        && !term.is_frozen
+    );
+}
+
+export function formatWorkTermOptionLabel(term: Term): string {
+    const lifecycleLabel = termHasHistoricalLifecycle(term)
+        ? 'Ended'
+        : isTermActive(term)
+            ? 'Current'
+            : 'Upcoming';
+
+    return `${term.academic_year_name} - ${term.name} (${lifecycleLabel})`;
 }
 
 export function canEditTermCalendar({

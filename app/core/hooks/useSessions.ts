@@ -71,9 +71,11 @@ interface SessionSupervisionOptions {
 export const useSessions = (
   params?: SessionQueryParams,
   supervision?: SessionSupervisionOptions,
+  options: { enabled?: boolean } = {},
 ) => {
+  const enabled = options.enabled ?? true;
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const sessionFilters = useMemo(
     () => withOperationalScope({
@@ -97,6 +99,13 @@ export const useSessions = (
     ],
   );
   const fetchSessions = useCallback(async () => {
+    if (!enabled) {
+      setSessions([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = supervision?.enabled
@@ -113,7 +122,7 @@ export const useSessions = (
     } finally {
       setLoading(false);
     }
-  }, [sessionFilters, supervision?.enabled, supervision?.instructorId]);
+  }, [enabled, sessionFilters, supervision?.enabled, supervision?.instructorId]);
 
   useEffect(() => {
     fetchSessions();

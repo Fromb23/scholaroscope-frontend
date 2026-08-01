@@ -223,36 +223,45 @@ export const useCurrentTerm = () => {
 // ── useTerms ──────────────────────────────────────────────────────────────
 
 export const useTerms = (academicYearId?: number) => {
-  const [terms, setTerms] = useState<Term[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
+  const qc = useQueryClient();
+  const queryKey = academicKeys.terms.list(organizationId, academicYearId ?? null);
+
+  const query = useQuery<Term[], Error>({
+    queryKey,
+    queryFn: async () => {
+      try {
+        const params: Record<string, string> = {};
+        if (organizationId) params.organization = String(organizationId);
+        if (academicYearId) params.academic_year = String(academicYearId);
+        const data = await termAPI.getAll(params);
+        return Array.isArray(data) ? data : (data as { results?: Term[] })?.results ?? [];
+      } catch (err) {
+        throw Object.assign(
+          new Error(resolveErrorMessage(err as ApiError, 'Failed to fetch terms')),
+          { cause: err }
+        );
+      }
+    },
+    staleTime: 60_000,
+  });
 
   const fetchTerms = useCallback(async () => {
     try {
-      setLoading(true);
-      const params: Record<string, string> = {};
-      if (organizationId) params.organization = String(organizationId);
-      if (academicYearId) params.academic_year = String(academicYearId);
-      const data = await termAPI.getAll(params);
-      const nextTerms = Array.isArray(data) ? data : (data as { results?: Term[] })?.results ?? [];
-      setTerms(nextTerms);
-      setError(null);
-      return nextTerms;
+      const result = await query.refetch();
+      return result.data ?? [];
     } catch (err) {
-      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch terms'));
+      void err;
       return [];
-    } finally {
-      setLoading(false);
     }
-  }, [academicYearId, organizationId]);
-
-  useEffect(() => { fetchTerms(); }, [fetchTerms]);
+  }, [query]);
 
   const createTerm = async (data: Partial<Term>) => {
     try {
       const newTerm = await termAPI.create(data);
-      setTerms(prev => [...prev, newTerm].sort((a, b) => a.sequence - b.sequence));
+      qc.setQueryData<Term[]>(queryKey, (prev = []) => (
+        [...prev, newTerm].sort((a, b) => a.sequence - b.sequence)
+      ));
       return newTerm;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to create term');
@@ -262,7 +271,7 @@ export const useTerms = (academicYearId?: number) => {
   const updateTerm = async (id: number, data: Partial<Term>) => {
     try {
       const updated = await termAPI.update(id, data);
-      setTerms(prev => prev.map(t => t.id === id ? updated : t));
+      qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
       return updated;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to update term');
@@ -272,7 +281,7 @@ export const useTerms = (academicYearId?: number) => {
   const deleteTerm = async (id: number) => {
     try {
       await termAPI.delete(id);
-      setTerms(prev => prev.filter(t => t.id !== id));
+      qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.filter(t => t.id !== id));
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to delete term');
     }
@@ -281,7 +290,7 @@ export const useTerms = (academicYearId?: number) => {
   const completeCalendarSetup = async (id: number) => {
     try {
       const updated = await termAPI.completeCalendarSetup(id);
-      setTerms(prev => prev.map(t => t.id === id ? updated : t));
+      qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
       return updated;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to complete term calendar setup');
@@ -291,7 +300,7 @@ export const useTerms = (academicYearId?: number) => {
   const reopenCalendarSetup = async (id: number) => {
     try {
       const updated = await termAPI.reopenCalendarSetup(id);
-      setTerms(prev => prev.map(t => t.id === id ? updated : t));
+      qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
       return updated;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to reopen term calendar setup');
@@ -299,9 +308,9 @@ export const useTerms = (academicYearId?: number) => {
   };
 
   return {
-    terms,
-    loading,
-    error,
+    terms: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
     refetch: fetchTerms,
     createTerm,
     updateTerm,

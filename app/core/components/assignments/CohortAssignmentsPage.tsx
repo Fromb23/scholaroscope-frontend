@@ -28,10 +28,15 @@ import {
     isAssignmentDueSoon,
     isAssignmentOverdue,
 } from '@/app/core/components/assignments/assignmentUtils';
-import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
+import { useCohortDetail, useCohortSubjects, useTerms } from '@/app/core/hooks/useAcademic';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useAssignments } from '@/app/core/hooks/useAssignments';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import {
+    canCreateWorkForTerm,
+    formatWorkTermOptionLabel,
+    resolveWorkSelectedTermId,
+} from '@/app/core/components/academic/terms/termSelection';
 import { useAuth } from '@/app/context/AuthContext';
 import type {
     Assignment,
@@ -69,6 +74,12 @@ function normalizeQueryParam(
     options: Array<{ value: string }>,
 ): string {
     return value && options.some((option) => option.value === value) ? value : '';
+}
+
+function parsePositiveId(value: string | null): number | undefined {
+    if (!value) return undefined;
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function isAssignmentNeedingReview(assignment: Assignment): boolean {
@@ -179,6 +190,7 @@ export default function CohortAssignmentsPage() {
         normalizeQueryParam(searchParams.get('delivery_mode'), DELIVERY_MODE_OPTIONS) as AssignmentDeliveryMode | ''
     );
     const [reviewFilter, setReviewFilter] = useState(searchParams.get('review') === 'needs_review' ? 'needs_review' : '');
+    const [termFilter, setTermFilter] = useState<string>(searchParams.get('term') ?? '');
     const [cohortSubjectFilter, setCohortSubjectFilter] = useState<string>(searchParams.get('cohort_subject') ?? '');
     const [search, setSearch] = useState(searchParams.get('search') ?? '');
     const [createOpen, setCreateOpen] = useState(false);
@@ -200,6 +212,25 @@ export default function CohortAssignmentsPage() {
         loading: cohortSubjectsLoading,
         error: cohortSubjectsError,
     } = useCohortSubjects(isValidCohortId ? cohortId : undefined);
+    const { terms, loading: termsLoading } = useTerms();
+    const queryTerm = useMemo(() => parsePositiveId(searchParams.get('term')), [searchParams]);
+    const selectedTermId = useMemo(() => resolveWorkSelectedTermId({
+        requestedTermId: queryTerm,
+        existingSelectedTermId: parsePositiveId(termFilter),
+        terms,
+    }), [queryTerm, termFilter, terms]);
+    const selectedTermRecord = useMemo(
+        () => terms.find((term) => term.id === selectedTermId) ?? null,
+        [selectedTermId, terms],
+    );
+    const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
+
+    useEffect(() => {
+        const nextTermFilter = selectedTermId ? String(selectedTermId) : '';
+        if (termFilter !== nextTermFilter) {
+            setTermFilter(nextTermFilter);
+        }
+    }, [selectedTermId, termFilter]);
 
     const accessLoading = authLoading || (isTeachingActor && instructorAccess.isLoading);
     const allowed = !user
@@ -219,6 +250,7 @@ export default function CohortAssignmentsPage() {
         error: assignmentsError,
         refetch,
     } = useAssignments({
+        term: selectedTermId ?? undefined,
         cohort: cohortId,
         cohort_subject: cohortSubjectFilter ? Number(cohortSubjectFilter) : undefined,
         status: statusFilter || undefined,
@@ -226,7 +258,7 @@ export default function CohortAssignmentsPage() {
         evaluation_type: evaluationTypeFilter || undefined,
         search: deferredSearch.trim() || undefined,
     }, {
-        enabled: isValidCohortId,
+        enabled: isValidCohortId && !termsLoading && selectedTermId !== null,
     });
 
     useEffect(() => {
@@ -245,9 +277,36 @@ export default function CohortAssignmentsPage() {
             normalizeQueryParam(searchParams.get('delivery_mode'), DELIVERY_MODE_OPTIONS) as AssignmentDeliveryMode | ''
         );
         setReviewFilter(searchParams.get('review') === 'needs_review' ? 'needs_review' : '');
+        setTermFilter(searchParams.get('term') ?? '');
         setCohortSubjectFilter(searchParams.get('cohort_subject') ?? '');
         setSearch(searchParams.get('search') ?? '');
     }, [searchParams]);
+
+    useEffect(() => {
+        if (termsLoading || terms.length === 0) {
+            return;
+        }
+
+        const params = new URLSearchParams(searchParams.toString());
+        const currentQueryTerm = parsePositiveId(params.get('term'));
+        if (selectedTermId) {
+            if (currentQueryTerm === selectedTermId) {
+                return;
+            }
+            params.set('term', String(selectedTermId));
+        } else {
+            if (currentQueryTerm === undefined) {
+                return;
+            }
+            params.delete('term');
+        }
+
+        const nextQuery = params.toString();
+        router.replace(
+            nextQuery ? `/academic/cohorts/${cohortId}/assignments?${nextQuery}` : `/academic/cohorts/${cohortId}/assignments`,
+            { scroll: false },
+        );
+    }, [cohortId, router, searchParams, selectedTermId, terms.length, termsLoading]);
 
     useEffect(() => {
         if (!highlightAssignmentId || assignmentsLoading) {
@@ -267,8 +326,10 @@ export default function CohortAssignmentsPage() {
     const canCreateAssignments = Boolean(user) && isTeachingActor;
     const canManageAssignments = Boolean(user) && (isTeachingActor || isInstitutionAdminView);
     const newWorkEligibility = todayMode?.action_eligibility?.create_new_work;
-    const newWorkUnavailable = (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
+    const newWorkUnavailable = !selectedTermAcceptsNewWork
+        || (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
     const newWorkUnavailableReason = newWorkEligibility?.reason
+        ?? (!selectedTermAcceptsNewWork ? 'This academic term is read-only for new assignment work.' : null)
         ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null)
         ?? 'New assignment work is not available right now.';
 
@@ -308,6 +369,9 @@ export default function CohortAssignmentsPage() {
         if (reviewFilter) {
             nextSearchParams.set('review', reviewFilter);
         }
+        if (selectedTermId) {
+            nextSearchParams.set('term', String(selectedTermId));
+        }
         if (trimmedSearch) {
             nextSearchParams.set('search', trimmedSearch);
         }
@@ -326,7 +390,7 @@ export default function CohortAssignmentsPage() {
         return query
             ? `/academic/cohorts/${cohortId}/assignments?${query}`
             : `/academic/cohorts/${cohortId}/assignments`;
-    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, highlightAssignmentId, reviewFilter, search, searchParams, statusFilter]);
+    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, highlightAssignmentId, reviewFilter, search, searchParams, selectedTermId, statusFilter]);
     const assignmentsHref = useMemo(
         () => buildAssignmentsHref(cohortSubjectFilter || null),
         [buildAssignmentsHref, cohortSubjectFilter]
@@ -408,7 +472,7 @@ export default function CohortAssignmentsPage() {
         );
     }
 
-    if (accessLoading || cohortLoading || cohortSubjectsLoading) {
+    if (accessLoading || cohortLoading || cohortSubjectsLoading || termsLoading) {
         return <LoadingSpinner fullScreen={false} message="Loading cohort assignments..." />;
     }
 
@@ -538,7 +602,7 @@ export default function CohortAssignmentsPage() {
                                 Assignment filters
                             </div>
 
-                            <div className="grid gap-4 lg:grid-cols-4">
+                            <div className="grid gap-4 lg:grid-cols-5">
                                 <div className="lg:col-span-2">
                                     <label className="mb-1 block text-sm font-medium theme-text">Search</label>
                                     <div className="relative">
@@ -552,6 +616,15 @@ export default function CohortAssignmentsPage() {
                                     </div>
                                 </div>
 
+                                <Select
+                                    label="Term"
+                                    value={termFilter}
+                                    onChange={(event) => setTermFilter(event.target.value)}
+                                    options={terms.map((term) => ({
+                                        value: String(term.id),
+                                        label: formatWorkTermOptionLabel(term),
+                                    }))}
+                                />
                                 <Select
                                     label="Status"
                                     value={statusFilter}
@@ -643,7 +716,7 @@ export default function CohortAssignmentsPage() {
                                 Filters
                             </div>
 
-                            <div className="grid gap-4 lg:grid-cols-4">
+                            <div className="grid gap-4 lg:grid-cols-5">
                                 <div className="lg:col-span-2">
                                     <label className="mb-1 block text-sm font-medium theme-muted">Search</label>
                                     <div className="relative">
@@ -657,6 +730,15 @@ export default function CohortAssignmentsPage() {
                                     </div>
                                 </div>
 
+                                <Select
+                                    label="Term"
+                                    value={termFilter}
+                                    onChange={(event) => setTermFilter(event.target.value)}
+                                    options={terms.map((term) => ({
+                                        value: String(term.id),
+                                        label: formatWorkTermOptionLabel(term),
+                                    }))}
+                                />
                                 <Select
                                     label="Status"
                                     value={statusFilter}
