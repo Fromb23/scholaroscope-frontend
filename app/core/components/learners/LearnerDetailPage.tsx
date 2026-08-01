@@ -42,6 +42,7 @@ import {
 import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success', GRADUATED: 'info', TRANSFERRED: 'warning',
@@ -199,6 +200,7 @@ export default function LearnerDetailPage() {
         updateStatus, reenroll, transfer, unenroll, deleteStudent,
         checkDeleteEligibility, withdraw, graduate, archiveStudent,
     } = useStudent(studentId);
+    useSemanticPageTitle(error ? 'Learner not found' : student?.full_name ?? 'Learner');
 
     const [statusOpen, setStatusOpen] = useState(false);
     const [enrollOpen, setEnrollOpen] = useState(false);

@@ -74,6 +74,7 @@ import { useAssistantPageContext } from '@/app/core/components/assistant/useAssi
 import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { resolveReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
 import { buildLearnerAssignmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 import type {
     AssignmentEvaluation,
     AssignmentBulkReviewPayload,
@@ -262,6 +263,10 @@ export default function CohortAssignmentDetailPage() {
     } = useAssignmentDetail(isValidRoute ? assignmentId : null, {
         enabled: isValidRoute,
     });
+    const assignmentTitle = assignmentError
+        ? (String(assignmentError).toLowerCase().includes('denied') ? 'Access denied' : 'Assignment not found')
+        : assignment?.title ?? 'Assignment';
+    useSemanticPageTitle(assignmentTitle);
     const lifecycleQuery = useAssignmentLifecycleState(isValidRoute ? assignmentId : null, {
         enabled: isValidRoute && allowed && canManageAssignments,
     });

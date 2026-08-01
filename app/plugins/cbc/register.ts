@@ -5,6 +5,7 @@ export async function registerCbcPlugin(): Promise<void> {
   await import('./registry/assessmentPolicyPreviewExtension');
   await import('./registry/cohortSubjectPanelExtension');
   await import('./registry/navigationExtension');
+  await import('./registry/pageIdentityExtension');
   await import('./registry/providerExtension');
   await import('./registry/routeAccessExtension');
   await import('./registry/teachingRouteExtension');

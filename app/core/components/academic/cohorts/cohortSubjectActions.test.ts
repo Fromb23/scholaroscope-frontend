@@ -124,11 +124,11 @@ describe('cohort subject teaching actions', () => {
     expect(actions.some((action) => action.label === 'Calculate subject report')).toBe(false);
   });
 
-  it('hides teaching workflow shortcuts for institution instructors', () => {
+  it('shows teaching workflow shortcuts for institution instructors assigned to the class subject', () => {
     expect(shouldShowCohortSubjectTeachingActions({
       isTeachingActor: true,
       isSelfManagedTeachingWorkspace: false,
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it('shows teaching workflow shortcuts for self-managed teaching actors', () => {

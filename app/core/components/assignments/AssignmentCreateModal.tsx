@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Modal from '@/app/components/ui/Modal';
@@ -230,6 +230,8 @@ export function AssignmentCreateModal({
     const [title, setTitle] = useState('');
     const [instructions, setInstructions] = useState('');
     const [termId, setTermId] = useState('');
+    const errorSummaryRef = useRef<HTMLDivElement | null>(null);
+    const termSelectRef = useRef<HTMLSelectElement | null>(null);
     const [taskType, setTaskType] = useState<AssignmentTaskType>('ASSIGNMENT');
     const [reportCounting, setReportCounting] = useState(false);
     const [startsAt, setStartsAt] = useState('');
@@ -334,6 +336,29 @@ export function AssignmentCreateModal({
     const assignmentPracticeOnly = policyGuidance?.reporting_mode === 'practice_only';
     const officialAssignmentBlocked = policyDisabledReason === 'assignment_not_counted_by_policy'
         || Boolean(policyGuidanceError?.includes('does not count assignments'));
+    const termFieldError = formError?.kind === 'validation'
+        && !termId
+        && formError.message.toLowerCase().includes('term')
+        ? formError.message
+        : undefined;
+
+    useEffect(() => {
+        if (!formError || !isOpen) return;
+        window.requestAnimationFrame(() => {
+            errorSummaryRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            if (termFieldError) {
+                termSelectRef.current?.focus({ preventScroll: true });
+                return;
+            }
+            errorSummaryRef.current?.focus({ preventScroll: true });
+        });
+    }, [formError, isOpen, termFieldError]);
+
+    useEffect(() => {
+        if (termId && termFieldError) {
+            setFormError(null);
+        }
+    }, [termFieldError, termId]);
 
     useEffect(() => {
         if (!selectedTaskTypeAllowed) {
@@ -495,6 +520,11 @@ export function AssignmentCreateModal({
 
         if (!cohortSubjectId) {
             setFormError(makeAssignmentValidationError('Select a subject group before saving the assignment.'));
+            return;
+        }
+
+        if (!termId) {
+            setFormError(makeAssignmentValidationError('Select a term before creating this assignment.'));
             return;
         }
 
@@ -676,7 +706,15 @@ export function AssignmentCreateModal({
         >
             <div className="space-y-6">
                 {formError ? (
-                    <InlineActionError error={formError} onDismiss={() => setFormError(null)} />
+                    <div
+                        ref={errorSummaryRef}
+                        tabIndex={-1}
+                        role="alert"
+                        aria-live="assertive"
+                        aria-atomic="true"
+                    >
+                        <InlineActionError error={formError} onDismiss={() => setFormError(null)} />
+                    </div>
                 ) : null}
 
                 {sortedSubjects.length === 0 ? (
@@ -713,9 +751,13 @@ export function AssignmentCreateModal({
 
                 <div className="grid gap-4 md:grid-cols-3">
                     <Select
+                        id="assignment-term"
+                        ref={termSelectRef}
                         label="Term"
                         value={termId}
                         onChange={(event) => setTermId(event.target.value)}
+                        required
+                        error={termFieldError}
                         options={[
                             { value: '', label: 'Select term' },
                             ...terms.map((term) => ({

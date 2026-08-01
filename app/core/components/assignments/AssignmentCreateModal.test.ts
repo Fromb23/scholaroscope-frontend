@@ -45,4 +45,25 @@ describe('AssignmentCreateModal attachment slots', () => {
     expect(modalSource).toContain('const { user, capabilities } = useAuth()');
     expect(modalSource).toContain('canManageReportPolicySetup');
   });
+
+  it('prevents a known missing-term submission before creating an API payload', () => {
+    const modalSource = source();
+
+    expect(modalSource).toContain("if (!termId) {");
+    expect(modalSource).toContain('Select a term before creating this assignment.');
+    expect(modalSource.indexOf("if (!termId) {")).toBeLessThan(
+      modalSource.indexOf('const mutablePayload = {'),
+    );
+  });
+
+  it('reveals modal validation failures through scroll, focus, and live announcement', () => {
+    const modalSource = source();
+
+    expect(modalSource).toContain('errorSummaryRef.current?.scrollIntoView');
+    expect(modalSource).toContain("role=\"alert\"");
+    expect(modalSource).toContain("aria-live=\"assertive\"");
+    expect(modalSource).toContain('termSelectRef.current?.focus');
+    expect(modalSource).toContain('error={termFieldError}');
+    expect(modalSource).toContain('required');
+  });
 });

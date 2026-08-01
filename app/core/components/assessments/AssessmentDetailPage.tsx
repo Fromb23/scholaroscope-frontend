@@ -34,6 +34,7 @@ import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { useAuth } from '@/app/context/AuthContext';
 import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
 import { isLearnerAssessmentDetail } from '@/app/core/types/assessment';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 
 export function AssessmentDetailPage() {
     const { capabilities } = useAuth();
@@ -98,6 +99,10 @@ export function AssessmentDetailPage() {
         handleReopenAssessment,
         isTrackedParticipation,
     } = useAssessmentDetailPage();
+    const assessmentTitle = error
+        ? (String(error).toLowerCase().includes('denied') ? 'Access denied' : 'Assessment not found')
+        : assessment?.name ?? 'Assessment';
+    useSemanticPageTitle(assessmentTitle);
     const focusedScoreEntryRef = useRef<string | null>(null);
     const focusedStageActionRef = useRef<string | null>(null);
     const unscoredCount = Math.max(totalLearnerCount - stats.scored, 0);
