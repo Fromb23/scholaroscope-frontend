@@ -205,6 +205,7 @@ export type AcademicTodayModeValue =
   | 'MIDTERM_BREAK'
   | 'MIDTERM_EXAM'
   | 'HOLIDAY'
+  | 'TERM_ENDED_GRACE'
   | 'TERM_CLOSED';
 
 export interface AcademicTodayModeEvent {
@@ -216,6 +217,18 @@ export interface AcademicTodayModeEvent {
   affects_learning: boolean;
 }
 
+export interface AcademicActionEligibilityDecision {
+  allowed: boolean;
+  reason: string | null;
+}
+
+export interface AcademicTodayModeActionEligibility {
+  create_new_work: AcademicActionEligibilityDecision;
+  initiate_prepared_work: AcademicActionEligibilityDecision;
+  reconcile_existing_work: AcademicActionEligibilityDecision;
+  read_historical_work: AcademicActionEligibilityDecision;
+}
+
 export interface AcademicTodayMode {
   mode: AcademicTodayModeValue;
   event: AcademicTodayModeEvent | null;
@@ -223,6 +236,7 @@ export interface AcademicTodayMode {
   teaching_paused: boolean;
   allows_cleanup: boolean;
   allows_new_teaching: boolean;
+  action_eligibility?: AcademicTodayModeActionEligibility;
   resumes_on: string | null;
   daily_message?: string | null;
   is_last_day?: boolean;

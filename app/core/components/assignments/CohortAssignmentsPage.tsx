@@ -266,7 +266,11 @@ export default function CohortAssignmentsPage() {
 
     const canCreateAssignments = Boolean(user) && isTeachingActor;
     const canManageAssignments = Boolean(user) && (isTeachingActor || isInstitutionAdminView);
-    const midtermBreakPausesCreation = todayMode?.mode === 'MIDTERM_BREAK' && todayMode.allows_new_teaching === false;
+    const newWorkEligibility = todayMode?.action_eligibility?.create_new_work;
+    const newWorkUnavailable = (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
+    const newWorkUnavailableReason = newWorkEligibility?.reason
+        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null)
+        ?? 'New assignment work is not available right now.';
 
     const visibleAssignments = useMemo(
         () => {
@@ -447,7 +451,7 @@ export default function CohortAssignmentsPage() {
                             </p>
                         </div>
 
-                        {canCreateAssignments && !midtermBreakPausesCreation ? (
+                        {canCreateAssignments && !newWorkUnavailable ? (
                             <Button
                                 type="button"
                                 onClick={() => {
@@ -459,9 +463,9 @@ export default function CohortAssignmentsPage() {
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create Assignment
                             </Button>
-                        ) : midtermBreakPausesCreation ? (
+                        ) : newWorkUnavailable ? (
                             <Button type="button" disabled>
-                                New normal teaching work resumes after the break.
+                                {newWorkUnavailableReason}
                             </Button>
                         ) : null}
                     </div>

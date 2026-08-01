@@ -33,6 +33,7 @@ import { useCurricula, useCurrentTerm, useTerms } from '@/app/core/hooks/useAcad
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import {
     canCreateTeachingRecord,
@@ -714,6 +715,7 @@ export function AssessmentsOverview() {
     const queryTerm = useMemo(() => parsePositiveId(searchParams.get('term')), [searchParams]);
     const activeOrgId = activeOrg?.id;
     const userId = user?.id;
+    const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(userId) });
     const persistenceKey = useMemo(() => {
         if (!activeOrgId || !userId || !activeRole) {
             return null;
@@ -741,6 +743,11 @@ export function AssessmentsOverview() {
     const canCreateAssessment = hasWritableAssessmentCurriculum && (
         canCreateTeachingRecords || (isTeachingActor && instructorAccess.hasAssignedCohortSubjects)
     );
+    const newWorkEligibility = todayMode?.action_eligibility?.create_new_work;
+    const newWorkUnavailable = (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
+    const newWorkUnavailableReason = newWorkEligibility?.reason
+        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null)
+        ?? 'New assessment work is not available right now.';
     const createButtonLabel = effectiveMyTeachingMode
         ? 'Create my assessment'
         : 'Create assessment';
@@ -1220,13 +1227,15 @@ export function AssessmentsOverview() {
                             <Button variant="ghost" size="sm">{backLabel}</Button>
                         </Link>
                     ) : null}
-                    {canCreateAssessment ? (
+                    {canCreateAssessment && !newWorkUnavailable ? (
                         <Link href={createAssessmentHref}>
                             <Button>
                                 <Plus className="h-4 w-4" />
                                 {createButtonLabel}
                             </Button>
                         </Link>
+                    ) : canCreateAssessment && newWorkUnavailable ? (
+                        <Button disabled>{newWorkUnavailableReason}</Button>
                     ) : supervisionOnlyAdmin ? (
                         <Link href="/admin/instructors">
                             <Button variant="secondary">View instructor activity</Button>
@@ -1363,13 +1372,15 @@ export function AssessmentsOverview() {
                                     ? 'No assessments are visible for the selected term.'
                                     : 'Try adjusting your filters.'}
                         </p>
-                        {canCreateAssessment && !selectedTerm && !selectedCohort && !selectedCohortSubject && !selectedType && !selectedEvalType ? (
+                        {canCreateAssessment && !newWorkUnavailable && !selectedTerm && !selectedCohort && !selectedCohortSubject && !selectedType && !selectedEvalType ? (
                             <Link href={createAssessmentHref}>
                                 <Button className="mt-4">
                                     <Plus className="h-4 w-4" />
                                     {createButtonLabel}
                                 </Button>
                             </Link>
+                        ) : canCreateAssessment && newWorkUnavailable ? (
+                            <p className="mt-4 text-sm text-gray-500">{newWorkUnavailableReason}</p>
                         ) : null}
                     </div>
                 ) : isAdminSupervisionMode && selectedTerm ? (

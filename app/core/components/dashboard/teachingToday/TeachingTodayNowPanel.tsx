@@ -68,6 +68,11 @@ export function TeachingTodayNowPanel({ action }: TeachingTodayNowPanelProps) {
                     <p className="mt-2 max-w-3xl text-sm leading-6 theme-muted">
                         {action.description}
                     </p>
+                    {action.disabledReason ? (
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-[color:var(--color-warning)]">
+                            {action.disabledReason}
+                        </p>
+                    ) : null}
 
                     {action.session ? (
                         <div className="teaching-today-nested-card mt-4 grid gap-3 rounded-lg p-3 sm:grid-cols-2 xl:grid-cols-4">

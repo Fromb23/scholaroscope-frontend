@@ -85,6 +85,7 @@ export type SessionAttendanceQueryParams = Omit<AttendanceQueryParams, 'session'
 interface DateRangeParams {
   start_date?: string;
   end_date?: string;
+  scope?: OperationalScope;
 }
 
 interface StudentHistoryParams extends DateRangeParams {
@@ -140,9 +141,13 @@ export const sessionAPI = {
     return res.data;
   },
 
-  getByDateRange: async (startDate: string, endDate: string): Promise<Session[]> => {
+  getByDateRange: async (
+    startDate: string,
+    endDate: string,
+    params?: Pick<DateRangeParams, 'scope'>,
+  ): Promise<Session[]> => {
     const res = await apiClient.get<Session[]>('/sessions/by_date_range/', {
-      params: { start_date: startDate, end_date: endDate },
+      params: withOperationalScope({ ...params, start_date: startDate, end_date: endDate }),
     });
     return res.data;
   },

@@ -15,6 +15,14 @@ interface TeachingTodayCalendarNoticeProps {
 }
 
 function getNoticeCopy(context: TeachingTodayContext): { title: string; body: string } | null {
+    if (!context.actionEligibility.createNewWorkAllowed) {
+        return {
+            title: 'New teaching work is paused',
+            body: context.actionEligibility.createNewWorkReason
+                ?? 'The server policy does not currently allow new academic work. Existing records remain available where reconciliation is permitted.',
+        };
+    }
+
     switch (context.learningDayState) {
         case 'SETUP_BLOCKED':
             return null;

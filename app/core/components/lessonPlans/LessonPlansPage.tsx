@@ -557,7 +557,11 @@ export function LessonPlansPage() {
         ? 'Prepare a lesson'
         : 'Create lesson plan';
     const backLabel = getReturnBackLabel(safeReturnTo);
-    const midtermBreakPausesCreation = todayMode?.mode === 'MIDTERM_BREAK' && todayMode.allows_new_teaching === false;
+    const newWorkEligibility = todayMode?.action_eligibility?.create_new_work;
+    const newWorkUnavailable = (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
+    const newWorkUnavailableReason = newWorkEligibility?.reason
+        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null)
+        ?? 'New teaching work is not available right now.';
 
     const instructorOptions = useMemo<LessonPlanInstructorOption[]>(() => {
         const options = new Map<string, LessonPlanInstructorOption>();
@@ -919,16 +923,16 @@ export function LessonPlansPage() {
                     </Link>
                 ) : null}
 
-                {canCreateLessonPlan && canCreateTeachingRecords && !midtermBreakPausesCreation ? (
+                {canCreateLessonPlan && canCreateTeachingRecords && !newWorkUnavailable ? (
                     <Link href={createLessonPlanHref}>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
                             {createButtonLabel}
                         </Button>
                     </Link>
-                ) : midtermBreakPausesCreation ? (
+                ) : newWorkUnavailable ? (
                     <Button disabled>
-                        New normal teaching work resumes after the break.
+                        {newWorkUnavailableReason}
                     </Button>
                 ) : supervisionOnlyAdmin && !isSelfManagedTeaching ? (
                     <Link href="/admin/instructors">
@@ -1135,16 +1139,16 @@ export function LessonPlansPage() {
                                     ? 'Lesson plans will appear here after instructors prepare them.'
                                     : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
                         </p>
-                        {canCreateLessonPlan && canCreateTeachingRecords && !midtermBreakPausesCreation ? (
+                        {canCreateLessonPlan && canCreateTeachingRecords && !newWorkUnavailable ? (
                             <Link href={createLessonPlanHref}>
                                 <Button className="mt-4">
                                     <Plus className="mr-2 h-4 w-4" />
                                     {createButtonLabel}
                                 </Button>
                             </Link>
-                        ) : midtermBreakPausesCreation ? (
+                        ) : newWorkUnavailable ? (
                             <p className="mt-4 text-sm text-gray-500">
-                                New normal teaching work resumes after the break.
+                                {newWorkUnavailableReason}
                             </p>
                         ) : supervisionOnlyAdmin && !isSelfManagedTeaching ? (
                             <p className="mt-4 text-sm text-gray-500">

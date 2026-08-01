@@ -312,6 +312,20 @@ export interface AssignmentTeachingTodayItem {
     ready_for_next_action: boolean;
     blocking_items: string[];
     warnings: string[];
+    action_eligibility?: {
+        initiate_prepared_work?: {
+            allowed: boolean;
+            reason: string | null;
+        };
+        reconcile_existing_work?: {
+            allowed: boolean;
+            reason: string | null;
+        };
+        read_historical_work?: {
+            allowed: boolean;
+            reason: string | null;
+        };
+    };
 }
 
 export interface AssignmentTeachingTodayResponse {

@@ -18,6 +18,7 @@ import { useCreateAssessmentForm, useRubricScales } from '@/app/core/hooks/useAs
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { tracksAssessmentParticipation } from '@/app/core/lib/assessmentParticipation';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
@@ -53,11 +54,17 @@ type InstructorSubjectOption = {
 export function CreateAssessmentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole } = useAuth();
+    const { activeRole, user } = useAuth();
+    const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const instructorAccess = useInstructorCohortAccess();
     const { curricula } = useCurricula();
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isAdminLike = activeRole === 'ADMIN';
+    const newWorkEligibility = todayMode?.action_eligibility?.create_new_work;
+    const newWorkUnavailable = (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
+    const newWorkUnavailableReason = newWorkEligibility?.reason
+        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null)
+        ?? 'New assessment work is not available right now.';
     const [policyGuidance, setPolicyGuidance] = useState<AcademicPolicyBrief | null>(null);
     const [policyGuidanceLoading, setPolicyGuidanceLoading] = useState(false);
     const [policyGuidanceError, setPolicyGuidanceError] = useState<string | null>(null);
@@ -354,6 +361,7 @@ export function CreateAssessmentPage() {
     const submitDisabledReason = useMemo(() => {
         if (saving) return null;
         if (!isAdminLike && !isTeachingActor) return 'You do not have permission to create assessments.';
+        if (newWorkUnavailable) return newWorkUnavailableReason;
         if (!isSelectedCurriculumWritable) return 'This curriculum is blocked for new work.';
         if (isCbcPolicyContext && !form.term) return 'Select a term before creating an official assessment.';
         if (isCbcPolicyContext && form.term && form.cohort_subject && policyGuidanceLoading) {
@@ -382,6 +390,8 @@ export function CreateAssessmentPage() {
         isCbcPolicyContext,
         isSelectedCurriculumWritable,
         isTeachingActor,
+        newWorkUnavailable,
+        newWorkUnavailableReason,
         policyDisabledReason,
         policyGuidanceError,
         policyGuidanceLoading,
