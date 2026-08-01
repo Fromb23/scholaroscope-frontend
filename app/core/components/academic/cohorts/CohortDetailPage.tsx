@@ -978,7 +978,7 @@ export default function CohortHubPage() {
                     : undefined}
                 buildSubjectLearnersHref={buildSubjectLearnersHref}
                 buildSubjectActions={showSubjectTeachingActions ? buildSubjectActions : undefined}
-                showInstructorColumn={!isPersonalTeachingWorkspace}
+                showInstructorColumn={canManageInstructors}
             />
 
             {isCbcSeniorCohort && showSubjectTeachingActions ? (
