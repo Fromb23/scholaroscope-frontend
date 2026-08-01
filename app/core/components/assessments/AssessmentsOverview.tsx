@@ -37,6 +37,7 @@ import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import {
     canCreateWorkForTerm,
     formatWorkTermOptionLabel,
+    resolveExplicitWorkTermId,
     resolveWorkSelectedTermId,
 } from '@/app/core/components/academic/terms/termSelection';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
@@ -101,7 +102,6 @@ interface TeachingGroup {
 }
 
 interface AssessmentOverviewPersistedState {
-    selectedTerm?: number;
     viewMode?: AdminWorkViewMode;
     openCategories?: string[];
     openSubjects?: string[];
@@ -110,11 +110,6 @@ interface AssessmentOverviewPersistedState {
 
 function parsePositiveId(value: string | null): number | undefined {
     const parsed = Number(value ?? '');
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-}
-
-function parsePersistedPositiveId(value: unknown): number | undefined {
-    const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
@@ -691,7 +686,6 @@ export function AssessmentsOverview() {
         capabilities,
     });
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
-    const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedCohort, setSelectedCohort] = useState<number | undefined>();
     const [selectedCohortSubject, setSelectedCohortSubject] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
@@ -699,7 +693,6 @@ export function AssessmentsOverview() {
     const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
     const [openSubjects, setOpenSubjects] = useState<Set<string>>(new Set());
     const [openCohorts, setOpenCohorts] = useState<Set<string>>(new Set());
-    const [persistedTermCandidate, setPersistedTermCandidate] = useState<number | undefined>();
     const [hydratedPersistenceKey, setHydratedPersistenceKey] = useState<string | null>(null);
     const [hasPersistedAccordionState, setHasPersistedAccordionState] = useState(false);
     const instructorAccess = useInstructorCohortAccess();
@@ -728,6 +721,14 @@ export function AssessmentsOverview() {
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
     const { terms, loading: termsLoading } = useTerms();
+    const explicitTermId = useMemo(
+        () => resolveExplicitWorkTermId(queryTerm, terms),
+        [queryTerm, terms],
+    );
+    const selectedTerm = useMemo(() => resolveWorkSelectedTermId({
+        requestedTermId: queryTerm,
+        terms,
+    }) ?? undefined, [queryTerm, terms]);
     const hasWritableAssessmentCurriculum = useMemo(() => {
         if (isAdminLike) {
             return curricula.some((curriculum) => canCreateCurriculumWork(curriculum));
@@ -761,16 +762,13 @@ export function AssessmentsOverview() {
 
     useEffect(() => {
         if (!persistenceKey) {
-            setPersistedTermCandidate(undefined);
             setHydratedPersistenceKey(null);
             setHasPersistedAccordionState(false);
-            setSelectedTerm(undefined);
             return;
         }
 
         const persisted = readAssessmentOverviewState(persistenceKey);
         const persistedViewMode = persisted?.viewMode;
-        setSelectedTerm(undefined);
         if (
             persistedViewMode === 'admin_supervision'
             || persistedViewMode === 'my_teaching'
@@ -779,7 +777,6 @@ export function AssessmentsOverview() {
         } else {
             setViewMode('admin_supervision');
         }
-        setPersistedTermCandidate(parsePersistedPositiveId(persisted?.selectedTerm));
         setOpenCategories(parsePersistedStringSet(persisted?.openCategories));
         setOpenSubjects(parsePersistedStringSet(persisted?.openSubjects));
         setOpenCohorts(parsePersistedStringSet(persisted?.openCohorts));
@@ -817,56 +814,17 @@ export function AssessmentsOverview() {
     }, [searchParams]);
 
     useEffect(() => {
-        if (!persistenceKey || hydratedPersistenceKey !== persistenceKey) {
-            return;
-        }
-
-        if (termsLoading) {
-            return;
-        }
-
-        if (terms.length === 0) {
-            setSelectedTerm(undefined);
-            return;
-        }
-
-        const resolvedTerm = resolveWorkSelectedTermId({
-            requestedTermId: queryTerm,
-            existingSelectedTermId: persistedTermCandidate ?? selectedTerm ?? null,
-            terms,
-        }) ?? undefined;
-
-        if (selectedTerm !== resolvedTerm) {
-            setSelectedTerm(resolvedTerm);
-        }
-    }, [
-        hydratedPersistenceKey,
-        persistedTermCandidate,
-        persistenceKey,
-        queryTerm,
-        selectedTerm,
-        terms,
-        termsLoading,
-    ]);
-
-    useEffect(() => {
         if (!persistenceKey || hydratedPersistenceKey !== persistenceKey || termsLoading) {
             return;
         }
 
         const params = new URLSearchParams(searchParams.toString());
-        const currentQueryTerm = parsePositiveId(params.get('term'));
-        if (selectedTerm !== undefined) {
-            if (currentQueryTerm === selectedTerm) {
-                return;
-            }
-            params.set('term', String(selectedTerm));
-        } else {
-            if (currentQueryTerm === undefined) {
-                return;
-            }
-            params.delete('term');
+        const rawQueryTerm = params.get('term');
+        const currentQueryTerm = parsePositiveId(rawQueryTerm);
+        if (!rawQueryTerm || resolveExplicitWorkTermId(currentQueryTerm, terms) !== null) {
+            return;
         }
+        params.delete('term');
 
         const nextQuery = params.toString();
         router.replace(nextQuery ? `/assessments?${nextQuery}` : '/assessments', { scroll: false });
@@ -875,9 +833,20 @@ export function AssessmentsOverview() {
         persistenceKey,
         router,
         searchParams,
-        selectedTerm,
+        terms,
         termsLoading,
     ]);
+
+    const handleTermChange = (termId: number | undefined) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (termId) {
+            params.set('term', String(termId));
+        } else {
+            params.delete('term');
+        }
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/assessments?${nextQuery}` : '/assessments', { scroll: false });
+    };
 
     useEffect(() => {
         if (!persistenceKey || hydratedPersistenceKey !== persistenceKey || typeof window === 'undefined') {
@@ -885,7 +854,6 @@ export function AssessmentsOverview() {
         }
 
         const payload: AssessmentOverviewPersistedState = {
-            selectedTerm,
             viewMode,
             openCategories: Array.from(openCategories),
             openSubjects: Array.from(openSubjects),
@@ -898,7 +866,6 @@ export function AssessmentsOverview() {
         openCohorts,
         openSubjects,
         persistenceKey,
-        selectedTerm,
         viewMode,
     ]);
 
@@ -924,8 +891,8 @@ export function AssessmentsOverview() {
         if (selectedCohortSubject) {
             params.set('cohort_subject', String(selectedCohortSubject));
         }
-        if (selectedTerm) {
-            params.set('term', String(selectedTerm));
+        if (explicitTermId) {
+            params.set('term', String(explicitTermId));
         }
         if (source) {
             params.set('source', source);
@@ -934,7 +901,7 @@ export function AssessmentsOverview() {
         }
         params.set('returnTo', `${'/assessments'}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
         return `/assessments/new?${params.toString()}`;
-    }, [searchParams, selectedCohort, selectedCohortSubject, selectedTerm, source]);
+    }, [explicitTermId, searchParams, selectedCohort, selectedCohortSubject, source]);
     const backLabel = source === 'cohort_subject'
         ? 'Back to workspace'
         : getReturnBackLabel(safeReturnTo);
@@ -1268,7 +1235,7 @@ export function AssessmentsOverview() {
                             <TermSelector
                                 terms={terms}
                                 selectedTerm={selectedTerm}
-                                onChange={setSelectedTerm}
+                                onChange={handleTermChange}
                                 required
                             />
                         </div>
@@ -1277,7 +1244,7 @@ export function AssessmentsOverview() {
                             <TermSelector
                                 terms={terms}
                                 selectedTerm={selectedTerm}
-                                onChange={setSelectedTerm}
+                                onChange={handleTermChange}
                                 required={false}
                             />
                             <Select

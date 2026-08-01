@@ -247,12 +247,20 @@ export const useAssessmentTypeSummaries = ({
   cohort,
   subject,
   cohort_subject: cohortSubject,
-}: ReportFilters = {}) => {
+}: ReportFilters = {}, options: { enabled?: boolean } = {}) => {
+  const enabled = options.enabled ?? true;
   const [summaries, setSummaries] = useState<AssessmentTypeSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSummaries = useCallback(async () => {
+    if (!enabled) {
+      setSummaries([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       setSummaries(unwrap(await assessmentTypeSummaryAPI.getAll(
@@ -264,7 +272,7 @@ export const useAssessmentTypeSummaries = ({
     } finally {
       setLoading(false);
     }
-  }, [cohort, cohortSubject, student, subject, term]);
+  }, [cohort, cohortSubject, enabled, student, subject, term]);
 
   useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
 

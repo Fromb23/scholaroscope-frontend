@@ -23,6 +23,7 @@ import { useSchemes } from '@/app/core/hooks/useSchemes';
 import {
   canCreateWorkForTerm,
   formatWorkTermOptionLabel,
+  resolveExplicitWorkTermId,
   resolveWorkSelectedTermId,
 } from '@/app/core/components/academic/terms/termSelection';
 import { SchemeComplianceOverview } from '@/app/plugins/schemes/components/SchemeComplianceOverview';
@@ -303,11 +304,14 @@ export function SchemesPage() {
   const effectiveMyTeachingMode = isInstructor || canUseTeacherModeAsAdmin || viewMode === 'my_teaching';
   const institutionComplianceMode = isInstitutionalAdminSupervisor && !effectiveMyTeachingMode;
   const queryTerm = useMemo(() => toOptionalNumber(searchParams.get('term') ?? ''), [searchParams]);
+  const explicitTermId = useMemo(
+    () => resolveExplicitWorkTermId(toOptionalNumber(termFilter) ?? null, terms),
+    [termFilter, terms],
+  );
   const selectedTermId = useMemo(() => resolveWorkSelectedTermId({
     requestedTermId: queryTerm,
-    existingSelectedTermId: toOptionalNumber(termFilter) ?? null,
     terms,
-  }), [queryTerm, termFilter, terms]);
+  }), [queryTerm, terms]);
   const selectedTermRecord = useMemo(
     () => terms.find((term) => term.id === selectedTermId) ?? null,
     [selectedTermId, terms],
@@ -382,6 +386,10 @@ export function SchemesPage() {
     const requestedCohortSubject = searchParams.get('cohort_subject');
     const requestedSubject = searchParams.get('subject');
     const requestedCohort = searchParams.get('cohort');
+    const requestedTerm = searchParams.get('term') ?? '';
+    if (requestedTerm !== termFilter) {
+      setTermFilter(requestedTerm);
+    }
     if (requestedCohortSubject && requestedCohortSubject !== cohortSubjectFilter) {
       setCohortSubjectFilter(requestedCohortSubject);
     }
@@ -391,18 +399,7 @@ export function SchemesPage() {
     if (requestedCohort && requestedCohort !== cohortFilter) {
       setCohortFilter(requestedCohort);
     }
-  }, [cohortFilter, cohortSubjectFilter, searchParams, subjectFilter]);
-
-  useEffect(() => {
-    if (termsLoading) {
-      return;
-    }
-
-    const nextTermFilter = selectedTermId ? String(selectedTermId) : '';
-    if (termFilter !== nextTermFilter) {
-      setTermFilter(nextTermFilter);
-    }
-  }, [selectedTermId, termFilter, termsLoading]);
+  }, [cohortFilter, cohortSubjectFilter, searchParams, subjectFilter, termFilter]);
 
   useEffect(() => {
     if (termsLoading || terms.length === 0) {
@@ -410,22 +407,28 @@ export function SchemesPage() {
     }
 
     const params = new URLSearchParams(searchParams.toString());
-    const currentQueryTerm = toOptionalNumber(params.get('term') ?? '');
-    if (selectedTermId) {
-      if (currentQueryTerm === selectedTermId) {
-        return;
-      }
-      params.set('term', String(selectedTermId));
-    } else {
-      if (currentQueryTerm === undefined) {
-        return;
-      }
-      params.delete('term');
+    const rawQueryTerm = params.get('term');
+    const currentQueryTerm = toOptionalNumber(rawQueryTerm ?? '');
+    if (!rawQueryTerm || resolveExplicitWorkTermId(currentQueryTerm ?? null, terms) !== null) {
+      return;
     }
+    params.delete('term');
 
     const nextQuery = params.toString();
     router.replace(nextQuery ? `/schemes?${nextQuery}` : '/schemes', { scroll: false });
-  }, [router, searchParams, selectedTermId, terms.length, termsLoading]);
+  }, [router, searchParams, terms, terms.length, termsLoading]);
+
+  const handleTermFilterChange = (value: string) => {
+    setTermFilter(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set('term', value);
+    } else {
+      params.delete('term');
+    }
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `/schemes?${nextQuery}` : '/schemes', { scroll: false });
+  };
 
   useEffect(() => {
     if (canUseTeacherModeAsAdmin && viewMode !== 'my_teaching') {
@@ -502,21 +505,21 @@ export function SchemesPage() {
   );
   const workspaceHref = useMemo(() => {
     const params = new URLSearchParams();
-    if (termFilter) params.set('term', termFilter);
+    if (explicitTermId) params.set('term', String(explicitTermId));
     if (cohortSubjectFilter) params.set('cohort_subject', cohortSubjectFilter);
     if (!cohortSubjectFilter && subjectFilter) params.set('subject', subjectFilter);
     if (cohortFilter) params.set('cohort', cohortFilter);
     if (safeReturnTo) params.set('returnTo', safeReturnTo);
     const query = params.toString();
     return query ? `/schemes?${query}` : '/schemes';
-  }, [cohortFilter, cohortSubjectFilter, safeReturnTo, subjectFilter, termFilter]);
+  }, [cohortFilter, cohortSubjectFilter, explicitTermId, safeReturnTo, subjectFilter]);
   const createSchemeHref = useMemo(() => {
     const params = new URLSearchParams();
     if (cohortSubjectFilter) params.set('cohort_subject', cohortSubjectFilter);
-    if (termFilter) params.set('term', termFilter);
+    if (explicitTermId) params.set('term', String(explicitTermId));
     params.set('returnTo', workspaceHref);
     return `/schemes/new?${params.toString()}`;
-  }, [cohortSubjectFilter, termFilter, workspaceHref]);
+  }, [cohortSubjectFilter, explicitTermId, workspaceHref]);
   const backLabel = getReturnBackLabel(safeReturnTo);
 
   const multipleActiveCurricula = useMemo(() => {
@@ -710,12 +713,15 @@ export function SchemesPage() {
           />
           <Select
             label="Term"
-            value={termFilter}
-            onChange={(event) => setTermFilter(event.target.value)}
-            options={terms.map((term) => ({
-              value: String(term.id),
-              label: formatWorkTermOptionLabel(term),
-            }))}
+            value={selectedTermId ? String(selectedTermId) : ''}
+            onChange={(event) => handleTermFilterChange(event.target.value)}
+            options={[
+              { value: '', label: selectedTermId ? 'Use active term' : 'No term selected' },
+              ...terms.map((term) => ({
+                value: String(term.id),
+                label: formatWorkTermOptionLabel(term),
+              })),
+            ]}
           />
           {effectiveMyTeachingMode ? (
             <Select
@@ -771,7 +777,7 @@ export function SchemesPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold theme-text">
-              {search || termFilter || cohortSubjectFilter || subjectFilter || cohortFilter || (viewMode === 'admin_supervision' && instructorFilter)
+              {search || selectedTermId || cohortSubjectFilter || subjectFilter || cohortFilter || (viewMode === 'admin_supervision' && instructorFilter)
                 ? 'No schemes match these filters'
                 : 'No schemes created yet'}
             </h2>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ClipboardCheck, PieChart } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Select } from '@/app/components/ui/Select';
@@ -11,22 +12,62 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { useAssessmentTypeSummaries } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
+import {
+  formatWorkTermOptionLabel,
+  resolveExplicitWorkTermId,
+  resolveWorkSelectedTermId,
+} from '@/app/core/components/academic/terms/termSelection';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
+import { parsePositiveReportParam } from '@/app/core/components/reports/reportNavigation';
 import {
   formatNumber,
   formatPercent,
 } from '@/app/core/lib/reportingPresentation';
 
 export function AssessmentsReportPage() {
-  const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
-
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { terms, loading: termsLoading } = useTerms();
+  const queryTerm = useMemo(() => parsePositiveReportParam(searchParams.get('term')), [searchParams]);
+  const selectedTerm = useMemo(() => resolveWorkSelectedTermId({
+    requestedTermId: queryTerm,
+    terms,
+  }), [queryTerm, terms]);
   const { summaries, loading, error } = useAssessmentTypeSummaries({
     term: selectedTerm ?? undefined,
+  }, {
+    enabled: !termsLoading && selectedTerm !== null,
   });
 
   const totalAssessments = summaries.reduce((sum, item) => sum + item.total_assessments, 0);
+
+  useEffect(() => {
+    if (termsLoading || terms.length === 0) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    const rawQueryTerm = params.get('term');
+    if (!rawQueryTerm || resolveExplicitWorkTermId(queryTerm, terms) !== null) {
+      return;
+    }
+    params.delete('term');
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [pathname, queryTerm, router, searchParams, terms, terms.length, termsLoading]);
+
+  const handleTermChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set('term', value);
+    } else {
+      params.delete('term');
+    }
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  };
 
   return (
     <AdminReportAccessGate>
@@ -55,13 +96,13 @@ export function AssessmentsReportPage() {
           <Select
             label="Select Term"
             value={selectedTerm?.toString() ?? ''}
-            onChange={(e) => setSelectedTerm(e.target.value ? Number(e.target.value) : null)}
+            onChange={(event) => handleTermChange(event.target.value)}
             disabled={termsLoading}
             options={[
-              { value: '', label: 'Select term…' },
+              { value: '', label: selectedTerm ? 'Use active term' : 'No term selected' },
               ...terms.map((term) => ({
                 value: String(term.id),
-                label: `${term.academic_year_name} — ${term.name}`,
+                label: formatWorkTermOptionLabel(term),
               })),
             ]}
           />
@@ -74,7 +115,7 @@ export function AssessmentsReportPage() {
           <Card>
             <div className="py-16 text-center">
               <PieChart className="mx-auto h-12 w-12 text-gray-300" />
-              <p className="mt-3 text-sm text-gray-500">Select a term to view assessment data.</p>
+              <p className="mt-3 text-sm text-gray-500">No active term is available. Choose a historical term to view assessment data.</p>
             </div>
           </Card>
         )}
@@ -127,7 +168,6 @@ export function AssessmentsReportPage() {
             </div>
           </Card>
         )}
-
       </div>
     </AdminReportAccessGate>
   );

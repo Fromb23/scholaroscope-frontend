@@ -11,7 +11,6 @@ interface TermCalendarAccessContext {
 
 export interface WorkTermSelectionInput {
     requestedTermId?: number | null;
-    existingSelectedTermId?: number | null;
     terms: Term[];
 }
 
@@ -84,35 +83,26 @@ function resolveCurrentWorkTerm(terms: Term[]): Term | null {
     )) ?? null;
 }
 
-function resolveLatestAccessibleHistoricalTerm(terms: Term[]): Term | null {
-    return [...terms]
-        .filter(termHasHistoricalLifecycle)
-        .sort((left, right) => (
-            right.end_date.localeCompare(left.end_date)
-            || right.start_date.localeCompare(left.start_date)
-            || right.id - left.id
-        ))[0] ?? null;
+export function resolveExplicitWorkTermId(
+    requestedTermId: number | null | undefined,
+    terms: Term[],
+): number | null {
+    if (!requestedTermId) {
+        return null;
+    }
+
+    return terms.some((term) => term.id === requestedTermId)
+        ? requestedTermId
+        : null;
 }
 
 export function resolveWorkSelectedTermId({
     requestedTermId,
-    existingSelectedTermId,
     terms,
 }: WorkTermSelectionInput): number | null {
-    const validTermIds = new Set(terms.map((term) => term.id));
-
-    if (requestedTermId && validTermIds.has(requestedTermId)) {
-        return requestedTermId;
-    }
-
-    if (existingSelectedTermId && validTermIds.has(existingSelectedTermId)) {
-        return existingSelectedTermId;
-    }
-
-    return (
-        resolveCurrentWorkTerm(terms)
-        ?? resolveLatestAccessibleHistoricalTerm(terms)
-    )?.id ?? null;
+    return resolveExplicitWorkTermId(requestedTermId, terms)
+        ?? resolveCurrentWorkTerm(terms)?.id
+        ?? null;
 }
 
 export function canCreateWorkForTerm(term: Term | null): boolean {

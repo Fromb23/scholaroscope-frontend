@@ -11,6 +11,7 @@ import {
     canEditTermCalendar,
     canEditTermCalendarEvent,
     canReopenTermCalendar,
+    resolveExplicitWorkTermId,
     resolveAvailableWorkTerms,
     resolveDefaultSelectedTerm,
     resolveSelectedTermId,
@@ -230,6 +231,25 @@ describe('work academic term selection contract', () => {
         configuration_state: 'HISTORICAL_LOCKED',
     });
 
+    function resolveWorkQuery(terms: Term[], requestedTermId?: number | null) {
+        const selectedTermId = resolveWorkSelectedTermId({ requestedTermId, terms });
+
+        return {
+            selectedTermId,
+            enabled: selectedTermId !== null,
+            query: selectedTermId === null ? null : { term: selectedTermId },
+        };
+    }
+
+    function serializeExplicitTermParam(terms: Term[], requestedTermId?: number | null): string {
+        const explicitTermId = resolveExplicitWorkTermId(requestedTermId, terms);
+        const params = new URLSearchParams();
+        if (explicitTermId) {
+            params.set('term', String(explicitTermId));
+        }
+        return params.toString();
+    }
+
     it('keeps the full authorized catalogue separate from default selection and write policy', () => {
         const availableTerms = resolveAvailableWorkTerms([endedTerm, currentTerm, emptyHistoricalTerm]);
 
@@ -239,20 +259,29 @@ describe('work academic term selection contract', () => {
         expect(canCreateWorkForTerm(endedTerm)).toBe(false);
     });
 
-    it('preserves a valid historical URL or explicit selection and requests that term', () => {
+    it('selects a valid explicit current term', () => {
+        expect(resolveWorkSelectedTermId({
+            requestedTermId: currentTerm.id,
+            terms: [endedTerm, currentTerm],
+        })).toBe(currentTerm.id);
+    });
+
+    it('selects a valid explicit ended term', () => {
         const terms = [endedTerm, currentTerm];
 
         expect(resolveWorkSelectedTermId({
             requestedTermId: endedTerm.id,
             terms,
         })).toBe(endedTerm.id);
-        expect(resolveWorkSelectedTermId({
-            existingSelectedTermId: endedTerm.id,
-            terms,
-        })).toBe(endedTerm.id);
     });
 
-    it('falls back to the latest accessible historical term when there is no current term', () => {
+    it('selects the active term when there is no explicit selection', () => {
+        expect(resolveWorkSelectedTermId({
+            terms: [endedTerm, currentTerm],
+        })).toBe(currentTerm.id);
+    });
+
+    it('returns null when there is no explicit selection and only ended terms', () => {
         const olderHistoricalTerm = buildTerm({
             id: 4,
             start_date: '2025-09-01',
@@ -263,7 +292,34 @@ describe('work academic term selection contract', () => {
 
         expect(resolveWorkSelectedTermId({
             terms: [olderHistoricalTerm, endedTerm, emptyHistoricalTerm],
-        })).toBe(emptyHistoricalTerm.id);
+        })).toBeNull();
+    });
+
+    it('returns null when there is no explicit selection and only upcoming terms', () => {
+        const upcomingTerm = buildTerm({
+            id: 5,
+            start_date: '2026-10-01',
+            end_date: '2026-12-15',
+            status: 'OPEN',
+        });
+
+        expect(resolveWorkSelectedTermId({
+            terms: [upcomingTerm],
+        })).toBeNull();
+    });
+
+    it('falls back to the active term for an invalid explicit term', () => {
+        expect(resolveWorkSelectedTermId({
+            requestedTermId: 999,
+            terms: [endedTerm, currentTerm],
+        })).toBe(currentTerm.id);
+    });
+
+    it('returns null for an invalid explicit term when there is no active term', () => {
+        expect(resolveWorkSelectedTermId({
+            requestedTermId: 999,
+            terms: [endedTerm, emptyHistoricalTerm],
+        })).toBeNull();
     });
 
     it('rejects invalid or cross-organization selections before record requests can use them', () => {
@@ -279,32 +335,95 @@ describe('work academic term selection contract', () => {
 
         expect(resolveWorkSelectedTermId({
             requestedTermId: workspaceATermId,
-            existingSelectedTermId: workspaceATermId,
             terms: [workspaceBCurrent],
         })).toBe(workspaceBCurrent.id);
     });
 
-    it('wires the five work pages to the shared term contract and selected-term record query', () => {
+    it('does not retain an automatic latest-historical fallback', () => {
+        expect(resolveWorkSelectedTermId({
+            terms: [endedTerm, emptyHistoricalTerm],
+        })).toBeNull();
+    });
+
+    it('does not serialize automatic active defaults into the URL', () => {
+        expect(serializeExplicitTermParam([endedTerm, currentTerm])).toBe('');
+    });
+
+    it('serializes explicit selector changes into the URL', () => {
+        expect(serializeExplicitTermParam([endedTerm, currentTerm], endedTerm.id)).toBe(`term=${endedTerm.id}`);
+    });
+
+    it('preserves a valid historical URL selection on initialization', () => {
+        expect(resolveExplicitWorkTermId(endedTerm.id, [endedTerm, currentTerm])).toBe(endedTerm.id);
+        expect(resolveWorkSelectedTermId({
+            requestedTermId: endedTerm.id,
+            terms: [endedTerm, currentTerm],
+        })).toBe(endedTerm.id);
+    });
+
+    it('disables work queries when the resolver returns null', () => {
+        expect(resolveWorkQuery([endedTerm, emptyHistoricalTerm])).toEqual({
+            selectedTermId: null,
+            enabled: false,
+            query: null,
+        });
+    });
+
+    it('puts exactly one term id into every enabled work query', () => {
+        expect(resolveWorkQuery([endedTerm, currentTerm])).toEqual({
+            selectedTermId: currentTerm.id,
+            enabled: true,
+            query: { term: currentTerm.id },
+        });
+        expect(resolveWorkQuery([endedTerm, currentTerm], endedTerm.id)).toEqual({
+            selectedTermId: endedTerm.id,
+            enabled: true,
+            query: { term: endedTerm.id },
+        });
+    });
+
+    it('keeps page consumers scoped to a single effective term and disabled without one', () => {
         const assignmentsPage = source('app/core/components/assignments/CohortAssignmentsPage.tsx');
         const assessmentsPage = source('app/core/components/assessments/AssessmentsOverview.tsx');
         const sessionsPage = source('app/core/components/sessions/SessionsOverview.tsx');
         const lessonPlansPage = source('app/core/components/lessonPlans/LessonPlansPage.tsx');
         const schemesPage = source('app/plugins/schemes/components/SchemesPage.tsx');
+        const assessmentReportsPage = source('app/core/components/reports/AssessmentsReportPage.tsx');
+        const instructorReportsPage = source('app/core/components/reports/AdminInstructorReportsPage.tsx');
         const catalogueHook = source('app/core/hooks/useAcademic.ts');
         const queryKeys = source('app/core/lib/queryKeys.ts');
 
-        for (const page of [assignmentsPage, assessmentsPage, sessionsPage, lessonPlansPage, schemesPage]) {
+        const activeOnly = resolveWorkQuery([endedTerm, currentTerm]);
+        const endedOnly = resolveWorkQuery([endedTerm], endedTerm.id);
+        const noEffectiveTerm = resolveWorkQuery([endedTerm]);
+
+        expect(activeOnly).toMatchObject({ enabled: true, query: { term: currentTerm.id } });
+        expect(endedOnly).toMatchObject({ enabled: true, query: { term: endedTerm.id } });
+        expect(noEffectiveTerm).toMatchObject({ enabled: false, query: null });
+
+        for (const page of [assignmentsPage, assessmentsPage, sessionsPage, lessonPlansPage, schemesPage, assessmentReportsPage, instructorReportsPage]) {
             expect(page).toContain('resolveWorkSelectedTermId');
+            expect(page).toContain('resolveExplicitWorkTermId');
             expect(page).toContain('formatWorkTermOptionLabel');
-            expect(page).toContain('canCreateWorkForTerm');
-            expect(page).toContain('label="Term"');
+            expect(page).not.toContain('existingSelectedTermId');
+            expect(page).not.toContain('resolveLatestAccessibleHistoricalTerm');
         }
 
         expect(assignmentsPage).toContain('term: selectedTermId ?? undefined');
+        expect(assignmentsPage).toContain('enabled: isValidCohortId && !termsLoading && selectedTermId !== null');
         expect(assessmentsPage).toContain('term: selectedTerm');
+        expect(assessmentsPage).toContain('const shouldFetchAssessments = !termsLoading && Boolean(selectedTerm);');
         expect(sessionsPage).toContain('term: selectedTerm');
+        expect(sessionsPage).toContain('enabled: !termsLoading && selectedTerm !== undefined');
+        expect(sessionsPage).not.toContain('useCohortSessions');
         expect(lessonPlansPage).toContain('term: selectedTermId ?? undefined');
+        expect(lessonPlansPage).toContain('enabled: !institutionComplianceMode && !termsLoading && selectedTermId !== null');
         expect(schemesPage).toContain('term: selectedTermId ?? undefined');
+        expect(schemesPage).toContain('enabled: !institutionComplianceMode && !termsLoading && selectedTermId !== null');
+        expect(assessmentReportsPage).toContain('term: selectedTerm ?? undefined');
+        expect(assessmentReportsPage).toContain('enabled: !termsLoading && selectedTerm !== null');
+        expect(instructorReportsPage).toContain('term: selectedTermId');
+        expect(instructorReportsPage).not.toContain('useCurrentTerm');
         expect(catalogueHook).toContain('academicKeys.terms.list(organizationId, academicYearId ?? null)');
         expect(queryKeys).toContain("['academic', 'terms', 'list', organizationId, academicYearId ?? null]");
     });

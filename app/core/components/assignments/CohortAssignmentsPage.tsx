@@ -35,6 +35,7 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import {
     canCreateWorkForTerm,
     formatWorkTermOptionLabel,
+    resolveExplicitWorkTermId,
     resolveWorkSelectedTermId,
 } from '@/app/core/components/academic/terms/termSelection';
 import { useAuth } from '@/app/context/AuthContext';
@@ -214,23 +215,19 @@ export default function CohortAssignmentsPage() {
     } = useCohortSubjects(isValidCohortId ? cohortId : undefined);
     const { terms, loading: termsLoading } = useTerms();
     const queryTerm = useMemo(() => parsePositiveId(searchParams.get('term')), [searchParams]);
+    const explicitTermId = useMemo(
+        () => resolveExplicitWorkTermId(parsePositiveId(termFilter), terms),
+        [termFilter, terms],
+    );
     const selectedTermId = useMemo(() => resolveWorkSelectedTermId({
         requestedTermId: queryTerm,
-        existingSelectedTermId: parsePositiveId(termFilter),
         terms,
-    }), [queryTerm, termFilter, terms]);
+    }), [queryTerm, terms]);
     const selectedTermRecord = useMemo(
         () => terms.find((term) => term.id === selectedTermId) ?? null,
         [selectedTermId, terms],
     );
     const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
-
-    useEffect(() => {
-        const nextTermFilter = selectedTermId ? String(selectedTermId) : '';
-        if (termFilter !== nextTermFilter) {
-            setTermFilter(nextTermFilter);
-        }
-    }, [selectedTermId, termFilter]);
 
     const accessLoading = authLoading || (isTeachingActor && instructorAccess.isLoading);
     const allowed = !user
@@ -288,25 +285,34 @@ export default function CohortAssignmentsPage() {
         }
 
         const params = new URLSearchParams(searchParams.toString());
-        const currentQueryTerm = parsePositiveId(params.get('term'));
-        if (selectedTermId) {
-            if (currentQueryTerm === selectedTermId) {
-                return;
-            }
-            params.set('term', String(selectedTermId));
-        } else {
-            if (currentQueryTerm === undefined) {
-                return;
-            }
-            params.delete('term');
+        const rawQueryTerm = params.get('term');
+        const currentQueryTerm = parsePositiveId(rawQueryTerm);
+        if (!rawQueryTerm || resolveExplicitWorkTermId(currentQueryTerm, terms) !== null) {
+            return;
         }
+        params.delete('term');
 
         const nextQuery = params.toString();
         router.replace(
             nextQuery ? `/academic/cohorts/${cohortId}/assignments?${nextQuery}` : `/academic/cohorts/${cohortId}/assignments`,
             { scroll: false },
         );
-    }, [cohortId, router, searchParams, selectedTermId, terms.length, termsLoading]);
+    }, [cohortId, router, searchParams, terms, terms.length, termsLoading]);
+
+    const handleTermFilterChange = useCallback((value: string) => {
+        setTermFilter(value);
+        const params = new URLSearchParams(searchParams.toString());
+        if (value) {
+            params.set('term', value);
+        } else {
+            params.delete('term');
+        }
+        const nextQuery = params.toString();
+        router.replace(
+            nextQuery ? `/academic/cohorts/${cohortId}/assignments?${nextQuery}` : `/academic/cohorts/${cohortId}/assignments`,
+            { scroll: false },
+        );
+    }, [cohortId, router, searchParams]);
 
     useEffect(() => {
         if (!highlightAssignmentId || assignmentsLoading) {
@@ -369,8 +375,8 @@ export default function CohortAssignmentsPage() {
         if (reviewFilter) {
             nextSearchParams.set('review', reviewFilter);
         }
-        if (selectedTermId) {
-            nextSearchParams.set('term', String(selectedTermId));
+        if (explicitTermId) {
+            nextSearchParams.set('term', String(explicitTermId));
         }
         if (trimmedSearch) {
             nextSearchParams.set('search', trimmedSearch);
@@ -390,7 +396,7 @@ export default function CohortAssignmentsPage() {
         return query
             ? `/academic/cohorts/${cohortId}/assignments?${query}`
             : `/academic/cohorts/${cohortId}/assignments`;
-    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, highlightAssignmentId, reviewFilter, search, searchParams, selectedTermId, statusFilter]);
+    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, explicitTermId, highlightAssignmentId, reviewFilter, search, searchParams, statusFilter]);
     const assignmentsHref = useMemo(
         () => buildAssignmentsHref(cohortSubjectFilter || null),
         [buildAssignmentsHref, cohortSubjectFilter]
@@ -618,12 +624,15 @@ export default function CohortAssignmentsPage() {
 
                                 <Select
                                     label="Term"
-                                    value={termFilter}
-                                    onChange={(event) => setTermFilter(event.target.value)}
-                                    options={terms.map((term) => ({
-                                        value: String(term.id),
-                                        label: formatWorkTermOptionLabel(term),
-                                    }))}
+                                    value={selectedTermId ? String(selectedTermId) : ''}
+                                    onChange={(event) => handleTermFilterChange(event.target.value)}
+                                    options={[
+                                        { value: '', label: selectedTermId ? 'Use active term' : 'No term selected' },
+                                        ...terms.map((term) => ({
+                                            value: String(term.id),
+                                            label: formatWorkTermOptionLabel(term),
+                                        })),
+                                    ]}
                                 />
                                 <Select
                                     label="Status"
@@ -732,12 +741,15 @@ export default function CohortAssignmentsPage() {
 
                                 <Select
                                     label="Term"
-                                    value={termFilter}
-                                    onChange={(event) => setTermFilter(event.target.value)}
-                                    options={terms.map((term) => ({
-                                        value: String(term.id),
-                                        label: formatWorkTermOptionLabel(term),
-                                    }))}
+                                    value={selectedTermId ? String(selectedTermId) : ''}
+                                    onChange={(event) => handleTermFilterChange(event.target.value)}
+                                    options={[
+                                        { value: '', label: selectedTermId ? 'Use active term' : 'No term selected' },
+                                        ...terms.map((term) => ({
+                                            value: String(term.id),
+                                            label: formatWorkTermOptionLabel(term),
+                                        })),
+                                    ]}
                                 />
                                 <Select
                                     label="Status"
