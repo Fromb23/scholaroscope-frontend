@@ -27,12 +27,13 @@ import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
-import { useCohortSessions, useSessions, useTodaySessions } from '@/app/core/hooks/useSessions';
+import { useSessions, useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import {
     canCreateWorkForTerm,
     formatWorkTermOptionLabel,
+    resolveExplicitWorkTermId,
     resolveWorkSelectedTermId,
 } from '@/app/core/components/academic/terms/termSelection';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
@@ -441,7 +442,6 @@ function SessionWorkspaceView() {
     });
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
     const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
-    const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const [selectedCohortId, setSelectedCohortId] = useState<number | undefined>();
     const [selectedInstructorFilter, setSelectedInstructorFilter] = useState('');
@@ -478,11 +478,14 @@ function SessionWorkspaceView() {
     }, [selectedInstructorFilter]);
     const { instructors } = useInstructors({ enabled: showInstitutionSupervision });
     const { terms, loading: termsLoading } = useTerms();
-    const resolvedSelectedTerm = useMemo(() => resolveWorkSelectedTermId({
+    const explicitTermId = useMemo(
+        () => resolveExplicitWorkTermId(queryTerm, terms) ?? undefined,
+        [queryTerm, terms],
+    );
+    const selectedTerm = useMemo(() => resolveWorkSelectedTermId({
         requestedTermId: queryTerm,
-        existingSelectedTermId: selectedTerm ?? null,
         terms,
-    }) ?? undefined, [queryTerm, selectedTerm, terms]);
+    }) ?? undefined, [queryTerm, terms]);
     const selectedTermRecord = useMemo(
         () => terms.find((term) => term.id === selectedTerm) ?? null,
         [selectedTerm, terms],
@@ -525,11 +528,11 @@ function SessionWorkspaceView() {
         if (selectedCohortSubjectId) {
             params.set('cohort_subject', String(selectedCohortSubjectId));
         }
-        if (selectedTerm) {
-            params.set('term', String(selectedTerm));
+        if (explicitTermId) {
+            params.set('term', String(explicitTermId));
         }
         return `/lesson-plans/new?${params.toString()}`;
-    }, [currentWorkspaceHref, selectedCohortSubjectId, selectedTerm]);
+    }, [currentWorkspaceHref, explicitTermId, selectedCohortSubjectId]);
     const buildSessionDetailHref = useCallback((sessionId: number) => (
         `/sessions/${sessionId}?${new URLSearchParams({
             returnTo: currentWorkspaceHref,
@@ -557,37 +560,32 @@ function SessionWorkspaceView() {
     }, [canUseMyTeaching, isSelfManagedTeaching, viewMode]);
 
     useEffect(() => {
-        if (termsLoading) {
-            return;
-        }
-
-        if (selectedTerm !== resolvedSelectedTerm) {
-            setSelectedTerm(resolvedSelectedTerm);
-        }
-    }, [resolvedSelectedTerm, selectedTerm, termsLoading]);
-
-    useEffect(() => {
         if (termsLoading || terms.length === 0) {
             return;
         }
 
         const params = new URLSearchParams(searchParams.toString());
-        const currentQueryTerm = parsePositiveId(params.get('term'));
-        if (selectedTerm) {
-            if (currentQueryTerm === selectedTerm) {
-                return;
-            }
-            params.set('term', String(selectedTerm));
-        } else {
-            if (currentQueryTerm === null) {
-                return;
-            }
-            params.delete('term');
+        const rawQueryTerm = params.get('term');
+        const currentQueryTerm = parsePositiveId(rawQueryTerm);
+        if (!rawQueryTerm || resolveExplicitWorkTermId(currentQueryTerm, terms) !== null) {
+            return;
         }
+        params.delete('term');
 
         const nextQuery = params.toString();
         router.replace(nextQuery ? `/sessions?${nextQuery}` : '/sessions', { scroll: false });
-    }, [router, searchParams, selectedTerm, terms.length, termsLoading]);
+    }, [router, searchParams, terms, terms.length, termsLoading]);
+
+    const handleTermChange = (value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (value) {
+            params.set('term', value);
+        } else {
+            params.delete('term');
+        }
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/sessions?${nextQuery}` : '/sessions', { scroll: false });
+    };
 
     const instructorOptions = useMemo(() => {
         const options = new Map<string, { value: string; label: string }>();
@@ -1562,8 +1560,9 @@ function SessionWorkspaceView() {
                         <Select
                             label="Term"
                             value={selectedTerm?.toString() || ''}
-                            onChange={(event) => setSelectedTerm(event.target.value ? Number(event.target.value) : undefined)}
+                            onChange={(event) => handleTermChange(event.target.value)}
                             options={[
+                                { value: '', label: selectedTerm ? 'Use active term' : 'No term selected' },
                                 ...terms.map((term) => ({
                                     value: String(term.id),
                                     label: formatWorkTermOptionLabel(term),
@@ -1744,16 +1743,13 @@ function CohortSessionsView({
         effectiveMyTeachingMode: isInstructor,
         showInstitutionSupervision: false,
     });
-    const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
-    const { sessions, loading, error, refetch } = useCohortSessions(cohortId);
     const { terms, loading: termsLoading } = useTerms();
     const queryTerm = parsePositiveId(searchParams.get('term'));
-    const resolvedSelectedTerm = useMemo(() => resolveWorkSelectedTermId({
+    const selectedTerm = useMemo(() => resolveWorkSelectedTermId({
         requestedTermId: queryTerm,
-        existingSelectedTermId: selectedTerm ?? null,
         terms,
-    }) ?? undefined, [queryTerm, selectedTerm, terms]);
+    }) ?? undefined, [queryTerm, terms]);
     const selectedTermRecord = useMemo(
         () => terms.find((term) => term.id === selectedTerm) ?? null,
         [selectedTerm, terms],
@@ -1776,16 +1772,40 @@ function CohortSessionsView({
     const cohortBackHref = cohortFromQuery
         ? `/academic/cohorts/${cohortFromQuery}`
         : '/sessions';
+    const { sessions, loading, error, refetch } = useSessions({
+        term: selectedTerm,
+        cohort_subject__cohort: cohortId,
+    }, undefined, {
+        enabled: !termsLoading && selectedTerm !== undefined,
+    });
 
     useEffect(() => {
-        if (termsLoading) {
+        if (termsLoading || terms.length === 0) {
             return;
         }
 
-        if (selectedTerm !== resolvedSelectedTerm) {
-            setSelectedTerm(resolvedSelectedTerm);
+        const params = new URLSearchParams(searchParams.toString());
+        const rawQueryTerm = params.get('term');
+        const currentQueryTerm = parsePositiveId(rawQueryTerm);
+        if (!rawQueryTerm || resolveExplicitWorkTermId(currentQueryTerm, terms) !== null) {
+            return;
         }
-    }, [resolvedSelectedTerm, selectedTerm, termsLoading]);
+        params.delete('term');
+
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/sessions?${nextQuery}` : '/sessions', { scroll: false });
+    }, [router, searchParams, terms, terms.length, termsLoading]);
+
+    const handleTermChange = (value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (value) {
+            params.set('term', value);
+        } else {
+            params.delete('term');
+        }
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/sessions?${nextQuery}` : '/sessions', { scroll: false });
+    };
 
     const cohort = useMemo(
         () => cohorts.find((item) => item.id === cohortId) ?? null,
@@ -1879,9 +1899,10 @@ function CohortSessionsView({
                 label="Term"
                 value={selectedTerm?.toString() || ''}
                 onChange={(event) =>
-                  setSelectedTerm(event.target.value ? Number(event.target.value) : undefined)
+                  handleTermChange(event.target.value)
                 }
                 options={[
+                  { value: '', label: selectedTerm ? 'Use active term' : 'No term selected' },
                   ...terms.map((term) => ({
                     value: String(term.id),
                     label: formatWorkTermOptionLabel(term),

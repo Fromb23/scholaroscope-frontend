@@ -18,24 +18,32 @@ import {
   resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
-import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
+import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
+import {
+  formatWorkTermOptionLabel,
+  resolveExplicitWorkTermId,
+  resolveWorkSelectedTermId,
+} from '@/app/core/components/academic/terms/termSelection';
 
 export function AdminInstructorReportsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
+  const requestedTermId = parsePositiveReportParam(searchParams.get('term'));
   const searchQuery = (searchParams.get('q') ?? '').trim().toLowerCase();
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
     fallbackHref: '/reports',
-    fallbackState: { term: selectedTermId },
+    fallbackState: { term: requestedTermId },
   });
 
-  const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
   const { terms, loading: termsLoading } = useTerms();
+  const selectedTermId = useMemo(() => resolveWorkSelectedTermId({
+    requestedTermId,
+    terms,
+  }), [requestedTermId, terms]);
   const { instructors, loading, error } = useInstructors();
 
   const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
@@ -53,13 +61,15 @@ export function AdminInstructorReportsPage() {
   }, [pathname, router, searchParams]);
 
   useEffect(() => {
-    if (selectedTermId || currentTermLoading) {
+    if (termsLoading || terms.length === 0) {
       return;
     }
-    if (currentTerm?.id) {
-      updateQuery({ term: currentTerm.id });
+    const rawQueryTerm = searchParams.get('term');
+    if (!rawQueryTerm || resolveExplicitWorkTermId(requestedTermId, terms) !== null) {
+      return;
     }
-  }, [currentTerm?.id, currentTermLoading, selectedTermId, updateQuery]);
+    updateQuery({ term: null });
+  }, [requestedTermId, searchParams, terms, terms.length, termsLoading, updateQuery]);
 
   const visibleInstructors = useMemo(() => {
     if (!searchQuery) {
@@ -110,10 +120,10 @@ export function AdminInstructorReportsPage() {
               onChange={(event) => updateQuery({ term: event.target.value ? Number(event.target.value) : null })}
               disabled={termsLoading}
               options={[
-                { value: '', label: currentTermLoading ? 'Loading active term...' : 'Choose term' },
+                { value: '', label: selectedTermId ? 'Use active term' : 'No term selected' },
                 ...terms.map((term) => ({
                   value: String(term.id),
-                  label: `${term.academic_year_name} — ${term.name}`,
+                  label: formatWorkTermOptionLabel(term),
                 })),
               ]}
             />
@@ -134,7 +144,7 @@ export function AdminInstructorReportsPage() {
               <Link
                 key={instructor.id}
                 href={buildInstructorReportHref(instructor.id, {
-                  term: selectedTermId ?? currentTerm?.id ?? null,
+                  term: selectedTermId,
                   returnTo: currentReturnTo,
                 })}
                 className="group block"

@@ -28,6 +28,7 @@ import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademi
 import {
     canCreateWorkForTerm,
     formatWorkTermOptionLabel,
+    resolveExplicitWorkTermId,
     resolveWorkSelectedTermId,
 } from '@/app/core/components/academic/terms/termSelection';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
@@ -415,11 +416,14 @@ export function LessonPlansPage() {
     const [reflection, setReflection] = useState('');
     const [markUsedError, setMarkUsedError] = useState<string | null>(null);
     const queryTerm = useMemo(() => toOptionalNumber(searchParams.get('term') ?? ''), [searchParams]);
+    const explicitTermId = useMemo(
+        () => resolveExplicitWorkTermId(toOptionalNumber(termFilter) ?? null, terms),
+        [termFilter, terms],
+    );
     const selectedTermId = useMemo(() => resolveWorkSelectedTermId({
         requestedTermId: queryTerm,
-        existingSelectedTermId: toOptionalNumber(termFilter) ?? null,
         terms,
-    }), [queryTerm, termFilter, terms]);
+    }), [queryTerm, terms]);
     const selectedTermRecord = useMemo(
         () => terms.find((term) => term.id === selectedTermId) ?? null,
         [selectedTermId, terms],
@@ -460,6 +464,10 @@ export function LessonPlansPage() {
         const requestedCohortSubject = searchParams.get('cohort_subject');
         const requestedSubject = searchParams.get('subject');
         const requestedCohort = searchParams.get('cohort');
+        const requestedTerm = searchParams.get('term') ?? '';
+        if (requestedTerm !== termFilter) {
+            setTermFilter(requestedTerm);
+        }
         if (requestedCohortSubject && requestedCohortSubject !== cohortSubjectFilter) {
             setCohortSubjectFilter(requestedCohortSubject);
         }
@@ -469,18 +477,7 @@ export function LessonPlansPage() {
         if (requestedCohort && requestedCohort !== cohortFilter) {
             setCohortFilter(requestedCohort);
         }
-    }, [cohortFilter, cohortSubjectFilter, searchParams, subjectFilter]);
-
-    useEffect(() => {
-        if (termsLoading) {
-            return;
-        }
-
-        const nextTermFilter = selectedTermId ? String(selectedTermId) : '';
-        if (termFilter !== nextTermFilter) {
-            setTermFilter(nextTermFilter);
-        }
-    }, [selectedTermId, termFilter, termsLoading]);
+    }, [cohortFilter, cohortSubjectFilter, searchParams, subjectFilter, termFilter]);
 
     useEffect(() => {
         if (termsLoading || terms.length === 0) {
@@ -488,22 +485,28 @@ export function LessonPlansPage() {
         }
 
         const params = new URLSearchParams(searchParams.toString());
-        const currentQueryTerm = toOptionalNumber(params.get('term') ?? '');
-        if (selectedTermId) {
-            if (currentQueryTerm === selectedTermId) {
-                return;
-            }
-            params.set('term', String(selectedTermId));
-        } else {
-            if (currentQueryTerm === undefined) {
-                return;
-            }
-            params.delete('term');
+        const rawQueryTerm = params.get('term');
+        const currentQueryTerm = toOptionalNumber(rawQueryTerm ?? '');
+        if (!rawQueryTerm || resolveExplicitWorkTermId(currentQueryTerm ?? null, terms) !== null) {
+            return;
         }
+        params.delete('term');
 
         const nextQuery = params.toString();
         router.replace(nextQuery ? `/lesson-plans?${nextQuery}` : '/lesson-plans', { scroll: false });
-    }, [router, searchParams, selectedTermId, terms.length, termsLoading]);
+    }, [router, searchParams, terms, terms.length, termsLoading]);
+
+    const handleTermFilterChange = (value: string) => {
+        setTermFilter(value);
+        const params = new URLSearchParams(searchParams.toString());
+        if (value) {
+            params.set('term', value);
+        } else {
+            params.delete('term');
+        }
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/lesson-plans?${nextQuery}` : '/lesson-plans', { scroll: false });
+    };
 
     useEffect(() => {
         if (isSelfManagedTeaching && viewMode !== 'my_teaching') {
@@ -570,7 +573,7 @@ export function LessonPlansPage() {
     }>) => {
         const params = new URLSearchParams();
         const resolved = {
-            term: overrides?.term ?? termFilter,
+            term: overrides?.term ?? (explicitTermId ? String(explicitTermId) : ''),
             cohort_subject: overrides?.cohort_subject ?? cohortSubjectFilter,
             subject: overrides?.subject ?? subjectFilter,
             cohort: overrides?.cohort ?? cohortFilter,
@@ -584,18 +587,18 @@ export function LessonPlansPage() {
 
         const query = params.toString();
         return query ? `/lesson-plans?${query}` : '/lesson-plans';
-    }, [cohortFilter, cohortSubjectFilter, safeReturnTo, subjectFilter, termFilter]);
+    }, [cohortFilter, cohortSubjectFilter, explicitTermId, safeReturnTo, subjectFilter]);
     const createLessonPlanHref = useMemo(() => {
         const params = new URLSearchParams();
         if (cohortSubjectFilter) {
             params.set('cohort_subject', cohortSubjectFilter);
         }
-        if (termFilter) {
-            params.set('term', termFilter);
+        if (explicitTermId) {
+            params.set('term', String(explicitTermId));
         }
         params.set('returnTo', buildWorkspaceHref());
         return `/lesson-plans/new?${params.toString()}`;
-    }, [buildWorkspaceHref, cohortSubjectFilter, termFilter]);
+    }, [buildWorkspaceHref, cohortSubjectFilter, explicitTermId]);
 
     const subtitle =
         isSelfManagedTeaching || isInstructor
@@ -663,7 +666,7 @@ export function LessonPlansPage() {
                     return false;
                 }
 
-                if (termFilter && String(lessonPlan.term ?? '') !== termFilter) {
+                if (selectedTermId && lessonPlan.term !== selectedTermId) {
                     return false;
                 }
 
@@ -730,7 +733,7 @@ export function LessonPlansPage() {
         showInstitutionSupervision,
         statusFilter,
         subjectFilter,
-        termFilter,
+        selectedTermId,
         user?.full_name,
         user?.id,
         viewMode,
@@ -744,7 +747,7 @@ export function LessonPlansPage() {
         ),
         [filteredLessonPlans, groupingMode, isSelfManagedTeaching, useGroupedLessonPlanView]
     );
-    const hasServerFilters = Boolean(statusFilter || termFilter || cohortSubjectFilter || subjectFilter || cohortFilter);
+    const hasServerFilters = Boolean(statusFilter || selectedTermId || cohortSubjectFilter || subjectFilter || cohortFilter);
 
     const setLessonPlanFeedback = (lessonPlanId: number, feedback: RowActionFeedback | null) => {
         setRowActionFeedback((current) => {
@@ -1107,12 +1110,15 @@ export function LessonPlansPage() {
 
                     <Select
                         label="Term"
-                        value={termFilter}
-                        onChange={(event) => setTermFilter(event.target.value)}
-                        options={terms.map((term) => ({
-                                value: String(term.id),
-                                label: formatWorkTermOptionLabel(term),
-                            }))}
+                        value={selectedTermId ? String(selectedTermId) : ''}
+                        onChange={(event) => handleTermFilterChange(event.target.value)}
+                        options={[
+                            { value: '', label: selectedTermId ? 'Use active term' : 'No term selected' },
+                            ...terms.map((term) => ({
+                            value: String(term.id),
+                            label: formatWorkTermOptionLabel(term),
+                            })),
+                        ]}
                     />
 
                     {effectiveMyTeachingMode ? (
