@@ -62,6 +62,61 @@ function renderSubjectSection() {
 }
 
 describe('cohort subject participation section actions', () => {
+  it('hides current instructor identity when the viewer cannot manage instructors', () => {
+    const html = renderToStaticMarkup(
+      <CohortSubjectParticipationSection
+        cohortSubjects={[cohortSubject]}
+        summaries={{
+          26: {
+            counts: {
+              enrolled: 18,
+              available: 2,
+              cohort_total: 20,
+            },
+            instructorName: 'Current Teacher',
+            instructorState: 'assigned',
+          },
+        }}
+        loading={false}
+        showInstructorColumn={false}
+        buildSubjectLearnersHref={() => '/academic/cohort-subjects/26/learners'}
+      />,
+    );
+
+    expect(html).toContain('Mathematics');
+    expect(html).toContain('Participating Learners');
+    expect(html).not.toContain('Current Instructor');
+    expect(html).not.toContain('Current Teacher');
+  });
+
+  it('shows current instructor identity for instructor managers', () => {
+    const html = renderToStaticMarkup(
+      <CohortSubjectParticipationSection
+        cohortSubjects={[cohortSubject]}
+        summaries={{
+          26: {
+            counts: {
+              enrolled: 18,
+              available: 2,
+              cohort_total: 20,
+            },
+            instructorName: 'Assigned Teacher',
+            instructorState: 'assigned',
+          },
+        }}
+        loading={false}
+        showInstructorColumn
+        canManageInstructors
+        buildInstructorHref={() => '/admin/instructors?cohort_subject_id=26'}
+        buildSubjectLearnersHref={() => '/academic/cohort-subjects/26/learners'}
+      />,
+    );
+
+    expect(html).toContain('Current Instructor');
+    expect(html).toContain('Assigned Teacher');
+    expect(html).toContain('Assign/Manage Instructor');
+  });
+
   it('builds mobile action items from the same subject action list', () => {
     const items = buildCohortSubjectActionMenuItems({
       subjectLearnersHref: '/academic/cohort-subjects/26/learners',
