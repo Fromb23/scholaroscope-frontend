@@ -29,6 +29,7 @@ import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useCohortSessions, useSessions, useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import {
     canCreateTeachingRecord,
@@ -50,9 +51,6 @@ const SESSION_TYPES = [
     { value: 'LESSON', label: 'Lesson' },
     { value: 'PRACTICAL', label: 'Practical' },
     { value: 'PROJECT', label: 'Project' },
-    { value: 'EXAM', label: 'Exam' },
-    { value: 'FIELD_TRIP', label: 'Field Trip' },
-    { value: 'ASSEMBLY', label: 'Assembly' },
     { value: 'OTHER', label: 'Other' },
 ];
 
@@ -409,6 +407,7 @@ function SessionWorkspaceView() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = activeRole === 'ADMIN';
@@ -429,6 +428,11 @@ function SessionWorkspaceView() {
         isSuperadmin: false,
         capabilities,
     });
+    const canCreateNewWork = todayMode?.action_eligibility?.create_new_work.allowed
+        ?? todayMode?.allows_new_teaching
+        ?? true;
+    const createNewWorkBlockedReason = todayMode?.action_eligibility?.create_new_work.reason
+        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null);
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
         role: activeRole,
         orgType: activeOrg?.org_type,
@@ -812,7 +816,7 @@ function SessionWorkspaceView() {
             has_priority_lesson: Boolean(priorityTodayAction),
         },
         visibleActions: [
-            ...(!midtermCleanupView && canPlanLesson && canCreateTeachingRecords
+            ...(!midtermCleanupView && canPlanLesson && canCreateTeachingRecords && canCreateNewWork
                 ? [{ label: actionLabel, type: 'navigate' as const, href: createLessonPlanHref }]
                 : []),
             ...(supervisionOnlyAdmin && !isSelfManagedTeaching
@@ -831,7 +835,7 @@ function SessionWorkspaceView() {
                 type: 'navigate' as const,
                 href: workspaceBackHref,
             }
-            : canPlanLesson && canCreateTeachingRecords
+            : canPlanLesson && canCreateTeachingRecords && canCreateNewWork
             ? {
                 label: actionLabel,
                 type: 'navigate' as const,
@@ -853,6 +857,7 @@ function SessionWorkspaceView() {
     }), [
         actionLabel,
         canCreateTeachingRecords,
+        canCreateNewWork,
         canPlanLesson,
         createLessonPlanHref,
         effectiveMyTeachingMode,
@@ -1256,7 +1261,7 @@ function SessionWorkspaceView() {
                             </Button>
                         </Link>
                     ) : null}
-                    {canPlanLesson && canCreateTeachingRecords ? (
+                    {canPlanLesson && canCreateTeachingRecords && canCreateNewWork ? (
                         <Link href={createLessonPlanHref}>
                             <Button size="sm">
                                 <Plus className="w-4 h-4 sm:mr-1" />
@@ -1273,7 +1278,7 @@ function SessionWorkspaceView() {
                     ) : (
                         <Button size="sm" disabled>
                             <Plus className="w-4 h-4 sm:mr-1" />
-                            <span className="hidden sm:inline">{actionLabel}</span>
+                            <span className="hidden sm:inline">{createNewWorkBlockedReason ?? actionLabel}</span>
                         </Button>
                     )}
                 </div>
@@ -1447,7 +1452,7 @@ function SessionWorkspaceView() {
                                         <Link href={buildSessionDetailHref(session.id)} className="shrink-0">
                                             <Button variant="primary" size="sm">
                                                 <span className="hidden sm:inline">
-                                                    {canCreateTeachingRecords ? getTodayLessonActionLabel(session) : 'View'}
+                                                    {canCreateTeachingRecords && canCreateNewWork ? getTodayLessonActionLabel(session) : 'View'}
                                                 </span>
                                                 <span className="sm:hidden">Open</span>
                                             </Button>
@@ -1467,7 +1472,7 @@ function SessionWorkspaceView() {
                             Prepare a lesson or review your assigned classes before your next teaching slot.
                         </p>
                         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                            {canPlanLesson && canCreateTeachingRecords ? (
+                            {canPlanLesson && canCreateTeachingRecords && canCreateNewWork ? (
                                 <Link href={createLessonPlanHref} className="w-full sm:w-auto">
                                     <Button className="w-full sm:w-auto">
                                         {actionLabel}
@@ -1475,7 +1480,7 @@ function SessionWorkspaceView() {
                                 </Link>
                             ) : (
                                 <Button className="w-full sm:w-auto" disabled>
-                                    {actionLabel}
+                                    {createNewWorkBlockedReason ?? actionLabel}
                                 </Button>
                             )}
                             <Link href="/academic/cohorts" className="w-full sm:w-auto">
@@ -1591,7 +1596,7 @@ function SessionWorkspaceView() {
                         </p>
                         {!selectedTerm && !selectedType && !selectedCohortId && !selectedInstructorFilter && !cleanupFilterActive ? (
                             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                                {canPlanLesson && canCreateTeachingRecords ? (
+                                {canPlanLesson && canCreateTeachingRecords && canCreateNewWork ? (
                                     <Link href={createLessonPlanHref} className="w-full sm:w-auto">
                                         <Button className="w-full sm:w-auto">
                                             <Plus className="mr-2 h-4 w-4" />
@@ -1608,7 +1613,7 @@ function SessionWorkspaceView() {
                                 ) : (
                                     <Button className="w-full sm:w-auto" disabled>
                                         <Plus className="mr-2 h-4 w-4" />
-                                        {actionLabel}
+                                        {createNewWorkBlockedReason ?? actionLabel}
                                     </Button>
                                 )}
                                 {effectiveMyTeachingMode ? (
@@ -1668,7 +1673,8 @@ function CohortSessionsView({
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, capabilities } = useAuth();
+    const { activeOrg, activeRole, capabilities, user } = useAuth();
+    const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const canCreateTeachingRecords = canCreateTeachingRecord({
@@ -1677,6 +1683,11 @@ function CohortSessionsView({
         isSuperadmin: false,
         capabilities,
     });
+    const canCreateNewWork = todayMode?.action_eligibility?.create_new_work.allowed
+        ?? todayMode?.allows_new_teaching
+        ?? true;
+    const createNewWorkBlockedReason = todayMode?.action_eligibility?.create_new_work.reason
+        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null);
     const showInstructorIdentity = shouldShowInstructorIdentity({
         activeRole,
         effectiveMyTeachingMode: isInstructor,
@@ -1763,7 +1774,7 @@ function CohortSessionsView({
                 {isInstructor ? 'Back to My Lessons' : 'Back to Workspace'}
               </Button>
             </Link>
-            {canPlanLesson && canCreateTeachingRecords ? (
+            {canPlanLesson && canCreateTeachingRecords && canCreateNewWork ? (
               <Link href="/lesson-plans/new">
                 <Button size="sm">
                   <Plus className="w-4 h-4 sm:mr-1" />
@@ -1773,7 +1784,9 @@ function CohortSessionsView({
             ) : (
               <Button size="sm" disabled>
                 <Plus className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">{isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}</span>
+                <span className="hidden sm:inline">
+                  {createNewWorkBlockedReason ?? (isInstructor ? 'Prepare a lesson' : 'Plan a lesson')}
+                </span>
               </Button>
             )}
           </div>

@@ -260,9 +260,6 @@ export type ScheduleLessonSessionType =
     | 'LESSON'
     | 'PRACTICAL'
     | 'PROJECT'
-    | 'EXAM'
-    | 'FIELD_TRIP'
-    | 'ASSEMBLY'
     | 'OTHER';
 
 export const SCHEDULE_LESSON_SESSION_TYPE_OPTIONS: Array<{
@@ -272,9 +269,6 @@ export const SCHEDULE_LESSON_SESSION_TYPE_OPTIONS: Array<{
     { value: 'LESSON', label: 'Lesson' },
     { value: 'PRACTICAL', label: 'Practical' },
     { value: 'PROJECT', label: 'Project' },
-    { value: 'EXAM', label: 'Exam' },
-    { value: 'FIELD_TRIP', label: 'Field Trip' },
-    { value: 'ASSEMBLY', label: 'Assembly' },
     { value: 'OTHER', label: 'Other' },
 ];
 

@@ -51,6 +51,7 @@ export interface TeachingTodayAction {
     secondaryLabel?: string;
     secondaryHref?: string;
     tone: TeachingTodayActionTone;
+    disabledReason?: string | null;
     session?: Session;
     assignmentWork?: AssignmentTeachingTodayItem;
 }
@@ -92,6 +93,7 @@ export interface TeachingTodayContext {
     calendarEventsToday: TermCalendarEvent[];
     calendarAffectsLearning: boolean;
     todayMode: AcademicTodayMode | null;
+    actionEligibility: TeachingTodayEligibility;
     normalTeachingExpected: boolean;
     learningDayState: LearningDayState;
     sessions: TeachingTodaySessionGroups;
@@ -106,6 +108,16 @@ export interface TeachingTodayContext {
         learnerAttentionCount?: number;
     };
     teachingLoad: TeachingAssignment[];
+}
+
+export interface TeachingTodayEligibility {
+    createNewWorkAllowed: boolean;
+    createNewWorkReason: string | null;
+    initiatePreparedWorkAllowed: boolean;
+    initiatePreparedWorkReason: string | null;
+    reconcileExistingWorkAllowed: boolean;
+    reconcileExistingWorkReason: string | null;
+    readHistoricalWorkAllowed: boolean;
 }
 
 export interface TeachingAcademicContext {
@@ -304,6 +316,10 @@ function deriveLearningDayState(
         return 'CLOSING_PERIOD';
     }
 
+    if (todayMode?.mode === 'TERM_ENDED_GRACE') {
+        return 'CLOSING_PERIOD';
+    }
+
     if (eventTypeMatches(calendarEventsToday, ['PUBLIC_HOLIDAY'])) {
         return 'PUBLIC_HOLIDAY';
     }
@@ -459,10 +475,16 @@ function mapReminderGroup(type: SessionLifecycleReminderType): TeachingTodayInco
 }
 
 function buildIncompleteItemFromReminder(
-    reminder: SessionLifecycleReminder
+    reminder: SessionLifecycleReminder,
+    eligibility: TeachingTodayEligibility
 ): TeachingTodayIncompleteItem {
     const { session } = reminder;
     const group = mapReminderGroup(reminder.type);
+    const canContinueTeaching = eligibility.createNewWorkAllowed;
+    const completeLabel = eligibility.reconcileExistingWorkAllowed ? 'Complete record' : 'Review record';
+    const completeHref = eligibility.reconcileExistingWorkAllowed
+        ? `/sessions/${session.id}?section=complete&notice=session-current-step`
+        : `/sessions/${session.id}`;
 
     if (group === 'FORGOTTEN_PREVIOUS_DAY') {
         return {
@@ -472,8 +494,8 @@ function buildIncompleteItemFromReminder(
             title: 'Forgotten from a previous day',
             detail: `${getSessionLabel(session)} is still open from ${session.session_date}.`,
             missing: getMissingWorkLabels(session),
-            actionLabel: 'Finish lesson record',
-            actionHref: `/sessions/${session.id}?section=complete&notice=session-current-step`,
+            actionLabel: completeLabel,
+            actionHref: completeHref,
             severity: 'danger',
         };
     }
@@ -486,8 +508,8 @@ function buildIncompleteItemFromReminder(
             title: 'Needs completion',
             detail: `${getSessionLabel(session)} has passed the scheduled end and still needs closure.`,
             missing: getMissingWorkLabels(session),
-            actionLabel: 'End lesson',
-            actionHref: `/sessions/${session.id}?section=complete&notice=session-current-step`,
+            actionLabel: completeLabel,
+            actionHref: completeHref,
             severity: 'warning',
         };
     }
@@ -496,16 +518,26 @@ function buildIncompleteItemFromReminder(
         id: `reminder-${reminder.type}-${session.id}`,
         group,
         session,
-        title: 'Still open',
-        detail: `${getSessionLabel(session)} is in progress.`,
+        title: canContinueTeaching ? 'Still open' : 'Needs reconciliation',
+        detail: canContinueTeaching
+            ? `${getSessionLabel(session)} is in progress.`
+            : `${getSessionLabel(session)} was already started and needs a permitted closure action.`,
         missing: getMissingWorkLabels(session),
-        actionLabel: 'Continue lesson',
-        actionHref: `/sessions/${session.id}?notice=session-current-step`,
+        actionLabel: canContinueTeaching ? 'Continue lesson' : completeLabel,
+        actionHref: canContinueTeaching ? `/sessions/${session.id}?notice=session-current-step` : completeHref,
         severity: 'info',
     };
 }
 
-function buildIncompleteItemFromSession(session: Session): TeachingTodayIncompleteItem | null {
+function buildIncompleteItemFromSession(
+    session: Session,
+    eligibility: TeachingTodayEligibility
+): TeachingTodayIncompleteItem | null {
+    const completeLabel = eligibility.reconcileExistingWorkAllowed ? 'Complete record' : 'Review record';
+    const completeHref = eligibility.reconcileExistingWorkAllowed
+        ? `/sessions/${session.id}?section=complete&notice=session-current-step`
+        : `/sessions/${session.id}`;
+
     if (isOverdueOpenSession(session)) {
         return {
             id: `session-open-overdue-${session.id}`,
@@ -514,8 +546,8 @@ function buildIncompleteItemFromSession(session: Session): TeachingTodayIncomple
             title: 'Needs completion',
             detail: `${getSessionLabel(session)} has passed the scheduled end and is still open.`,
             missing: getMissingWorkLabels(session),
-            actionLabel: 'End lesson',
-            actionHref: `/sessions/${session.id}?section=complete&notice=session-current-step`,
+            actionLabel: completeLabel,
+            actionHref: completeHref,
             severity: 'warning',
         };
     }
@@ -525,11 +557,13 @@ function buildIncompleteItemFromSession(session: Session): TeachingTodayIncomple
             id: `session-open-${session.id}`,
             group: 'STILL_OPEN',
             session,
-            title: 'Still open',
-            detail: `${getSessionLabel(session)} is currently in progress.`,
+            title: eligibility.createNewWorkAllowed ? 'Still open' : 'Needs reconciliation',
+            detail: eligibility.createNewWorkAllowed
+                ? `${getSessionLabel(session)} is currently in progress.`
+                : `${getSessionLabel(session)} was already started and needs a permitted closure action.`,
             missing: getMissingWorkLabels(session),
-            actionLabel: 'Continue lesson',
-            actionHref: `/sessions/${session.id}?notice=session-current-step`,
+            actionLabel: eligibility.createNewWorkAllowed ? 'Continue lesson' : completeLabel,
+            actionHref: eligibility.createNewWorkAllowed ? `/sessions/${session.id}?notice=session-current-step` : completeHref,
             severity: 'info',
         };
     }
@@ -540,9 +574,11 @@ function buildIncompleteItemFromSession(session: Session): TeachingTodayIncomple
             group: 'NEEDS_ATTENTION_BEFORE_END',
             session,
             title: 'Needs attention before today ends',
-            detail: `${getSessionLabel(session)} was scheduled earlier but has not started.`,
+            detail: eligibility.createNewWorkAllowed
+                ? `${getSessionLabel(session)} was scheduled earlier but has not started.`
+                : `${getSessionLabel(session)} was scheduled but never started before the term boundary.`,
             missing: getMissingWorkLabels(session),
-            actionLabel: 'Open lesson',
+            actionLabel: eligibility.reconcileExistingWorkAllowed ? 'Resolve scheduled record' : 'Review record',
             actionHref: `/sessions/${session.id}`,
             severity: 'warning',
         };
@@ -553,20 +589,21 @@ function buildIncompleteItemFromSession(session: Session): TeachingTodayIncomple
 
 function buildIncompleteItems(
     reminders: SessionLifecycleReminder[],
-    todaySessions: Session[]
+    todaySessions: Session[],
+    eligibility: TeachingTodayEligibility
 ): TeachingTodayIncompleteItem[] {
     const seen = new Set<number>();
     const items: TeachingTodayIncompleteItem[] = [];
 
     reminders.forEach((reminder) => {
         seen.add(reminder.session.id);
-        items.push(buildIncompleteItemFromReminder(reminder));
+        items.push(buildIncompleteItemFromReminder(reminder, eligibility));
     });
 
     todaySessions.forEach((session) => {
         if (seen.has(session.id)) return;
 
-        const item = buildIncompleteItemFromSession(session);
+        const item = buildIncompleteItemFromSession(session, eligibility);
         if (item) {
             items.push(item);
         }
@@ -609,6 +646,7 @@ function buildAssignmentAction(item: AssignmentTeachingTodayItem): TeachingToday
         secondaryLabel: secondaryAction?.label,
         secondaryHref: secondaryAction?.href,
         tone: action.urgency,
+        disabledReason: item.blocking_items[0] ?? null,
         assignmentWork: item,
     };
 }
@@ -622,6 +660,7 @@ function buildNextAction(args: {
     normalTeachingExpected: boolean;
     pendingAssessmentReviewCount: number;
     teachingLoad: TeachingAssignment[];
+    eligibility: TeachingTodayEligibility;
 }): TeachingTodayAction | null {
     const {
         groups,
@@ -632,18 +671,21 @@ function buildNextAction(args: {
         normalTeachingExpected,
         pendingAssessmentReviewCount,
         teachingLoad,
+        eligibility,
     } = args;
 
     const overdueOpen = groups.overdueOpen[0];
     if (overdueOpen) {
         return {
             key: 'end-overdue-open-lesson',
-            title: 'Finish the open lesson',
-            description: `${getSessionLabel(overdueOpen)} is still open after its scheduled end. Close the record before the day moves on.`,
-            primaryLabel: 'End lesson',
+            title: eligibility.createNewWorkAllowed ? 'Finish the open lesson' : 'Complete the open lesson record',
+            description: eligibility.createNewWorkAllowed
+                ? `${getSessionLabel(overdueOpen)} is still open after its scheduled end. Close the record before the day moves on.`
+                : `${getSessionLabel(overdueOpen)} was already started. New teaching is paused, but the existing record may be reconciled while policy allows it.`,
+            primaryLabel: eligibility.reconcileExistingWorkAllowed ? 'Complete record' : 'Review record',
             primaryHref: `/sessions/${overdueOpen.id}?section=complete&notice=session-current-step`,
-            secondaryLabel: 'Review attendance',
-            secondaryHref: `/sessions/${overdueOpen.id}?section=attendance&notice=session-current-step`,
+            secondaryLabel: eligibility.reconcileExistingWorkAllowed ? 'Review attendance' : undefined,
+            secondaryHref: eligibility.reconcileExistingWorkAllowed ? `/sessions/${overdueOpen.id}?section=attendance&notice=session-current-step` : undefined,
             tone: 'danger',
             session: overdueOpen,
         };
@@ -652,25 +694,40 @@ function buildNextAction(args: {
     const active = groups.active[0];
     if (active) {
         return {
-            key: 'continue-active-lesson',
-            title: 'Continue the lesson in progress',
-            description: `${getSessionLabel(active)} is open now. Keep attendance and taught outcomes current before closing it.`,
-            primaryLabel: 'Continue lesson',
-            primaryHref: `/sessions/${active.id}?notice=session-current-step`,
-            secondaryLabel: 'Review attendance',
-            secondaryHref: `/sessions/${active.id}?section=attendance&notice=session-current-step`,
+            key: eligibility.createNewWorkAllowed ? 'continue-active-lesson' : 'reconcile-active-lesson',
+            title: eligibility.createNewWorkAllowed ? 'Continue the lesson in progress' : 'Complete the started lesson record',
+            description: eligibility.createNewWorkAllowed
+                ? `${getSessionLabel(active)} is open now. Keep attendance and taught outcomes current before closing it.`
+                : `${getSessionLabel(active)} was already started before the operational boundary. Complete only the permitted record reconciliation.`,
+            primaryLabel: eligibility.createNewWorkAllowed ? 'Continue lesson' : 'Complete record',
+            primaryHref: eligibility.createNewWorkAllowed ? `/sessions/${active.id}?notice=session-current-step` : `/sessions/${active.id}?section=complete&notice=session-current-step`,
+            secondaryLabel: eligibility.reconcileExistingWorkAllowed ? 'Review attendance' : undefined,
+            secondaryHref: eligibility.reconcileExistingWorkAllowed ? `/sessions/${active.id}?section=attendance&notice=session-current-step` : undefined,
             tone: 'warning',
             session: active,
         };
     }
 
-    const activeAssignmentWork = sortAssignmentTeachingTodayItems(assignmentWork)[0];
+    const activeAssignmentWork = sortAssignmentTeachingTodayItems(assignmentWork)
+        .find((item) => item.next_action !== 'NONE');
     if (activeAssignmentWork) {
         return buildAssignmentAction(activeAssignmentWork);
     }
 
     const ready = groups.ready[0];
     if (ready) {
+        if (!eligibility.createNewWorkAllowed) {
+            return {
+                key: 'resolve-ready-scheduled-record',
+                title: 'Resolve the scheduled lesson record',
+                description: `${getSessionLabel(ready)} was scheduled but cannot be started after the operational term boundary. ${eligibility.createNewWorkReason ?? ''}`.trim(),
+                primaryLabel: eligibility.reconcileExistingWorkAllowed ? 'Resolve scheduled record' : 'Review record',
+                primaryHref: `/sessions/${ready.id}`,
+                tone: 'warning',
+                disabledReason: eligibility.createNewWorkReason,
+                session: ready,
+            };
+        }
         return {
             key: 'start-ready-lesson',
             title: ready.session_type === 'EXAM' || learningDayState === 'EXAM_DAY'
@@ -691,12 +748,15 @@ function buildNextAction(args: {
         return {
             key: 'open-overdue-scheduled-lesson',
             title: 'Decide on the missed start',
-            description: `${getSessionLabel(overdueScheduled)} was scheduled earlier today but has not started. Start it, reschedule it, or cancel it from the lesson record.`,
-            primaryLabel: 'Open lesson',
+            description: eligibility.createNewWorkAllowed
+                ? `${getSessionLabel(overdueScheduled)} was scheduled earlier today but has not started. Start it, reschedule it, or cancel it from the lesson record.`
+                : `${getSessionLabel(overdueScheduled)} was scheduled but never started before the term boundary. Use only an existing cancel/not-taught resolution if available.`,
+            primaryLabel: eligibility.createNewWorkAllowed ? 'Open lesson' : 'Resolve scheduled record',
             primaryHref: `/sessions/${overdueScheduled.id}`,
-            secondaryLabel: "Open today's sessions",
-            secondaryHref: '/sessions/today',
+            secondaryLabel: eligibility.createNewWorkAllowed ? "Open today's sessions" : undefined,
+            secondaryHref: eligibility.createNewWorkAllowed ? '/sessions/today' : undefined,
             tone: 'warning',
+            disabledReason: eligibility.createNewWorkAllowed ? null : eligibility.createNewWorkReason,
             session: overdueScheduled,
         };
     }
@@ -708,7 +768,7 @@ function buildNextAction(args: {
     ));
 
     const missingPlan = scheduledForPlanning.find(hasMissingLessonPlan);
-    if (missingPlan && normalTeachingExpected) {
+    if (missingPlan && normalTeachingExpected && eligibility.createNewWorkAllowed) {
         return {
             key: 'prepare-missing-plan',
             title: 'Prepare a lesson before it starts',
@@ -773,8 +833,8 @@ function buildNextAction(args: {
                 : 'The school calendar changes the normal teaching flow today. Check any sessions that are still listed.',
             primaryLabel: "Open today's sessions",
             primaryHref: '/sessions/today',
-            secondaryLabel: teachingLoad.length > 0 ? 'View classes' : 'Prepare lesson',
-            secondaryHref: teachingLoad.length > 0 ? '/academic/cohorts' : '/lesson-plans/new',
+            secondaryLabel: teachingLoad.length > 0 || !eligibility.createNewWorkAllowed ? 'View classes' : 'Prepare lesson',
+            secondaryHref: teachingLoad.length > 0 || !eligibility.createNewWorkAllowed ? '/academic/cohorts' : '/lesson-plans/new',
             tone: 'success',
         };
     }
@@ -811,14 +871,28 @@ function buildNextAction(args: {
         description: 'No lesson is scheduled today and no unfinished teaching record is waiting in this diary.',
         primaryLabel: 'View classes',
         primaryHref: '/academic/cohorts',
-        secondaryLabel: 'Prepare lesson',
-        secondaryHref: '/lesson-plans/new',
+        secondaryLabel: eligibility.createNewWorkAllowed ? 'Prepare lesson' : undefined,
+        secondaryHref: eligibility.createNewWorkAllowed ? '/lesson-plans/new' : undefined,
         tone: 'success',
+        disabledReason: eligibility.createNewWorkAllowed ? null : eligibility.createNewWorkReason,
     };
 }
 
 function isNormalTeachingExpected(learningDayState: LearningDayState): boolean {
     return learningDayState === 'NORMAL_TEACHING_DAY' || learningDayState === 'SCHOOL_EVENT' || learningDayState === 'CLOSING_PERIOD';
+}
+
+function deriveTeachingTodayEligibility(todayMode: AcademicTodayMode | null): TeachingTodayEligibility {
+    const actions = todayMode?.action_eligibility;
+    return {
+        createNewWorkAllowed: actions?.create_new_work.allowed ?? todayMode?.allows_new_teaching ?? true,
+        createNewWorkReason: actions?.create_new_work.reason ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null),
+        initiatePreparedWorkAllowed: actions?.initiate_prepared_work.allowed ?? todayMode?.allows_new_teaching ?? true,
+        initiatePreparedWorkReason: actions?.initiate_prepared_work.reason ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null),
+        reconcileExistingWorkAllowed: actions?.reconcile_existing_work.allowed ?? todayMode?.allows_cleanup ?? true,
+        reconcileExistingWorkReason: actions?.reconcile_existing_work.reason ?? (todayMode?.allows_cleanup === false ? todayMode.message : null),
+        readHistoricalWorkAllowed: actions?.read_historical_work.allowed ?? true,
+    };
 }
 
 export function useTeachingToday(): UseTeachingTodayResult {
@@ -887,6 +961,10 @@ export function useTeachingToday(): UseTeachingTodayResult {
     } = useAssignmentTeachingToday();
 
     const todayMode = todayModeData ?? null;
+    const actionEligibility = useMemo(
+        () => deriveTeachingTodayEligibility(todayMode),
+        [todayMode]
+    );
     const calendarEventsToday = useMemo<TermCalendarEvent[]>(() => {
         const event = todayMode?.event;
         if (!event || !isDateWithinRange(todayKey, event.start_date, event.end_date)) {
@@ -923,20 +1001,20 @@ export function useTeachingToday(): UseTeachingTodayResult {
         [calendarEventsToday, currentTerm, todayMode]
     );
     const normalTeachingExpected = useMemo(
-        () => isNormalTeachingExpected(learningDayState),
-        [learningDayState]
+        () => isNormalTeachingExpected(learningDayState) && actionEligibility.createNewWorkAllowed,
+        [actionEligibility.createNewWorkAllowed, learningDayState]
     );
     const timeline = useMemo(
-        () => sortSessions(todaySessions),
-        [todaySessions]
+        () => actionEligibility.createNewWorkAllowed ? sortSessions(todaySessions) : [],
+        [actionEligibility.createNewWorkAllowed, todaySessions]
     );
     const sessionGroups = useMemo(
         () => buildSessionGroups(todaySessions),
         [todaySessions]
     );
     const incomplete = useMemo(
-        () => buildIncompleteItems(reminders, todaySessions),
-        [reminders, todaySessions]
+        () => buildIncompleteItems(reminders, todaySessions, actionEligibility),
+        [actionEligibility, reminders, todaySessions]
     );
     const assignmentWork = useMemo(
         () => sortAssignmentTeachingTodayItems(assignmentWorkItems),
@@ -957,8 +1035,10 @@ export function useTeachingToday(): UseTeachingTodayResult {
             normalTeachingExpected,
             pendingAssessmentReviewCount,
             teachingLoad,
+            eligibility: actionEligibility,
         }),
         [
+            actionEligibility,
             incomplete,
             assignmentWork,
             learningDayState,
@@ -1025,6 +1105,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
             calendarEventsToday,
             calendarAffectsLearning: calendarEventsToday.some((event) => event.affects_learning),
             todayMode,
+            actionEligibility,
             normalTeachingExpected,
             learningDayState,
             sessions: sessionGroups,

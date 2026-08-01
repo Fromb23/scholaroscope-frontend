@@ -2,6 +2,7 @@
 
 import {
   ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useId,
@@ -35,6 +36,7 @@ interface ResponsiveActionSheetProps {
   closeLabel?: string;
   panelClassName?: string;
   bodyClassName?: string;
+  bodyRef?: Ref<HTMLDivElement>;
 }
 
 const sizeClasses: Record<ActionSurfaceSize, string> = {
@@ -108,6 +110,15 @@ function isInteractiveDragTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && Boolean(target.closest(
     'a,button,input,textarea,select,[role="button"],[data-action-sheet-no-drag]',
   ));
+}
+
+function assignRef<T>(ref: Ref<T> | undefined, value: T | null): void {
+  if (!ref) return;
+  if (typeof ref === 'function') {
+    ref(value);
+    return;
+  }
+  (ref as { current: T | null }).current = value;
 }
 
 export function lockDocumentScroll(doc: Document, win: Window): () => void {
@@ -222,6 +233,7 @@ export function ResponsiveActionSheet({
   closeLabel = 'Close action surface',
   panelClassName = '',
   bodyClassName = '',
+  bodyRef: externalBodyRef,
 }: ResponsiveActionSheetProps) {
   const [mounted, setMounted] = useState(false);
   const generatedTitleId = useId();
@@ -229,7 +241,11 @@ export function ResponsiveActionSheet({
   const titleId = labelledById ?? generatedTitleId;
   const descriptionId = describedById ?? (description ? generatedDescriptionId : undefined);
   const panelRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const internalBodyRef = useRef<HTMLDivElement>(null);
+  const setBodyRef = useCallback((element: HTMLDivElement | null) => {
+    internalBodyRef.current = element;
+    assignRef(externalBodyRef, element);
+  }, [externalBodyRef]);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const dragStateRef = useRef<DragState | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
@@ -281,7 +297,7 @@ export function ResponsiveActionSheet({
 
     const preventBackgroundScroll = (event: WheelEvent | TouchEvent | PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && bodyRef.current?.contains(target)) {
+      if (target instanceof Node && internalBodyRef.current?.contains(target)) {
         return;
       }
 
@@ -484,7 +500,7 @@ export function ResponsiveActionSheet({
           </div>
 
           <div
-            ref={bodyRef}
+            ref={setBodyRef}
             className={`min-h-0 flex-1 overscroll-contain overflow-x-auto overflow-y-auto px-5 py-4 md:px-6 ${bodySafeAreaClass} ${bodyClassName}`}
             style={{ touchAction: 'pan-x pan-y' }}
           >

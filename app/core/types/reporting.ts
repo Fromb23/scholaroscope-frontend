@@ -1838,7 +1838,21 @@ export type LearnerTermProgressResultStatus =
   | 'STALE'
   | 'ASSESSED'
   | 'AWAITING_EVIDENCE'
+  | 'TAUGHT_NOT_OBSERVED'
+  | 'NOT_TAUGHT'
+  | 'RECALCULATION_REQUIRED'
   | string;
+
+export interface LearnerTermProgressOutcomeReadiness {
+  reason_codes?: string[];
+  qualifying_evidence_count?: number;
+  required_evidence_count?: number;
+  missing_evidence_count?: number;
+  present_source_types?: string[];
+  missing_source_types?: string[];
+  pending_review?: boolean;
+  recalculation_required?: boolean;
+}
 
 export interface LearnerTermProgressTermRef {
   id: number;
@@ -1890,6 +1904,8 @@ export interface LearnerTermProgressOutcome {
   label: string;
   evidence_count: number;
   status: LearnerTermProgressResultStatus;
+  semantic_state?: LearnerTermProgressResultStatus;
+  readiness?: LearnerTermProgressOutcomeReadiness;
 }
 
 export interface LearnerTermProgressTeacherReview {

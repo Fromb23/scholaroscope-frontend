@@ -29,4 +29,18 @@ describe('LearnerOverviewReportPage', () => {
     expect(pageSource).toContain('<Link href={returnTo}>');
     expect(pageSource).not.toContain('/reports/instructor');
   });
+
+  it('renders backend evidence readiness states instead of generic awaiting-evidence text', () => {
+    const pageSource = read('app/core/components/reports/LearnerOverviewReportPage.tsx');
+    const typeSource = read('app/core/types/reporting.ts');
+
+    expect(pageSource).toContain('outcomeReadinessText');
+    expect(pageSource).toContain('Provisional - ${qualifying} of ${required} qualifying records available');
+    expect(pageSource).toContain('Recalculation required');
+    expect(pageSource).toContain('Taught - not yet observed');
+    expect(pageSource).toContain('Not taught');
+    expect(pageSource).not.toContain("outcome.level ? `${outcome.level} - ${outcome.label}` : 'Awaiting Evidence'");
+    expect(typeSource).toContain('LearnerTermProgressOutcomeReadiness');
+    expect(typeSource).toContain('semantic_state?: LearnerTermProgressResultStatus');
+  });
 });

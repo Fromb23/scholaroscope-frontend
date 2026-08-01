@@ -50,13 +50,54 @@ function labelize(value: string | null | undefined): string {
   return String(value ?? '').replace(/_/g, ' ').replace(/-/g, ' ').trim() || 'Not available';
 }
 
+function sentenceLabel(value: string | null | undefined): string {
+  const text = labelize(value).toLowerCase();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : 'Not available';
+}
+
 function statusBadgeVariant(status: LearnerTermProgressResultStatus | undefined): BadgeVariant {
   const normalized = String(status ?? '').toUpperCase();
   if (normalized === 'FINAL' || normalized === 'ASSESSED') return 'success';
   if (normalized === 'PROVISIONAL' || normalized === 'READY_FOR_REVIEW') return 'warning';
-  if (normalized === 'STALE') return 'danger';
-  if (normalized === 'NO_EVIDENCE' || normalized === 'AWAITING_EVIDENCE') return 'info';
+  if (normalized === 'STALE' || normalized === 'RECALCULATION_REQUIRED') return 'danger';
+  if (
+    normalized === 'NO_EVIDENCE'
+    || normalized === 'AWAITING_EVIDENCE'
+    || normalized === 'TAUGHT_NOT_OBSERVED'
+    || normalized === 'NOT_TAUGHT'
+  ) return 'info';
   return 'default';
+}
+
+function outcomeReadinessText(outcome: LearnerTermProgressOutcome): string {
+  const state = String(outcome.semantic_state ?? outcome.status ?? '').toUpperCase();
+  const readiness = outcome.readiness;
+  const reasons = readiness?.reason_codes ?? [];
+
+  if (outcome.level) {
+    return outcome.label ? `${outcome.level} - ${outcome.label}` : outcome.level;
+  }
+  if (state === 'RECALCULATION_REQUIRED' || state === 'STALE' || reasons.includes('PROJECTION_STALE')) {
+    return 'Recalculation required';
+  }
+  if (state === 'PROVISIONAL') {
+    const qualifying = readiness?.qualifying_evidence_count;
+    const required = readiness?.required_evidence_count;
+    const missingSources = readiness?.missing_source_types ?? [];
+    if (missingSources.length > 0) {
+      return `Provisional - ${missingSources.map(sentenceLabel).join(', ')} evidence still required`;
+    }
+    if (typeof qualifying === 'number' && typeof required === 'number' && required > 0) {
+      return `Provisional - ${qualifying} of ${required} qualifying records available`;
+    }
+    if (reasons.length > 0) {
+      return `Provisional - ${sentenceLabel(reasons[0])}`;
+    }
+    return 'Provisional';
+  }
+  if (state === 'TAUGHT_NOT_OBSERVED' || state === 'NO_EVIDENCE') return 'Taught - not yet observed';
+  if (state === 'NOT_TAUGHT' || state === 'AWAITING_EVIDENCE') return 'Not taught';
+  return sentenceLabel(outcome.status);
 }
 
 function metricLabel(key: string): string {
@@ -173,7 +214,7 @@ function OutcomesTable({
                 <span className="theme-subtle">{outcome.sub_strand}</span>
               </td>
               <td className="px-3 py-3 align-top theme-muted">
-                {outcome.level ? `${outcome.level} - ${outcome.label}` : 'Awaiting Evidence'}
+                {outcomeReadinessText(outcome)}
               </td>
               <td className="px-3 py-3 align-top">
                 <Badge variant={statusBadgeVariant(outcome.status)}>
@@ -558,13 +599,24 @@ export function LearnerOverviewReportPage() {
               <GraduationCap className="h-5 w-5 text-[color:var(--color-primary)]" />
               <h2 className="text-lg font-semibold theme-text">CBC Level Legend</h2>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 ['EE', 'Exceeding Expectations'],
                 ['ME', 'Meeting Expectations'],
                 ['AE', 'Approaching Expectations'],
                 ['BE', 'Below Expectations'],
-                ['Awaiting Evidence', 'No sufficient evidence-backed level yet'],
+              ].map(([code, label]) => (
+                <div key={code} className="rounded-lg border theme-border theme-surface-muted p-3">
+                  <p className="font-semibold theme-text">{code}</p>
+                  <p className="mt-1 text-sm theme-muted">{label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {[
+                ['Taught - not yet observed', 'No qualifying learner evidence yet'],
+                ['Provisional', 'Evidence exists but finality requirements are not met'],
+                ['Recalculation required', 'Projection is stale and needs background refresh'],
               ].map(([code, label]) => (
                 <div key={code} className="rounded-lg border theme-border theme-surface-muted p-3">
                   <p className="font-semibold theme-text">{code}</p>

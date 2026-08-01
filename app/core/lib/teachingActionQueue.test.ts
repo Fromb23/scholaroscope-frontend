@@ -279,6 +279,32 @@ describe('teachingActionQueue', () => {
     expect(queue.quiet).toBe(true);
   });
 
+  it('does not promote prepared-but-unissuable assignment drafts', () => {
+    const queue = buildTeachingActionQueue({
+      assignmentWork: [
+        buildAssignmentWork({
+          assignment_id: 47,
+          lifecycle_stage: 'PREPARING',
+          next_action: 'NONE',
+          next_action_label: 'Open assignment',
+          teacher_stage_label: 'Prepared',
+          blocking_items: ['This term has ended. New teaching is paused.'],
+          action_eligibility: {
+            initiate_prepared_work: {
+              allowed: false,
+              reason: 'This term has ended. New teaching is paused.',
+            },
+          },
+        }),
+      ],
+      teachingLoadCount: 1,
+      now: new Date('2026-06-29T10:00:00Z'),
+    });
+
+    expect(queue.actions.some((action) => action.objectKey === 'assignment:47')).toBe(false);
+    expect(queue.quiet).toBe(true);
+  });
+
   it('does not promote workspace shortcuts to primary work on a quiet dashboard', () => {
     const queue = buildTeachingActionQueue({
       teachingLoadCount: 1,
@@ -294,16 +320,21 @@ describe('teachingActionQueue', () => {
     expect(queue.actions.some((action) => action.source === 'workspace_shortcut')).toBe(true);
   });
 
-  it('routes pending assessment score rows to exact score entry with student focus', () => {
+  it('groups pending assessment score rows by assessment object', () => {
     const queue = buildTeachingActionQueue({
-      pendingAssessmentRows: [buildAssessmentScore()],
-      pendingAssessmentReviewCount: 1,
+      pendingAssessmentRows: [
+        buildAssessmentScore({ id: 101, student: 301, student_name: 'Amina Otieno' }),
+        buildAssessmentScore({ id: 102, student: 302, student_name: 'Brian Otieno' }),
+      ],
+      pendingAssessmentReviewCount: 2,
       teachingLoadCount: 1,
       now: new Date('2026-06-29T10:00:00Z'),
     });
 
     expect(queue.primaryAction?.objectType).toBe('assessment');
-    expect(queue.primaryAction?.primaryHref).toBe('/assessments/91?focus=score-entry&student=301');
+    expect(queue.actions.filter((action) => action.objectKey === 'assessment:91')).toHaveLength(1);
+    expect(queue.primaryAction?.description).toContain('2 learner scores needing review');
+    expect(queue.primaryAction?.primaryHref).toBe('/assessments/91?focus=score-entry');
   });
 
   it('keeps draft and active assessments in teaching memory until finalized', () => {

@@ -44,6 +44,7 @@ import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { getInstructorClassesLabel } from '@/app/components/layout/navConfig';
 import { getCohortDetailCardExtensions } from '@/app/core/registry/cohortDetailCards';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 import {
     buildCohortSubjectReturnTo,
     buildCohortSubjectTeachingActions,
@@ -406,7 +407,7 @@ export default function CohortHubPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
-    const { hasPlugin, loading: pluginsLoading } = usePlugins();
+    const { hasPlugin, loading: pluginsLoading, getPluginCapabilityState } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
     const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
     const setupMode = searchParams.get('setup') === '1';
@@ -428,6 +429,7 @@ export default function CohortHubPage() {
         error,
         refetch: refetchCohort,
     } = useCohortDetail(isValidCohortId ? cohortId : null);
+    useSemanticPageTitle(error ? 'Class not found' : cohort?.name ?? 'Class');
     const {
         cohortSubjects,
         loading: cohortSubjectsLoading,
@@ -471,7 +473,8 @@ export default function CohortHubPage() {
     const isCbcLowerLevel = Boolean(isCBC && !isCbcSeniorCohort);
     const hasCbcProfile = hasCbcPathwayProfile(cohort);
     const canViewCohortLearners = isAdminOrAbove(user, activeRole);
-    const hasCBCPlugin = hasPlugin('cbc');
+    const cbcCapabilityState = getPluginCapabilityState('cbc');
+    const hasCBCPlugin = cbcCapabilityState.state === 'available';
     const hasCambridgePlugin = hasPlugin('cambridge');
     const cohortDetailCardExtensions = cohort
         ? getCohortDetailCardExtensions({
@@ -549,8 +552,19 @@ export default function CohortHubPage() {
             isClassConfigurationWorkspace: isPersonalTeachingWorkspace,
         });
     };
+    const cbcUnavailableMessage = cbcCapabilityState.state === 'request_failed'
+        ? `Could not verify CBC tools. ${cbcCapabilityState.message}`
+        : cbcCapabilityState.state === 'unauthorized'
+            ? 'You are not authorized to verify CBC tools for this organization.'
+            : cbcCapabilityState.state === 'disabled'
+                ? cbcCapabilityState.message
+                : cbcCapabilityState.state === 'not_installed'
+                    ? 'CBC tools are not installed for this organization.'
+                    : cbcCapabilityState.state === 'organization_unresolved'
+                        ? cbcCapabilityState.message
+                        : null;
     const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
-        ? 'CBC tools are not available for this organization yet.'
+        ? cbcUnavailableMessage ?? 'CBC tools are still loading.'
         : null;
     const classSubjectsLabel = cohortSetupReady ? 'Manage Class Subjects' : 'Set Up Class Subjects';
     const personalSubjectsLabel = cohortSetupReady ? 'Manage subjects' : 'Set up subjects';
@@ -724,7 +738,7 @@ export default function CohortHubPage() {
     const cohortLearnersHref = `/academic/cohorts/${cohort.id}/students`;
     const unknownCurriculumReason = `No workflow is configured yet for ${curriculumName}.`;
     const cbcWorkflowDisabledReason = !hasCBCPlugin
-        ? 'CBC tools are not available for this organization yet.'
+        ? cbcUnavailableMessage ?? 'CBC tools are still loading.'
         : workflowSubjectCount === 0
             ? 'No CBC subjects assigned to this cohort yet.'
             : undefined;

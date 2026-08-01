@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, type Ref } from 'react';
 import { ResponsiveActionSheet } from '@/app/components/ui/actions';
 
 interface ModalProps {
@@ -16,6 +16,7 @@ interface ModalProps {
   closeDisabled?: boolean;
   panelClassName?: string;
   bodyClassName?: string;
+  bodyRef?: Ref<HTMLDivElement>;
 }
 
 export default function Modal({
@@ -31,6 +32,7 @@ export default function Modal({
   closeDisabled = false,
   panelClassName = '',
   bodyClassName = '',
+  bodyRef,
 }: ModalProps) {
   return (
     <ResponsiveActionSheet
@@ -47,6 +49,7 @@ export default function Modal({
       closeOnEscape={closeOnEscape}
       panelClassName={panelClassName}
       bodyClassName={bodyClassName}
+      bodyRef={bodyRef}
     >
       {children}
     </ResponsiveActionSheet>

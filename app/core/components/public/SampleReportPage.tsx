@@ -24,8 +24,8 @@ const sampleAreas = [
   {
     name: 'Creative Arts',
     code: 'ART',
-    level: 'Awaiting Evidence',
-    status: 'Awaiting Evidence',
+    level: 'Taught - not yet observed',
+    status: 'Taught - not yet observed',
     evidence: '0 records',
     remark: 'No teacher remark recorded.',
   },

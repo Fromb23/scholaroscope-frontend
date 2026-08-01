@@ -135,7 +135,7 @@ export function shouldShowCohortSubjectTeachingActions(params: {
   isTeachingActor: boolean;
   isSelfManagedTeachingWorkspace: boolean;
 }): boolean {
-  return params.isTeachingActor && params.isSelfManagedTeachingWorkspace;
+  return params.isTeachingActor;
 }
 
 export function buildCohortSubjectTeachingActions(params: {

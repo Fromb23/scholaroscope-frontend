@@ -6,12 +6,17 @@ import { ThemeProvider } from '@/app/context/ThemeContext';
 import { ToastProvider } from '@/app/components/ui/toast/ToastProvider';
 import { ServiceWorkerRegistrar } from '@/app/components/pwa/ServiceWorkerRegistrar';
 import { DEFAULT_THEME_TOKENS } from '@/app/core/theme/effectiveTheme';
+import { PageTitleProvider } from '@/app/core/pageIdentity/PageTitleProvider';
 import '@/app/globals.css';
 import Providers from './providers';
 
 const DEFAULT_BRAND_COLOR = DEFAULT_THEME_TOKENS.brandPrimary;
 
 export const metadata: Metadata = {
+  title: {
+    default: 'Scholaroscope',
+    template: '%s | Scholaroscope',
+  },
   applicationName: 'Scholaroscope',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
@@ -53,7 +58,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ToastProvider>
               <ServiceWorkerRegistrar />
               <AuthProvider>
-                <EffectiveThemeProvider>{children}</EffectiveThemeProvider>
+                <EffectiveThemeProvider>
+                  <PageTitleProvider>{children}</PageTitleProvider>
+                </EffectiveThemeProvider>
               </AuthProvider>
             </ToastProvider>
           </ThemeProvider>

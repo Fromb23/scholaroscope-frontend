@@ -145,6 +145,15 @@ function buildContext(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM'): TeachingTodayCont
             daily_message: 'Take the pause. Scholaroscope will keep the term picture ready for you.',
             is_last_day: false,
         },
+        actionEligibility: {
+            createNewWorkAllowed: false,
+            createNewWorkReason: 'New teaching is paused.',
+            initiatePreparedWorkAllowed: false,
+            initiatePreparedWorkReason: 'New teaching is paused.',
+            reconcileExistingWorkAllowed: true,
+            reconcileExistingWorkReason: null,
+            readHistoricalWorkAllowed: true,
+        },
         normalTeachingExpected: false,
         learningDayState: mode === 'MIDTERM_BREAK' ? 'MIDTERM_BREAK' : 'EXAM_DAY',
         sessions: {

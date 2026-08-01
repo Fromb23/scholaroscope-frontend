@@ -214,7 +214,7 @@ export function useSessionLifecycleReminders() {
     const fetchRecentSessions = useCallback(async () => {
         try {
             setRecentLoading(true);
-            const data = await sessionAPI.getByDateRange(rangeStart, todayKey);
+            const data = await sessionAPI.getByDateRange(rangeStart, todayKey, { scope: 'all' });
             const filtered = instructorAccess.isTeachingActor
                 ? filterInstructorSessions(
                     data,
