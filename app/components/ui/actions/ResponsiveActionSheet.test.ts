@@ -137,7 +137,8 @@ describe('ResponsiveActionSheet shell contract', () => {
     expect(source).toContain("document.addEventListener('wheel', preventBackgroundScroll");
     expect(source).toContain("document.addEventListener('touchmove', preventBackgroundScroll");
     expect(source).toContain("document.addEventListener('pointermove', preventBackgroundScroll");
-    expect(source).toContain('bodyRef.current?.contains(target)');
+    expect(source).toContain('internalBodyRef.current?.contains(target)');
+    expect(source).toContain('bodyRef?: Ref<HTMLDivElement>');
     expect(source).toContain('event.preventDefault()');
     expect(source).toContain('overscroll-contain overflow-x-auto overflow-y-auto');
     expect(source).toContain('overflow-x-auto overflow-y-auto');

@@ -60,6 +60,8 @@ describe('AssignmentCreateModal attachment slots', () => {
     const modalSource = source();
 
     expect(modalSource).toContain('errorSummaryRef.current?.scrollIntoView');
+    expect(modalSource).toContain('modalBodyRef.current?.scrollTo');
+    expect(modalSource).toContain('bodyRef={modalBodyRef}');
     expect(modalSource).toContain("role=\"alert\"");
     expect(modalSource).toContain("aria-live=\"assertive\"");
     expect(modalSource).toContain('termSelectRef.current?.focus');

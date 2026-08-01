@@ -232,6 +232,7 @@ export function AssignmentCreateModal({
     const [termId, setTermId] = useState('');
     const errorSummaryRef = useRef<HTMLDivElement | null>(null);
     const termSelectRef = useRef<HTMLSelectElement | null>(null);
+    const modalBodyRef = useRef<HTMLDivElement | null>(null);
     const [taskType, setTaskType] = useState<AssignmentTaskType>('ASSIGNMENT');
     const [reportCounting, setReportCounting] = useState(false);
     const [startsAt, setStartsAt] = useState('');
@@ -345,6 +346,7 @@ export function AssignmentCreateModal({
     useEffect(() => {
         if (!formError || !isOpen) return;
         window.requestAnimationFrame(() => {
+            modalBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
             errorSummaryRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
             if (termFieldError) {
                 termSelectRef.current?.focus({ preventScroll: true });
@@ -535,11 +537,6 @@ export function AssignmentCreateModal({
             return;
         }
 
-        if (isCbcPolicyContext && reportCounting && !termId) {
-            setFormError(makeAssignmentValidationError('Select a term before creating an official report-counting assignment.'));
-            return;
-        }
-
         if (!title.trim()) {
             setFormError(makeAssignmentValidationError('Assignment title is required.'));
             return;
@@ -674,6 +671,7 @@ export function AssignmentCreateModal({
                         : 'Create Assignment'}
             size="xl"
             closeDisabled={saving}
+            bodyRef={modalBodyRef}
             footer={
                 <div className="space-y-3">
                     {submitDisabledReason ? (
