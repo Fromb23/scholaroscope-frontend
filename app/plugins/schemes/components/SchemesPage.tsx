@@ -20,6 +20,11 @@ import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useSchemes } from '@/app/core/hooks/useSchemes';
+import {
+  canCreateWorkForTerm,
+  formatWorkTermOptionLabel,
+  resolveWorkSelectedTermId,
+} from '@/app/core/components/academic/terms/termSelection';
 import { SchemeComplianceOverview } from '@/app/plugins/schemes/components/SchemeComplianceOverview';
 import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import type { SchemeOfWork } from '@/app/core/types/schemes';
@@ -271,7 +276,7 @@ export function SchemesPage() {
   const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
   const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
   const [search, setSearch] = useState('');
-  const [termFilter, setTermFilter] = useState('');
+  const [termFilter, setTermFilter] = useState(searchParams.get('term') ?? '');
   const [cohortSubjectFilter, setCohortSubjectFilter] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
   const [cohortFilter, setCohortFilter] = useState('');
@@ -279,7 +284,7 @@ export function SchemesPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const { curricula } = useCurricula();
-  const { terms } = useTerms();
+  const { terms, loading: termsLoading } = useTerms();
   const { subjects } = useSubjects();
   const { cohorts } = useCohorts();
   const { instructors } = useInstructors({ enabled: isInstitutionalAdminSupervisor });
@@ -297,6 +302,17 @@ export function SchemesPage() {
   }, [searchParams]);
   const effectiveMyTeachingMode = isInstructor || canUseTeacherModeAsAdmin || viewMode === 'my_teaching';
   const institutionComplianceMode = isInstitutionalAdminSupervisor && !effectiveMyTeachingMode;
+  const queryTerm = useMemo(() => toOptionalNumber(searchParams.get('term') ?? ''), [searchParams]);
+  const selectedTermId = useMemo(() => resolveWorkSelectedTermId({
+    requestedTermId: queryTerm,
+    existingSelectedTermId: toOptionalNumber(termFilter) ?? null,
+    terms,
+  }), [queryTerm, termFilter, terms]);
+  const selectedTermRecord = useMemo(
+    () => terms.find((term) => term.id === selectedTermId) ?? null,
+    [selectedTermId, terms],
+  );
+  const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
   const assignedCohortSubjectOptions = useMemo(() => (
     Array.from(
       new Map(
@@ -341,18 +357,18 @@ export function SchemesPage() {
     ).sort((left, right) => left.name.localeCompare(right.name));
   }, [assignedCohortSubjectOptions, cohorts, effectiveMyTeachingMode]);
   const schemeFilters = useMemo(() => ({
-    term: toOptionalNumber(termFilter),
+    term: selectedTermId ?? undefined,
     cohort_subject: toOptionalNumber(cohortSubjectFilter),
     subject: cohortSubjectFilter ? undefined : toOptionalNumber(subjectFilter),
     teacher: effectiveMyTeachingMode
       ? user?.id
       : selectedInstructorId,
-  }), [cohortSubjectFilter, effectiveMyTeachingMode, selectedInstructorId, subjectFilter, termFilter, user?.id]);
+  }), [cohortSubjectFilter, effectiveMyTeachingMode, selectedInstructorId, selectedTermId, subjectFilter, user?.id]);
   const { schemes, loading, error, downloadSchemeDocx } = useSchemes(
     schemeFilters,
-    { enabled: !institutionComplianceMode },
+    { enabled: !institutionComplianceMode && !termsLoading && selectedTermId !== null },
   );
-  const showCreateDraft = isInstructor || canUseTeacherModeAsAdmin;
+  const showCreateDraft = (isInstructor || canUseTeacherModeAsAdmin) && selectedTermAcceptsNewWork;
   const createButtonLabel = effectiveMyTeachingMode
     ? 'Create my draft scheme'
     : 'Create draft scheme';
@@ -376,6 +392,40 @@ export function SchemesPage() {
       setCohortFilter(requestedCohort);
     }
   }, [cohortFilter, cohortSubjectFilter, searchParams, subjectFilter]);
+
+  useEffect(() => {
+    if (termsLoading) {
+      return;
+    }
+
+    const nextTermFilter = selectedTermId ? String(selectedTermId) : '';
+    if (termFilter !== nextTermFilter) {
+      setTermFilter(nextTermFilter);
+    }
+  }, [selectedTermId, termFilter, termsLoading]);
+
+  useEffect(() => {
+    if (termsLoading || terms.length === 0) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    const currentQueryTerm = toOptionalNumber(params.get('term') ?? '');
+    if (selectedTermId) {
+      if (currentQueryTerm === selectedTermId) {
+        return;
+      }
+      params.set('term', String(selectedTermId));
+    } else {
+      if (currentQueryTerm === undefined) {
+        return;
+      }
+      params.delete('term');
+    }
+
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `/schemes?${nextQuery}` : '/schemes', { scroll: false });
+  }, [router, searchParams, selectedTermId, terms.length, termsLoading]);
 
   useEffect(() => {
     if (canUseTeacherModeAsAdmin && viewMode !== 'my_teaching') {
@@ -662,10 +712,10 @@ export function SchemesPage() {
             label="Term"
             value={termFilter}
             onChange={(event) => setTermFilter(event.target.value)}
-            options={[
-              { value: '', label: 'All terms' },
-              ...terms.map((term) => ({ value: String(term.id), label: term.name })),
-            ]}
+            options={terms.map((term) => ({
+              value: String(term.id),
+              label: formatWorkTermOptionLabel(term),
+            }))}
           />
           {effectiveMyTeachingMode ? (
             <Select

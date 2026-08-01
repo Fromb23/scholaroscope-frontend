@@ -29,11 +29,16 @@ import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
 import { useAdminBulkFinalize } from '@/app/core/hooks/assessments/useAdminBulkFinalize';
 import { BulkReopenAssessmentAction } from '@/app/core/components/assessments/BulkReopenAssessmentAction';
-import { useCurricula, useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
+import {
+    canCreateWorkForTerm,
+    formatWorkTermOptionLabel,
+    resolveWorkSelectedTermId,
+} from '@/app/core/components/academic/terms/termSelection';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import {
     canCreateTeachingRecord,
@@ -137,10 +142,6 @@ function readAssessmentOverviewState(key: string): AssessmentOverviewPersistedSt
     }
 }
 
-function isOpenNonFrozenTerm(term: Term): boolean {
-    return term.status === 'OPEN' && !term.is_frozen;
-}
-
 function formatDate(value: string | null): string {
     return value ? new Date(value).toLocaleDateString() : '-';
 }
@@ -206,10 +207,10 @@ function TermSelector({
             value={selectedTerm?.toString() || ''}
             onChange={(event) => onChange(event.target.value ? Number(event.target.value) : undefined)}
             options={[
-                { value: '', label: required ? 'Select term' : 'All terms' },
+                { value: '', label: 'Select term' },
                 ...terms.map((term) => ({
                     value: String(term.id),
-                    label: `${term.academic_year_name} - ${term.name}`,
+                    label: formatWorkTermOptionLabel(term),
                 })),
             ]}
         />
@@ -726,8 +727,7 @@ export function AssessmentsOverview() {
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
-    const { currentTerm } = useCurrentTerm();
-    const { terms } = useTerms();
+    const { terms, loading: termsLoading } = useTerms();
     const hasWritableAssessmentCurriculum = useMemo(() => {
         if (isAdminLike) {
             return curricula.some((curriculum) => canCreateCurriculumWork(curriculum));
@@ -744,8 +744,15 @@ export function AssessmentsOverview() {
         canCreateTeachingRecords || (isTeachingActor && instructorAccess.hasAssignedCohortSubjects)
     );
     const newWorkEligibility = todayMode?.action_eligibility?.create_new_work;
-    const newWorkUnavailable = (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
-    const newWorkUnavailableReason = newWorkEligibility?.reason
+    const selectedTermRecord = useMemo(
+        () => terms.find((term) => term.id === selectedTerm) ?? null,
+        [selectedTerm, terms]
+    );
+    const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
+    const newWorkUnavailable = !selectedTermAcceptsNewWork
+        || (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
+    const newWorkUnavailableReason = (!selectedTermAcceptsNewWork ? 'This academic term is read-only for new assessment work.' : null)
+        ?? newWorkEligibility?.reason
         ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null)
         ?? 'New assessment work is not available right now.';
     const createButtonLabel = effectiveMyTeachingMode
@@ -797,15 +804,6 @@ export function AssessmentsOverview() {
         }
     }, [canUseMyTeaching, isSelfManagedTeachingAdmin, viewMode]);
 
-    const validTermIds = useMemo(
-        () => new Set(terms.map((term) => term.id)),
-        [terms]
-    );
-    const firstOpenTermId = useMemo(
-        () => terms.find(isOpenNonFrozenTerm)?.id,
-        [terms]
-    );
-
     useEffect(() => {
         const queryCohort = parsePositiveId(searchParams.get('cohort'));
         const queryCohortSubject = parsePositiveId(searchParams.get('cohort_subject'));
@@ -823,53 +821,36 @@ export function AssessmentsOverview() {
             return;
         }
 
+        if (termsLoading) {
+            return;
+        }
+
         if (terms.length === 0) {
             setSelectedTerm(undefined);
             return;
         }
 
-        if (queryTerm !== undefined && validTermIds.has(queryTerm)) {
-            setSelectedTerm(queryTerm);
-            return;
-        }
+        const resolvedTerm = resolveWorkSelectedTermId({
+            requestedTermId: queryTerm,
+            existingSelectedTermId: persistedTermCandidate ?? selectedTerm ?? null,
+            terms,
+        }) ?? undefined;
 
-        if (selectedTerm !== undefined && validTermIds.has(selectedTerm)) {
-            return;
-        }
-
-        const persistedTerm = (
-            persistedTermCandidate !== undefined
-            && validTermIds.has(persistedTermCandidate)
-        )
-            ? persistedTermCandidate
-            : undefined;
-        const currentTermId = (
-            currentTerm?.id !== undefined
-            && validTermIds.has(currentTerm.id)
-        )
-            ? currentTerm.id
-            : undefined;
-
-        if (isAdminSupervisionMode) {
-            setSelectedTerm(persistedTerm ?? currentTermId ?? firstOpenTermId);
-        } else {
-            setSelectedTerm(persistedTerm);
+        if (selectedTerm !== resolvedTerm) {
+            setSelectedTerm(resolvedTerm);
         }
     }, [
-        currentTerm?.id,
-        firstOpenTermId,
         hydratedPersistenceKey,
-        isAdminSupervisionMode,
         persistedTermCandidate,
         persistenceKey,
         queryTerm,
         selectedTerm,
-        terms.length,
-        validTermIds,
+        terms,
+        termsLoading,
     ]);
 
     useEffect(() => {
-        if (!isAdminSupervisionMode || !persistenceKey || hydratedPersistenceKey !== persistenceKey) {
+        if (!persistenceKey || hydratedPersistenceKey !== persistenceKey || termsLoading) {
             return;
         }
 
@@ -891,11 +872,11 @@ export function AssessmentsOverview() {
         router.replace(nextQuery ? `/assessments?${nextQuery}` : '/assessments', { scroll: false });
     }, [
         hydratedPersistenceKey,
-        isAdminSupervisionMode,
         persistenceKey,
         router,
         searchParams,
         selectedTerm,
+        termsLoading,
     ]);
 
     useEffect(() => {
@@ -921,7 +902,7 @@ export function AssessmentsOverview() {
         viewMode,
     ]);
 
-    const shouldFetchAssessments = !isAdminSupervisionMode || Boolean(selectedTerm);
+    const shouldFetchAssessments = !termsLoading && Boolean(selectedTerm);
     const {
         assessments,
         loading,
@@ -943,6 +924,9 @@ export function AssessmentsOverview() {
         if (selectedCohortSubject) {
             params.set('cohort_subject', String(selectedCohortSubject));
         }
+        if (selectedTerm) {
+            params.set('term', String(selectedTerm));
+        }
         if (source) {
             params.set('source', source);
         } else if (selectedCohortSubject) {
@@ -950,7 +934,7 @@ export function AssessmentsOverview() {
         }
         params.set('returnTo', `${'/assessments'}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
         return `/assessments/new?${params.toString()}`;
-    }, [searchParams, selectedCohort, selectedCohortSubject, source]);
+    }, [searchParams, selectedCohort, selectedCohortSubject, selectedTerm, source]);
     const backLabel = source === 'cohort_subject'
         ? 'Back to workspace'
         : getReturnBackLabel(safeReturnTo);
@@ -994,10 +978,6 @@ export function AssessmentsOverview() {
         return true;
     }), [assessments, isAdminSupervisionMode, selectedCohort]);
 
-    const selectedTermRecord = useMemo(
-        () => terms.find((term) => term.id === selectedTerm),
-        [selectedTerm, terms]
-    );
     const selectedTermName = selectedTermRecord
         ? `${selectedTermRecord.academic_year_name} - ${selectedTermRecord.name}`
         : 'Selected term';

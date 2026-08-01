@@ -4,14 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Term } from '@/app/core/types/academic';
 import {
+    canCreateWorkForTerm,
     canAddTermCalendarEvent,
     canCompleteTermCalendar,
     canDeleteTermCalendarEvent,
     canEditTermCalendar,
     canEditTermCalendarEvent,
     canReopenTermCalendar,
+    resolveAvailableWorkTerms,
     resolveDefaultSelectedTerm,
     resolveSelectedTermId,
+    resolveWorkSelectedTermId,
 } from './termSelection';
 
 function source(path: string): string {
@@ -179,6 +182,147 @@ describe('academic term default selection', () => {
         });
 
         expect(resolveSelectedTermId(2, [nextYearTerm2, nextYearTerm1])).toBe(11);
+    });
+});
+
+describe('work academic term selection contract', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-07-12T12:00:00Z'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    const endedTerm = buildTerm({
+        id: 1,
+        name: 'Term 1',
+        start_date: '2026-01-01',
+        end_date: '2026-03-31',
+        status: 'CLOSED_HISTORICAL',
+        is_frozen: true,
+        configuration_state: 'HISTORICAL_LOCKED',
+        configuration_actions: {
+            can_edit_term: false,
+            can_delete_term: false,
+            can_add_calendar_event: false,
+            can_edit_calendar_event: false,
+            can_delete_calendar_event: false,
+            can_complete_setup: false,
+            can_reopen_setup: false,
+        },
+    });
+    const currentTerm = buildTerm({
+        id: 2,
+        name: 'Term 2',
+        start_date: '2026-07-01',
+        end_date: '2026-09-30',
+        status: 'OPEN',
+    });
+    const emptyHistoricalTerm = buildTerm({
+        id: 3,
+        name: 'Term with no work records',
+        start_date: '2026-04-01',
+        end_date: '2026-06-30',
+        status: 'CLOSED_HISTORICAL',
+        is_frozen: true,
+        configuration_state: 'HISTORICAL_LOCKED',
+    });
+
+    it('keeps the full authorized catalogue separate from default selection and write policy', () => {
+        const availableTerms = resolveAvailableWorkTerms([endedTerm, currentTerm, emptyHistoricalTerm]);
+
+        expect(availableTerms.map((term) => term.id)).toEqual([1, 2, 3]);
+        expect(resolveWorkSelectedTermId({ terms: availableTerms })).toBe(2);
+        expect(canCreateWorkForTerm(currentTerm)).toBe(true);
+        expect(canCreateWorkForTerm(endedTerm)).toBe(false);
+    });
+
+    it('preserves a valid historical URL or explicit selection and requests that term', () => {
+        const terms = [endedTerm, currentTerm];
+
+        expect(resolveWorkSelectedTermId({
+            requestedTermId: endedTerm.id,
+            terms,
+        })).toBe(endedTerm.id);
+        expect(resolveWorkSelectedTermId({
+            existingSelectedTermId: endedTerm.id,
+            terms,
+        })).toBe(endedTerm.id);
+    });
+
+    it('falls back to the latest accessible historical term when there is no current term', () => {
+        const olderHistoricalTerm = buildTerm({
+            id: 4,
+            start_date: '2025-09-01',
+            end_date: '2025-11-30',
+            status: 'CLOSED_HISTORICAL',
+            is_frozen: true,
+        });
+
+        expect(resolveWorkSelectedTermId({
+            terms: [olderHistoricalTerm, endedTerm, emptyHistoricalTerm],
+        })).toBe(emptyHistoricalTerm.id);
+    });
+
+    it('rejects invalid or cross-organization selections before record requests can use them', () => {
+        const workspaceATermId = endedTerm.id;
+        const workspaceBCurrent = buildTerm({
+            id: 20,
+            academic_year_name: '2026',
+            name: 'Workspace B current',
+            start_date: '2026-07-01',
+            end_date: '2026-09-30',
+            status: 'OPEN',
+        });
+
+        expect(resolveWorkSelectedTermId({
+            requestedTermId: workspaceATermId,
+            existingSelectedTermId: workspaceATermId,
+            terms: [workspaceBCurrent],
+        })).toBe(workspaceBCurrent.id);
+    });
+
+    it('wires the five work pages to the shared term contract and selected-term record query', () => {
+        const assignmentsPage = source('app/core/components/assignments/CohortAssignmentsPage.tsx');
+        const assessmentsPage = source('app/core/components/assessments/AssessmentsOverview.tsx');
+        const sessionsPage = source('app/core/components/sessions/SessionsOverview.tsx');
+        const lessonPlansPage = source('app/core/components/lessonPlans/LessonPlansPage.tsx');
+        const schemesPage = source('app/plugins/schemes/components/SchemesPage.tsx');
+        const catalogueHook = source('app/core/hooks/useAcademic.ts');
+        const queryKeys = source('app/core/lib/queryKeys.ts');
+
+        for (const page of [assignmentsPage, assessmentsPage, sessionsPage, lessonPlansPage, schemesPage]) {
+            expect(page).toContain('resolveWorkSelectedTermId');
+            expect(page).toContain('formatWorkTermOptionLabel');
+            expect(page).toContain('canCreateWorkForTerm');
+            expect(page).toContain('label="Term"');
+        }
+
+        expect(assignmentsPage).toContain('term: selectedTermId ?? undefined');
+        expect(assessmentsPage).toContain('term: selectedTerm');
+        expect(sessionsPage).toContain('term: selectedTerm');
+        expect(lessonPlansPage).toContain('term: selectedTermId ?? undefined');
+        expect(schemesPage).toContain('term: selectedTermId ?? undefined');
+        expect(catalogueHook).toContain('academicKeys.terms.list(organizationId, academicYearId ?? null)');
+        expect(queryKeys).toContain("['academic', 'terms', 'list', organizationId, academicYearId ?? null]");
+    });
+
+    it('keeps mobile term controls visible and does not hide historical options behind active-term rendering', () => {
+        const assignmentsPage = source('app/core/components/assignments/CohortAssignmentsPage.tsx');
+        const assessmentsPage = source('app/core/components/assessments/AssessmentsOverview.tsx');
+        const sessionsPage = source('app/core/components/sessions/SessionsOverview.tsx');
+        const lessonPlansPage = source('app/core/components/lessonPlans/LessonPlansPage.tsx');
+        const schemesPage = source('app/plugins/schemes/components/SchemesPage.tsx');
+
+        for (const page of [assignmentsPage, assessmentsPage, sessionsPage, lessonPlansPage, schemesPage]) {
+            expect(page).not.toContain('activeTerm && <TermFilter');
+            expect(page).not.toContain('activeTerm ? [activeTerm] : []');
+        }
+        expect(sessionsPage).toContain('grid grid-cols-1 gap-3');
+        expect(lessonPlansPage).toContain('grid grid-cols-1 gap-4');
+        expect(schemesPage).toContain('grid grid-cols-1 gap-4');
     });
 });
 

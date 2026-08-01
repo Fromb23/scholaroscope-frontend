@@ -25,6 +25,11 @@ import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
 import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
+import {
+    canCreateWorkForTerm,
+    formatWorkTermOptionLabel,
+    resolveWorkSelectedTermId,
+} from '@/app/core/components/academic/terms/termSelection';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import {
     canCreateTeachingRecord,
@@ -388,7 +393,7 @@ export function LessonPlansPage() {
         capabilities,
     });
     const { curricula } = useCurricula();
-    const { terms } = useTerms();
+    const { terms, loading: termsLoading } = useTerms();
     const { subjects } = useSubjects();
     const { cohorts } = useCohorts();
     const { instructors } = useInstructors({ enabled: showInstitutionSupervision });
@@ -398,7 +403,7 @@ export function LessonPlansPage() {
     );
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<LessonPlanStatus | ''>('');
-    const [termFilter, setTermFilter] = useState('');
+    const [termFilter, setTermFilter] = useState(searchParams.get('term') ?? '');
     const [cohortSubjectFilter, setCohortSubjectFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [cohortFilter, setCohortFilter] = useState('');
@@ -409,15 +414,26 @@ export function LessonPlansPage() {
     const [rowActionFeedback, setRowActionFeedback] = useState<Record<number, RowActionFeedback>>({});
     const [reflection, setReflection] = useState('');
     const [markUsedError, setMarkUsedError] = useState<string | null>(null);
+    const queryTerm = useMemo(() => toOptionalNumber(searchParams.get('term') ?? ''), [searchParams]);
+    const selectedTermId = useMemo(() => resolveWorkSelectedTermId({
+        requestedTermId: queryTerm,
+        existingSelectedTermId: toOptionalNumber(termFilter) ?? null,
+        terms,
+    }), [queryTerm, termFilter, terms]);
+    const selectedTermRecord = useMemo(
+        () => terms.find((term) => term.id === selectedTermId) ?? null,
+        [selectedTermId, terms],
+    );
+    const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
     const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && (isSelfManagedTeaching || viewMode === 'my_teaching'));
     const institutionComplianceMode = showInstitutionSupervision && !effectiveMyTeachingMode;
     const lessonPlanFilters = useMemo(() => ({
         status: statusFilter || undefined,
-        term: toOptionalNumber(termFilter),
+        term: selectedTermId ?? undefined,
         cohort_subject: toOptionalNumber(cohortSubjectFilter),
         subject: cohortSubjectFilter ? undefined : toOptionalNumber(subjectFilter),
         cohort: toOptionalNumber(cohortFilter),
-    }), [cohortFilter, cohortSubjectFilter, statusFilter, subjectFilter, termFilter]);
+    }), [cohortFilter, cohortSubjectFilter, selectedTermId, statusFilter, subjectFilter]);
     const {
         lessonPlans,
         loading,
@@ -427,7 +443,7 @@ export function LessonPlansPage() {
         markUsed,
         archive,
         restore,
-    } = useLessonPlans(lessonPlanFilters, { enabled: !institutionComplianceMode });
+    } = useLessonPlans(lessonPlanFilters, { enabled: !institutionComplianceMode && !termsLoading && selectedTermId !== null });
     const {
         target: markUsedTarget,
         isOpen: isMarkUsedOpen,
@@ -454,6 +470,40 @@ export function LessonPlansPage() {
             setCohortFilter(requestedCohort);
         }
     }, [cohortFilter, cohortSubjectFilter, searchParams, subjectFilter]);
+
+    useEffect(() => {
+        if (termsLoading) {
+            return;
+        }
+
+        const nextTermFilter = selectedTermId ? String(selectedTermId) : '';
+        if (termFilter !== nextTermFilter) {
+            setTermFilter(nextTermFilter);
+        }
+    }, [selectedTermId, termFilter, termsLoading]);
+
+    useEffect(() => {
+        if (termsLoading || terms.length === 0) {
+            return;
+        }
+
+        const params = new URLSearchParams(searchParams.toString());
+        const currentQueryTerm = toOptionalNumber(params.get('term') ?? '');
+        if (selectedTermId) {
+            if (currentQueryTerm === selectedTermId) {
+                return;
+            }
+            params.set('term', String(selectedTermId));
+        } else {
+            if (currentQueryTerm === undefined) {
+                return;
+            }
+            params.delete('term');
+        }
+
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/lesson-plans?${nextQuery}` : '/lesson-plans', { scroll: false });
+    }, [router, searchParams, selectedTermId, terms.length, termsLoading]);
 
     useEffect(() => {
         if (isSelfManagedTeaching && viewMode !== 'my_teaching') {
@@ -558,8 +608,10 @@ export function LessonPlansPage() {
         : 'Create lesson plan';
     const backLabel = getReturnBackLabel(safeReturnTo);
     const newWorkEligibility = todayMode?.action_eligibility?.create_new_work;
-    const newWorkUnavailable = (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
-    const newWorkUnavailableReason = newWorkEligibility?.reason
+    const newWorkUnavailable = !selectedTermAcceptsNewWork
+        || (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
+    const newWorkUnavailableReason = (!selectedTermAcceptsNewWork ? 'This academic term is read-only for new lesson plans.' : null)
+        ?? newWorkEligibility?.reason
         ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null)
         ?? 'New teaching work is not available right now.';
 
@@ -1057,13 +1109,10 @@ export function LessonPlansPage() {
                         label="Term"
                         value={termFilter}
                         onChange={(event) => setTermFilter(event.target.value)}
-                        options={[
-                            { value: '', label: 'All terms' },
-                            ...terms.map((term) => ({
+                        options={terms.map((term) => ({
                                 value: String(term.id),
-                                label: term.name,
-                            })),
-                        ]}
+                                label: formatWorkTermOptionLabel(term),
+                            }))}
                     />
 
                     {effectiveMyTeachingMode ? (

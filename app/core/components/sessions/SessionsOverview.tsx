@@ -30,6 +30,11 @@ import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useCohortSessions, useSessions, useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
+import {
+    canCreateWorkForTerm,
+    formatWorkTermOptionLabel,
+    resolveWorkSelectedTermId,
+} from '@/app/core/components/academic/terms/termSelection';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import {
     canCreateTeachingRecord,
@@ -428,11 +433,6 @@ function SessionWorkspaceView() {
         isSuperadmin: false,
         capabilities,
     });
-    const canCreateNewWork = todayMode?.action_eligibility?.create_new_work.allowed
-        ?? todayMode?.allows_new_teaching
-        ?? true;
-    const createNewWorkBlockedReason = todayMode?.action_eligibility?.create_new_work.reason
-        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null);
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
         role: activeRole,
         orgType: activeOrg?.org_type,
@@ -452,6 +452,7 @@ function SessionWorkspaceView() {
         [searchParams]
     );
     const selectedCohortSubjectId = parsePositiveId(searchParams.get('cohort_subject'));
+    const queryTerm = parsePositiveId(searchParams.get('term'));
     const source = searchParams.get('source');
     const returnTo = searchParams.get('returnTo');
     const midtermCleanupView = cleanupFilterActive && source === 'midterm';
@@ -476,6 +477,25 @@ function SessionWorkspaceView() {
         return Number.isFinite(parsed) ? parsed : undefined;
     }, [selectedInstructorFilter]);
     const { instructors } = useInstructors({ enabled: showInstitutionSupervision });
+    const { terms, loading: termsLoading } = useTerms();
+    const resolvedSelectedTerm = useMemo(() => resolveWorkSelectedTermId({
+        requestedTermId: queryTerm,
+        existingSelectedTermId: selectedTerm ?? null,
+        terms,
+    }) ?? undefined, [queryTerm, selectedTerm, terms]);
+    const selectedTermRecord = useMemo(
+        () => terms.find((term) => term.id === selectedTerm) ?? null,
+        [selectedTerm, terms],
+    );
+    const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
+    const canCreateNewWork = selectedTermAcceptsNewWork && (
+        todayMode?.action_eligibility?.create_new_work.allowed
+        ?? todayMode?.allows_new_teaching
+        ?? true
+    );
+    const createNewWorkBlockedReason = (!selectedTermAcceptsNewWork ? 'This academic term is read-only for new session work.' : null)
+        ?? todayMode?.action_eligibility?.create_new_work.reason
+        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null);
     const { sessions, loading, error, refetch } = useSessions({
         term: selectedTerm,
         cohort_subject: selectedCohortSubjectId ?? undefined,
@@ -484,9 +504,10 @@ function SessionWorkspaceView() {
     }, showInstitutionSupervision ? {
         enabled: true,
         instructorId: shouldFilterToMyTeaching ? user?.id : selectedInstructorId,
-    } : undefined);
+    } : undefined, {
+        enabled: !termsLoading && selectedTerm !== undefined,
+    });
     const { sessions: todaySessions } = useTodaySessions();
-    const { terms } = useTerms();
     const { cohorts } = useCohorts();
     const canPlanLesson = useMemo(
         () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
@@ -534,6 +555,39 @@ function SessionWorkspaceView() {
             setViewMode('admin_supervision');
         }
     }, [canUseMyTeaching, isSelfManagedTeaching, viewMode]);
+
+    useEffect(() => {
+        if (termsLoading) {
+            return;
+        }
+
+        if (selectedTerm !== resolvedSelectedTerm) {
+            setSelectedTerm(resolvedSelectedTerm);
+        }
+    }, [resolvedSelectedTerm, selectedTerm, termsLoading]);
+
+    useEffect(() => {
+        if (termsLoading || terms.length === 0) {
+            return;
+        }
+
+        const params = new URLSearchParams(searchParams.toString());
+        const currentQueryTerm = parsePositiveId(params.get('term'));
+        if (selectedTerm) {
+            if (currentQueryTerm === selectedTerm) {
+                return;
+            }
+            params.set('term', String(selectedTerm));
+        } else {
+            if (currentQueryTerm === null) {
+                return;
+            }
+            params.delete('term');
+        }
+
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/sessions?${nextQuery}` : '/sessions', { scroll: false });
+    }, [router, searchParams, selectedTerm, terms.length, termsLoading]);
 
     const instructorOptions = useMemo(() => {
         const options = new Map<string, { value: string; label: string }>();
@@ -1510,8 +1564,10 @@ function SessionWorkspaceView() {
                             value={selectedTerm?.toString() || ''}
                             onChange={(event) => setSelectedTerm(event.target.value ? Number(event.target.value) : undefined)}
                             options={[
-                                { value: '', label: 'All Terms' },
-                                ...terms.map((term) => ({ value: String(term.id), label: term.name })),
+                                ...terms.map((term) => ({
+                                    value: String(term.id),
+                                    label: formatWorkTermOptionLabel(term),
+                                })),
                             ]}
                         />
                         <Select
@@ -1683,11 +1739,6 @@ function CohortSessionsView({
         isSuperadmin: false,
         capabilities,
     });
-    const canCreateNewWork = todayMode?.action_eligibility?.create_new_work.allowed
-        ?? todayMode?.allows_new_teaching
-        ?? true;
-    const createNewWorkBlockedReason = todayMode?.action_eligibility?.create_new_work.reason
-        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null);
     const showInstructorIdentity = shouldShowInstructorIdentity({
         activeRole,
         effectiveMyTeachingMode: isInstructor,
@@ -1696,7 +1747,26 @@ function CohortSessionsView({
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const { sessions, loading, error, refetch } = useCohortSessions(cohortId);
-    const { terms } = useTerms();
+    const { terms, loading: termsLoading } = useTerms();
+    const queryTerm = parsePositiveId(searchParams.get('term'));
+    const resolvedSelectedTerm = useMemo(() => resolveWorkSelectedTermId({
+        requestedTermId: queryTerm,
+        existingSelectedTermId: selectedTerm ?? null,
+        terms,
+    }) ?? undefined, [queryTerm, selectedTerm, terms]);
+    const selectedTermRecord = useMemo(
+        () => terms.find((term) => term.id === selectedTerm) ?? null,
+        [selectedTerm, terms],
+    );
+    const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
+    const canCreateNewWork = selectedTermAcceptsNewWork && (
+        todayMode?.action_eligibility?.create_new_work.allowed
+        ?? todayMode?.allows_new_teaching
+        ?? true
+    );
+    const createNewWorkBlockedReason = (!selectedTermAcceptsNewWork ? 'This academic term is read-only for new session work.' : null)
+        ?? todayMode?.action_eligibility?.create_new_work.reason
+        ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null);
     const { cohorts } = useCohorts();
     const canPlanLesson = useMemo(
         () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
@@ -1706,6 +1776,16 @@ function CohortSessionsView({
     const cohortBackHref = cohortFromQuery
         ? `/academic/cohorts/${cohortFromQuery}`
         : '/sessions';
+
+    useEffect(() => {
+        if (termsLoading) {
+            return;
+        }
+
+        if (selectedTerm !== resolvedSelectedTerm) {
+            setSelectedTerm(resolvedSelectedTerm);
+        }
+    }, [resolvedSelectedTerm, selectedTerm, termsLoading]);
 
     const cohort = useMemo(
         () => cohorts.find((item) => item.id === cohortId) ?? null,
@@ -1796,14 +1876,16 @@ function CohortSessionsView({
           <div className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Select
-                label=""
+                label="Term"
                 value={selectedTerm?.toString() || ''}
                 onChange={(event) =>
                   setSelectedTerm(event.target.value ? Number(event.target.value) : undefined)
                 }
                 options={[
-                  { value: '', label: 'All Terms' },
-                  ...terms.map((term) => ({ value: String(term.id), label: term.name })),
+                  ...terms.map((term) => ({
+                    value: String(term.id),
+                    label: formatWorkTermOptionLabel(term),
+                  })),
                 ]}
               />
               <Select
