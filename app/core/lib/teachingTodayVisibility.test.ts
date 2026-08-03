@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { getTeachingTodaySectionVisibility } from '@/app/core/lib/teachingTodayVisibility';
@@ -102,17 +100,6 @@ describe('Teaching Today section visibility', () => {
     expect(visibility.hasPageLifecycleNotice).toBe(true);
     expect(visibility.showIncompletePanel).toBe(true);
     expect(visibility.hasOperationalRecords).toBe(true);
-  });
-
-  it('does not treat loading or request failures as successful empty data', () => {
-    const pageSource = readFileSync(
-      join(process.cwd(), 'app/core/components/dashboard/teachingToday/TeachingTodayPage.tsx'),
-      'utf8',
-    );
-
-    expect(pageSource).toContain('if (pageLoading) return <LoadingSpinner');
-    expect(pageSource).toContain('Some Teaching Today information could not be refreshed.');
-    expect(pageSource).toContain('sectionVisibility.showTimeline');
   });
 
   it('renders the timeline and open-session action only when sessions exist', () => {

@@ -56,6 +56,7 @@ export function TeachingTodayPage() {
         () => getTeachingTodaySectionVisibility(context),
         [context]
     );
+    const showQuietEmptyState = sectionVisibility.showQuietEmptyState && !error;
 
     const assistantContext = useMemo(() => ({
         pageKey: 'teaching_today',
@@ -88,7 +89,7 @@ export function TeachingTodayPage() {
             }
             : undefined,
         workflowStep: setupBlocked ? 'setup_blocked' : context.learningDayState.toLowerCase(),
-        emptyStateReason: !pageLoading && context.timeline.length === 0
+        emptyStateReason: !pageLoading && !error && context.timeline.length === 0
             ? 'No sessions are scheduled for today.'
             : undefined,
     }), [
@@ -101,6 +102,7 @@ export function TeachingTodayPage() {
         context.teachingLoad.length,
         context.timeline.length,
         context.todayMode?.mode,
+        error,
         pageLoading,
         sectionVisibility.hasActionableWork,
         sectionVisibility.hasTodaySessions,
@@ -191,7 +193,7 @@ export function TeachingTodayPage() {
                     {sectionVisibility.showNowPanel ? (
                         <TeachingTodayNowPanel action={context.nextAction} />
                     ) : null}
-                    {sectionVisibility.showQuietEmptyState ? (
+                    {showQuietEmptyState ? (
                         <section className="rounded-2xl border theme-border theme-card p-5 shadow-sm">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>

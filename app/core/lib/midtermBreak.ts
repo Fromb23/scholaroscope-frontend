@@ -64,11 +64,32 @@ function getPrimaryTeachingAssignment(context: TeachingTodayContext): TeachingAs
     ?? null;
 }
 
-function getPendingSessionItems(context: TeachingTodayContext): TeachingTodayIncompleteItem[] {
+export function getPendingSessionItems(context: TeachingTodayContext): TeachingTodayIncompleteItem[] {
   return context.incomplete.filter((item) => (
     item.session.status === 'IN_PROGRESS'
     || Boolean(item.session.needs_completion)
     || item.session.schedule_state === 'IN_PROGRESS_OVERDUE'
+  ));
+}
+
+export function getPendingAssignmentReviewItems(context: TeachingTodayContext) {
+  return context.afterTeaching.assignmentWork.filter((item) => (
+    item.lifecycle_stage !== 'STORED'
+    && item.next_action !== 'NONE'
+    && (
+      item.next_action === 'REVIEW_WORK'
+      || item.counts.pending_reviews > 0
+    )
+    && item.next_action_href.trim().length > 0
+  ));
+}
+
+export function getPendingAssessmentReviewItems(context: TeachingTodayContext) {
+  return context.afterTeaching.pendingAssessments.filter((item) => (
+    typeof item.assessment_id === 'number'
+    && Number.isFinite(item.assessment_id)
+    && item.assessment_id > 0
+    && item.pending_learner_count > 0
   ));
 }
 
@@ -78,9 +99,13 @@ export function buildPendingLessonCleanupHref(
     sessions?: Session[];
     cohortSubjectId?: number | null;
   },
-): string {
+): string | null {
   const sessions = options?.sessions ?? getPendingSessionItems(context).map((item) => item.session);
   const ids = sessions.map((session) => session.id).filter((id) => Number.isFinite(id));
+  if (ids.length === 0) {
+    return null;
+  }
+
   const cohortSubjectId = options?.cohortSubjectId
     ?? sessions.map(getSessionCohortSubjectId).find((id): id is number => Boolean(id))
     ?? null;
@@ -100,33 +125,17 @@ export function buildPendingLessonItemHref(item: TeachingTodayIncompleteItem): s
 }
 
 export function buildAssignmentReviewHref(context: TeachingTodayContext): string | null {
-  const pendingSessionAssignment = getPendingSessionItems(context)
-    .map((item) => ({
-      cohortId: item.session.cohort_id,
-      cohortSubjectId: getSessionCohortSubjectId(item.session),
-    }))
-    .find((item) => item.cohortId && item.cohortSubjectId);
+  const assignment = getPendingAssignmentReviewItems(context)[0] ?? null;
+  return assignment ? buildMidtermReturnHref(assignment.next_action_href) : null;
+}
 
-  if (pendingSessionAssignment) {
-    return appendQuery(`/academic/cohorts/${pendingSessionAssignment.cohortId}/assignments`, {
-      cohort_subject: pendingSessionAssignment.cohortSubjectId,
-      review: 'needs_review',
-      source: 'midterm',
-      returnTo: MIDTERM_DASHBOARD_RETURN_TO,
-    });
-  }
-
-  const assignment = getPrimaryTeachingAssignment(context);
-  if (!assignment?.cohort_id) {
+export function buildPendingAssessmentReviewHref(context: TeachingTodayContext): string | null {
+  const assessment = getPendingAssessmentReviewItems(context)[0] ?? null;
+  if (!assessment) {
     return null;
   }
 
-  return appendQuery(`/academic/cohorts/${assignment.cohort_id}/assignments`, {
-    cohort_subject: getTeachingAssignmentCohortSubjectId(assignment),
-    review: 'needs_review',
-    source: 'midterm',
-    returnTo: MIDTERM_DASHBOARD_RETURN_TO,
-  });
+  return buildMidtermReturnHref(`/assessments/${assessment.assessment_id}?focus=score-entry`);
 }
 
 export function buildMidtermSchemesHref(context: TeachingTodayContext): string {
@@ -164,8 +173,8 @@ export function buildMidtermTeacherReportsHref(teacherId: number | null | undefi
 export function deriveMidtermInsights(context: TeachingTodayContext, limit = 4): MidtermInsight[] {
   const insights: MidtermInsight[] = [];
   const pendingSessionItems = getPendingSessionItems(context);
-  const firstAssignment = getPrimaryTeachingAssignment(context);
-  const firstPendingAssessment = context.afterTeaching.pendingAssessments[0] ?? null;
+  const firstAssignment = getPendingAssignmentReviewItems(context)[0] ?? null;
+  const firstPendingAssessment = getPendingAssessmentReviewItems(context)[0] ?? null;
 
   if (firstPendingAssessment) {
     insights.push({
@@ -185,57 +194,35 @@ export function deriveMidtermInsights(context: TeachingTodayContext, limit = 4):
 
   if (pendingSessionItems.length > 0) {
     const firstSession = pendingSessionItems[0].session;
-    const subjectLabel = firstSession
-      ? `${firstSession.cohort_name} ${firstSession.subject_name}`
-      : 'Your lesson records';
-
-    insights.push({
-      id: 'pending-session-records',
-      title: `${subjectLabel} has ${pendingSessionItems.length} lesson record${pendingSessionItems.length === 1 ? '' : 's'} ready for reflection.`,
-      body: 'This can wait until you have a quiet moment.',
-      actionLabel: 'Finish records',
-      href: buildPendingLessonCleanupHref(context, {
-        sessions: pendingSessionItems.map((item) => item.session),
-        cohortSubjectId: firstSession ? getSessionCohortSubjectId(firstSession) : null,
-      }),
-      kind: 'sessions',
+    const href = buildPendingLessonCleanupHref(context, {
+      sessions: pendingSessionItems.map((item) => item.session),
+      cohortSubjectId: firstSession ? getSessionCohortSubjectId(firstSession) : null,
     });
+    if (href) {
+      const subjectLabel = firstSession
+        ? `${firstSession.cohort_name} ${firstSession.subject_name}`
+        : 'Your lesson records';
+
+      insights.push({
+        id: 'pending-session-records',
+        title: `${subjectLabel} has ${pendingSessionItems.length} lesson record${pendingSessionItems.length === 1 ? '' : 's'} ready for reflection.`,
+        body: 'This can wait until you have a quiet moment.',
+        actionLabel: 'Finish records',
+        href,
+        kind: 'sessions',
+      });
+    }
   }
 
   const assignmentHref = buildAssignmentReviewHref(context);
   if (assignmentHref && firstAssignment) {
     insights.push({
       id: 'assignment-review-workspace',
-      title: `${firstAssignment.subject_name} assignments are ready to review when useful.`,
-      body: `${firstAssignment.cohort_name} opens directly in the class subject assignment workspace.`,
+      title: `${firstAssignment.subject.name} assignments are ready to review when useful.`,
+      body: `${firstAssignment.cohort.name} opens directly in the assignment review workspace.`,
       actionLabel: 'Review responses',
       href: assignmentHref,
       kind: 'assignments',
-    });
-  }
-
-  if (context.afterTeaching.pendingAssessmentReviewCount > 0) {
-    const row = firstPendingAssessment;
-    insights.push({
-      id: 'assessment-review',
-      title: `${context.afterTeaching.pendingAssessmentReviewCount} assessment record${context.afterTeaching.pendingAssessmentReviewCount === 1 ? '' : 's'} are ready for review.`,
-      body: row ? `${row.assessment_name} has ${row.pending_learner_count} learner record${row.pending_learner_count === 1 ? '' : 's'} pending.` : 'Assessment review remains available during the break.',
-      actionLabel: row ? 'Review assessment records' : 'Open assessments',
-      href: row
-        ? buildMidtermReturnHref(`/assessments/${row.assessment_id}?focus=score-entry`)
-        : buildMidtermReturnHref('/assessments?status=pending'),
-      kind: 'assessments',
-    });
-  }
-
-  if (firstAssignment && context.currentWeek) {
-    insights.push({
-      id: 'scheme-rebalance',
-      title: `Week ${context.currentWeek} can be checked before learning resumes.`,
-      body: `Open ${firstAssignment.cohort_name} ${firstAssignment.subject_name} schemes if you want to adjust the next teaching week.`,
-      actionLabel: 'Open schemes',
-      href: buildMidtermSchemesHref(context),
-      kind: 'schemes',
     });
   }
 
