@@ -129,4 +129,28 @@ describe('session overview accordion helpers', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0]?.sections.map((section) => section.key)).toEqual(['kernel:11', 'kernel:12']);
   });
+
+  it('preserves sorted session items and instructor item counts', () => {
+    const groups = buildSessionInstructorGroups([
+      session({
+        id: 1,
+        cohort_subject: 11,
+        subject_name: 'Computer Studies',
+        session_date: '2026-02-04',
+        start_time: '09:00',
+      }),
+      session({
+        id: 2,
+        cohort_subject: 11,
+        subject_name: 'Computer Studies',
+        session_date: '2026-02-05',
+        start_time: '08:00',
+      }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.itemCount).toBe(2);
+    expect(groups[0]?.sections).toHaveLength(1);
+    expect(groups[0]?.sections[0]?.items.map((item) => item.id)).toEqual([1, 2]);
+  });
 });

@@ -6,6 +6,7 @@ import { AcademicBreakDashboard } from './AcademicBreakDashboard';
 import type { TeachingTodayContext } from '@/app/core/hooks/useTeachingToday';
 import type { Session } from '@/app/core/types/session';
 import { AssessmentScoreStatus } from '@/app/core/types/assessment';
+import type { AssignmentTeachingTodayItem } from '@/app/core/types/assignments';
 
 vi.mock('@/app/context/AuthContext', () => ({
     useAuth: () => ({
@@ -73,6 +74,41 @@ function buildSession(overrides: Partial<Session> = {}): Session {
             unmarked: 30,
         },
         created_at: '2026-02-01T08:00:00Z',
+        ...overrides,
+    };
+}
+
+function buildAssignmentWork(overrides: Partial<AssignmentTeachingTodayItem> = {}): AssignmentTeachingTodayItem {
+    return {
+        assignment_id: 44,
+        title: 'Database design task',
+        cohort: { id: 2, name: 'Grade 10 East' },
+        subject: { id: 7, name: 'Computer Studies' },
+        lesson_plan: null,
+        source: 'manual_assignment',
+        lifecycle_stage: 'REVIEWING',
+        teacher_stage_label: 'Review',
+        next_action: 'REVIEW_WORK',
+        next_action_label: 'Review learner work',
+        next_action_href: '/academic/cohorts/2/assignments/44?workflow=review',
+        due_at: null,
+        starts_at: null,
+        urgency: 'normal',
+        reminder_type: 'ASSIGNMENT_PENDING_REVIEW',
+        counts: {
+            recipients: 4,
+            submissions: 4,
+            pending_reviews: 2,
+            missing: 0,
+            evidence_pending: 0,
+        },
+        requires_attachments: false,
+        has_cbc_outcomes: false,
+        evidence_blocked: false,
+        evidence_blocked_reason: '',
+        ready_for_next_action: true,
+        blocking_items: [],
+        warnings: [],
         ...overrides,
     };
 }
@@ -183,7 +219,7 @@ function buildContext(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM'): TeachingTodayCont
         nextAction: null,
         afterTeaching: {
             pendingAssessmentReviewCount: 3,
-            assignmentWork: [],
+            assignmentWork: [buildAssignmentWork()],
             pendingAssessments: [
                 {
                     assessment_id: 41,
@@ -269,8 +305,8 @@ describe('AcademicBreakDashboard', () => {
     it('routes assignment review to the cohort subject assignment workspace', () => {
         const html = renderDashboard('MIDTERM_BREAK');
 
-        expect(html).toContain('/academic/cohorts/2/assignments?cohort_subject=4');
-        expect(html).toContain('review=needs_review');
+        expect(html).toContain('/academic/cohorts/2/assignments/44?workflow=review');
+        expect(html).toContain('Review assignments');
         expect(html).toContain('returnTo=%2Fdashboard%2Finstructor%3Fmode%3Dmidterm');
     });
 
@@ -310,11 +346,12 @@ describe('AcademicBreakDashboard', () => {
         expect(html).toContain('Finish pending records');
     });
 
-    it('shows a calm empty intelligence state when no insights exist', () => {
+    it('suppresses operational sections when no pending break work exists while keeping the lifecycle banner', () => {
         const context = buildContext('MIDTERM_BREAK');
         context.incomplete = [];
         context.afterTeaching.pendingAssessmentReviewCount = 0;
         context.afterTeaching.pendingAssessments = [];
+        context.afterTeaching.assignmentWork = [];
         context.teachingLoad = [];
 
         const html = renderToStaticMarkup(
@@ -326,7 +363,16 @@ describe('AcademicBreakDashboard', () => {
             })
         );
 
-        expect(html).toContain('Nothing urgent is waiting. Enjoy the break.');
+        expect(html).toContain('Midterm Break');
+        expect(html).toContain('No normal classes are expected today.');
+        expect(html).not.toContain('When you are ready');
+        expect(html).not.toContain('Finish pending lesson reflections');
+        expect(html).not.toContain('/sessions?filter=pending_cleanup');
+        expect(html).not.toContain('Review assignments');
+        expect(html).not.toContain('No assignments are waiting for review.');
+        expect(html).not.toContain('Review assessments');
+        expect(html).not.toContain('A few things Scholaroscope noticed');
+        expect(html).not.toContain('Nothing urgent is waiting. Enjoy the break.');
     });
 
     it('emphasizes assessment and reporting during midterm exam mode', () => {
@@ -335,5 +381,29 @@ describe('AcademicBreakDashboard', () => {
         expect(html).toContain('Midterm Exams');
         expect(html).toContain('Assessment and reporting work is ready when you need it.');
         expect(html).toContain('Record assessment marks');
+    });
+
+    it('omits individual break actions when their backing datasets are absent', () => {
+        const context = buildContext('MIDTERM_BREAK');
+        context.incomplete = [];
+        context.afterTeaching.pendingAssessments = [];
+        context.afterTeaching.pendingAssessmentReviewCount = 0;
+        context.afterTeaching.assignmentWork = [buildAssignmentWork()];
+
+        const html = renderToStaticMarkup(
+            createElement(AcademicBreakDashboard, {
+                context,
+                lastRefresh: new Date('2026-02-12T08:00:00Z'),
+                onRefresh: () => undefined,
+                variant: 'break',
+            })
+        );
+
+        expect(html).toContain('When you are ready');
+        expect(html).toContain('Review assignments');
+        expect(html).toContain('/academic/cohorts/2/assignments/44?workflow=review');
+        expect(html).not.toContain('Finish pending lesson reflections');
+        expect(html).not.toContain('Review assessments');
+        expect(html).not.toContain('No assignments are waiting for review.');
     });
 });

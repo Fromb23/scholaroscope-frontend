@@ -44,7 +44,8 @@ import {
     isSupervisionOnlyAdmin,
 } from '@/app/core/lib/workspaces';
 import {
-    getSessionCohortSubjectGroupKey,
+    buildSessionClassGroups,
+    buildSessionInstructorGroups,
     pruneExpandedSessionGroup,
     toggleExpandedSessionGroup,
     type SessionOverviewClassGroup,
@@ -768,100 +769,17 @@ function SessionWorkspaceView() {
 
     const sessionGroups = useMemo(() => {
         if (groupingMode === 'instructor' && showInstitutionSupervision && viewMode === 'admin_supervision') {
-            const groups = new Map<string, {
-                key: string;
-                label: string;
-                description: string;
-                itemCount: number;
-                sections: Array<{
-                    key: string;
-                    label: string;
-                    description: string;
-                    items: Session[];
-                }>;
-            }>();
-
-            visibleSessions.forEach((session) => {
-                const instructorLabel = getSessionInstructorLabel(session);
-                const instructorKey = typeof session.created_by_id === 'number'
-                    ? `id:${session.created_by_id}`
-                    : `name:${normalizeText(instructorLabel) || 'unknown'}`;
-                const sectionKey = getSessionCohortSubjectGroupKey(session);
-                const sectionLabel = `${session.cohort_name} · ${session.cohort_level}`;
-
-                if (!groups.has(instructorKey)) {
-                    groups.set(instructorKey, {
-                        key: instructorKey,
-                        label: instructorLabel,
-                        description: 'Instructor view starts from teacher workload.',
-                        itemCount: 0,
-                        sections: [],
-                    });
-                }
-
-                const group = groups.get(instructorKey);
-                if (!group) {
-                    return;
-                }
-
-                group.itemCount += 1;
-
-                const existingSection = group.sections.find((section) => section.key === sectionKey);
-                if (existingSection) {
-                    existingSection.items.push(session);
-                    return;
-                }
-
-                group.sections.push({
-                    key: sectionKey,
-                    label: `${sectionLabel} · ${session.subject_name}`,
-                    description: 'Class-subject view starts from the cohort and subject responsibility.',
-                    items: [session],
-                });
-            });
-
-            return Array.from(groups.values())
-                .map((group) => ({
-                    ...group,
-                    sections: group.sections
-                        .map((section) => ({
-                            ...section,
-                            items: sortSessionsByDate(section.items),
-                        }))
-                        .sort((left, right) => left.label.localeCompare(right.label)),
-                }))
-                .sort((left, right) => left.label.localeCompare(right.label));
+            return buildSessionInstructorGroups(
+                visibleSessions,
+                sortSessionsByDate,
+                getSessionInstructorLabel,
+            );
         }
 
-        const groups = new Map<string, {
-            key: string;
-            label: string;
-            description: string;
-            items: Session[];
-        }>();
-
-        visibleSessions.forEach((session) => {
-            const key = getSessionCohortSubjectGroupKey(session);
-            const label = `${session.cohort_name} · ${session.cohort_level}`;
-
-            if (!groups.has(key)) {
-                groups.set(key, {
-                    key,
-                    label: `${label} · ${session.subject_name}`,
-                    description: 'Class-subject view starts from the cohort and subject responsibility.',
-                    items: [],
-                });
-            }
-
-            groups.get(key)?.items.push(session);
-        });
-
-        return Array.from(groups.values())
-            .map((group) => ({
-                ...group,
-                items: sortSessionsByDate(group.items),
-            }))
-            .sort((left, right) => left.label.localeCompare(right.label));
+        return buildSessionClassGroups(
+            visibleSessions,
+            sortSessionsByDate,
+        );
     }, [groupingMode, showInstitutionSupervision, viewMode, visibleSessions]);
 
     const assistantContext = useMemo(() => ({
