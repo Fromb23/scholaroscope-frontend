@@ -10,6 +10,7 @@ import { useAssistantPageContext } from '@/app/core/components/assistant/useAssi
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAcademicLifecycleContext } from '@/app/core/hooks/useAcademic';
 import { useTeachingToday } from '@/app/core/hooks/useTeachingToday';
+import { getTeachingTodaySectionVisibility } from '@/app/core/lib/teachingTodayVisibility';
 import { AcademicTransitionPrompt } from '@/app/core/components/academic/AcademicTransitionPrompt';
 import { AcademicBreakDashboard } from './AcademicBreakDashboard';
 import { TeachingTodayAfterTeachingPanel } from './TeachingTodayAfterTeachingPanel';
@@ -51,6 +52,10 @@ export function TeachingTodayPage() {
             ? 'exam'
             : null;
     const promoteIncompletePanel = context.incomplete.length >= 5 && context.timeline.length <= 1;
+    const sectionVisibility = useMemo(
+        () => getTeachingTodaySectionVisibility(context),
+        [context]
+    );
 
     const assistantContext = useMemo(() => ({
         pageKey: 'teaching_today',
@@ -65,22 +70,30 @@ export function TeachingTodayPage() {
             academic_today_mode: context.todayMode?.mode ?? 'UNKNOWN',
         },
         visibleActions: [
-            { label: "Open today's sessions", type: 'navigate' as const, href: '/sessions/today' },
-            { label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' },
+            ...(sectionVisibility.hasTodaySessions
+                ? [{ label: "Open today's sessions", type: 'navigate' as const, href: '/sessions/today' }]
+                : []),
+            ...(context.actionEligibility.createNewWorkAllowed
+                ? [{ label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' }]
+                : []),
+            ...(context.teachingLoad.length > 0
+                ? [{ label: 'View classes', type: 'navigate' as const, href: '/academic/cohorts' }]
+                : []),
         ],
-        nextSafeAction: context.nextAction
+        nextSafeAction: sectionVisibility.hasActionableWork && context.nextAction
             ? {
                 label: context.nextAction.primaryLabel,
                 type: 'navigate' as const,
                 href: context.nextAction.primaryHref,
             }
-            : { label: "Open today's sessions", type: 'navigate' as const, href: '/sessions/today' },
+            : undefined,
         workflowStep: setupBlocked ? 'setup_blocked' : context.learningDayState.toLowerCase(),
         emptyStateReason: !pageLoading && context.timeline.length === 0
             ? 'No sessions are scheduled for today.'
             : undefined,
     }), [
         academicBreakVariant,
+        context.actionEligibility.createNewWorkAllowed,
         context.afterTeaching.pendingAssessmentReviewCount,
         context.incomplete.length,
         context.learningDayState,
@@ -89,6 +102,8 @@ export function TeachingTodayPage() {
         context.timeline.length,
         context.todayMode?.mode,
         pageLoading,
+        sectionVisibility.hasActionableWork,
+        sectionVisibility.hasTodaySessions,
         setupBlocked,
     ]);
 
@@ -128,10 +143,12 @@ export function TeachingTodayPage() {
                 refreshing={refreshing}
             />
 
-            <AcademicTransitionPrompt
-                context={academicLifecycleQuery.data}
-                actor={instructorAccess.isSelfManagedTeachingAdmin ? 'self_managed' : 'instructor'}
-            />
+            {!sectionVisibility.hasPageLifecycleNotice ? (
+                <AcademicTransitionPrompt
+                    context={academicLifecycleQuery.data}
+                    actor={instructorAccess.isSelfManagedTeachingAdmin ? 'self_managed' : 'instructor'}
+                />
+            ) : null}
 
             {error ? (
                 <section className="rounded-lg border border-yellow-200 theme-warning-surface p-4" aria-live="polite">
@@ -161,40 +178,83 @@ export function TeachingTodayPage() {
             {setupBlocked ? (
                 <>
                     <TeachingTodaySetupBlockedState setupStatus={context.setupStatus} />
-                    {context.incomplete.length > 0 ? (
+                    {sectionVisibility.showIncompletePanel ? (
                         <TeachingTodayIncompletePanel items={context.incomplete} />
                     ) : null}
-                    {context.afterTeaching.pendingAssessmentReviewCount > 0 ? (
+                    {sectionVisibility.showAfterTeachingPanel ? (
                         <TeachingTodayAfterTeachingPanel afterTeaching={context.afterTeaching} />
                     ) : null}
                 </>
             ) : (
                 <>
                     <TeachingTodayCalendarNotice context={context} />
-                    <TeachingTodayNowPanel action={context.nextAction} />
-                    {promoteIncompletePanel ? (
+                    {sectionVisibility.showNowPanel ? (
+                        <TeachingTodayNowPanel action={context.nextAction} />
+                    ) : null}
+                    {sectionVisibility.showQuietEmptyState ? (
+                        <section className="rounded-2xl border theme-border theme-card p-5 shadow-sm">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-sm font-semibold theme-text">
+                                        No teaching work needs attention today.
+                                    </p>
+                                    <p className="mt-1 text-sm theme-muted">
+                                        There are no sessions, incomplete records or follow-up items for the selected day.
+                                    </p>
+                                </div>
+                                {context.teachingLoad.length > 0 ? (
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={() => router.push('/academic/cohorts')}
+                                    >
+                                        View classes
+                                    </Button>
+                                ) : null}
+                            </div>
+                        </section>
+                    ) : null}
+                    {promoteIncompletePanel && sectionVisibility.showIncompletePanel ? (
                         <>
                             <TeachingTodayIncompletePanel items={context.incomplete} />
-                            <section className="grid gap-5 xl:grid-cols-12 xl:gap-6" aria-label="Today teaching follow-up">
-                                <div className="xl:col-span-7">
-                                    <TeachingTodayTimeline context={context} />
-                                </div>
-                                <div className="xl:col-span-5">
-                                    <TeachingTodayAfterTeachingPanel afterTeaching={context.afterTeaching} />
-                                </div>
-                            </section>
+                            {sectionVisibility.showTimeline || sectionVisibility.showAfterTeachingPanel ? (
+                                <section className="grid gap-5 xl:grid-cols-12 xl:gap-6" aria-label="Today teaching follow-up">
+                                    {sectionVisibility.showTimeline ? (
+                                        <div className="xl:col-span-7">
+                                            <TeachingTodayTimeline context={context} />
+                                        </div>
+                                    ) : null}
+                                    {sectionVisibility.showAfterTeachingPanel ? (
+                                        <div className="xl:col-span-5">
+                                            <TeachingTodayAfterTeachingPanel afterTeaching={context.afterTeaching} />
+                                        </div>
+                                    ) : null}
+                                </section>
+                            ) : null}
                         </>
                     ) : (
+                        sectionVisibility.showTimeline
+                        || sectionVisibility.showAfterTeachingPanel
+                        || sectionVisibility.showIncompletePanel
+                    ) ? (
                         <section className="grid gap-5 xl:grid-cols-12 xl:gap-6" aria-label="Today teaching diary">
-                            <div className="space-y-5 xl:col-span-7 xl:space-y-6">
-                                <TeachingTodayTimeline context={context} />
-                                <TeachingTodayAfterTeachingPanel afterTeaching={context.afterTeaching} />
-                            </div>
-                            <aside className="space-y-5 xl:col-span-5 xl:space-y-6">
-                                <TeachingTodayIncompletePanel items={context.incomplete} />
-                            </aside>
+                            {sectionVisibility.showTimeline || sectionVisibility.showAfterTeachingPanel ? (
+                                <div className="space-y-5 xl:col-span-7 xl:space-y-6">
+                                    {sectionVisibility.showTimeline ? (
+                                        <TeachingTodayTimeline context={context} />
+                                    ) : null}
+                                    {sectionVisibility.showAfterTeachingPanel ? (
+                                        <TeachingTodayAfterTeachingPanel afterTeaching={context.afterTeaching} />
+                                    ) : null}
+                                </div>
+                            ) : null}
+                            {sectionVisibility.showIncompletePanel ? (
+                                <aside className="space-y-5 xl:col-span-5 xl:space-y-6">
+                                    <TeachingTodayIncompletePanel items={context.incomplete} />
+                                </aside>
+                            ) : null}
                         </section>
-                    )}
+                    ) : null}
                 </>
             )}
         </div>

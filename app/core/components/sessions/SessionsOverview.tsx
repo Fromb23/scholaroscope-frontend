@@ -43,6 +43,13 @@ import {
     isSelfManagedTeachingWorkspace,
     isSupervisionOnlyAdmin,
 } from '@/app/core/lib/workspaces';
+import {
+    getSessionCohortSubjectGroupKey,
+    pruneExpandedSessionGroup,
+    toggleExpandedSessionGroup,
+    type SessionOverviewClassGroup,
+    type SessionOverviewInstructorGroup,
+} from '@/app/core/lib/sessionOverviewGroups';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
@@ -779,7 +786,7 @@ function SessionWorkspaceView() {
                 const instructorKey = typeof session.created_by_id === 'number'
                     ? `id:${session.created_by_id}`
                     : `name:${normalizeText(instructorLabel) || 'unknown'}`;
-                const sectionKey = `cohort:${session.cohort_id}`;
+                const sectionKey = getSessionCohortSubjectGroupKey(session);
                 const sectionLabel = `${session.cohort_name} · ${session.cohort_level}`;
 
                 if (!groups.has(instructorKey)) {
@@ -807,8 +814,8 @@ function SessionWorkspaceView() {
 
                 group.sections.push({
                     key: sectionKey,
-                    label: sectionLabel,
-                    description: "Class view starts from learners' classroom context.",
+                    label: `${sectionLabel} · ${session.subject_name}`,
+                    description: 'Class-subject view starts from the cohort and subject responsibility.',
                     items: [session],
                 });
             });
@@ -834,14 +841,14 @@ function SessionWorkspaceView() {
         }>();
 
         visibleSessions.forEach((session) => {
-            const key = `cohort:${session.cohort_id}`;
+            const key = getSessionCohortSubjectGroupKey(session);
             const label = `${session.cohort_name} · ${session.cohort_level}`;
 
             if (!groups.has(key)) {
                 groups.set(key, {
                     key,
-                    label,
-                    description: "Class view starts from learners' classroom context.",
+                    label: `${label} · ${session.subject_name}`,
+                    description: 'Class-subject view starts from the cohort and subject responsibility.',
                     items: [],
                 });
             }
@@ -930,22 +937,17 @@ function SessionWorkspaceView() {
         workspaceBackHref,
     ]);
 
-    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+    const [expandedGroupKey, setExpandedGroupKey] = useState<string | null>(null);
 
     useEffect(() => {
-        setCollapsedGroups(new Set());
+        setExpandedGroupKey((currentKey) => pruneExpandedSessionGroup(
+            currentKey,
+            sessionGroups.map((group) => group.key),
+        ));
     }, [sessionGroups]);
 
     const toggleGroup = (groupKey: string) => {
-        setCollapsedGroups((previous) => {
-            const next = new Set(previous);
-            if (next.has(groupKey)) {
-                next.delete(groupKey);
-            } else {
-                next.add(groupKey);
-            }
-            return next;
-        });
+        setExpandedGroupKey((currentKey) => toggleExpandedSessionGroup(currentKey, groupKey));
     };
 
     useAssistantPageContext(assistantContext);
@@ -1035,13 +1037,8 @@ function SessionWorkspaceView() {
         );
     }
 
-    const renderClassGroup = (group: {
-        key: string;
-        label: string;
-        description: string;
-        items: Session[];
-    }) => {
-        const isCollapsed = collapsedGroups.has(group.key);
+    const renderClassGroup = (group: SessionOverviewClassGroup) => {
+        const isExpanded = expandedGroupKey === group.key;
         const groupTotal = group.items.reduce((sum, session) => sum + session.attendance_count.total, 0);
         const groupPresent = group.items.reduce((sum, session) => sum + session.attendance_count.present, 0);
         const groupPercentage = groupTotal > 0 ? Math.round((groupPresent / groupTotal) * 100) : 0;
@@ -1054,9 +1051,9 @@ function SessionWorkspaceView() {
                 >
                     <div className="flex items-center gap-3">
                         <div className="theme-surface-elevated shrink-0 rounded-lg border p-1.5 shadow-sm theme-border">
-                            {isCollapsed
-                                ? <ChevronRight className="h-4 w-4 text-blue-600" />
-                                : <ChevronDown className="h-4 w-4 text-blue-600" />}
+                            {isExpanded
+                                ? <ChevronDown className="h-4 w-4 text-blue-600" />
+                                : <ChevronRight className="h-4 w-4 text-blue-600" />}
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -1077,7 +1074,7 @@ function SessionWorkspaceView() {
                     </div>
                 </div>
 
-                {!isCollapsed ? (
+                {isExpanded ? (
                     <>
                         <div className="p-4 md:hidden">
                             <CohortSessionsCards
@@ -1201,19 +1198,8 @@ function SessionWorkspaceView() {
         );
     };
 
-    const renderInstructorGroup = (group: {
-        key: string;
-        label: string;
-        description: string;
-        itemCount: number;
-        sections: Array<{
-            key: string;
-            label: string;
-            description: string;
-            items: Session[];
-        }>;
-    }) => {
-        const isCollapsed = collapsedGroups.has(group.key);
+    const renderInstructorGroup = (group: SessionOverviewInstructorGroup) => {
+        const isExpanded = expandedGroupKey === group.key;
 
         return (
             <Card key={group.key} className="overflow-hidden">
@@ -1223,9 +1209,9 @@ function SessionWorkspaceView() {
                 >
                     <div className="flex items-center gap-3">
                         <div className="theme-surface-elevated shrink-0 rounded-lg border p-1.5 shadow-sm theme-border">
-                            {isCollapsed
-                                ? <ChevronRight className="h-4 w-4 text-blue-600" />
-                                : <ChevronDown className="h-4 w-4 text-blue-600" />}
+                            {isExpanded
+                                ? <ChevronDown className="h-4 w-4 text-blue-600" />
+                                : <ChevronRight className="h-4 w-4 text-blue-600" />}
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -1239,7 +1225,7 @@ function SessionWorkspaceView() {
                     </div>
                 </div>
 
-                {!isCollapsed ? (
+                {isExpanded ? (
                     <div className="space-y-4 p-4">
                         {group.sections.map((section) => (
                             <div key={section.key} className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
@@ -1685,24 +1671,8 @@ function SessionWorkspaceView() {
             ) : (
                 <div className="space-y-4">
                     {groupingMode === 'instructor' && showInstitutionSupervision && viewMode === 'admin_supervision'
-                        ? sessionGroups.map((group) => renderInstructorGroup(group as {
-                            key: string;
-                            label: string;
-                            description: string;
-                            itemCount: number;
-                            sections: Array<{
-                                key: string;
-                                label: string;
-                                description: string;
-                                items: Session[];
-                            }>;
-                        }))
-                        : sessionGroups.map((group) => renderClassGroup(group as {
-                            key: string;
-                            label: string;
-                            description: string;
-                            items: Session[];
-                        }))}
+                        ? sessionGroups.map((group) => renderInstructorGroup(group as SessionOverviewInstructorGroup))
+                        : sessionGroups.map((group) => renderClassGroup(group as SessionOverviewClassGroup))}
                 </div>
             )}
 

@@ -804,8 +804,6 @@ function buildNextAction(args: {
             description: 'No lesson is scheduled for today, but there is unfinished work from lessons that still need attention.',
             primaryLabel: 'Open incomplete work',
             primaryHref: incomplete[0].actionHref,
-            secondaryLabel: "Open today's sessions",
-            secondaryHref: '/sessions/today',
             tone: 'warning',
             session: incomplete[0].session,
         };
@@ -818,8 +816,8 @@ function buildNextAction(args: {
             description: `${pendingAssessmentReviewCount} assessment record${pendingAssessmentReviewCount === 1 ? '' : 's'} need review. Keep this secondary until exam duties are done.`,
             primaryLabel: 'Open assessments',
             primaryHref: '/assessments?status=pending',
-            secondaryLabel: "Open today's sessions",
-            secondaryHref: '/sessions/today',
+            secondaryLabel: timeline.length > 0 ? "Open today's sessions" : undefined,
+            secondaryHref: timeline.length > 0 ? '/sessions/today' : undefined,
             tone: 'info',
         };
     }
@@ -840,42 +838,14 @@ function buildNextAction(args: {
     }
 
     if (!normalTeachingExpected) {
-        return {
-            key: 'calendar-clear-day',
-            title: 'No normal teaching activity is expected',
-            description: 'The school calendar affects normal lessons today. Keep an eye on unfinished records, but a standard lesson flow is not expected.',
-            primaryLabel: "Open today's sessions",
-            primaryHref: '/sessions/today',
-            secondaryLabel: 'View classes',
-            secondaryHref: '/academic/cohorts',
-            tone: 'info',
-        };
+        return null;
     }
 
     if (teachingLoad.length === 0) {
-        return {
-            key: 'teaching-load-not-assigned',
-            title: 'Your classes are not assigned yet',
-            description: 'Once classes or subjects are assigned to you, daily lessons and reminders will appear here.',
-            primaryLabel: 'View classes',
-            primaryHref: '/academic/cohorts',
-            secondaryLabel: 'Submit request',
-            secondaryHref: '/requests/new',
-            tone: 'info',
-        };
+        return null;
     }
 
-    return {
-        key: 'quiet-day',
-        title: 'Nothing needs action right now',
-        description: 'No lesson is scheduled today and no unfinished teaching record is waiting in this diary.',
-        primaryLabel: 'View classes',
-        primaryHref: '/academic/cohorts',
-        secondaryLabel: eligibility.createNewWorkAllowed ? 'Prepare lesson' : undefined,
-        secondaryHref: eligibility.createNewWorkAllowed ? '/lesson-plans/new' : undefined,
-        tone: 'success',
-        disabledReason: eligibility.createNewWorkAllowed ? null : eligibility.createNewWorkReason,
-    };
+    return null;
 }
 
 function isNormalTeachingExpected(learningDayState: LearningDayState): boolean {
@@ -1005,8 +975,8 @@ export function useTeachingToday(): UseTeachingTodayResult {
         [actionEligibility.createNewWorkAllowed, learningDayState]
     );
     const timeline = useMemo(
-        () => actionEligibility.createNewWorkAllowed ? sortSessions(todaySessions) : [],
-        [actionEligibility.createNewWorkAllowed, todaySessions]
+        () => sortSessions(todaySessions),
+        [todaySessions]
     );
     const sessionGroups = useMemo(
         () => buildSessionGroups(todaySessions),

@@ -24,9 +24,19 @@ describe('AssessmentScoreTable learner reporting links', () => {
 
     expect(detailHookSource).toContain('useAssessmentScores({');
     expect(detailHookSource).toContain('assessment: assessmentId');
+    expect(detailHookSource).toContain("scope: 'all'");
     expect(detailHookSource).not.toContain('useLearners');
     expect(detailHookSource).not.toContain('learnersAPI');
     expect(detailHookSource).not.toContain('attendanceRecords');
+  });
+
+  it('keeps general assessment list hooks on the operational current scope', () => {
+    const assessmentHookSource = readFileSync(
+      join(process.cwd(), 'app/core/hooks/useAssessments.ts'),
+      'utf8',
+    );
+
+    expect(assessmentHookSource).toContain('withOperationalScope');
   });
 
   it('passes term-scoped cohort subject context and returnTo into the learner assessment report link', () => {

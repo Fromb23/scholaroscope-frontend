@@ -87,6 +87,22 @@ describe('Teaching Today assignment workflow integration', () => {
     expect(reminderHookSource).toContain("getByDateRange(rangeStart, todayKey, { scope: 'all' })");
   });
 
+  it('does not generate empty operational actions when no target exists', () => {
+    const hookSource = source();
+
+    expect(hookSource).not.toContain("key: 'calendar-clear-day'");
+    expect(hookSource).not.toContain("key: 'quiet-day'");
+    expect(hookSource).not.toContain("key: 'teaching-load-not-assigned'");
+    expect(hookSource).toContain(`secondaryLabel: timeline.length > 0 ? "Open today's sessions" : undefined`);
+  });
+
+  it('keeps real sessions in the timeline data even when lifecycle prevents new teaching', () => {
+    const hookSource = source();
+
+    expect(hookSource).toContain('() => sortSessions(todaySessions)');
+    expect(hookSource).not.toContain('actionEligibility.createNewWorkAllowed ? sortSessions(todaySessions) : []');
+  });
+
   it('invalidates assignment teaching-today memory after assignment stage changes', () => {
     const assignmentHookSource = readFileSync(
       join(process.cwd(), 'app/core/hooks/useAssignments.ts'),
