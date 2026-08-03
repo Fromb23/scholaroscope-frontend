@@ -148,10 +148,38 @@ function hasAnyPermission(capabilities: WorkspaceCapabilities, keys: string[]): 
   return keys.some((key) => permissionKeys.includes(key));
 }
 
+function hasWorkspaceAdministratorProjection(capabilities: WorkspaceCapabilities): boolean {
+  return Boolean(
+    capabilities.authorization?.roles?.some((role) => role.is_workspace_admin === true)
+  );
+}
+
+function hasTeacherResponsibilityProjection(capabilities: WorkspaceCapabilities): boolean {
+  return Boolean(
+    capabilities.authorization?.roles?.some((role) => {
+      const slug = (role.slug ?? '').trim().toLowerCase();
+      const name = (role.name ?? '').trim().toLowerCase();
+      return slug === 'teacher' || name === 'teacher';
+    })
+  );
+}
+
+function isSelfManagedTeachingOwnerProjection(capabilities: WorkspaceCapabilities): boolean {
+  return Boolean(
+    capabilities.can_teach
+    && capabilities.is_workspace_owner
+    && (
+      capabilities.workspace_behavior === 'FREELANCE_TEACHER'
+      || capabilities.workspace_behavior === 'SELF_MANAGED'
+    )
+  );
+}
+
 function deriveOperatingContexts(capabilities: WorkspaceCapabilities): OperatingContext[] {
   const contexts: OperatingContext[] = [];
   const canManage = Boolean(
-    capabilities.can_manage_staff
+    hasWorkspaceAdministratorProjection(capabilities)
+    || capabilities.can_manage_staff
     || capabilities.can_manage_roles
     || capabilities.can_manage_academic_setup
     || capabilities.can_manage_learners
@@ -161,17 +189,37 @@ function deriveOperatingContexts(capabilities: WorkspaceCapabilities): Operating
     || capabilities.can_manage_plugins
     || capabilities.can_manage_announcements
     || hasAnyPermission(capabilities, [
-      'workspace.view',
-      'workspace.members.view',
-      'workspace.roles.view',
-      'academic.view',
+      'workspace.settings.manage',
+      'workspace.members.manage',
+      'workspace.members.restrict',
+      'workspace.members.remove',
+      'workspace.roles.manage',
+      'workspace.roles.assign',
+      'workspace.admins.assign',
       'academic.terms.manage',
+      'academic.curricula.manage',
+      'academic.cohorts.manage',
+      'academic.subjects.manage',
       'learners.manage',
-      'reports.view',
+      'reports.manage_policy',
+      'plugins.manage_workspace_configuration',
+      'announcements.manage',
+      'revenue.policy.manage',
+      'revenue.cycles.manage',
+      'revenue.calculations.run',
+      'revenue.statements.review',
+      'revenue.cycles.approve',
     ])
   );
   if (canManage) contexts.push('WORKSPACE_MANAGEMENT');
-  if (capabilities.can_teach) contexts.push('MY_TEACHING');
+  const canUseMyTeaching = Boolean(
+    capabilities.can_teach
+    && (
+      hasTeacherResponsibilityProjection(capabilities)
+      || isSelfManagedTeachingOwnerProjection(capabilities)
+    )
+  );
+  if (canUseMyTeaching) contexts.push('MY_TEACHING');
   return contexts;
 }
 

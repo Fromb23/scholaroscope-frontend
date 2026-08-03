@@ -47,40 +47,41 @@ const basePolicyCapabilities = {
 
 describe('workspace teaching capabilities', () => {
   it('treats institution admins as supervision-only', () => {
+    const institutionAdminCapabilities = {
+      ...basePolicyCapabilities,
+      can_teach: false,
+      can_manage_staff: true,
+      is_workspace_owner: false,
+      workspace_mode: 'INSTITUTION',
+      workspace_behavior: 'INSTITUTION',
+    };
     expect(workspaceAllowsSelfManagedTeaching('INSTITUTION')).toBe(false);
-    expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'INSTITUTION' })).toBe(false);
-    expect(canShowAdminMyTeaching({ role: 'ADMIN', orgType: 'INSTITUTION' })).toBe(false);
-    expect(canCreateTeachingRecord({ role: 'ADMIN', orgType: 'INSTITUTION' })).toBe(false);
-    expect(isSupervisionOnlyAdmin({ role: 'ADMIN', orgType: 'INSTITUTION' })).toBe(true);
+    expect(canUseTeachingMode({ orgType: 'INSTITUTION', capabilities: institutionAdminCapabilities })).toBe(false);
+    expect(canShowAdminMyTeaching({ orgType: 'INSTITUTION', capabilities: institutionAdminCapabilities })).toBe(false);
+    expect(canCreateTeachingRecord({ orgType: 'INSTITUTION', capabilities: institutionAdminCapabilities })).toBe(false);
+    expect(isSupervisionOnlyAdmin({ orgType: 'INSTITUTION', capabilities: institutionAdminCapabilities })).toBe(true);
   });
 
   it('allows self-managed workspace admins into teaching mode', () => {
-    expect(canUseTeachingMode({
-      role: 'ADMIN',
-      orgType: 'INDEPENDENT_TEACHER',
+    expect(canUseTeachingMode({      orgType: 'INDEPENDENT_TEACHER',
       isWorkspaceOwner: true,
+      capabilities: basePolicyCapabilities,
     })).toBe(true);
-    expect(canUseTeachingMode({
-      role: 'ADMIN',
-      orgType: 'HOMESCHOOL',
+    expect(canUseTeachingMode({      orgType: 'HOMESCHOOL',
       isWorkspaceOwner: true,
+      capabilities: basePolicyCapabilities,
     })).toBe(true);
-    expect(canUseTeachingMode({
-      role: 'ADMIN',
-      orgType: 'PERSONAL',
+    expect(canUseTeachingMode({      orgType: 'PERSONAL',
       isWorkspaceOwner: true,
+      capabilities: basePolicyCapabilities,
     })).toBe(true);
-    expect(canUseTeachingMode({
-      role: 'ADMIN',
-      orgType: 'PERSONAL',
+    expect(canUseTeachingMode({      orgType: 'PERSONAL',
       isWorkspaceOwner: false,
     })).toBe(false);
   });
 
   it('prefers backend capability flags over workspace-role guesses', () => {
-    expect(canUseTeachingMode({
-      role: 'ADMIN',
-      orgType: 'INSTITUTION',
+    expect(canUseTeachingMode({      orgType: 'INSTITUTION',
       capabilities: {
         can_teach: true,
         can_manage_academic_setup: true,
@@ -131,27 +132,19 @@ describe('workspace teaching capabilities', () => {
       workspace_behavior: 'FREELANCE_TEACHER',
     };
 
-    expect(canManageWorkspaceUsers({
-      role: 'ADMIN',
-      orgType: 'PERSONAL',
+    expect(canManageWorkspaceUsers({      orgType: 'PERSONAL',
       isWorkspaceOwner: true,
       capabilities: freelanceCapabilities,
     })).toBe(false);
-    expect(canShowStaffManagement({
-      role: 'ADMIN',
-      orgType: 'PERSONAL',
+    expect(canShowStaffManagement({      orgType: 'PERSONAL',
       isWorkspaceOwner: true,
       capabilities: freelanceCapabilities,
     })).toBe(false);
-    expect(canShowInstitutionGovernance({
-      role: 'ADMIN',
-      orgType: 'PERSONAL',
+    expect(canShowInstitutionGovernance({      orgType: 'PERSONAL',
       isWorkspaceOwner: true,
       capabilities: freelanceCapabilities,
     })).toBe(false);
-    expect(canShowFreelanceTeachingWorkspace({
-      role: 'ADMIN',
-      orgType: 'PERSONAL',
+    expect(canShowFreelanceTeachingWorkspace({      orgType: 'PERSONAL',
       isWorkspaceOwner: true,
       capabilities: freelanceCapabilities,
     })).toBe(true);
@@ -172,36 +165,28 @@ describe('workspace teaching capabilities', () => {
       workspace_behavior: 'INSTITUTION',
     };
 
-    expect(canManageWorkspaceUsers({
-      role: 'ADMIN',
-      orgType: 'INSTITUTION',
+    expect(canManageWorkspaceUsers({      orgType: 'INSTITUTION',
       capabilities: institutionCapabilities,
     })).toBe(true);
-    expect(canShowStaffManagement({
-      role: 'ADMIN',
-      orgType: 'INSTITUTION',
+    expect(canShowStaffManagement({      orgType: 'INSTITUTION',
       capabilities: institutionCapabilities,
     })).toBe(true);
-    expect(canShowInstitutionGovernance({
-      role: 'ADMIN',
-      orgType: 'INSTITUTION',
+    expect(canShowInstitutionGovernance({      orgType: 'INSTITUTION',
       capabilities: institutionCapabilities,
     })).toBe(true);
-    expect(canShowFreelanceTeachingWorkspace({
-      role: 'ADMIN',
-      orgType: 'INSTITUTION',
+    expect(canShowFreelanceTeachingWorkspace({      orgType: 'INSTITUTION',
       capabilities: institutionCapabilities,
     })).toBe(false);
   });
 
   it('keeps learner-workspace and tuition-center admins out of teaching mode', () => {
-    expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'LEARNER_WORKSPACE' })).toBe(false);
-    expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'TUITION_CENTER' })).toBe(false);
+    expect(canUseTeachingMode({ orgType: 'LEARNER_WORKSPACE' })).toBe(false);
+    expect(canUseTeachingMode({ orgType: 'TUITION_CENTER' })).toBe(false);
   });
 
-  it('allows instructors and blocks platform flags from teaching mode', () => {
-    expect(canUseTeachingMode({ role: 'INSTRUCTOR', orgType: 'INSTITUTION' })).toBe(true);
-    expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'HOMESCHOOL', isSuperadmin: true })).toBe(false);
+  it('uses backend teaching projection and ignores platform flags', () => {
+    expect(canUseTeachingMode({ orgType: 'INSTITUTION', capabilities: basePolicyCapabilities })).toBe(true);
+    expect(canUseTeachingMode({ orgType: 'HOMESCHOOL', isSuperadmin: true })).toBe(false);
   });
 
   it('does not expose independent teacher as a distinct registration workspace type', () => {

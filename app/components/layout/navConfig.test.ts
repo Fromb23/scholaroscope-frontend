@@ -1,4 +1,8 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
+import type { AcademicTodayModeValue } from '@/app/core/types/academic';
+import type { OrgType, User, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { ResolveNavConfigInput } from './navConfig';
 
 vi.mock('@/app/core/registry/pluginNavigation', () => ({
   getPluginNavigationItems: () => [],
@@ -21,13 +25,13 @@ vi.mock('@/app/core/lib/workspaces', () => ({
 }));
 
 const pluginContext = {
-  role: 'ADMIN' as const,
+  activeOperatingContext: null,
   hasPlugin: () => false,
   hasCurriculumType: () => false,
   badges: {},
   curricula: [],
   hasAnyReportPolicySurface: false,
-};
+} satisfies PluginNavigationContext;
 
 const soloGovernanceCapabilities = {
   can_teach: true,
@@ -59,13 +63,70 @@ const soloGovernanceCapabilities = {
   },
 };
 
-let getAdminNav: typeof import('./navConfig').getAdminNav;
-let getInstructorNav: typeof import('./navConfig').getInstructorNav;
+let resolveNavConfig: typeof import('./navConfig').resolveNavConfig;
 let resolveMobilePrimaryNav: typeof import('./navConfig').resolveMobilePrimaryNav;
 
 beforeAll(async () => {
-  ({ getAdminNav, getInstructorNav, resolveMobilePrimaryNav } = await import('./navConfig'));
+  ({ resolveNavConfig, resolveMobilePrimaryNav } = await import('./navConfig'));
 });
+
+function testUser() {
+  return {
+    id: 1,
+    email: 'user@example.com',
+    first_name: 'Test',
+    last_name: 'User',
+    full_name: 'Test User',
+    is_superadmin: false,
+    is_active: true,
+    phone: '',
+    date_joined: '2026-01-01T00:00:00Z',
+    last_login: '2026-01-01T00:00:00Z',
+  } satisfies User;
+}
+
+function getAdminNav(
+  context: Partial<PluginNavigationContext> = pluginContext,
+  orgType?: OrgType | null,
+  academicSetup?: ResolveNavConfigInput['academicSetup'],
+  capabilities?: WorkspaceCapabilities | null,
+) {
+  const nextContext = {
+    ...context,
+    activeOperatingContext: 'WORKSPACE_MANAGEMENT' as const,
+    orgType,
+    capabilities: capabilities ?? context.capabilities ?? null,
+  };
+  return resolveNavConfig({
+    user: testUser(),
+    activeOperatingContext: 'WORKSPACE_MANAGEMENT',
+    orgType,
+    pluginNavigationContext: nextContext as PluginNavigationContext,
+    academicSetup,
+    capabilities,
+  });
+}
+
+function getInstructorNav(
+  context: Partial<PluginNavigationContext> = pluginContext,
+  academicTodayMode?: AcademicTodayModeValue | null,
+  instructorAssignedCohortCount?: number | null,
+  capabilities?: WorkspaceCapabilities | null,
+) {
+  const nextContext = {
+    ...context,
+    activeOperatingContext: 'MY_TEACHING' as const,
+    capabilities: capabilities ?? context.capabilities ?? null,
+  };
+  return resolveNavConfig({
+    user: testUser(),
+    activeOperatingContext: 'MY_TEACHING',
+    pluginNavigationContext: nextContext as PluginNavigationContext,
+    capabilities,
+    academicTodayMode,
+    instructorAssignedCohortCount,
+  });
+}
 
 describe('admin navigation config', () => {
   it('renames institutional admin teaching surfaces to supervision labels', () => {

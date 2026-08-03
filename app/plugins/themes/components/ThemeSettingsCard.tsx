@@ -14,9 +14,9 @@ interface ThemeSettingsCardProps {
 }
 
 export function ThemeSettingsCard({ showOrganizationEditor = true }: ThemeSettingsCardProps) {
-  const { user, activeOrg, activeRole, capabilities } = useAuth();
+  const { user, activeOrg, capabilities } = useAuth();
   const { effectiveTheme } = useEffectiveTheme();
-  const canEditCustomTheme = canEditOrganizationTheme({ user, activeOrg, activeRole, capabilities });
+  const canEditCustomTheme = canEditOrganizationTheme({ user, activeOrg, capabilities });
   const showEditor = showOrganizationEditor && canEditCustomTheme;
 
   return (

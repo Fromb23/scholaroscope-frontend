@@ -664,23 +664,20 @@ function TeachingAssessmentGroups({
 export function AssessmentsOverview() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, user, activeRole, capabilities } = useAuth();
-    const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdminLike = activeRole === 'ADMIN';
-    const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
-        role: activeRole,
+    const { activeOrg, user, activeOperatingContext, capabilities } = useAuth();
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING' && capabilities.can_teach;
+    const managementSurface = activeOperatingContext === 'WORKSPACE_MANAGEMENT';
+    const canUseMyTeaching = teachingSurface || canShowAdminMyTeaching({
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
@@ -698,7 +695,7 @@ export function AssessmentsOverview() {
     const instructorAccess = useInstructorCohortAccess();
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isSelfManagedTeachingAdmin = instructorAccess.isSelfManagedTeachingAdmin;
-    const showInstitutionSupervision = isAdminLike && !isSelfManagedTeachingAdmin;
+    const showInstitutionSupervision = managementSurface && !isSelfManagedTeachingAdmin;
     const effectiveMyTeachingMode = isTeachingActor || (canUseMyTeaching && viewMode === 'my_teaching');
     const isAdminSupervisionMode = showInstitutionSupervision && !effectiveMyTeachingMode;
     const safeReturnTo = useMemo(() => {
@@ -711,11 +708,11 @@ export function AssessmentsOverview() {
     const userId = user?.id;
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(userId) });
     const persistenceKey = useMemo(() => {
-        if (!activeOrgId || !userId || !activeRole) {
+        if (!activeOrgId || !userId || !activeOperatingContext) {
             return null;
         }
-        return `scholaroscope:assessments:${activeOrgId}:${userId}:${activeRole}`;
-    }, [activeOrgId, activeRole, userId]);
+        return `scholaroscope:assessments:${activeOrgId}:${userId}:${activeOperatingContext}`;
+    }, [activeOperatingContext, activeOrgId, userId]);
     const { curricula } = useCurricula();
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
@@ -730,7 +727,7 @@ export function AssessmentsOverview() {
         terms,
     }) ?? undefined, [queryTerm, terms]);
     const hasWritableAssessmentCurriculum = useMemo(() => {
-        if (isAdminLike) {
+        if (managementSurface) {
             return curricula.some((curriculum) => canCreateCurriculumWork(curriculum));
         }
 
@@ -740,7 +737,7 @@ export function AssessmentsOverview() {
                 : resolveCurriculumForType(curricula, assignment.curriculum_type ?? null);
             return canCreateCurriculumWork(curriculum);
         });
-    }, [curricula, instructorAccess.assignments, isAdminLike]);
+    }, [curricula, instructorAccess.assignments, managementSurface]);
     const canCreateAssessment = hasWritableAssessmentCurriculum && (
         canCreateTeachingRecords || (isTeachingActor && instructorAccess.hasAssignedCohortSubjects)
     );

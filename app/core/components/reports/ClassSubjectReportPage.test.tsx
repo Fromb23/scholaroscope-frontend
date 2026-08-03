@@ -11,7 +11,7 @@ describe('class subject report header identity', () => {
   it('shows instructor viewer context without an alarming missing-assignment message', () => {
     const html = renderToStaticMarkup(
       createElement(ClassSubjectReportHeaderContext, {
-        isInstructorRoute: true,
+        isTeachingReportRoute: true,
         assignedInstructor: null,
         viewerName: 'Test User',
         periodLabel: '2nd Term',
@@ -27,7 +27,7 @@ describe('class subject report header identity', () => {
   it('renders the canonical assigned instructor when one exists', () => {
     const html = renderToStaticMarkup(
       createElement(ClassSubjectReportHeaderContext, {
-        isInstructorRoute: true,
+        isTeachingReportRoute: true,
         assignedInstructor: {
           id: 12,
           name: 'Jane Doe',
@@ -47,7 +47,7 @@ describe('class subject report header identity', () => {
   it('allows admin views to show neutral setup information for missing assignment', () => {
     const html = renderToStaticMarkup(
       createElement(ClassSubjectReportHeaderContext, {
-        isInstructorRoute: false,
+        isTeachingReportRoute: false,
         assignedInstructor: null,
         viewerName: null,
         periodLabel: '2nd Term',

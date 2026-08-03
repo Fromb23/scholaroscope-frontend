@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Activity } from 'lucide-react';
+import { Activity, Building2, GraduationCap } from 'lucide-react';
 
 import { useAuth } from '@/app/context/AuthContext';
 import { useSidebar } from '@/app/context/SidebarContext';
@@ -13,7 +13,6 @@ import {
   getRoleColorScheme,
   getRoleFooterLabel,
   isNavHrefActive,
-  ROLE_ICONS,
   type NavigationConfig,
 } from './navConfig';
 import type { OperatingContext } from '@/app/core/types/auth';
@@ -40,9 +39,8 @@ export default function Sidebar({ navConfig }: SidebarProps) {
   const { isSidebarOpen, closeSidebar } = useSidebar();
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  const visualRole = activeOperatingContext === 'MY_TEACHING' ? 'INSTRUCTOR' : 'ADMIN';
-  const colors = getRoleColorScheme(visualRole, activeOrg?.org_type);
-  const RoleIcon = ROLE_ICONS[visualRole] ?? ROLE_ICONS.ADMIN;
+  const colors = getRoleColorScheme('ADMIN', activeOrg?.org_type);
+  const RoleIcon = activeOperatingContext === 'MY_TEACHING' ? GraduationCap : Building2;
   const Logo = AppLogoIcon;
 
   const isActive = (href: string): boolean => isNavHrefActive(pathname, href);

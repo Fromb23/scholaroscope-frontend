@@ -16,7 +16,7 @@ import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useAuth } from '@/app/context/AuthContext';
-import { isAdminOrAbove } from '@/app/utils/permissions';
+import { hasPermission } from '@/app/utils/permissions';
 import {
     isCbcCurriculum,
     isGenericPolicyCurriculum,
@@ -36,8 +36,9 @@ const CBC_REJECTION_MESSAGE = 'CBC uses CbcReportPolicy. Use CBC report policy e
 export function GradePolicyDetailPage() {
     const params = useParams();
     const policyId = Number(params.id);
-    const { user, activeRole, loading: authLoading } = useAuth();
-    const canManagePolicies = isAdminOrAbove(user, activeRole);
+    const { capabilities, loading: authLoading } = useAuth();
+    const canManagePolicies = Boolean(capabilities.can_manage_report_policy)
+        || hasPermission(capabilities, 'reports.manage_policy');
     const [policy, setPolicy] = useState<GradePolicy | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

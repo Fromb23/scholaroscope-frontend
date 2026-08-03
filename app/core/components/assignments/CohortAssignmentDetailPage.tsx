@@ -80,7 +80,8 @@ import type {
     AssignmentBulkReviewPayload,
     AssignmentLifecycleAction,
 } from '@/app/core/types/assignments';
-import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
+import { hasPermission } from '@/app/utils/permissions';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 
@@ -214,12 +215,12 @@ export default function CohortAssignmentDetailPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
+    const { user, activeOperatingContext, activeOrg, capabilities, loading: authLoading } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const cohortId = Number(params.id);
     const assignmentId = Number(params.assignmentId);
     const isTeachingActor = instructorAccess.isTeachingActor;
-    const isInstitutionAdminView = activeRole === 'ADMIN' && !isTeachingActor;
+    const isInstitutionAdminView = activeOperatingContext === 'WORKSPACE_MANAGEMENT' && !isTeachingActor;
     const isValidRoute = Number.isFinite(cohortId) && cohortId > 0 && Number.isFinite(assignmentId) && assignmentId > 0;
     const activeTab = parseDetailTab(searchParams.get('tab'));
     const [editOpen, setEditOpen] = useState(false);
@@ -242,9 +243,11 @@ export default function CohortAssignmentDetailPage() {
         : isInstitutionAdminView
             || (isTeachingActor && instructorAccess.cohortIds.includes(cohortId));
     const canManageAssignments = Boolean(user) && (
-        false
-        || activeRole === 'ADMIN'
-        || activeRole === 'INSTRUCTOR'
+        isTeachingActor
+        || hasPermission(capabilities, 'assignments.manage')
+        || hasPermission(capabilities, 'assignments.create')
+        || hasPermission(capabilities, 'assignments.review')
+        || hasPermission(capabilities, 'assignments.record_response')
     );
 
     const {
@@ -308,7 +311,6 @@ export default function CohortAssignmentDetailPage() {
     }, [assignmentId, cohortId, pathname, searchParams]);
     const reportSurface = resolveReportSurface({
         user,
-        activeRole,
         activeOrg,
         capabilities,
     });
@@ -492,9 +494,9 @@ export default function CohortAssignmentDetailPage() {
     ), [isGroupAssignment]);
 
     useEffect(() => {
-        if (accessLoading || allowed || !activeRole) return;
-        router.replace(roleHomeRoute[activeRole]);
-    }, [accessLoading, activeRole, allowed, router]);
+        if (accessLoading || allowed) return;
+        router.replace(operatingContextHomeRoute(activeOperatingContext));
+    }, [accessLoading, activeOperatingContext, allowed, router]);
 
     useEffect(() => {
         if (detailTabs.some((tab) => tab.value === activeTab)) {

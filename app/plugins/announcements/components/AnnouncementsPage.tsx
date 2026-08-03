@@ -42,7 +42,7 @@ export function AnnouncementsPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole, capabilities } = useAuth();
+    const { capabilities } = useAuth();
     const {
         announcements, loading, error, refetch,
         create, update, remove, markRead, submitFeedback,
@@ -120,7 +120,6 @@ export function AnnouncementsPage() {
             is_empty: !loading && filtered.length === 0,
             unread_count: unreadCount,
             can_create_announcement: canManageAnnouncements,
-            role: activeRole ?? null,
         },
         visibleActions: [
             {
@@ -164,7 +163,6 @@ export function AnnouncementsPage() {
             ? 'No announcements match the current view.'
             : undefined,
     }), [
-        activeRole,
         filtered.length,
         canManageAnnouncements,
         loading,

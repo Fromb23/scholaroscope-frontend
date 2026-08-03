@@ -333,12 +333,11 @@ export function SessionDetailPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const sessionId = Number(params.id);
-    const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const { activeOrg, activeOperatingContext, user, capabilities } = useAuth();
     const hasValidSessionId = Number.isInteger(sessionId) && sessionId > 0;
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach);
     const canCreateTeachingRecords = canCreateTeachingRecord({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
@@ -933,7 +932,7 @@ export function SessionDetailPage() {
             closureIntentRef.current = false;
             setGuidedSection('post-lesson');
             setWorkflowSuccess(
-                isInstructor ? 'Lesson record closed. Post-lesson actions are ready below.' : 'Lesson record closed.'
+                teachingSurface ? 'Lesson record closed. Post-lesson actions are ready below.' : 'Lesson record closed.'
             );
             return {
                 closureState: refreshedClosureState ?? latestClosureState,
@@ -948,7 +947,7 @@ export function SessionDetailPage() {
     }, [
         completeSession,
         isInProgress,
-        isInstructor,
+        teachingSurface,
         openCompletionSection,
         refetch,
         refetchClosureState,
@@ -1669,7 +1668,7 @@ export function SessionDetailPage() {
             await startSession();
             setGuidedSection('attendance');
             setWorkflowSuccess(
-                isInstructor ? 'Lesson started. Next step: take attendance.' : 'Lesson started.'
+                teachingSurface ? 'Lesson started. Next step: take attendance.' : 'Lesson started.'
             );
         } catch (error) {
             setWorkflowError(resolveErrorMessage(error, 'We could not start this lesson.'));
@@ -1791,7 +1790,7 @@ export function SessionDetailPage() {
                 return;
             }
             setWorkflowSuccess(
-                isInstructor
+                teachingSurface
                     ? (
                         result.closureState.next_step === 'EVIDENCE'
                             ? 'What was taught is confirmed. Next step: record learner performance.'
@@ -1819,7 +1818,7 @@ export function SessionDetailPage() {
         isCompleted,
         isHistorical,
         isInProgress,
-        isInstructor,
+        teachingSurface,
         session,
         taughtSelections,
     ]);
@@ -2194,7 +2193,7 @@ export function SessionDetailPage() {
                 <Link href={backHref}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        {isInstructor ? 'Back to My Lessons' : 'Back'}
+                        {teachingSurface ? 'Back to My Lessons' : 'Back'}
                     </Button>
                 </Link>
 
@@ -2231,7 +2230,7 @@ export function SessionDetailPage() {
                                     <Link href={lessonPlanHref}>
                                         <Button variant="secondary" size="sm">
                                             <BookOpen className="mr-1.5 h-4 w-4" />
-                                            {isInstructor ? 'Back to lesson preparation' : 'Back to lesson plan'}
+                                            {teachingSurface ? 'Back to lesson preparation' : 'Back to lesson plan'}
                                         </Button>
                                     </Link>
                                 ) : null}
@@ -2533,7 +2532,7 @@ export function SessionDetailPage() {
                         />
                         <SessionMetaItem
                             icon={Calendar}
-                            label={isInstructor ? 'Lesson date' : 'Scheduled date'}
+                            label={teachingSurface ? 'Lesson date' : 'Scheduled date'}
                             value={lessonDateLabel || 'Not set'}
                         />
                         <SessionMetaItem
@@ -2589,7 +2588,7 @@ export function SessionDetailPage() {
             {hasLessonPlan ? (
                 <CollapsibleSection
                     sectionId="lesson-preparation-section"
-                    title={isInstructor ? 'Lesson preparation' : 'Lesson plan'}
+                    title={teachingSurface ? 'Lesson preparation' : 'Lesson plan'}
                     summary={lessonPreparationSummary}
                     badge={session.lesson_plan_status ? <Badge variant="blue">{session.lesson_plan_status}</Badge> : <Badge variant="default">{curriculumLabel}</Badge>}
                     open={lessonPreparationOpen}
@@ -2620,7 +2619,7 @@ export function SessionDetailPage() {
                                 <Link href={`/lesson-plans/${session.lesson_plan_id}`} className="w-full shrink-0 sm:w-auto">
                                     <Button variant="secondary" size="sm" className="w-full sm:w-auto">
                                         <BookOpen className="mr-1.5 h-4 w-4" />
-                                        {isInstructor ? 'View lesson preparation' : 'View lesson plan'}
+                                        {teachingSurface ? 'View lesson preparation' : 'View lesson plan'}
                                     </Button>
                                 </Link>
                             ) : null}
@@ -2656,10 +2655,10 @@ export function SessionDetailPage() {
                         <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                         <div className="space-y-1">
                             <h2 className="text-base font-semibold text-gray-900">
-                                {isInstructor ? 'No lesson preparation linked' : 'Lesson plan not linked'}
+                                {teachingSurface ? 'No lesson preparation linked' : 'Lesson plan not linked'}
                             </h2>
                             <p className="text-sm text-gray-600">
-                                {isInstructor
+                                {teachingSurface
                                     ? 'This lesson was not scheduled from a lesson preparation. The teaching record is still available, but plan-linked workflow steps are not available here.'
                                     : 'This lesson was not scheduled from a lesson plan. It remains readable for compatibility, but the plan-first workflow is not available here.'}
                             </p>
@@ -2670,7 +2669,7 @@ export function SessionDetailPage() {
 
             <CollapsibleSection
                 sectionId="workflow-section"
-                title={isInstructor ? 'Teaching checklist' : 'Lesson workflow'}
+                title={teachingSurface ? 'Teaching checklist' : 'Lesson workflow'}
                 summary={checklistSummary}
                 badge={<Badge variant="blue">{curriculumLabel}</Badge>}
                 open={checklistOpen}
@@ -2834,7 +2833,7 @@ export function SessionDetailPage() {
                                 <Link href={`/lesson-plans/${session.lesson_plan_id}`}>
                                     <Button variant="secondary" size="sm">
                                         <BookOpen className="mr-1.5 h-4 w-4" />
-                                        {isInstructor ? 'View lesson preparation' : 'View lesson plan'}
+                                        {teachingSurface ? 'View lesson preparation' : 'View lesson plan'}
                                     </Button>
                                 </Link>
                             ) : null}
@@ -2904,7 +2903,7 @@ export function SessionDetailPage() {
                             const result = await continueSessionClosureWorkflow('attendance_saved');
                             if (!result?.closureState) {
                                 setWorkflowSuccess(
-                                    isInstructor
+                                    teachingSurface
                                         ? 'Attendance saved. The lesson workspace refreshed, but the next required step could not be resolved automatically.'
                                         : 'Attendance updated.'
                                 );
@@ -2921,7 +2920,7 @@ export function SessionDetailPage() {
                             }
 
                             setWorkflowSuccess(
-                                isInstructor
+                                teachingSurface
                                     ? (
                                         result.closureState.next_step === 'TAUGHT_OUTCOMES'
                                             ? 'Attendance saved. Next step: confirm what was taught.'

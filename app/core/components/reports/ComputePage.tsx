@@ -99,7 +99,7 @@ function reportSetStatusLabel(reportSet: TermReportSetReadiness | null): string 
 }
 
 export function ComputePage() {
-    const { user, activeOrg, activeRole, capabilities } = useAuth();
+    const { user, activeOrg, capabilities } = useAuth();
     const [prepareSheetOpen, setPrepareSheetOpen] = useState(false);
     const [prepareAutoRunKey, setPrepareAutoRunKey] = useState(0);
     const {
@@ -159,7 +159,6 @@ export function ComputePage() {
     const reportsReady = Boolean(readiness && (readiness.can_compute ?? readiness.ready));
     const canRunFullRebuild = canRenderInstitutionReportOverview({
         user,
-        activeRole,
         activeOrg,
         capabilities,
     });

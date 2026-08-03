@@ -14,8 +14,8 @@ import { CambridgeBreadcrumb, CambridgeWorkflowNav } from '../components/Cambrid
 import { modeLabel, resolveCambridgeError } from './authoringUtils';
 
 export default function CambridgeSetupPage() {
-  const { activeRole } = useAuth();
-  const isAdmin = activeRole === 'ADMIN';
+  const { capabilities } = useAuth();
+  const isAdmin = Boolean(capabilities.can_manage_academic_setup || capabilities.can_manage_subjects);
   const [errorVisible, setErrorVisible] = useState(true);
 
   const { data: installation, isLoading: installationLoading, error: installationError } = useCambridgeInstallationStatus();

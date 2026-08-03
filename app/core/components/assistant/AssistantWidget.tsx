@@ -32,7 +32,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { useAuth } from '@/app/context/AuthContext';
-import type { Role } from '@/app/core/types/auth';
+import type { OperatingContext } from '@/app/core/types/auth';
 import type {
   AssistantAction,
   AssistantChatResponse,
@@ -87,14 +87,14 @@ function preferredDesktopSide(state: Record<string, unknown> | undefined): Assis
   return state?.assistant_desktop_side === 'left' ? 'left' : 'right';
 }
 
-const QUICK_PROMPTS_BY_ROLE: Record<Role, string[]> = {
-  INSTRUCTOR: [
+const QUICK_PROMPTS_BY_CONTEXT: Record<OperatingContext, string[]> = {
+  MY_TEACHING: [
     'What can I do here?',
     'Who are you?',
     'Help me schedule a lesson',
     'Help me take attendance',
   ],
-  ADMIN: [
+  WORKSPACE_MANAGEMENT: [
     'Help me set up school',
     'Help me add a class',
     'Help me assign a teacher',
@@ -148,12 +148,12 @@ function dedupePrompts(prompts: string[]): string[] {
   });
 }
 
-function roleQuickPrompts(role: Role | null): string[] {
-  if (!role) {
-    return QUICK_PROMPTS_BY_ROLE.INSTRUCTOR;
+function contextQuickPrompts(context: OperatingContext | null): string[] {
+  if (!context) {
+    return QUICK_PROMPTS_BY_CONTEXT.MY_TEACHING;
   }
 
-  return QUICK_PROMPTS_BY_ROLE[role];
+  return QUICK_PROMPTS_BY_CONTEXT[context];
 }
 
 function ActionButton({
@@ -433,7 +433,7 @@ function FeedbackCategoryOption({
 }
 
 export function AssistantWidget() {
-  const { activeRole } = useAuth();
+  const { activeOperatingContext } = useAuth();
   const {
     activeSuggestion,
     buildChatPayload,
@@ -479,7 +479,7 @@ export function AssistantWidget() {
     [pageContext?.pageKey],
   );
 
-  const quickPrompts = useMemo(() => roleQuickPrompts(activeRole), [activeRole]);
+  const quickPrompts = useMemo(() => contextQuickPrompts(activeOperatingContext), [activeOperatingContext]);
   const hasPendingSuggestion = !suggestionsLoading && Boolean(activeSuggestion);
   const suggestionForPanel = useMemo(
     () => activeSuggestion ?? suggestions[0] ?? null,

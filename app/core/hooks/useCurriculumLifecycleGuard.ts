@@ -7,7 +7,7 @@ import {
   canUseCurriculumRoute,
   getCurriculumRouteAccessDecision,
   resolveCurriculumForType,
-  type CurriculumLifecycleRole,
+  type CurriculumLifecycleSurface,
   type CurriculumRouteIntent,
 } from '@/app/core/lib/curriculumLifecycle';
 import type { Curriculum } from '@/app/core/types/academic';
@@ -32,15 +32,15 @@ interface CurriculumLifecycleGuardResult {
   readOnly: boolean;
   label: string;
   message: string;
-  role: CurriculumLifecycleRole;
+  surface: CurriculumLifecycleSurface;
 }
 
-function resolveLifecycleRole(activeOperatingContext: ReturnType<typeof useAuth>['activeOperatingContext']): CurriculumLifecycleRole {
+function resolveLifecycleSurface(activeOperatingContext: ReturnType<typeof useAuth>['activeOperatingContext']): CurriculumLifecycleSurface {
   if (activeOperatingContext === 'MY_TEACHING') {
-    return 'INSTRUCTOR';
+    return 'TEACHING';
   }
 
-  return 'ADMIN';
+  return 'MANAGEMENT';
 }
 
 export function useCurriculumLifecycleGuard(
@@ -50,7 +50,7 @@ export function useCurriculumLifecycleGuard(
   const { plugins, loading: pluginsLoading } = usePlugins();
   const { activeOperatingContext } = useAuth();
 
-  const role = resolveLifecycleRole(activeOperatingContext);
+  const surface = resolveLifecycleSurface(activeOperatingContext);
 
   const curriculum = useMemo(() => {
     if (typeof options.curriculumId === 'number' && options.curriculumId > 0) {
@@ -72,7 +72,7 @@ export function useCurriculumLifecycleGuard(
   const hasReadableHistoricalState = Boolean(curriculum);
 
   const decision = curriculum
-    ? getCurriculumRouteAccessDecision(curriculum, options.routeIntent, role)
+    ? getCurriculumRouteAccessDecision(curriculum, options.routeIntent, surface)
     : null;
 
   const allowed = decision
@@ -83,7 +83,7 @@ export function useCurriculumLifecycleGuard(
         : (options.allowWhenPluginAvailableOnly ? pluginActive : false)
     );
 
-  const readOnly = curriculum ? !canUseCurriculumRoute(curriculum, 'create', role) : false;
+  const readOnly = curriculum ? !canUseCurriculumRoute(curriculum, 'create', surface) : false;
 
   return {
     loading: curriculaLoading || pluginsLoading,
@@ -100,6 +100,6 @@ export function useCurriculumLifecycleGuard(
           ? 'This route is not available for the selected curriculum.'
           : 'This Scholaroscope-powered curriculum is not available for your organization.'
       ),
-    role,
+    surface,
   };
 }

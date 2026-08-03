@@ -15,8 +15,7 @@ import {
 } from '@/app/core/api/academic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { academicKeys } from '@/app/core/lib/queryKeys';
-import { isAdminOrAbove, isInstructor as hasInstructorRole } from '@/app/utils/permissions';
-import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { Card } from '@/app/components/ui/Card';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
@@ -73,10 +72,10 @@ export default function CohortSubjectLearnersPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const queryClient = useQueryClient();
-    const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
-    const instructorView = hasInstructorRole(activeRole);
+    const { user, activeOperatingContext, activeOrg, capabilities, loading: authLoading } = useAuth();
+    const instructorView = activeOperatingContext === 'MY_TEACHING' && capabilities.can_teach;
     const showInternalRequestActions = supportsInternalRequests(capabilities);
-    const canManageLearners = isAdminOrAbove(user, activeRole);
+    const canManageLearners = Boolean(user && capabilities.can_manage_learners);
     const instructorAccess = useInstructorCohortAccess({ enabled: instructorView });
 
     const cohortSubjectId = Number(params.id);
@@ -108,9 +107,9 @@ export default function CohortSubjectLearnersPage() {
     };
 
     useEffect(() => {
-        if (accessLoading || allowed || !activeRole) return;
-        router.replace(roleHomeRoute[activeRole]);
-    }, [accessLoading, activeRole, allowed, router]);
+        if (accessLoading || allowed) return;
+        router.replace(operatingContextHomeRoute(activeOperatingContext));
+    }, [accessLoading, activeOperatingContext, allowed, router]);
 
     const learnersQuery = useQuery<CohortSubjectLearnerListResponse, Error>({
         queryKey: academicKeys.cohortSubjects.learners(cohortSubjectId),
@@ -236,7 +235,6 @@ export default function CohortSubjectLearnersPage() {
     })();
     const canOpenInstructorLearnerReports = shouldUseInstructorReportSurface({
         user,
-        activeRole,
         activeOrg,
         capabilities,
     });

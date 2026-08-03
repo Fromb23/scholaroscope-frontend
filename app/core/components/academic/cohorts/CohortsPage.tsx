@@ -6,17 +6,17 @@ import { AdminCohortsPageContent } from '@/app/core/components/academic/cohorts/
 import { InstructorMyCohortsPageContent } from '@/app/core/components/academic/cohorts/InstructorMyCohortsPageContent';
 
 export function CohortsPage() {
-    const { activeRole, loading: authLoading } = useAuth();
+    const { activeOperatingContext, loading: authLoading } = useAuth();
 
     if (authLoading) {
         return <LoadingSpinner fullScreen={false} message="Preparing cohorts page..." />;
     }
 
-    if (!activeRole) {
+    if (!activeOperatingContext) {
         return null;
     }
 
-    return activeRole === 'INSTRUCTOR'
+    return activeOperatingContext === 'MY_TEACHING'
         ? <InstructorMyCohortsPageContent />
         : <AdminCohortsPageContent />;
 }

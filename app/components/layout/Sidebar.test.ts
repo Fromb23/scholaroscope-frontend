@@ -35,24 +35,24 @@ describe('Sidebar shell architecture', () => {
     expect(layout).toContain('initialScale: 1');
   });
 
-  it('preserves role-aware navigation dispatch', () => {
+  it('preserves operating-context navigation dispatch', () => {
     const shell = read('app/(dashboard)/DashboardClientShell.tsx');
     const navConfig = read('app/components/layout/navConfig.ts');
 
     expect(shell).toContain('resolveNavConfig');
     expect(shell).toContain('getAvailablePolicySurfaces');
     expect(navConfig).not.toContain(`get${'Superadmin'}Nav`);
-    expect(navConfig).toContain('getAdminNav');
-    expect(navConfig).toContain('getInstructorNav');
+    expect(navConfig).toContain('getWorkspaceManagementNav');
+    expect(navConfig).toContain('getMyTeachingNav');
   });
 
-  it('omits the redundant personal name only from instructor sidebar identity', () => {
+  it('renders sidebar identity from operating context and workspace metadata', () => {
     const sidebar = read('app/components/layout/Sidebar.tsx');
     const header = read('app/components/layout/Header.tsx');
 
-    expect(sidebar).toContain("resolvedRole === 'INSTRUCTOR' ? null");
+    expect(sidebar).toContain("context === 'MY_TEACHING'");
     expect(sidebar).toContain('{user.first_name} {user.last_name}');
-    expect(sidebar).toContain('{roleLabel}');
+    expect(sidebar).toContain('contextLabel(activeOperatingContext)');
     expect(sidebar).toContain('activeOrg.name');
     expect(header).toContain('{user?.full_name}');
   });

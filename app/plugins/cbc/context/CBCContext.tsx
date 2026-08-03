@@ -70,7 +70,7 @@ interface CBCFilterContextValue {
     selectedCohortId: number | null;
     setSelectedSubject: (id: number | null) => void;
     setSelectedCohort: (id: number | null) => void;
-    // Role-based access
+    // Context/capability-based access
     isAdmin: boolean;
     isInstitutionAdminView: boolean;
     isTeachingActorView: boolean;
@@ -85,15 +85,14 @@ export function CBCProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
+    const { user, activeOperatingContext, activeOrg, capabilities, loading: authLoading } = useAuth();
     const { cbcCurriculumId, loading: curriculumLoading, isInstalled } = useCBCCurriculum();
     const teachingActorView = isTeachingActorView({
-        activeRole,
         activeOrg,
         capabilities,
         user,
     });
-    const isInstitutionAdminView = activeRole === 'ADMIN' && !teachingActorView;
+    const isInstitutionAdminView = activeOperatingContext === 'WORKSPACE_MANAGEMENT' && !teachingActorView;
     const isAdmin = isInstitutionAdminView;
     const teachingLoading = authLoading;
 

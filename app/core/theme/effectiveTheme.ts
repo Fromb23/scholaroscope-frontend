@@ -1,5 +1,5 @@
 import type { ResolvedTheme, ScholaroscopeThemeMode, ThemeMode } from '@/app/context/ThemeContext';
-import type { ActiveOrg, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { ActiveOrg, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import type { AppearanceMode, EffectiveThemeResponse, ThemeTokens } from '@/app/core/types/theme';
 
 export const DEFAULT_THEME_TOKENS: ThemeTokens = {
@@ -398,10 +398,9 @@ export function applyThemeTokens(
 
 export function canEditOrganizationTheme({
   activeOrg,
-  activeRole,
+  capabilities,
 }: {
   activeOrg: ActiveOrg | null;
-  activeRole: Role | null;
   capabilities: WorkspaceCapabilities;
   user?: User | null;
 }): boolean {
@@ -409,7 +408,12 @@ export function canEditOrganizationTheme({
     return false;
   }
 
-  return activeRole === 'ADMIN';
+  const permissionKeys = capabilities.authorization?.permission_keys ?? [];
+  return Boolean(
+    capabilities.can_manage_plugins
+    || permissionKeys.includes('themes.manage')
+    || permissionKeys.includes('workspace.settings.manage')
+  );
 }
 
 export function isFreelanceWorkspaceTheme(activeOrg?: ActiveOrg | null, capabilities?: WorkspaceCapabilities | null): boolean {

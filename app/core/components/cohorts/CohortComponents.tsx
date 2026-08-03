@@ -83,7 +83,7 @@ export function SubjectPanel({
         {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
           <CurriculumLifecycleNotice
             status={lifecycle.curriculum.offering_status}
-            role={lifecycle.role}
+            surface={lifecycle.surface}
             title="Curriculum subject links"
             message={lifecycle.message}
           />
@@ -98,7 +98,7 @@ export function SubjectPanel({
       {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
         <CurriculumLifecycleNotice
           status={lifecycle.curriculum.offering_status}
-          role={lifecycle.role}
+          surface={lifecycle.surface}
           title="Curriculum subject links"
           message={lifecycle.message}
         />
@@ -373,7 +373,7 @@ export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps
                 {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
                     <CurriculumLifecycleNotice
                         status={lifecycle.curriculum.offering_status}
-                        role={lifecycle.role}
+                        surface={lifecycle.surface}
                         title="Curriculum rollover blocked"
                         message={lifecycle.message}
                     />
@@ -553,7 +553,7 @@ export function CohortFormModal({
                 {effectiveCurriculum && effectiveCurriculum.offering_status !== 'ACTIVE' ? (
                     <CurriculumLifecycleNotice
                         status={effectiveCurriculum.offering_status}
-                        role={lifecycle.role}
+                        surface={lifecycle.surface}
                         title={editingCohort ? 'Cohort updates are restricted' : 'Cohort creation is restricted'}
                         message={lifecycle.message}
                     />

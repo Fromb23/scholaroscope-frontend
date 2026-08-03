@@ -309,7 +309,7 @@ export function InstructorManagementPage() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { user, activeRole, activeOrg, capabilities } = useAuth();
+    const { user, activeOrg, capabilities } = useAuth();
     const { instructors, loading, error, refetch, createInstructor } = useInstructors();
 
     const [search, setSearch] = useState('');
@@ -345,7 +345,6 @@ export function InstructorManagementPage() {
     }, [pathname, searchParams]);
     const canOpenInstructorReports = canRenderInstitutionReportOverview({
         user,
-        activeRole,
         activeOrg,
         capabilities,
     });

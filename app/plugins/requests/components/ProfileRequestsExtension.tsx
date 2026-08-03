@@ -18,22 +18,22 @@ export function ProfileRequestsExtension({ profile }: ProfileExtensionContext) {
     const { requests, loading, submitDeletionRequest, hasPendingDeletion } = useMyRequests();
     const [deletionModal, setDeletionModal] = useState<DeletionRequestType | null>(null);
 
-    const isInstructor = profile.role === 'INSTRUCTOR';
-    const isAdmin = profile.role === 'ADMIN';
     const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
         orgType: activeOrg?.org_type,
         capabilities,
     });
+    const canRequestAccountDeletion = Boolean(capabilities.can_teach || capabilities.can_manage_staff);
+    const canRequestOrganizationDeletion = Boolean(capabilities.is_workspace_owner || capabilities.can_manage_staff);
 
     const dangerActions = [
-        ...(isInstructor || isAdmin ? [{
+        ...(canRequestAccountDeletion ? [{
             label: 'Delete My Account',
             description: 'Request your account and all associated data to be permanently erased. Your administrator will review this request.',
             pending: hasPendingDeletion('ACCOUNT_DELETION'),
             pendingLabel: 'Request Pending',
             onDelete: () => setDeletionModal('ACCOUNT_DELETION'),
         }] : []),
-        ...(isAdmin ? [{
+        ...(canRequestOrganizationDeletion ? [{
             label: `Delete Organization${profile.organization_name ? ` · ${profile.organization_name}` : ''}`,
             description: 'Request the complete deletion of your organization and all its data. This will be escalated to Scholaroscope support.',
             pending: hasPendingDeletion('ORG_DELETION'),

@@ -23,7 +23,7 @@ import { TeachingTodayTimeline } from './TeachingTodayTimeline';
 
 export function TeachingTodayPage() {
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const { user, activeOperatingContext, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const {
         context,
@@ -33,16 +33,16 @@ export function TeachingTodayPage() {
         refresh,
     } = useTeachingToday();
     const academicLifecycleQuery = useAcademicLifecycleContext({
-        enabled: Boolean(activeRole),
+        enabled: activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach),
     });
     const [refreshing, setRefreshing] = useState(false);
     const isTeachingActor = instructorAccess.isTeachingActor;
 
     useEffect(() => {
-        if (activeRole && !isTeachingActor) {
+        if (activeOperatingContext === 'MY_TEACHING' && !isTeachingActor) {
             router.push('/dashboard');
         }
-    }, [activeRole, isTeachingActor, router]);
+    }, [activeOperatingContext, isTeachingActor, router]);
 
     const pageLoading = loading || instructorAccess.isLoading;
     const setupBlocked = context.learningDayState === 'SETUP_BLOCKED';
@@ -120,7 +120,7 @@ export function TeachingTodayPage() {
         }
     };
 
-    if (!user || activeRole === null) return null;
+    if (!user || activeOperatingContext !== 'MY_TEACHING') return null;
     if (!isTeachingActor) return null;
     if (pageLoading) return <LoadingSpinner message="Opening Teaching Today..." />;
 

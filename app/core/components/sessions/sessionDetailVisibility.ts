@@ -173,13 +173,11 @@ export function getDefaultOpenLessonWorkflowSection({
 }
 
 export function shouldShowInstructorIdentity({
-  activeRole,
   viewMode,
   groupingMode,
   effectiveMyTeachingMode,
   showInstitutionSupervision,
 }: {
-  activeRole: string | null | undefined;
   viewMode?: string | null;
   groupingMode?: string | null;
   effectiveMyTeachingMode: boolean;
@@ -193,7 +191,7 @@ export function shouldShowInstructorIdentity({
     return true;
   }
 
-  if (activeRole === 'INSTRUCTOR' || effectiveMyTeachingMode) {
+  if (effectiveMyTeachingMode) {
     return false;
   }
 

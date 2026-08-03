@@ -35,6 +35,7 @@ import {
     buildLearnerOverviewReportHref,
     buildLearnerSubjectReportHref,
 } from '@/app/core/lib/learnerReportingRoutes';
+import { hasPermission } from '@/app/utils/permissions';
 import { CBCLearnerSummarySkeleton } from '@/app/plugins/cbc/components/progress/CBCLearnerSummarySkeleton';
 import { CBCOutcomeRowsSkeleton } from '@/app/plugins/cbc/components/progress/CBCOutcomeRowsSkeleton';
 import { useOutcomeProgress, useOutcomeProgressSummary } from '@/app/plugins/cbc/hooks/useCBC';
@@ -148,7 +149,7 @@ export function CBCStudentProgressPage() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const studentId = Number(raw);
-    const { user, activeRole } = useAuth();
+    const { user, activeOperatingContext, capabilities } = useAuth();
     const { data: summary, isLoading: summaryLoading, error: summaryError, refetch } =
         useOutcomeProgressSummary(studentId);
     const { data: recordsRaw, isLoading: recordsLoading } = useOutcomeProgress(studentId);
@@ -184,8 +185,16 @@ export function CBCStudentProgressPage() {
         () => allStrands.filter(({ strand }) => strand.status === 'ON_TRACK'),
         [allStrands],
     );
-    const canGenerateOverviewReport = !!user && activeRole === 'ADMIN';
-    const canGenerateSubjectReport = !!user && (activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
+    const hasReportAccess = hasPermission(capabilities, 'reports.view');
+    const canGenerateOverviewReport = !!user
+        && activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+        && hasReportAccess;
+    const canGenerateSubjectReport = !!user
+        && hasReportAccess
+        && (
+            activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+            || (activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach))
+        );
     const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
     const backHref = resolveReportBackHref({
         returnTo: searchParams.get('returnTo'),

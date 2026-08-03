@@ -99,7 +99,7 @@ function parsePositiveId(value: string | null): number | null {
 export default function NewStudentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, capabilities } = useAuth();
+    const { activeOrg, capabilities } = useAuth();
     const requestedCohortId = parsePositiveId(searchParams.get('cohort'));
     const requestedCohortSubjectId = parsePositiveId(searchParams.get('cohort_subject'));
     const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
@@ -202,7 +202,6 @@ export default function NewStudentPage() {
             const resolvedError = resolveLearnerError(error, {
                 action: 'create',
                 entityLabel: 'learner record',
-                role: activeRole,
                 workspaceBehavior: capabilities.workspace_behavior,
                 capabilities,
             });

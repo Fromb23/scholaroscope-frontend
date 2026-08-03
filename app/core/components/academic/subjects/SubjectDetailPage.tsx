@@ -7,7 +7,7 @@ import { ArrowLeft, BookOpen, ExternalLink, Plus } from 'lucide-react';
 import { getSubjectProfileExtensions, SubjectSlotContext } from '@/app/core/registry/subjectSlot';
 import { useSubjectDetail } from '@/app/core/hooks/useAcademic';
 import { useAuth } from '@/app/context/AuthContext';
-import { isAdminOrAbove } from '@/app/utils/permissions';
+import { hasPermission } from '@/app/utils/permissions';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Card } from '@/app/components/ui/Card';
@@ -18,7 +18,7 @@ import { AssignSubjectToCohortModal } from '@/app/core/components/academic/Assig
 export function SubjectDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const { capabilities } = useAuth();
     const [assignOpen, setAssignOpen] = useState(false);
 
     const rawId = params?.id;
@@ -29,8 +29,10 @@ export function SubjectDetailPage() {
     const { subject, loading, error, refetch } = useSubjectDetail(
         Number.isFinite(subjectId) && subjectId > 0 ? subjectId : null
     );
-    const canManageSubjectLinks = isAdminOrAbove(user, activeRole);
-    const canManageSubjectParticipation = isAdminOrAbove(user, activeRole);
+    const canManageSubjectLinks = Boolean(capabilities.can_manage_subjects)
+        || hasPermission(capabilities, 'academic.subjects.manage')
+        || hasPermission(capabilities, 'academic.manage');
+    const canManageSubjectParticipation = canManageSubjectLinks;
 
     if (loading) return <LoadingSpinner message="Loading subject..." />;
 

@@ -8,6 +8,7 @@ import { useAssessmentDetail, useAssessmentScores } from '@/app/core/hooks/useAs
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { tracksAssessmentParticipation } from '@/app/core/lib/assessmentParticipation';
 import { useAuth } from '@/app/context/AuthContext';
+import { hasPermission } from '@/app/utils/permissions';
 import {
     AssessmentParticipationRecord,
     AssessmentParticipationStatus,
@@ -32,7 +33,7 @@ export function useAssessmentDetailPage() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole, capabilities } = useAuth();
+    const { activeOperatingContext, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const assessmentId = Number(params.id);
     const focusTarget = searchParams.get('focus');
@@ -93,15 +94,20 @@ export function useAssessmentDetailPage() {
     const isDraft = assessment?.status === AssessmentStatus.DRAFT;
     const isActive = assessment?.status === AssessmentStatus.ACTIVE;
     const isTrackedParticipation = tracksAssessmentParticipation(assessment?.participation_mode);
-    const isAdminLike = activeRole === 'ADMIN';
+    const hasAssessmentManagement = activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+        && (
+            Boolean(capabilities.can_manage_assessments)
+            || hasPermission(capabilities, 'assessments.manage')
+            || hasPermission(capabilities, 'assessments.review')
+        );
     const isAssignedInstructor = Boolean(
-        activeRole === 'INSTRUCTOR'
+        instructorAccess.isTeachingActor
         && assessment
         && instructorAccess.cohortSubjectIds.includes(assessment.cohort_subject)
     );
-    const canManageAssessment = isAdminLike || isAssignedInstructor;
+    const canManageAssessment = hasAssessmentManagement || isAssignedInstructor;
     const canUpdate = staffAssessment?.can_update ?? (Boolean(staffAssessment) && canManageAssessment && !isFinalized);
-    const canDelete = staffAssessment?.can_delete ?? (Boolean(staffAssessment) && isAdminLike);
+    const canDelete = staffAssessment?.can_delete ?? (Boolean(staffAssessment) && hasAssessmentManagement);
     const canActivate = staffAssessment?.can_activate ?? (Boolean(staffAssessment) && canManageAssessment && isDraft);
     const canFinalize = staffAssessment?.can_finalize ?? (Boolean(staffAssessment) && canManageAssessment && (isDraft || isActive));
     const canReopen = staffAssessment?.can_reopen ?? false;

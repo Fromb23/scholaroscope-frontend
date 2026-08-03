@@ -45,7 +45,7 @@ import type {
     AssignmentEvaluationType,
     AssignmentStatus,
 } from '@/app/core/types/assignments';
-import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { parseAppDestination } from '@/app/core/auth/navigation';
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -174,12 +174,12 @@ export default function CohortAssignmentsPage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole, loading: authLoading } = useAuth();
+    const { user, activeOperatingContext, loading: authLoading } = useAuth();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const instructorAccess = useInstructorCohortAccess();
     const cohortId = Number(params.id);
     const isTeachingActor = instructorAccess.isTeachingActor;
-    const isInstitutionAdminView = activeRole === 'ADMIN' && !isTeachingActor;
+    const isInstitutionAdminView = activeOperatingContext === 'WORKSPACE_MANAGEMENT' && !isTeachingActor;
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
     const [statusFilter, setStatusFilter] = useState<AssignmentStatus | ''>(
         normalizeQueryParam(searchParams.get('status'), STATUS_OPTIONS) as AssignmentStatus | ''
@@ -259,9 +259,9 @@ export default function CohortAssignmentsPage() {
     });
 
     useEffect(() => {
-        if (accessLoading || allowed || !activeRole) return;
-        router.replace(roleHomeRoute[activeRole]);
-    }, [accessLoading, activeRole, allowed, router]);
+        if (accessLoading || allowed) return;
+        router.replace(operatingContextHomeRoute(activeOperatingContext));
+    }, [accessLoading, activeOperatingContext, allowed, router]);
 
     useEffect(() => {
         setStatusFilter(

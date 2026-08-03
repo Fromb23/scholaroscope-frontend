@@ -3,7 +3,7 @@ import { getPluginNavigationItems, type PluginNavigationContext } from '@/app/co
 import './navigationExtension';
 
 const baseContext: PluginNavigationContext = {
-  role: 'ADMIN',
+  activeOperatingContext: 'WORKSPACE_MANAGEMENT',
   orgType: 'INSTITUTION',
   workspaceBehavior: null,
   canTeach: false,
@@ -40,7 +40,7 @@ describe('schemes navigation extension', () => {
   it('shows scheme creation in instructor navigation', () => {
     const items = getPluginNavigationItems('instructor.primary.afterDashboard', {
       ...baseContext,
-      role: 'INSTRUCTOR',
+      activeOperatingContext: 'MY_TEACHING',
       canTeach: true,
     });
     expect(items[0].children?.some((item) => item.name === 'Create Draft Scheme')).toBe(true);

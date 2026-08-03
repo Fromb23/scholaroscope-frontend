@@ -69,8 +69,6 @@ const MAX_MOBILE_PRIMARY_ITEMS = 4;
 export interface ResolveNavConfigInput {
   user: User | null;
   activeOperatingContext?: OperatingContext | null;
-  /** @deprecated Ignored compatibility field for stale tests/callers. */
-  activeRole?: Role | null;
   orgType?: OrgType | null;
   pluginNavigationContext: PluginNavigationContext;
   academicSetup?: AdminAcademicSetupNavStatus | null;
@@ -550,12 +548,6 @@ export function getMyTeachingNav(
     ],
   };
 }
-
-/** @deprecated Use getWorkspaceManagementNav. */
-export const getAdminNav = getWorkspaceManagementNav;
-
-/** @deprecated Use getMyTeachingNav. */
-export const getInstructorNav = getMyTeachingNav;
 
 // ── Footer label ──────────────────────────────────────────────────────────
 

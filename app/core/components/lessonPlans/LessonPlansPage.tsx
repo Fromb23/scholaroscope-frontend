@@ -365,30 +365,27 @@ function LessonPlanActions({
 export function LessonPlansPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const { activeOrg, activeOperatingContext, user, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
-    const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdminLike = activeRole === 'ADMIN';
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING' && capabilities.can_teach;
+    const managementSurface = activeOperatingContext === 'WORKSPACE_MANAGEMENT';
     const isSelfManagedTeaching = isSelfManagedTeachingWorkspace({
         orgType: activeOrg?.org_type,
         capabilities,
     });
-    const showInstitutionSupervision = isAdminLike && !isSelfManagedTeaching;
-    const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
-        role: activeRole,
+    const showInstitutionSupervision = managementSurface && !isSelfManagedTeaching;
+    const canUseMyTeaching = teachingSurface || canShowAdminMyTeaching({
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
@@ -429,7 +426,7 @@ export function LessonPlansPage() {
         [selectedTermId, terms],
     );
     const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
-    const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && (isSelfManagedTeaching || viewMode === 'my_teaching'));
+    const effectiveMyTeachingMode = teachingSurface || (canUseMyTeaching && (isSelfManagedTeaching || viewMode === 'my_teaching'));
     const institutionComplianceMode = showInstitutionSupervision && !effectiveMyTeachingMode;
     const lessonPlanFilters = useMemo(() => ({
         status: statusFilter || undefined,
@@ -601,7 +598,7 @@ export function LessonPlansPage() {
     }, [buildWorkspaceHref, cohortSubjectFilter, explicitTermId]);
 
     const subtitle =
-        isSelfManagedTeaching || isInstructor
+        isSelfManagedTeaching || teachingSurface
             ? 'Prepare lessons, review what is ready for class, and schedule the next one.'
             : viewMode === 'my_teaching' && canUseMyTeaching
                 ? 'Use My Teaching to view only lesson plans tied to your own teaching work.'
@@ -1006,7 +1003,7 @@ export function LessonPlansPage() {
             {!canCreateLessonPlan ? (
                 <CurriculumLifecycleNotice
                     status="DISABLED"
-                    role={activeRole === 'INSTRUCTOR' ? 'INSTRUCTOR' : 'ADMIN'}
+                    surface={teachingSurface ? 'TEACHING' : 'MANAGEMENT'}
                     title="New lesson plans are blocked"
                     message="All curricula are currently blocked for new work. Historical lesson plans remain available for viewing."
                 />

@@ -166,7 +166,7 @@ export function RequestDetailPanel({
     onExecute,
     onAddComment,
     canReview,
-    reviewerRole,
+    canWriteInternalNote,
 }: {
     request: RequestDetail;
     onClose: () => void;
@@ -174,7 +174,7 @@ export function RequestDetailPanel({
     onExecute?: (retry?: boolean) => Promise<void>;
     onAddComment: (content: string, is_internal: boolean) => Promise<void>;
     canReview: boolean;
-    reviewerRole: string;
+    canWriteInternalNote: boolean;
 }) {
     const [comment, setComment] = useState('');
     const [isInternal, setIsInternal] = useState(false);
@@ -371,10 +371,7 @@ export function RequestDetailPanel({
                     ) : (
                         localRequest.comments.map(c => (
                             <div key={c.id} className={`flex gap-3 ${c.is_internal ? 'opacity-90' : ''}`}>
-                                <div className={`h-7 w-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${c.author_role === 'SUPERADMIN' ? 'bg-purple-100 text-purple-700' :
-                                    c.author_role === 'ADMIN' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-gray-100 text-gray-700'
-                                    }`}>
+                                <div className="h-7 w-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-700">
                                     {c.author_name.charAt(0)}
                                 </div>
                                 <div className="flex-1">
@@ -387,10 +384,7 @@ export function RequestDetailPanel({
                                             </span>
                                         )}
                                     </div>
-                                    <p className={`text-sm rounded-lg px-3 py-2 ${c.is_internal ? 'bg-yellow-50 border border-yellow-200 text-yellow-900' :
-                                        c.author_role !== 'INSTRUCTOR' ? 'bg-blue-50 text-blue-900' :
-                                            'bg-gray-100 text-gray-800'
-                                        }`}>
+                                    <p className={`text-sm rounded-lg px-3 py-2 ${c.is_internal ? 'bg-yellow-50 border border-yellow-200 text-yellow-900' : 'bg-gray-100 text-gray-800'}`}>
                                         {c.content}
                                     </p>
                                 </div>
@@ -401,7 +395,7 @@ export function RequestDetailPanel({
 
                 {/* Reply box */}
                 <div>
-                    {reviewerRole !== 'INSTRUCTOR' && (
+                    {canWriteInternalNote && (
                         <div className="flex gap-2 mb-2">
                             {['Public Reply', 'Internal Note'].map((label, i) => (
                                 <button key={label}

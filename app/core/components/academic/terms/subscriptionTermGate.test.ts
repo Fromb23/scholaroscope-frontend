@@ -54,6 +54,6 @@ describe('terms subscription gate frontend behavior', () => {
     expect(terms).toContain('termLockedReason(term)');
     expect(terms).toContain('Term configuration locked');
     expect(terms).toContain("aria-label={actionLockedReason ?? 'Term actions locked'}");
-    expect(terms).not.toContain('isCurrentAcademicYear && isAdminLike');
+    expect(terms).not.toContain('isCurrentAcademicYear && canManageTerms');
   });
 });
