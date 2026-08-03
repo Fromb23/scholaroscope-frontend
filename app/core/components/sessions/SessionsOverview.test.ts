@@ -25,3 +25,33 @@ describe('SessionsOverview instructor identity display', () => {
     expect(component).toContain('showInstructorIdentity={true}');
   });
 });
+
+describe('SessionsOverview accordion and cohort-subject grouping contracts', () => {
+  it('uses one nullable expanded group key instead of inverse collapsed group state', () => {
+    const component = source();
+
+    expect(component).toContain('expandedGroupKey');
+    expect(component).toContain('useState<string | null>(null)');
+    expect(component).toContain('toggleExpandedSessionGroup');
+    expect(component).toContain('pruneExpandedSessionGroup');
+    expect(component).not.toContain('collapsedGroups');
+    expect(component).not.toContain('setCollapsedGroups');
+  });
+
+  it('does not mount desktop rows or mobile cards for collapsed groups', () => {
+    const component = source();
+
+    expect(component).toContain('const isExpanded = expandedGroupKey === group.key');
+    expect(component).toContain('{isExpanded ? (');
+    expect(component).toContain('CohortSessionsTable');
+    expect(component).toContain('CohortSessionsCards');
+  });
+
+  it('uses authoritative cohort-subject identity for class and instructor groups', () => {
+    const component = source();
+
+    expect(component).toContain('getSessionCohortSubjectGroupKey(session)');
+    expect(component).not.toContain('`cohort:${session.cohort_id}`');
+    expect(component).not.toContain("['cohort', session.cohort_id]");
+  });
+});

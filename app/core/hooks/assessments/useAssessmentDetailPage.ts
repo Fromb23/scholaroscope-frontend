@@ -61,6 +61,7 @@ export function useAssessmentDetailPage() {
 
     const { scores, loading: scoresLoading, bulkEntry, refetch: refetchScores } = useAssessmentScores({
         assessment: assessmentId,
+        scope: 'all',
         page_size: 1000,
         enabled: isStaffAcademicViewer,
     });

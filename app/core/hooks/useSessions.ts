@@ -5,7 +5,7 @@
 // No API calls outside this file. No any. No business logic in pages.
 // ============================================================================
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   sessionAPI,
   attendanceAPI,
@@ -77,6 +77,7 @@ export const useSessions = (
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const fetchSequence = useRef(0);
   const sessionFilters = useMemo(
     () => withOperationalScope({
       scope: params?.scope,
@@ -98,7 +99,11 @@ export const useSessions = (
       params?.session_date,
     ],
   );
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (signal?: AbortSignal) => {
+    const requestId = fetchSequence.current + 1;
+    fetchSequence.current = requestId;
+    const isCurrentRequest = () => fetchSequence.current === requestId && !signal?.aborted;
+
     if (!enabled) {
       setSessions([]);
       setLoading(false);
@@ -109,23 +114,34 @@ export const useSessions = (
     try {
       setLoading(true);
       const data = supervision?.enabled
-        ? await sessionAPI.getSupervised({
+        ? await sessionAPI.getSupervisedComplete({
           ...sessionFilters,
           authority_mode: 'supervision',
           instructor_id: supervision.instructorId,
-        })
-        : await sessionAPI.getAll(sessionFilters);
-      setSessions(unwrapList(data));
+        }, { signal })
+        : await sessionAPI.getAllComplete(sessionFilters, { signal });
+      if (!isCurrentRequest()) {
+        return;
+      }
+      setSessions(data);
       setError(null);
     } catch (err) {
+      if (!isCurrentRequest()) {
+        return;
+      }
       setError(resolveErrorMessage(err as ApiError, 'Unable to load sessions right now.'));
+      setSessions([]);
     } finally {
-      setLoading(false);
+      if (isCurrentRequest()) {
+        setLoading(false);
+      }
     }
   }, [enabled, sessionFilters, supervision?.enabled, supervision?.instructorId]);
 
   useEffect(() => {
-    fetchSessions();
+    const controller = new AbortController();
+    void fetchSessions(controller.signal);
+    return () => controller.abort();
   }, [fetchSessions]);
 
   useEffect(() => {

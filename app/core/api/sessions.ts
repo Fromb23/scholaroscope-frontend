@@ -46,6 +46,83 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
+interface ApiRequestOptions {
+  signal?: AbortSignal;
+}
+
+function isPaginatedResponse<T>(data: T[] | PaginatedResponse<T>): data is PaginatedResponse<T> {
+  return !Array.isArray(data) && Array.isArray(data.results);
+}
+
+function apiRelativePathFromTrustedNext(next: string): string {
+  const base = new URL(
+    String(apiClient.defaults.baseURL ?? ''),
+    'http://localhost',
+  );
+  const nextUrl = new URL(next, base);
+
+  if (nextUrl.origin !== base.origin) {
+    throw new Error('Refusing to follow an external pagination URL.');
+  }
+
+  const basePath = base.pathname.replace(/\/$/, '');
+  if (basePath && !nextUrl.pathname.startsWith(`${basePath}/`)) {
+    throw new Error('Refusing to follow a pagination URL outside the API base path.');
+  }
+
+  const apiPath = basePath
+    ? nextUrl.pathname.slice(basePath.length)
+    : nextUrl.pathname;
+  return `${apiPath || '/'}${nextUrl.search}`;
+}
+
+async function getCompletePaginatedList<T>(
+  path: string,
+  params?: object,
+  options: ApiRequestOptions = {},
+): Promise<T[]> {
+  const firstResponse = await apiClient.get<T[] | PaginatedResponse<T>>(
+    path,
+    { params, signal: options.signal },
+  );
+  const firstPage = firstResponse.data;
+
+  if (!isPaginatedResponse(firstPage)) {
+    return firstPage;
+  }
+
+  const results = [...firstPage.results];
+  const visited = new Set<string>();
+  let next = firstPage.next;
+
+  while (next && results.length < firstPage.count) {
+    if (visited.has(next)) {
+      throw new Error('Pagination loop detected while loading sessions.');
+    }
+    visited.add(next);
+
+    const nextPath = apiRelativePathFromTrustedNext(next);
+    const response = await apiClient.get<PaginatedResponse<T>>(
+      nextPath,
+      { signal: options.signal },
+    );
+    const page = response.data;
+
+    if (!isPaginatedResponse(page)) {
+      throw new Error('Expected a paginated response while loading all sessions.');
+    }
+
+    results.push(...page.results);
+    next = page.next;
+  }
+
+  if (results.length < firstPage.count) {
+    throw new Error('Session pagination ended before the complete result set was loaded.');
+  }
+
+  return results;
+}
+
 // ── Query param types ─────────────────────────────────────────────────────
 
 export interface SessionQueryParams {
@@ -108,23 +185,45 @@ export interface SessionLearner {
 // ── Sessions API ──────────────────────────────────────────────────────────
 
 export const sessionAPI = {
-  getAll: async (params?: SessionQueryParams): Promise<Session[] | PaginatedResponse<Session>> => {
+  getAll: async (
+    params?: SessionQueryParams,
+    options: ApiRequestOptions = {},
+  ): Promise<Session[] | PaginatedResponse<Session>> => {
     const res = await apiClient.get<Session[] | PaginatedResponse<Session>>(
       '/sessions/',
-      { params: withOperationalScope(params) },
+      { params: withOperationalScope(params), signal: options.signal },
     );
     return res.data;
   },
 
+  getAllComplete: async (
+    params?: SessionQueryParams,
+    options: ApiRequestOptions = {},
+  ): Promise<Session[]> => getCompletePaginatedList<Session>(
+    '/sessions/',
+    withOperationalScope(params),
+    options,
+  ),
+
   getSupervised: async (
     params: SupervisedSessionQueryParams,
+    options: ApiRequestOptions = {},
   ): Promise<Session[] | PaginatedResponse<Session>> => {
     const res = await apiClient.get<Session[] | PaginatedResponse<Session>>(
       '/sessions/',
-      { params: withOperationalScope(params) },
+      { params: withOperationalScope(params), signal: options.signal },
     );
     return res.data;
   },
+
+  getSupervisedComplete: async (
+    params: SupervisedSessionQueryParams,
+    options: ApiRequestOptions = {},
+  ): Promise<Session[]> => getCompletePaginatedList<Session>(
+    '/sessions/',
+    withOperationalScope(params),
+    options,
+  ),
 
   getById: async (id: number): Promise<SessionDetailResponse> => {
     const res = await apiClient.get<SessionDetailResponse>(`/sessions/${id}/`);
