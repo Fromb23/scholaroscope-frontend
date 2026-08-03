@@ -40,7 +40,7 @@ import {
   usePluginRegistryStatus,
 } from '@/app/plugins/PluginRegistryProvider';
 import { AlertTriangle } from 'lucide-react';
-import type { AccessNotice, OrgType, Role } from '@/app/core/types/auth';
+import type { AccessNotice, OrgType } from '@/app/core/types/auth';
 import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
@@ -100,10 +100,9 @@ function DashboardContent({
   const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
 
-  const registryRole = (activeOperatingContext === 'MY_TEACHING' ? 'INSTRUCTOR' : 'ADMIN') as Role;
   const pluginNavigationContext = useMemo<PluginNavigationContext>(
     () => ({
-      role: registryRole,
+      activeOperatingContext,
       user,
       orgType: activeOrg?.org_type ?? null,
       workspaceBehavior: capabilities.workspace_behavior,
@@ -124,7 +123,7 @@ function DashboardContent({
       },
     }),
     [
-      registryRole,
+      activeOperatingContext,
       activeOrg?.org_type,
       badges,
       capabilities,

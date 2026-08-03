@@ -1,6 +1,6 @@
 // app/utils/routeAccess.ts
 
-import type { OperatingContext, Role, WorkspaceCapabilities } from '../core/types/auth';
+import type { OperatingContext, Role, WorkspaceCapabilities } from './authorityTypes';
 import {
     getPluginRouteAccessRules,
     type RouteAccessContext,
@@ -111,6 +111,8 @@ export function routeAllowedForContext(
 
 /** @deprecated Legacy roles never grant route access. */
 export function routeAllowedForRole(path: string, role: Role): boolean {
+    void path;
+    void role;
     return false;
 }
 
@@ -120,19 +122,7 @@ export function operatingContextHomeRoute(context: OperatingContext | null): str
     return '/dashboard';
 }
 
-export const roleHomeRoute = {
-    ADMIN: '/dashboard/admin',
-    INSTRUCTOR: '/dashboard/instructor',
-} as const;
-
-function normalizeFallbackContext(context: OperatingContext | Role | null): OperatingContext | null {
-    if (context === 'ADMIN') return 'WORKSPACE_MANAGEMENT';
-    if (context === 'INSTRUCTOR') return 'MY_TEACHING';
-    return context;
-}
-
-export function getUnauthorizedRouteFallback(context: OperatingContext | Role | null, path: string): string {
-    context = normalizeFallbackContext(context);
+export function getUnauthorizedRouteFallback(context: OperatingContext | null, path: string): string {
     if (context === 'MY_TEACHING' && path.startsWith('/reports')) {
         return '/reports/instructor';
     }

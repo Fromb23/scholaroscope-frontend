@@ -8,13 +8,14 @@ import { ArrowLeft, BookOpenCheck, ChevronLeft, ChevronRight } from 'lucide-reac
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { EntityLoadingState } from '@/app/components/ui/loading';
 import { PortfolioEvidenceCard } from '@/app/core/components/portfolio/PortfolioEvidenceCard';
 import { PortfolioEvidenceDetail } from '@/app/core/components/portfolio/PortfolioEvidenceDetail';
 import { PortfolioFilters } from '@/app/core/components/portfolio/PortfolioFilters';
 import { LearnerIdentityHeader } from '@/app/core/components/learners/LearnerIdentityHeader';
 import { parseAppDestination } from '@/app/core/auth/navigation';
+import { resolveLearnerError } from '@/app/core/errors';
 import { useAcademicYears, useTerms } from '@/app/core/hooks/useAcademic';
 import {
   useLearnerPortfolio,
@@ -155,9 +156,14 @@ export function LearnerPortfolioPage() {
 
   if (!learnerId) {
     return (
-      <ErrorBanner
-        title="Invalid learner"
-        message="The learner portfolio URL does not contain a valid learner identifier."
+      <AppErrorBanner
+        error={resolveLearnerError({
+          status: 400,
+          message: 'The learner portfolio URL does not contain a valid learner identifier.',
+        }, {
+          action: 'load',
+          entityLabel: 'learner portfolio',
+        })}
         onDismiss={() => undefined}
       />
     );
@@ -176,9 +182,14 @@ export function LearnerPortfolioPage() {
             Back
           </Button>
         </Link>
-        <ErrorBanner
-          title={errorStatus === 403 ? 'No learner portfolio access' : 'Learner portfolio unavailable'}
-          message={error}
+        <AppErrorBanner
+          error={resolveLearnerError({
+            status: errorStatus ?? undefined,
+            message: error,
+          }, {
+            action: 'load',
+            entityLabel: 'learner portfolio',
+          })}
           onDismiss={() => undefined}
         />
       </div>

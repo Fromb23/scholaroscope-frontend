@@ -11,7 +11,7 @@ import {
   normalizeEffectiveTheme,
   themeModeToAppearanceMode,
 } from './effectiveTheme';
-import type { ActiveOrg, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { ActiveOrg, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import type { EffectiveThemeResponse } from '@/app/core/types/theme';
 
 function styleTarget() {
@@ -217,11 +217,9 @@ describe('effective tenant theme utilities', () => {
   it('allows organization admins to edit organization themes', () => {
     expect(canEditOrganizationTheme({
       user,
-      activeOrg: organization,
-      activeRole: 'ADMIN',
-      capabilities: {
+      activeOrg: organization,      capabilities: {
         ...baseCapabilities,
-        can_manage_academic_setup: true,
+        can_manage_plugins: true,
       },
     })).toBe(true);
   });
@@ -232,11 +230,9 @@ describe('effective tenant theme utilities', () => {
       activeOrg: {
         ...organization,
         org_type: 'PERSONAL',
-      },
-      activeRole: 'ADMIN',
-      capabilities: {
+      },      capabilities: {
         ...baseCapabilities,
-        can_manage_academic_setup: true,
+        can_manage_plugins: true,
         is_workspace_owner: true,
         workspace_behavior: 'FREELANCE_TEACHER',
       },
@@ -246,9 +242,7 @@ describe('effective tenant theme utilities', () => {
   it('does not expose organization theme editing to instructors', () => {
     expect(canEditOrganizationTheme({
       user,
-      activeOrg: organization,
-      activeRole: 'INSTRUCTOR' as Role,
-      capabilities: {
+      activeOrg: organization,      capabilities: {
         ...baseCapabilities,
         can_manage_academic_setup: false,
         can_teach: true,

@@ -137,10 +137,10 @@ function compareLearners(left: Student, right: Student, sort: LearnerSort): numb
 function LearnersPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole, capabilities } = useAuth();
-    const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdmin = activeRole === 'ADMIN';
-    const canCreate = hasCapability(activeRole, 'CREATE_LEARNER', capabilities);
+    const { activeOperatingContext, capabilities } = useAuth();
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach);
+    const managementSurface = activeOperatingContext === 'WORKSPACE_MANAGEMENT' && Boolean(capabilities.can_manage_learners);
+    const canCreate = hasCapability(null, 'CREATE_LEARNER', capabilities);
     const legacyQuery = useMemo(() => {
         const directQuery = (searchParams.get('q') ?? '').trim();
         if (directQuery) {
@@ -179,13 +179,13 @@ function LearnersPageInner() {
 
     const { curricula } = useCurricula();
     const { cohorts } = useCohorts(
-        isAdmin && filters.curriculum
+        managementSurface && filters.curriculum
             ? { curriculum: filters.curriculum }
             : undefined,
-        { enabled: isAdmin && Boolean(filters.curriculum) }
+        { enabled: managementSurface && Boolean(filters.curriculum) }
     );
     const { cohortSubjects } = useCohortSubjects(
-        isAdmin ? (filters.cohort ?? undefined) : undefined
+        managementSurface ? (filters.cohort ?? undefined) : undefined
     );
 
     const {
@@ -193,9 +193,9 @@ function LearnersPageInner() {
         assignments,
         hasAssignedCohorts,
         isLoading: instructorAssignmentsLoading,
-    } = useInstructorCohortAccess({ enabled: isInstructor });
+    } = useInstructorCohortAccess({ enabled: teachingSurface });
     const adminStudentsQuery = useStudentsByCohort(
-        isAdmin ? (filters.cohort ?? undefined) : undefined
+        managementSurface ? (filters.cohort ?? undefined) : undefined
     );
     const { handleExport: runExport, exporting } = useReportExport((format) => {
         if (format !== 'xlsx') {
@@ -270,7 +270,7 @@ function LearnersPageInner() {
         }
 
         const validSubjectIds = new Set(
-            (isInstructor ? instructorSubjectOptions : cohortSubjects).map((subject) => subject.id)
+            (teachingSurface ? instructorSubjectOptions : cohortSubjects).map((subject) => subject.id)
         );
 
         if (!validSubjectIds.has(filters.cohort_subject)) {
@@ -280,14 +280,14 @@ function LearnersPageInner() {
         cohortSubjects,
         filters.cohort_subject,
         instructorSubjectOptions,
-        isInstructor,
+        teachingSurface,
         updateFilters,
     ]);
 
     useEffect(() => {
         let cancelled = false;
 
-        if (!isInstructor) {
+        if (!teachingSurface) {
             setInstructorStudents([]);
             setInstructorStudentsError(null);
             setInstructorStudentsLoading(false);
@@ -336,20 +336,20 @@ function LearnersPageInner() {
         filters.cohort,
         filters.cohort_subject,
         hasInstructorLearnerScope,
-        isInstructor,
+        teachingSurface,
     ]);
 
     const baseStudents = useMemo(() => {
-        if (isInstructor) {
+        if (teachingSurface) {
             return instructorStudents;
         }
 
-        if (!isAdmin || !filters.cohort) {
+        if (!managementSurface || !filters.cohort) {
             return [];
         }
 
         return adminStudentsQuery.students;
-    }, [adminStudentsQuery.students, filters.cohort, instructorStudents, isAdmin, isInstructor]);
+    }, [adminStudentsQuery.students, filters.cohort, instructorStudents, managementSurface, teachingSurface]);
 
     const filteredStudents = useMemo(() => (
         [...baseStudents]
@@ -388,13 +388,13 @@ function LearnersPageInner() {
         totalPages,
     }), [currentPage, filteredStudents.length, filters.page_size, totalPages]);
 
-    const displayedLoading = isInstructor
+    const displayedLoading = teachingSurface
         ? (instructorAssignmentsLoading || instructorStudentsLoading)
         : adminStudentsQuery.loading;
-    const displayedError = isInstructor
+    const displayedError = teachingSurface
         ? instructorStudentsError
         : adminStudentsQuery.error;
-    const hasGeneratedAdminList = isAdmin && Boolean(filters.cohort);
+    const hasGeneratedAdminList = managementSurface && Boolean(filters.cohort);
     const currentVisibleCount = filteredStudents.length;
 
     const columns: Column<LearnerTableRow>[] = [
@@ -462,8 +462,8 @@ function LearnersPageInner() {
         },
     ];
 
-    const pageTitle = isInstructor ? 'My Learners' : 'Learners';
-    const pageDescription = isInstructor
+    const pageTitle = teachingSurface ? 'My Learners' : 'Learners';
+    const pageDescription = teachingSurface
         ? 'Track learners in your assigned classes and follow up where support is needed.'
         : 'Generate a cohort learner list, then refine the loaded rows locally.';
     const assistantContext = useMemo(() => ({
@@ -475,26 +475,26 @@ function LearnersPageInner() {
                 filters.q || filters.cohort || filters.cohort_subject || filters.status
             ),
             current_visible_count: currentVisibleCount,
-            scope: isInstructor ? 'assigned' : 'school',
+            scope: teachingSurface ? 'assigned' : 'school',
         },
         visibleActions: [
             ...(canCreate
                 ? [{ label: 'Add Learner', type: 'navigate' as const, href: '/learners/new' }]
                 : []),
-            ...(isInstructor
+            ...(teachingSurface
                 ? [{ label: 'Open Attendance Risk', type: 'navigate' as const, href: '/reports/instructor/attendance-risk' }]
                 : []),
         ],
         nextSafeAction: canCreate
             ? { label: 'Add Learner', type: 'navigate' as const, href: '/learners/new' }
-            : (isInstructor
+            : (teachingSurface
                 ? {
                     label: 'Open Attendance Risk',
                     type: 'navigate' as const,
                     href: '/reports/instructor/attendance-risk',
                 }
                 : undefined),
-        workflowStep: isInstructor ? 'learner_follow_up' : 'learner_directory',
+        workflowStep: teachingSurface ? 'learner_follow_up' : 'learner_directory',
         emptyStateReason: !displayedLoading && currentVisibleCount === 0
             ? (filters.q || filters.cohort || filters.cohort_subject || filters.status
                 ? 'No learners match the current filters.'
@@ -508,7 +508,7 @@ function LearnersPageInner() {
         filters.cohort_subject,
         filters.q,
         filters.status,
-        isInstructor,
+        teachingSurface,
         pageTitle,
     ]);
 
@@ -541,7 +541,7 @@ function LearnersPageInner() {
     };
 
     const renderFilterControls = () => {
-        if (isInstructor) {
+        if (teachingSurface) {
             return (
                 <Card>
                     <div className="space-y-4">
@@ -715,7 +715,7 @@ function LearnersPageInner() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {(isInstructor || hasGeneratedAdminList) ? (
+                    {(teachingSurface || hasGeneratedAdminList) ? (
                         <ReportExportButtons
                             reportType="learner_roster"
                             exporting={Boolean(exportingFormat) || exporting}
@@ -756,13 +756,13 @@ function LearnersPageInner() {
 
             {renderFilterControls()}
 
-            {isInstructor && !instructorAssignmentsLoading && !hasInstructorLearnerScope ? (
+            {teachingSurface && !instructorAssignmentsLoading && !hasInstructorLearnerScope ? (
                 <Card>
                     <p className="py-10 text-center text-sm theme-muted">
                         Your classes are not assigned yet. Once your administrator assigns classes or subjects, your learners will appear here.
                     </p>
                 </Card>
-            ) : isAdmin && !filters.cohort ? (
+            ) : managementSurface && !filters.cohort ? (
                 <Card>
                     <p className="py-10 text-center text-sm theme-muted">
                         Select a curriculum and cohort to generate the learner list.
@@ -784,7 +784,7 @@ function LearnersPageInner() {
                         sort: `${field}:${direction}`,
                         page: 1,
                     })}
-                    emptyMessage={isInstructor
+                    emptyMessage={teachingSurface
                         ? 'No learners found in your assigned classes. Try clearing filters or contact your administrator if your class assignment is missing.'
                         : 'No learners match the current cohort filters.'}
                     enableSearch={false}

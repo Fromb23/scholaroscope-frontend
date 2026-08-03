@@ -420,30 +420,27 @@ function CohortSessionsCards({
 function SessionWorkspaceView() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const { activeOrg, activeOperatingContext, user, capabilities } = useAuth();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const { curricula } = useCurricula();
-    const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdminLike = activeRole === 'ADMIN';
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING' && capabilities.can_teach;
+    const managementSurface = activeOperatingContext === 'WORKSPACE_MANAGEMENT';
     const isSelfManagedTeaching = isSelfManagedTeachingWorkspace({
         orgType: activeOrg?.org_type,
         capabilities,
     });
-    const showInstitutionSupervision = isAdminLike && !isSelfManagedTeaching;
-    const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
-        role: activeRole,
+    const showInstitutionSupervision = managementSurface && !isSelfManagedTeaching;
+    const canUseMyTeaching = teachingSurface || canShowAdminMyTeaching({
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
@@ -465,9 +462,8 @@ function SessionWorkspaceView() {
     const returnTo = searchParams.get('returnTo');
     const midtermCleanupView = cleanupFilterActive && source === 'midterm';
     const safeReturnTo = parseAppDestination(returnTo);
-    const effectiveMyTeachingMode = canUseMyTeaching && (isInstructor || isSelfManagedTeaching || viewMode === 'my_teaching');
+    const effectiveMyTeachingMode = canUseMyTeaching && (teachingSurface || isSelfManagedTeaching || viewMode === 'my_teaching');
     const showInstructorIdentity = shouldShowInstructorIdentity({
-        activeRole,
         viewMode,
         groupingMode,
         effectiveMyTeachingMode,
@@ -524,7 +520,7 @@ function SessionWorkspaceView() {
         () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
         [curricula]
     );
-    const workspaceBackHref = safeReturnTo ?? (isInstructor ? '/dashboard/instructor' : '/dashboard/admin');
+    const workspaceBackHref = safeReturnTo ?? (teachingSurface ? '/dashboard/instructor' : '/dashboard/admin');
     const currentWorkspaceHref = useMemo(() => {
         const query = searchParams.toString();
         return query ? `/sessions?${query}` : '/sessions';
@@ -802,7 +798,7 @@ function SessionWorkspaceView() {
                     { label: 'Open reports', type: 'navigate' as const, href: '/reports' },
                 ]
                 : []),
-            ...(isInstructor
+            ...(teachingSurface
                 ? [{ label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' }]
                 : []),
         ],
@@ -840,7 +836,7 @@ function SessionWorkspaceView() {
         effectiveMyTeachingMode,
         error,
         isSelfManagedTeaching,
-        isInstructor,
+        teachingSurface,
         cleanupFilterActive,
         loading,
         midtermCleanupView,
@@ -1209,7 +1205,7 @@ function SessionWorkspaceView() {
                             </Button>
                         </Link>
                     ) : null}
-                    {!isInstructor ? (
+                    {!teachingSurface ? (
                         <Link href="/sessions/today">
                             <Button variant="primary" size="sm">
                                 <Clock className="w-4 h-4 mr-1" />
@@ -1371,7 +1367,7 @@ function SessionWorkspaceView() {
                             <h2 className="text-base font-semibold theme-text">
                                 {effectiveMyTeachingMode ? "Today's Lessons" : "Today's Sessions"}
                             </h2>
-                            {!isInstructor ? (
+                            {!teachingSurface ? (
                                 <Link href="/sessions/today">
                                     <Button variant="ghost" size="sm">View All</Button>
                                 </Link>
@@ -1456,7 +1452,7 @@ function SessionWorkspaceView() {
                         className={`grid grid-cols-1 gap-3 ${
                             showInstitutionSupervision
                                 ? 'sm:grid-cols-5'
-                                : isAdminLike
+                                : managementSurface
                                     ? 'sm:grid-cols-4'
                                     : 'sm:grid-cols-3'
                         }`}
@@ -1502,7 +1498,7 @@ function SessionWorkspaceView() {
                             onChange={(event) => setSelectedType(event.target.value || undefined)}
                             options={SESSION_TYPES}
                         />
-                        {isAdminLike ? (
+                        {managementSurface ? (
                             <div className="flex items-end">
                                 <Button
                                     type="button"
@@ -1616,19 +1612,17 @@ function CohortSessionsView({
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, capabilities, user } = useAuth();
+    const { activeOrg, activeOperatingContext, capabilities, user } = useAuth();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const { curricula } = useCurricula();
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING' && capabilities.can_teach;
     const canCreateTeachingRecords = canCreateTeachingRecord({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
     });
     const showInstructorIdentity = shouldShowInstructorIdentity({
-        activeRole,
-        effectiveMyTeachingMode: isInstructor,
+        effectiveMyTeachingMode: teachingSurface,
         showInstitutionSupervision: false,
     });
     const [selectedType, setSelectedType] = useState<string | undefined>();
@@ -1759,21 +1753,21 @@ function CohortSessionsView({
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <Link href={cohortBackHref}>
               <Button variant="ghost" size="sm">
-                {isInstructor ? 'Back to My Lessons' : 'Back to Workspace'}
+                {teachingSurface ? 'Back to My Lessons' : 'Back to Workspace'}
               </Button>
             </Link>
             {canPlanLesson && canCreateTeachingRecords && canCreateNewWork ? (
               <Link href="/lesson-plans/new">
                 <Button size="sm">
                   <Plus className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">{isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}</span>
+                  <span className="hidden sm:inline">{teachingSurface ? 'Prepare a lesson' : 'Plan a lesson'}</span>
                 </Button>
               </Link>
             ) : (
               <Button size="sm" disabled>
                 <Plus className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">
-                  {createNewWorkBlockedReason ?? (isInstructor ? 'Prepare a lesson' : 'Plan a lesson')}
+                  {createNewWorkBlockedReason ?? (teachingSurface ? 'Prepare a lesson' : 'Plan a lesson')}
                 </span>
               </Button>
             )}
@@ -1862,7 +1856,7 @@ function CohortSessionsView({
           <p className="text-sm theme-muted">
             Showing <span className="font-medium">{filteredSessions.length}</span> session
             {filteredSessions.length !== 1 ? 's' : ''} for this cohort
-            {isInstructor ? ' within your session workspace.' : '.'}
+            {teachingSurface ? ' within your session workspace.' : '.'}
           </p>
         ) : null}
       </div>

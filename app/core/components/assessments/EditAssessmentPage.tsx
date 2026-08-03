@@ -31,6 +31,7 @@ import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { resolveReportError } from '@/app/core/errors';
 import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import { useAuth } from '@/app/context/AuthContext';
+import { hasPermission } from '@/app/utils/permissions';
 
 const EVALUATION_TYPES = [
     { value: 'NUMERIC', label: 'Numeric (Marks-based)' },
@@ -50,11 +51,16 @@ type InstructorSubjectOption = {
 export function EditAssessmentPage() {
     const params = useParams();
     const router = useRouter();
-    const { activeRole } = useAuth();
+    const { activeOperatingContext, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const assessmentId = Number(params.id);
-    const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdminLike = activeRole === 'ADMIN';
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING' && instructorAccess.isTeachingActor;
+    const assessmentManagementSurface = activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+        && (
+            Boolean(capabilities.can_manage_assessments)
+            || hasPermission(capabilities, 'assessments.manage')
+            || hasPermission(capabilities, 'assessments.review')
+        );
 
     const [selectedCohortId, setSelectedCohortId] = useState<number>(0);
     const [saving, setSaving] = useState(false);
@@ -136,8 +142,8 @@ export function EditAssessmentPage() {
     const canUpdateAssessment = staffAssessment?.can_update ?? (
         Boolean(staffAssessment)
         && !isFinalized
-        && (isAdminLike || (
-            isInstructor
+        && (assessmentManagementSurface || (
+            teachingSurface
             && allowedCohortSubjectIds.includes(staffAssessment?.cohort_subject ?? 0)
         ))
     );
@@ -183,7 +189,7 @@ export function EditAssessmentPage() {
         ).sort((left, right) => left.label.localeCompare(right.label))
     ), [assignedSubjectOptions]);
 
-    const availableCohorts = isInstructor
+    const availableCohorts = teachingSurface
         ? assignedCohorts.map((cohort) => ({
             id: cohort.id,
             name: cohort.label,
@@ -192,7 +198,7 @@ export function EditAssessmentPage() {
         : cohorts;
 
     const availableSubjects = useMemo(() => {
-        if (isInstructor) {
+        if (teachingSurface) {
             return assignedSubjectOptions
                 .filter((option) => option.cohort_id === selectedCohortId)
                 .map((option) => ({
@@ -205,7 +211,7 @@ export function EditAssessmentPage() {
             id: subject.id,
             label: `${subject.subject_code} — ${subject.subject_name}${subject.is_compulsory ? ' (Core)' : ''}`,
         }));
-    }, [assignedSubjectOptions, isInstructor, selectedCohortId, subjects]);
+    }, [assignedSubjectOptions, selectedCohortId, subjects, teachingSurface]);
 
     const handleChange = <K extends keyof AssessmentFormData>(
         field: K,
@@ -263,7 +269,6 @@ export function EditAssessmentPage() {
             const resolved = resolveReportError(error, {
                 action: 'load',
                 entityLabel: 'assessment policy guidance',
-                role: isInstructor ? 'INSTRUCTOR' : 'ADMIN',
             });
             setPolicyGuidance(null);
             setPolicyGuidanceError(
@@ -285,7 +290,7 @@ export function EditAssessmentPage() {
         formData.cohort_subject,
         formData.term,
         isCbcPolicyContext,
-        isInstructor,
+        teachingSurface,
     ]);
 
     const validateForm = () => {
@@ -294,7 +299,7 @@ export function EditAssessmentPage() {
         if (!selectedCohortId) nextErrors.cohort = 'Cohort is required';
         if (!formData.cohort_subject) nextErrors.cohort_subject = 'Subject is required';
         if (
-            isInstructor
+            teachingSurface
             && formData.cohort_subject
             && !allowedCohortSubjectIds.includes(formData.cohort_subject)
         ) {
@@ -399,7 +404,7 @@ export function EditAssessmentPage() {
             {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
                 <CurriculumLifecycleNotice
                     status={lifecycle.curriculum.offering_status}
-                    role={lifecycle.role}
+                    surface={lifecycle.surface}
                     title="Assessment edit status"
                     message={lifecycle.message}
                 />

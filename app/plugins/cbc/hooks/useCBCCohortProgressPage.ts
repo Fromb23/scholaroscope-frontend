@@ -6,6 +6,7 @@ import { instructorsAPI } from '@/app/core/api/instructors';
 import { useAuth } from '@/app/context/AuthContext';
 import { isCBCTeachingAssignment } from '@/app/core/hooks/useInstructorProgress';
 import { sanitizeInternalReturnTo } from '@/app/plugins/cbc/lib/navigation';
+import { hasPermission } from '@/app/utils/permissions';
 
 function parsePositiveNumber(value: string | null): number | null {
     if (!value) return null;
@@ -17,12 +18,14 @@ export function useCBCCohortProgressPage(cohortId: number) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { activeRole } = useAuth();
-    const isAdminLike = activeRole === 'ADMIN';
+    const { activeOperatingContext, capabilities } = useAuth();
+    const hasReportAccess = hasPermission(capabilities, 'reports.view');
     const querySubjectId = parsePositiveNumber(searchParams.get('subject'));
     const queryCohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject_id'));
     const queryInstructorId = parsePositiveNumber(searchParams.get('instructor_id'));
-    const instructorContextEnabled = isAdminLike && queryInstructorId !== null;
+    const instructorContextEnabled = activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+        && hasReportAccess
+        && queryInstructorId !== null;
     const returnTo = searchParams.get('returnTo');
     const hasScopedContext = searchParams.has('subject')
         || searchParams.has('cohort')

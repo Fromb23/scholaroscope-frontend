@@ -26,21 +26,20 @@ import { categorizeSessions, calcAvgAttendance } from '@/app/utils/sessionUtils'
 
 export function TodaySessionsPage() {
     const router = useRouter();
-    const { activeOrg, activeRole, loading: authLoading, capabilities } = useAuth();
+    const { activeOrg, activeOperatingContext, loading: authLoading, capabilities } = useAuth();
     const { sessions, loading, error } = useTodaySessions();
     const canCreateTeachingRecords = canCreateTeachingRecord({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
     });
 
     useEffect(() => {
-        if (authLoading || activeRole !== 'INSTRUCTOR') return;
+        if (authLoading || activeOperatingContext !== 'MY_TEACHING') return;
         router.replace('/sessions');
-    }, [activeRole, authLoading, router]);
+    }, [activeOperatingContext, authLoading, router]);
 
-    if (authLoading || activeRole === 'INSTRUCTOR') return null;
+    if (authLoading || activeOperatingContext === 'MY_TEACHING') return null;
 
     if (loading) return <LoadingSpinner message="Loading today's sessions..." />;
     if (error) return <ErrorState message={error} />;

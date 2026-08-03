@@ -482,7 +482,7 @@ export function GenerateLessonPlanPage() {
                 {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
                     <CurriculumLifecycleNotice
                         status={selectedCurriculum.offering_status}
-                        role="INSTRUCTOR"
+                        surface="TEACHING"
                         title="Lesson planning status"
                     />
                 ) : null}

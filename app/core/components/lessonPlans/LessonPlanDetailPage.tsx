@@ -226,8 +226,8 @@ export function LessonPlanDetailPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, capabilities } = useAuth();
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const { activeOrg, activeOperatingContext, capabilities } = useAuth();
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach);
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
         return parseAppDestination(value);
@@ -238,7 +238,6 @@ export function LessonPlanDetailPage() {
         return isSafeNextPath(candidate) ? candidate : '/lesson-plans';
     }, [pathname, searchParams]);
     const canCreateTeachingRecords = canCreateTeachingRecord({
-        role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: false,
         capabilities,
@@ -848,7 +847,7 @@ export function LessonPlanDetailPage() {
 
         return {
             pageKey: 'lesson_plan_detail',
-            pageTitle: isInstructor ? 'Lesson Preparation' : 'Lesson Plan',
+            pageTitle: teachingSurface ? 'Lesson Preparation' : 'Lesson Plan',
             state: {
                 is_loading: loading,
                 status: lessonPlan?.status ?? null,
@@ -869,7 +868,7 @@ export function LessonPlanDetailPage() {
         canShowScheduleLessonAction,
         handleOpenSchedule,
         hasPreparedAssignment,
-        isInstructor,
+        teachingSurface,
         learnerTaskActionLabel,
         lessonPlan,
         loading,
@@ -1021,7 +1020,7 @@ export function LessonPlanDetailPage() {
                 <Link href={safeReturnTo ?? '/lesson-plans'}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        {safeReturnTo ? 'Back' : (isInstructor ? 'Back to Lesson Preparation' : 'Back')}
+                        {safeReturnTo ? 'Back' : (teachingSurface ? 'Back to Lesson Preparation' : 'Back')}
                     </Button>
                 </Link>
 
@@ -1056,7 +1055,7 @@ export function LessonPlanDetailPage() {
                                 {
                                     label: exporting
                                         ? 'Downloading...'
-                                        : isInstructor
+                                        : teachingSurface
                                             ? 'Download lesson plan'
                                             : 'Download PDF',
                                     onSelect: () => {
@@ -1585,7 +1584,7 @@ export function LessonPlanDetailPage() {
             ) : null}
 
             <CollapsibleDetailSection
-                title={isInstructor ? 'Chosen learning outcomes' : 'Chosen Learning Outcomes'}
+                title={teachingSurface ? 'Chosen learning outcomes' : 'Chosen Learning Outcomes'}
                 summary={`${lessonPlan.planned_outcomes.length} outcome${lessonPlan.planned_outcomes.length === 1 ? '' : 's'} selected for this lesson.`}
                 open={outcomesOpen}
                 onToggle={() => setOutcomesOpen((current) => !current)}
@@ -1593,7 +1592,7 @@ export function LessonPlanDetailPage() {
                 <div className="space-y-4">
                     <div className="space-y-1">
                         <h2 className="text-base font-semibold text-gray-900">
-                            {isInstructor ? 'Chosen learning outcomes' : 'Chosen Learning Outcomes'}
+                            {teachingSurface ? 'Chosen learning outcomes' : 'Chosen Learning Outcomes'}
                         </h2>
                         <p className="text-sm text-gray-500">
                             These outcomes guide the objectives, lesson flow, and evidence recorded for this lesson.
@@ -1749,12 +1748,12 @@ export function LessonPlanDetailPage() {
                     setScheduleError(null);
                     setScheduleFieldErrors({});
                 }}
-                title={isInstructor ? 'Schedule This Lesson' : 'Schedule Lesson'}
+                title={teachingSurface ? 'Schedule This Lesson' : 'Schedule Lesson'}
                 size="lg"
             >
                 <form onSubmit={handleSubmitSchedule} className="space-y-4">
                     <p className="text-sm text-gray-600">
-                        {isInstructor
+                        {teachingSurface
                             ? 'Choose when you want to teach this lesson.'
                             : 'Choose when this lesson should take place.'}
                     </p>
@@ -1992,7 +1991,7 @@ export function LessonPlanDetailPage() {
                             disabled={pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
                         >
                             <CalendarDays className="mr-1.5 h-4 w-4" />
-                            {isInstructor ? 'Schedule this lesson' : 'Schedule lesson'}
+                            {teachingSurface ? 'Schedule this lesson' : 'Schedule lesson'}
                         </Button>
                     </div>
                 </form>

@@ -59,6 +59,22 @@ const baseCapabilities: WorkspaceCapabilities = {
   is_workspace_owner: false,
   workspace_mode: 'INSTITUTION',
   workspace_behavior: 'INSTITUTION',
+  workspace_governance: {
+    mode: 'MANAGED_TEAM',
+    supports_custom_roles: true,
+    supports_staff_management: true,
+    supports_announcements: true,
+    supports_internal_requests: true,
+    supports_internal_approvals: true,
+    default_action_authority: 'ROLE_DEPENDENT',
+  },
+  authorization: {
+    enforced: true,
+    permission_keys: ['requests.view', 'requests.create', 'announcements.view'],
+    roles: [],
+    admin_slots: null,
+    migration_state: null,
+  },
 };
 
 const freelanceCapabilities: WorkspaceCapabilities = {
@@ -80,7 +96,6 @@ const freelanceCapabilities: WorkspaceCapabilities = {
 function buildLoadContext(overrides: Partial<PluginLoadContext> = {}): PluginLoadContext {
   return {
     activeOrg: institutionOrg,
-    activeRole: 'ADMIN',
     capabilities: baseCapabilities,
     curriculumTypes: [],
     enabledFeatures: [],
@@ -93,7 +108,7 @@ function buildNavigationContext(
   overrides: Partial<PluginNavigationContext> = {},
 ): PluginNavigationContext {
   return {
-    role: 'ADMIN',
+    activeOperatingContext: 'WORKSPACE_MANAGEMENT',
     orgType: 'INSTITUTION',
     workspaceBehavior: 'INSTITUTION',
     canTeach: true,
@@ -456,7 +471,7 @@ describe('selective plugin registration', () => {
     await loadPluginById('cbc');
 
     const cbcRule = getRouteRules().find((rule) => rule.pattern.test('/cbc/progress'));
-    expect(cbcRule?.allowedRoles).toEqual(['ADMIN', 'INSTRUCTOR']);
+    expect(cbcRule?.requiredAnyPermission).toEqual(['reports.view', 'learners.view']);
 
     const subject: AssessmentPolicyPreviewSubject = {
       id: 1,
@@ -492,7 +507,12 @@ describe('selective plugin registration', () => {
     const cambridgeRule = getRouteRules().find((rule) => rule.pattern.test('/cambridge/setup'));
 
     expect(names).toContain('Cambridge Management');
-    expect(cambridgeRule?.allowedRoles).toEqual(['ADMIN', 'INSTRUCTOR']);
+    expect(cambridgeRule?.requiredAnyPermission).toEqual([
+      'academic.curricula.view',
+      'academic.curricula.manage',
+      'lessons.view',
+      'reports.view',
+    ]);
   });
 
   it('keeps requests, announcements, and schemes navigation behind workspace authority', async () => {

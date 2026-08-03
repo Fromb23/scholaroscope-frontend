@@ -19,7 +19,7 @@ import {
   normalizeAssistantAction,
 } from '@/app/core/components/assistant/assistantContextUtils';
 import { useAuth } from '@/app/context/AuthContext';
-import type { Role } from '@/app/core/types/auth';
+import type { OperatingContext } from '@/app/core/types/auth';
 import type {
   AssistantAction,
   AssistantChatRequest,
@@ -45,7 +45,7 @@ interface AssistantContextValue {
     message: string;
     path: string;
     page_key?: string;
-    role?: Role | null;
+    operating_context?: OperatingContext | null;
     context?: {
       page_title?: string;
       state?: Record<string, unknown>;
@@ -53,7 +53,7 @@ interface AssistantContextValue {
     };
   };
   buildFeedbackPayload: (
-    payload: Omit<AssistantFeedbackPayload, 'path' | 'role' | 'context'>
+    payload: Omit<AssistantFeedbackPayload, 'path' | 'operating_context' | 'context'>
       & { userMessage?: string }
   ) => AssistantFeedbackPayload;
 }
@@ -110,7 +110,7 @@ function isPageLoading(state: Record<string, unknown> | undefined): boolean {
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { activeRole } = useAuth();
+  const { activeOperatingContext } = useAuth();
 
   const [pageContext, setPageContext] = useState<AssistantPageContext | null>(null);
   const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([]);
@@ -227,7 +227,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     message,
     path: pathname || '/dashboard',
     page_key: pageContext?.pageKey,
-    role: activeRole,
+    operating_context: activeOperatingContext,
     context: {
       page_title: pageContext?.pageTitle,
       state: {
@@ -238,22 +238,22 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       },
       visible_actions: pageContext?.visibleActions ?? [],
     },
-  }), [activeRole, pageContext, pathname]);
+  }), [activeOperatingContext, pageContext, pathname]);
 
   const buildFeedbackPayload = useCallback((
-    payload: Omit<AssistantFeedbackPayload, 'path' | 'role' | 'context'> & { userMessage?: string }
+    payload: Omit<AssistantFeedbackPayload, 'path' | 'operating_context' | 'context'> & { userMessage?: string }
   ): AssistantFeedbackPayload => ({
     title: payload.title,
     description: payload.description,
     category: payload.category,
     path: pathname || '/dashboard',
-    role: activeRole,
+    operating_context: activeOperatingContext,
     context: {
       source: 'assistant',
       page_key: pageContext?.pageKey,
       user_message: payload.userMessage ?? '',
     },
-  }), [activeRole, pageContext?.pageKey, pathname]);
+  }), [activeOperatingContext, pageContext?.pageKey, pathname]);
 
   const activeSuggestion = useMemo(() => {
     if (isPageLoading(pageContext?.state)) {
@@ -272,14 +272,14 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   );
 
   const suggestionPayload = useMemo<AssistantSuggestRequest | null>(() => {
-    if (!activeRole || !pageContext || isPageLoading(pageContext.state)) {
+    if (!activeOperatingContext || !pageContext || isPageLoading(pageContext.state)) {
       return null;
     }
 
     return {
       path: pathname || '/dashboard',
       page_key: pageContext.pageKey,
-      role: activeRole,
+      operating_context: activeOperatingContext,
       context: {
         page_title: pageContext.pageTitle,
         state: {
@@ -291,14 +291,14 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         visible_actions: pageContext.visibleActions ?? [],
       },
     };
-  }, [activeRole, pageContext, pathname]);
+  }, [activeOperatingContext, pageContext, pathname]);
   const suggestionSignature = useMemo(
     () => (suggestionPayload ? JSON.stringify(suggestionPayload) : ''),
     [suggestionPayload]
   );
 
   useEffect(() => {
-    if (!activeRole) {
+    if (!activeOperatingContext) {
       setSuggestions([]);
       setSuggestionsLoading(false);
       lastSuggestSignatureRef.current = '';
@@ -352,7 +352,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [activeRole, pageContext, suggestionPayload, suggestionSignature]);
+  }, [activeOperatingContext, pageContext, suggestionPayload, suggestionSignature]);
 
   const value = useMemo<AssistantContextValue>(() => ({
     pageContext,

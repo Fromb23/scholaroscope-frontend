@@ -20,6 +20,7 @@ import { Card } from '@/app/components/ui/Card';
 import {
     RequestStatsBar, RequestCard, DeleteRequestModal,
 } from '@/app/plugins/requests/components/RequestShared';
+import { hasPermission } from '@/app/utils/permissions';
 
 function getErrorMessage(err: unknown): string {
     return resolveErrorMessage(err, 'Request action failed');
@@ -27,11 +28,14 @@ function getErrorMessage(err: unknown): string {
 
 export function RequestsPage() {
     const router = useRouter();
-    const { activeRole } = useAuth();
+    const { activeOperatingContext, capabilities } = useAuth();
     const { requests, loading, error, refetch, deleteRequest } = useRequests();
 
-    const isAdmin = activeRole === 'ADMIN';
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const isAdmin = activeOperatingContext === 'WORKSPACE_MANAGEMENT';
+    const teachingSurface = activeOperatingContext === 'MY_TEACHING';
+    const canSubmitRequest = hasPermission(capabilities, 'requests.create');
+    const canReviewRequests = hasPermission(capabilities, 'requests.review')
+        || hasPermission(capabilities, 'requests.manage');
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -68,11 +72,11 @@ export function RequestsPage() {
     );
     const reviewableRequest = useMemo(
         () => (
-            isAdmin
-                ? filtered.find((request) => request.submitted_by_role === 'INSTRUCTOR')
+            canReviewRequests
+                ? filtered.find((request) => ['PENDING', 'IN_REVIEW'].includes(request.status))
                 : null
         ),
-        [filtered, isAdmin]
+        [canReviewRequests, filtered]
     );
     const assistantContext = useMemo(() => ({
         pageKey: 'requests_overview',
@@ -82,11 +86,11 @@ export function RequestsPage() {
             is_empty: !loading && filtered.length === 0,
             pending_count: pendingCount,
             resolved_count: resolvedCount,
-            can_submit_request: isInstructor || isAdmin,
+            can_submit_request: canSubmitRequest,
             can_review_request: Boolean(reviewableRequest),
         },
         visibleActions: [
-            ...(isInstructor || isAdmin
+            ...(canSubmitRequest
                 ? [{ label: 'Submit Request', type: 'navigate' as const, href: '/requests/new' }]
                 : []),
             ...(filtered[0]
@@ -98,7 +102,7 @@ export function RequestsPage() {
         ],
         nextSafeAction: reviewableRequest
             ? { label: 'Review Request', type: 'navigate' as const, href: `/requests/${reviewableRequest.id}` }
-            : (isInstructor || isAdmin
+            : (canSubmitRequest
                 ? { label: 'Submit Request', type: 'navigate' as const, href: '/requests/new' }
                 : undefined),
         workflowStep: pendingCount > 0 ? 'review_requests' : 'submit_request',
@@ -108,7 +112,7 @@ export function RequestsPage() {
     }), [
         filtered,
         isAdmin,
-        isInstructor,
+        canSubmitRequest,
         loading,
         pendingCount,
         resolvedCount,
@@ -162,7 +166,7 @@ export function RequestsPage() {
 
                 {/* Role-specific action buttons */}
                 <div className="flex items-center gap-3">
-                    {isInstructor && (
+                    {teachingSurface && canSubmitRequest && (
                         <Button
                             variant="primary"
                             onClick={() => router.push('/requests/new')}
@@ -236,9 +240,9 @@ export function RequestsPage() {
                             <Inbox className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                             <p className="text-sm font-medium text-gray-500">
                                 {search || statusFilter !== 'all' ? 'No requests match your filters' :
-                                    isInstructor ? "You haven't submitted any requests yet" : 'No requests yet'}
+                                    teachingSurface ? "You haven't submitted any requests yet" : 'No requests yet'}
                             </p>
-                            {isInstructor && !search && statusFilter === 'all' && (
+                            {teachingSurface && canSubmitRequest && !search && statusFilter === 'all' && (
                                 <button
                                     onClick={() => router.push('/requests/new')}
                                     className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -252,7 +256,7 @@ export function RequestsPage() {
                             <RequestCard
                                 key={r.id} request={r}
                                 onView={r => router.push(`/requests/${r.id}`)}
-                                onDelete={isInstructor ? r => setDeleteTarget(r) : undefined}
+                                onDelete={canSubmitRequest ? r => setDeleteTarget(r) : undefined}
                             />
                         ))
                     )}

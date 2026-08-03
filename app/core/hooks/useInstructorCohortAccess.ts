@@ -48,7 +48,7 @@ function uniqueSortedNumbers(values: Array<number | null | undefined>): number[]
 
 export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
     const { user, activeOrg, capabilities } = useAuth();
-    const isInstructor = Boolean(capabilities.can_teach);
+    const hasTeachingProjection = Boolean(capabilities.can_teach);
     const selfManagedTeachingAdmin = isSelfManagedTeachingAdmin({
         activeOrg,
         capabilities,
@@ -119,7 +119,7 @@ export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
     }, [hasCBCAccess, hasCambridgeAccess, isTeachingActor]);
 
     return {
-        isInstructor,
+        hasTeachingProjection,
         isSelfManagedTeachingAdmin: selfManagedTeachingAdmin,
         isTeachingActor,
         isLoading: isTeachingActor ? isLoading : false,

@@ -1,4 +1,4 @@
-import type { ActiveOrg, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { ActiveOrg, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import {
   isSelfManagedTeachingAdmin,
   isSupervisionOnlyAdmin,
@@ -9,11 +9,10 @@ export type ReportSurface = 'institution' | 'freelance' | 'instructor' | 'none';
 
 export function resolveReportSurface(params: {
   user?: User | null;
-  activeRole?: Role | null;
   activeOrg?: ActiveOrg | null;
   capabilities?: WorkspaceCapabilities | null;
 }): ReportSurface {
-  if (!params.user) {
+  if (!params.user || params.user.is_superadmin) {
     return 'none';
   }
 
@@ -34,16 +33,14 @@ export function resolveReportSurface(params: {
 
 export function canRenderInstitutionReportOverview(params: {
   user?: User | null;
-  activeRole?: Role | null;
   activeOrg?: ActiveOrg | null;
   capabilities?: WorkspaceCapabilities | null;
 }): boolean {
-  const { user, activeRole, activeOrg, capabilities } = params;
-  if (!user) {
+  const { user, activeOrg, capabilities } = params;
+  if (!user || user.is_superadmin) {
     return false;
   }
   return isSupervisionOnlyAdmin({
-    role: activeRole,
     orgType: activeOrg?.org_type,
     isSuperadmin: false,
     capabilities,
@@ -55,7 +52,7 @@ export function canManageInstitutionReportPolicy(params: {
   capabilities?: WorkspaceCapabilities | null;
 }): boolean {
   const { user, capabilities } = params;
-  if (!user) {
+  if (!user || user.is_superadmin) {
     return false;
   }
   const reportConfiguration = capabilities?.report_configuration;
@@ -78,7 +75,6 @@ export function canManageInstitutionReportPolicy(params: {
 
 export function shouldUseInstructorReportSurface(params: {
   user?: User | null;
-  activeRole?: Role | null;
   activeOrg?: ActiveOrg | null;
   capabilities?: WorkspaceCapabilities | null;
 }): boolean {

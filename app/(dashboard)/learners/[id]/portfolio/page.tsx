@@ -1,5 +1,5 @@
 import { LearnerPortfolioPage } from '@/app/core/components/portfolio/LearnerPortfolioPage';
 
-export default function PortfolioRoutePage() {
+export default function Page() {
   return <LearnerPortfolioPage />;
 }

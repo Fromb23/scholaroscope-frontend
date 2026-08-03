@@ -102,7 +102,7 @@ export function EditSessionPage() {
             {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
                 <CurriculumLifecycleNotice
                     status={lifecycle.curriculum.offering_status}
-                    role={lifecycle.role}
+                    surface={lifecycle.surface}
                     title="Session edit status"
                     message={lifecycle.message}
                 />

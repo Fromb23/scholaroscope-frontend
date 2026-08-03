@@ -139,9 +139,9 @@ function ThemePreview({ form }: { form: ThemeForm }) {
 }
 
 export function OrganizationThemeSettingsCard() {
-  const { user, activeOrg, activeRole, capabilities } = useAuth();
+  const { user, activeOrg, capabilities } = useAuth();
   const { effectiveTheme, refetch } = useEffectiveTheme();
-  const canEdit = canEditOrganizationTheme({ user, activeOrg, activeRole, capabilities });
+  const canEdit = canEditOrganizationTheme({ user, activeOrg, capabilities });
   const isFreelance = isFreelanceWorkspaceTheme(activeOrg, capabilities);
   const title = isFreelance ? 'Freelance workspace branding' : 'Organization branding';
   const [form, setForm] = useState<ThemeForm>(() => buildFormFromEffectiveTheme(effectiveTheme));

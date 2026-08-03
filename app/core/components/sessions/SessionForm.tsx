@@ -105,7 +105,7 @@ const SESSION_FIELD_LABELS: Partial<Record<SessionCreateField, string>> = {
 
 export function SessionForm({ currentYear }: SessionFormProps) {
     const router = useRouter();
-    const { activeRole } = useAuth();
+    const { activeOperatingContext, capabilities } = useAuth();
     const { createSession } = useSessions();
     const { cohortSubjectIds } = useInstructorCohortAccess();
     const { curricula } = useCurricula();
@@ -140,8 +140,10 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         () => new Set(cohortSubjectIds),
         [cohortSubjectIds]
     );
+    const isMyTeachingContext = activeOperatingContext === 'MY_TEACHING' && capabilities.can_teach;
+    const isWorkspaceManagementContext = activeOperatingContext === 'WORKSPACE_MANAGEMENT';
     const filteredSubjectOptions = useMemo(() => {
-        if (activeRole !== 'INSTRUCTOR') {
+        if (!isMyTeachingContext) {
             return subjectOptions;
         }
 
@@ -152,7 +154,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
             return true;
         });
-    }, [activeRole, allowedCohortSubjectIds, subjectOptions]);
+    }, [allowedCohortSubjectIds, isMyTeachingContext, subjectOptions]);
     const selectedCurriculum = useMemo(() => {
         const cohort = availableCohorts.find((entry) => entry.id === selectedCohort);
         if (!cohort) {
@@ -323,7 +325,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         }).then((items) => {
             if (cancelled) return;
             setTeachingAssignmentOptions(items);
-            if (!formData.teaching_assignment && items.length === 1 && activeRole !== 'ADMIN') {
+            if (!formData.teaching_assignment && items.length === 1 && !isWorkspaceManagementContext) {
                 setFormData((prev) => ({ ...prev, teaching_assignment: items[0].id }));
             }
         }).catch(() => {
@@ -332,7 +334,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         return () => {
             cancelled = true;
         };
-    }, [activeRole, formData.cohort_subject, formData.session_date, formData.teaching_assignment, formData.term]);
+    }, [formData.cohort_subject, formData.session_date, formData.teaching_assignment, formData.term, isWorkspaceManagementContext]);
 
     if (cohorts.length > 0 && availableCohorts.length === 0) {
         return (
@@ -350,7 +352,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
                 <CurriculumLifecycleNotice
                     status={selectedCurriculum.offering_status}
-                    role={activeRole === 'INSTRUCTOR' ? 'INSTRUCTOR' : 'ADMIN'}
+                    surface={isMyTeachingContext ? 'TEACHING' : 'MANAGEMENT'}
                     title="Session scheduling status"
                 />
             ) : null}
@@ -487,8 +489,8 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                 value={formData.teaching_assignment?.toString() ?? ''}
                                 onChange={e => handleChange('teaching_assignment', e.target.value ? Number(e.target.value) : null)}
                                 disabled={!formData.cohort_subject || !formData.term || !formData.session_date || teachingAssignmentOptions.length === 0}
-                                optional={activeRole !== 'ADMIN'}
-                                helperText={activeRole === 'ADMIN'
+                                optional={!isWorkspaceManagementContext}
+                                helperText={isWorkspaceManagementContext
                                     ? 'Administrators must select the assigned teacher who delivered the session.'
                                     : 'Defaults to your valid teaching assignment when available.'}
                                 options={[

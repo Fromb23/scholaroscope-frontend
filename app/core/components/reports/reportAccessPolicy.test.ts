@@ -102,36 +102,28 @@ const institutionReportPolicyCapabilities = {
 describe('report access policy', () => {
   it('does not treat platform superadmins as report-surface members', () => {
     expect(resolveReportSurface({
-      user: { ...user, is_superadmin: true },
-      activeRole: null,
-      activeOrg: institution,
+      user: { ...user, is_superadmin: true },      activeOrg: institution,
       capabilities: institutionCapabilities,
     })).toBe('none');
   });
 
   it('resolves supervision-only admins to the institution report surface', () => {
     expect(resolveReportSurface({
-      user,
-      activeRole: 'ADMIN',
-      activeOrg: institution,
+      user,      activeOrg: institution,
       capabilities: institutionCapabilities,
     })).toBe('institution');
   });
 
   it('resolves freelance workspace admins by workspace behavior', () => {
     expect(resolveReportSurface({
-      user,
-      activeRole: 'ADMIN',
-      activeOrg: institution,
+      user,      activeOrg: institution,
       capabilities: selfManagedCapabilities,
     })).toBe('freelance');
   });
 
   it('resolves personal workspace admins to the freelance report surface', () => {
     expect(resolveReportSurface({
-      user,
-      activeRole: 'ADMIN',
-      activeOrg: personal,
+      user,      activeOrg: personal,
       capabilities: {
         ...selfManagedCapabilities,
         workspace_behavior: 'SELF_MANAGED',
@@ -141,60 +133,46 @@ describe('report access policy', () => {
 
   it('resolves instructors to the instructor report surface', () => {
     expect(resolveReportSurface({
-      user,
-      activeRole: 'INSTRUCTOR',
-      activeOrg: institution,
+      user,      activeOrg: institution,
       capabilities: { ...institutionCapabilities, can_teach: true },
     })).toBe('instructor');
   });
 
   it('resolves unauthenticated users to no report surface', () => {
     expect(resolveReportSurface({
-      user: null,
-      activeRole: null,
-      activeOrg: null,
+      user: null,      activeOrg: null,
       capabilities: null,
     })).toBe('none');
   });
 
   it('does not allow raw admin role into institution reports for self-managed teaching workspaces', () => {
     expect(canRenderInstitutionReportOverview({
-      user,
-      activeRole: 'ADMIN',
-      activeOrg: personal,
+      user,      activeOrg: personal,
       capabilities: selfManagedCapabilities,
     })).toBe(false);
     expect(shouldUseInstructorReportSurface({
-      user,
-      activeRole: 'ADMIN',
-      activeOrg: personal,
+      user,      activeOrg: personal,
       capabilities: selfManagedCapabilities,
     })).toBe(true);
   });
 
   it('does not treat class-configuration report capability as institution report governance', () => {
     expect(canRenderInstitutionReportOverview({
-      user,
-      activeRole: 'ADMIN',
-      activeOrg: personal,
+      user,      activeOrg: personal,
       capabilities: selfManagedCapabilities,
     })).toBe(false);
   });
 
   it('keeps institution admins on institution report surfaces', () => {
     expect(canRenderInstitutionReportOverview({
-      user,
-      activeRole: 'ADMIN',
-      activeOrg: institution,
+      user,      activeOrg: institution,
       capabilities: institutionCapabilities,
     })).toBe(true);
   });
 
   it('routes instructors to instructor report surfaces', () => {
     expect(shouldUseInstructorReportSurface({
-      user,
-      activeRole: 'INSTRUCTOR',
-      activeOrg: institution,
+      user,      activeOrg: institution,
       capabilities: { ...institutionCapabilities, can_teach: true },
     })).toBe(true);
   });

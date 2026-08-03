@@ -5,7 +5,7 @@ import {
 import type { Term } from '@/app/core/types/academic';
 
 interface TermCalendarAccessContext {
-    isAdminLike: boolean;
+    canManageTerms: boolean;
     term: Term | null;
 }
 
@@ -127,10 +127,10 @@ export function formatWorkTermOptionLabel(term: Term): string {
 }
 
 export function canEditTermCalendar({
-    isAdminLike,
+    canManageTerms,
     term,
 }: TermCalendarAccessContext): boolean {
-    if (!isAdminLike || !term) return false;
+    if (!canManageTerms || !term) return false;
     if (termHasHistoricalLifecycle(term)) return false;
     const actions = term.configuration_actions;
     return Boolean(
@@ -142,43 +142,43 @@ export function canEditTermCalendar({
 }
 
 export function canAddTermCalendarEvent({
-    isAdminLike,
+    canManageTerms,
     term,
 }: TermCalendarAccessContext): boolean {
-    return Boolean(isAdminLike && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_add_calendar_event);
+    return Boolean(canManageTerms && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_add_calendar_event);
 }
 
 export function canEditTermCalendarEvent({
-    isAdminLike,
+    canManageTerms,
     term,
 }: TermCalendarAccessContext): boolean {
-    return Boolean(isAdminLike && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_edit_calendar_event);
+    return Boolean(canManageTerms && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_edit_calendar_event);
 }
 
 export function canDeleteTermCalendarEvent({
-    isAdminLike,
+    canManageTerms,
     term,
 }: TermCalendarAccessContext): boolean {
-    return Boolean(isAdminLike && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_delete_calendar_event);
+    return Boolean(canManageTerms && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_delete_calendar_event);
 }
 
 export function canCompleteTermCalendar({
-    isAdminLike,
+    canManageTerms,
     term,
 }: TermCalendarAccessContext): boolean {
-    return Boolean(isAdminLike && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_complete_setup);
+    return Boolean(canManageTerms && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_complete_setup);
 }
 
 export function canReopenTermCalendar({
-    isAdminLike,
+    canManageTerms,
     term,
 }: TermCalendarAccessContext): boolean {
-    return Boolean(isAdminLike && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_reopen_setup);
+    return Boolean(canManageTerms && term && !termHasHistoricalLifecycle(term) && term.configuration_actions.can_reopen_setup);
 }
 
 export function isTermDetailLocked(context: TermCalendarAccessContext): boolean {
     return Boolean(
-        context.isAdminLike
+        context.canManageTerms
         && context.term
         && (termHasHistoricalLifecycle(context.term) || context.term.configuration_state !== 'SETUP_OPEN')
     );

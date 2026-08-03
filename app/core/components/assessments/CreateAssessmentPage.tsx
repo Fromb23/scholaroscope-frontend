@@ -26,6 +26,7 @@ import { ASSESSMENT_TYPE_OPTIONS, AssessmentParticipationMode } from '@/app/core
 import { resolveReportError } from '@/app/core/errors';
 import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import { useAuth } from '@/app/context/AuthContext';
+import { hasPermission } from '@/app/utils/permissions';
 
 const EVALUATION_TYPES = [
     { value: 'NUMERIC', label: 'Numeric (Marks-based)' },
@@ -54,12 +55,17 @@ type InstructorSubjectOption = {
 export function CreateAssessmentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole, user } = useAuth();
+    const { activeOperatingContext, capabilities, user } = useAuth();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const instructorAccess = useInstructorCohortAccess();
     const { curricula } = useCurricula();
     const isTeachingActor = instructorAccess.isTeachingActor;
-    const isAdminLike = activeRole === 'ADMIN';
+    const managementAssessmentAuthor = activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+        && (
+            Boolean(capabilities.can_manage_assessments)
+            || hasPermission(capabilities, 'assessments.create')
+            || hasPermission(capabilities, 'assessments.manage')
+        );
     const newWorkEligibility = todayMode?.action_eligibility?.create_new_work;
     const newWorkUnavailable = (newWorkEligibility?.allowed ?? todayMode?.allows_new_teaching ?? true) === false;
     const newWorkUnavailableReason = newWorkEligibility?.reason
@@ -327,7 +333,6 @@ export function CreateAssessmentPage() {
             const resolved = resolveReportError(error, {
                 action: 'load',
                 entityLabel: 'assessment policy guidance',
-                role: isTeachingActor ? 'INSTRUCTOR' : 'ADMIN',
             });
             setPolicyGuidance(null);
             setPolicyGuidanceError(
@@ -360,7 +365,7 @@ export function CreateAssessmentPage() {
 
     const submitDisabledReason = useMemo(() => {
         if (saving) return null;
-        if (!isAdminLike && !isTeachingActor) return 'You do not have permission to create assessments.';
+        if (!managementAssessmentAuthor && !isTeachingActor) return 'You do not have permission to create assessments.';
         if (newWorkUnavailable) return newWorkUnavailableReason;
         if (!isSelectedCurriculumWritable) return 'This curriculum is blocked for new work.';
         if (isCbcPolicyContext && !form.term) return 'Select a term before creating an official assessment.';
@@ -386,9 +391,9 @@ export function CreateAssessmentPage() {
         cbcComponentsExhausted,
         form.cohort_subject,
         form.term,
-        isAdminLike,
         isCbcPolicyContext,
         isSelectedCurriculumWritable,
+        managementAssessmentAuthor,
         isTeachingActor,
         newWorkUnavailable,
         newWorkUnavailableReason,
@@ -548,7 +553,7 @@ export function CreateAssessmentPage() {
             {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
                 <CurriculumLifecycleNotice
                     status={selectedCurriculum.offering_status}
-                    role={isTeachingActor ? 'INSTRUCTOR' : 'ADMIN'}
+                    surface={isTeachingActor ? 'TEACHING' : 'MANAGEMENT'}
                     title="Assessment creation status"
                 />
             ) : null}
@@ -697,7 +702,7 @@ export function CreateAssessmentPage() {
                                             <p className="font-medium">
                                                 {policyGuidanceError}
                                             </p>
-                                            {isAdminLike ? (
+                                            {managementAssessmentAuthor ? (
                                                 <div className="mt-3 flex flex-wrap gap-2">
                                                     <Link href={policySetupHref}>
                                                         <Button type="button" variant="secondary" size="sm">Open policy setup</Button>

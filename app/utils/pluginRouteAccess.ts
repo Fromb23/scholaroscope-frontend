@@ -1,4 +1,4 @@
-import type { OperatingContext, Role, WorkspaceCapabilities } from '../core/types/auth';
+import type { OperatingContext, WorkspaceCapabilities } from './authorityTypes';
 
 export interface RouteAccessContext {
     operatingContext: OperatingContext | null;
@@ -9,8 +9,6 @@ export interface RouteAccessContext {
 
 export interface RouteAccessRule {
     pattern: RegExp;
-    /** @deprecated Ignored. Legacy roles never grant route access. */
-    allowedRoles?: Role[];
     requiredPermissions?: string[];
     requiredAnyPermission?: string[];
     requiredContext?: OperatingContext;

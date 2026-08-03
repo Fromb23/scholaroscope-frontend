@@ -1,6 +1,6 @@
 'use client';
 
-import { extractFieldErrors, resolveAppError, resolveErrorMessage } from '@/app/core/errors';
+import { extractFieldErrors, resolveAcademicSetupError, resolveErrorMessage, type AppError } from '@/app/core/errors';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import NextLink from 'next/link';
@@ -13,7 +13,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { Badge } from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { FormValidationSummary } from '@/app/components/ui/forms';
@@ -49,7 +49,7 @@ export function AcademicYearsPage() {
     const [saving, setSaving] = useState(false);
     const [modalError, setModalError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
-    const [pageError, setPageError] = useState<string | null>(null);
+    const [pageError, setPageError] = useState<AppError | null>(null);
     const validationSummaryRef = useRef<HTMLDivElement | null>(null);
     const [setupCurrentYearNotice, setSetupCurrentYearNotice] = useState<{
         yearId: number;
@@ -91,8 +91,7 @@ export function AcademicYearsPage() {
             setIsModalOpen(false);
             resetForm();
         } catch (error: unknown) {
-            const resolved = resolveAppError(error, {
-                domain: 'academic_setup',
+            const resolved = resolveAcademicSetupError(error, {
                 action: editingYear ? 'update' : 'create',
             });
             const nextFieldErrors = extractFieldErrors((error as { response?: { data?: unknown } })?.response?.data);
@@ -127,7 +126,10 @@ export function AcademicYearsPage() {
             try {
                 await deleteAcademicYear(id);
             } catch (error: unknown) {
-                setPageError(getErrorMessage(error));
+                setPageError(resolveAcademicSetupError(error, {
+                    action: 'delete',
+                    entityLabel: 'academic year',
+                }));
             }
         }
     };
@@ -145,7 +147,10 @@ export function AcademicYearsPage() {
                 );
             }
         } catch (error: unknown) {
-            setPageError(getErrorMessage(error));
+            setPageError(resolveAcademicSetupError(error, {
+                action: 'update',
+                entityLabel: 'academic year',
+            }));
         }
     };
 
@@ -164,7 +169,13 @@ export function AcademicYearsPage() {
 
     const openCreateModal = useCallback(() => {
         if (!hasActiveCurricula) {
-            setPageError('Activate a curriculum first.');
+            setPageError(resolveAcademicSetupError({
+                status: 400,
+                message: 'Activate a curriculum first.',
+            }, {
+                action: 'create',
+                entityLabel: 'academic year',
+            }));
             return;
         }
         setEditingYear(null);
@@ -246,7 +257,7 @@ export function AcademicYearsPage() {
                 blockedNotice={blockedNotice}
             />
             {pageError ? (
-                <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />
+                <AppErrorBanner error={pageError} onDismiss={() => setPageError(null)} />
             ) : null}
             {setupMode && setupCurrentYearNotice ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950">

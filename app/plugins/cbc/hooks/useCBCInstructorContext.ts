@@ -60,9 +60,8 @@ function uniqueSortedIds(values: number[]) {
 }
 
 export function useCBCInstructorContext(selectedCurriculumId: number | null) {
-    const { user, activeOrg, activeRole, capabilities } = useAuth();
+    const { user, activeOrg, capabilities } = useAuth();
     const isTeachingActor = isTeachingActorView({
-        activeRole,
         activeOrg,
         capabilities,
         user,

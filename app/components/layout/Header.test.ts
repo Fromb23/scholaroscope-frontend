@@ -9,7 +9,6 @@ describe('Header user dropdown', () => {
     expect(source).not.toContain('ThemeModeSelector');
     expect(source).not.toContain('Organization Custom');
     expect(source).toContain('View Profile');
-    expect(source).toContain("activeRole === 'ADMIN'");
     expect(source).toContain('showSettingsLink');
     expect(source).toContain('Scholaroscope Dark');
     expect(source).toContain('Scholaroscope Light');

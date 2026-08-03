@@ -63,6 +63,7 @@ import type {
 import { extractErrorCode, resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { useAuth } from '@/app/context/AuthContext';
+import { hasPermission } from '@/app/utils/permissions';
 
 interface TermCalendarEventFormState {
     title: string;
@@ -377,12 +378,14 @@ export function TermsPage() {
     const searchParams = useSearchParams();
     const setupMode = searchParams.get('setup') === '1';
     const blockedNotice = searchParams.get('blocked') === '1';
-    const { user, activeRole } = useAuth();
+    const { user, capabilities } = useAuth();
     const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const subscriptionSummaryQuery = useWorkspaceSubscriptionSummary(undefined, { enabled: Boolean(user) });
     const { academicYears } = useAcademicYears();
     const currentYear = useMemo(() => academicYears.find((year) => year.is_current), [academicYears]);
-    const isAdminLike = activeRole === 'ADMIN';
+    const canManageTermSetup = Boolean(capabilities.can_manage_academic_setup)
+        || hasPermission(capabilities, 'academic.terms.manage')
+        || hasPermission(capabilities, 'academic.manage');
     const setupStatus = setupStatusQuery.data ?? null;
     const setupPageState = getAcademicSetupPageState(setupStatus, 'TERMS');
 
@@ -443,7 +446,7 @@ export function TermsPage() {
     } = useTermCalendarEvents(selectedTerm?.id ?? null);
 
     const calendarAccessContext = {
-        isAdminLike,
+        canManageTerms: canManageTermSetup,
         term: selectedTerm,
     };
     const calendarCanAddEvent = canAddTermCalendarEvent(calendarAccessContext);
@@ -476,7 +479,7 @@ export function TermsPage() {
     const openCreate = useCallback(() => {
         setEditingTerm(null);
         setShowModal(true);
-    }, []);
+    }, [setEditingTerm, setShowModal]);
 
     const openEdit = (term: Term) => {
         setEditingTerm(term);
@@ -492,7 +495,7 @@ export function TermsPage() {
             const query = nextParams.toString();
             router.replace(query ? `/academic/terms?${query}` : '/academic/terms', { scroll: false });
         }
-    }, [router, searchParams]);
+    }, [router, searchParams, setEditingTerm, setShowModal]);
 
     useEffect(() => {
         if (loading || !currentYear || searchParams.get('action') !== 'create' || showModal) {
@@ -759,7 +762,7 @@ export function TermsPage() {
                             : 'Manage academic terms and the organization term calendar used for schemes of work.'}
                     </p>
                 </div>
-                {isAdminLike ? (
+                {canManageTermSetup ? (
                     <Button onClick={openCreate}>
                         <Plus className="h-4 w-4" />
                         Add Term
@@ -816,7 +819,7 @@ export function TermsPage() {
                                 ? 'No terms exist for this academic year.'
                                 : 'Create a term to set up the school calendar for schemes of work.'}
                         </p>
-                        {isAdminLike ? (
+                        {canManageTermSetup ? (
                             <Button className="mt-4" onClick={openCreate}>
                                 <Plus className="h-4 w-4" />
                                 Add Term
@@ -840,8 +843,8 @@ export function TermsPage() {
                                 const lifecycleBadge = getTermLifecycleBadge(term);
                                 const setupBadge = getCalendarSetupBadge(term);
                                 const selected = term.id === selectedTermId;
-                                const canEditTerm = isAdminLike && termCanEdit(term);
-                                const canDeleteTerm = isAdminLike && termCanDelete(term);
+                                const canEditTerm = canManageTermSetup && termCanEdit(term);
+                                const canDeleteTerm = canManageTermSetup && termCanDelete(term);
                                 const actionLockedReason = termLockedReason(term);
 
                                 return (
@@ -879,7 +882,7 @@ export function TermsPage() {
                                             <Badge className={getThemeBadgeClass(lifecycleBadge.tone)}>{lifecycleBadge.label}</Badge>
                                         </TableCell>
                                         <TableCell>
-                                            {isAdminLike ? (
+                                            {canManageTermSetup ? (
                                                 <div className="flex justify-end gap-1">
                                                     {canEditTerm ? (
                                                         <Button size="sm" variant="ghost" onClick={() => openEdit(term)}>

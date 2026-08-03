@@ -12,11 +12,11 @@ import {
 import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Subject, SubjectFormData } from '@/app/core/types/academic';
-import { isAdminOrAbove } from '@/app/utils/permissions';
+import { hasPermission } from '@/app/utils/permissions';
 
 export function useSubjectsPage() {
     const searchParams = useSearchParams();
-    const { user, activeRole } = useAuth();
+    const { capabilities } = useAuth();
     const { subjects, loading, createSubject, updateSubject, deleteSubject } = useSubjects();
     const { curricula } = useCurricula();
 
@@ -27,7 +27,9 @@ export function useSubjectsPage() {
     const [addingLevelTo, setAddingLevelTo] = useState<Subject | null>(null);
     const [assigningSubject, setAssigningSubject] = useState<Subject | null>(null);
 
-    const canManageSubjects = isAdminOrAbove(user, activeRole);
+    const canManageSubjects = Boolean(capabilities.can_manage_subjects)
+        || hasPermission(capabilities, 'academic.subjects.manage')
+        || hasPermission(capabilities, 'academic.manage');
     const grouped = useMemo(() => groupSubjects(subjects, search), [subjects, search]);
     const deepLinkedCurriculum = searchParams.get('curriculum')?.trim().toLowerCase() ?? '';
     const deepLinkedSubject = searchParams.get('subject')?.trim().toLowerCase() ?? '';

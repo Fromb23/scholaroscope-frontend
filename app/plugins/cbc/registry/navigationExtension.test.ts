@@ -59,7 +59,7 @@ const governanceCapabilities = {
 
 function buildContext(capabilities: WorkspaceCapabilities): PluginNavigationContext {
     return {
-        role: 'ADMIN',
+        activeOperatingContext: 'WORKSPACE_MANAGEMENT',
         user: adminUser,
         orgType: 'INSTITUTION',
         workspaceBehavior: capabilities.workspace_behavior,

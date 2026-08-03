@@ -65,7 +65,7 @@ export function useCohorts(filters?: {
       const data = await cohortsAPI.getCohorts(requestFilters);
       const allCohorts = Array.isArray(data) ? data : data.results ?? [];
       setCohorts(
-        instructorAccess.isInstructor
+        instructorAccess.hasTeachingProjection
           ? allCohorts.filter(cohort => allowedCohortIds.has(cohort.id))
           : allCohorts
       );
@@ -75,7 +75,7 @@ export function useCohorts(filters?: {
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, enabled, instructorAccess.isInstructor, requestFilters]);
+  }, [allowedCohortIds, enabled, instructorAccess.hasTeachingProjection, requestFilters]);
 
   useEffect(() => {
     void loadCohorts();

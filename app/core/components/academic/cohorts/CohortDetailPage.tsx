@@ -40,8 +40,8 @@ import { withAcademicSetupMode } from '@/app/core/lib/academicSetup';
 import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
-import { isAdminOrAbove } from '@/app/utils/permissions';
-import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { hasPermission } from '@/app/utils/permissions';
+import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { getInstructorClassesLabel } from '@/app/components/layout/navConfig';
 import { getCohortDetailCardExtensions } from '@/app/core/registry/cohortDetailCards';
 import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
@@ -406,7 +406,7 @@ export default function CohortHubPage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
+    const { user, activeOperatingContext, activeOrg, capabilities, loading: authLoading } = useAuth();
     const { hasPlugin, loading: pluginsLoading, getPluginCapabilityState } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
     const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
@@ -416,7 +416,7 @@ export default function CohortHubPage() {
         ? rawReturnTo
         : null;
     const setupStatusQuery = useAcademicSetupStatus({
-        enabled: setupMode && isAdminOrAbove(user, activeRole),
+        enabled: setupMode && Boolean(user && capabilities.can_manage_academic_setup),
     });
     const setupIncomplete = Boolean(setupStatusQuery.data && !setupStatusQuery.data.complete);
     const effectiveSetupMode = setupMode && setupIncomplete;
@@ -444,15 +444,24 @@ export default function CohortHubPage() {
     });
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isInstitutionInstructorWorkspace = isTeachingActor && !isPersonalTeachingWorkspace;
-    const isInstitutionAdminView = activeRole === 'ADMIN' && !isTeachingActor;
+    const canViewOrManageCohort = Boolean(
+        capabilities.can_manage_cohorts
+        || capabilities.can_manage_academic_setup
+        || hasPermission(capabilities, 'academic.cohorts.view')
+        || hasPermission(capabilities, 'academic.cohorts.manage')
+    );
     const accessLoading = authLoading || pluginsLoading || (isTeachingActor && instructorAccess.isLoading);
     const allowed = !user
         ? false
-        : isInstitutionAdminView
+        : (activeOperatingContext === 'WORKSPACE_MANAGEMENT' && canViewOrManageCohort)
             || (isTeachingActor && instructorAccess.cohortIds.includes(cohortId))
-            || (isPersonalTeachingWorkspace && activeRole === 'ADMIN');
-    const canManageInstructors = isAdminOrAbove(user, activeRole) && !isPersonalTeachingWorkspace;
-    const canLinkSubjects = isAdminOrAbove(user, activeRole);
+            || (isPersonalTeachingWorkspace && capabilities.is_workspace_owner);
+    const canManageInstructors = Boolean(capabilities.can_manage_staff) && !isPersonalTeachingWorkspace;
+    const canLinkSubjects = Boolean(
+        capabilities.can_manage_academic_setup
+        || hasPermission(capabilities, 'academic.cohorts.manage')
+        || hasPermission(capabilities, 'academic.subjects.manage')
+    );
     const visibleCohortSubjects = isTeachingActor
         ? cohortSubjects.filter(subject => instructorAccess.cohortSubjectIds.includes(subject.id))
         : cohortSubjects;
@@ -463,16 +472,20 @@ export default function CohortHubPage() {
     );
 
     useEffect(() => {
-        if (accessLoading || allowed || !activeRole) return;
-        router.replace(roleHomeRoute[activeRole]);
-    }, [accessLoading, activeRole, allowed, router]);
+        if (accessLoading || allowed) return;
+        router.replace(operatingContextHomeRoute(activeOperatingContext));
+    }, [accessLoading, activeOperatingContext, allowed, router]);
 
     const isCambridge = cohort ? isCambridgeCurriculumType(cohort.curriculum_type) : false;
     const isCBC = cohort?.curriculum_type === 'CBE';
     const isCbcSeniorCohort = isCbcSeniorSchoolEntity(cohort);
     const isCbcLowerLevel = Boolean(isCBC && !isCbcSeniorCohort);
     const hasCbcProfile = hasCbcPathwayProfile(cohort);
-    const canViewCohortLearners = isAdminOrAbove(user, activeRole);
+    const canViewCohortLearners = Boolean(
+        capabilities.can_manage_learners
+        || hasPermission(capabilities, 'learners.view')
+        || hasPermission(capabilities, 'learners.manage')
+    );
     const cbcCapabilityState = getPluginCapabilityState('cbc');
     const hasCBCPlugin = cbcCapabilityState.state === 'available';
     const hasCambridgePlugin = hasPlugin('cambridge');
@@ -586,7 +599,7 @@ export default function CohortHubPage() {
             subject_count: visibleCohortSubjects.length,
             learner_count: learnerCount,
             instructor_count: assignedInstructorCount,
-            role: activeRole ?? null,
+            role: null,
         },
         visibleActions: [
             {
@@ -662,7 +675,6 @@ export default function CohortHubPage() {
             ? 'This cohort could not be loaded.'
             : undefined,
     }), [
-        activeRole,
         assignedInstructorCount,
         canLinkSubjects,
         cohort,

@@ -15,7 +15,7 @@ import { useStudentAttendanceHistory } from '@/app/core/hooks/useSessions';
 import { useLearnerAvailableReportScopes } from '@/app/core/hooks/useReporting';
 import { useOpenAssessmentsForStudent } from '@/app/core/hooks/useAssessments';
 import { useAuth } from '@/app/context/AuthContext';
-import { hasCapability, isAdminOrAbove } from '@/app/utils/permissions';
+import { hasCapability } from '@/app/utils/permissions';
 import {
     buildLearnerOverviewReportHref,
     buildLearnerSubjectReportHref,
@@ -178,7 +178,7 @@ export default function LearnerDetailPage() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeOrg, activeRole, capabilities } = useAuth();
+    const { user, activeOrg, capabilities } = useAuth();
     const studentId = Number(params.id);
     const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
         orgType: activeOrg?.org_type ?? null,
@@ -220,9 +220,9 @@ export default function LearnerDetailPage() {
     const scrollRestoredRef = useRef(false);
 
     const managementStudent = isManagementStudentDetail(student) ? student : null;
-    const canEdit = !!user && Boolean(managementStudent) && hasCapability(activeRole, 'EDIT_LEARNER', capabilities);
-    const canManage = !!user && Boolean(managementStudent) && hasCapability(activeRole, 'MANAGE_ENROLLMENT', capabilities);
-    const canManageSubjectParticipation = Boolean(managementStudent) && (capabilities.can_manage_learners ?? isAdminOrAbove(user, activeRole));
+    const canEdit = !!user && Boolean(managementStudent) && hasCapability(null, 'EDIT_LEARNER', capabilities);
+    const canManage = !!user && Boolean(managementStudent) && hasCapability(null, 'MANAGE_ENROLLMENT', capabilities);
+    const canManageSubjectParticipation = Boolean(managementStudent) && Boolean(capabilities.can_manage_learners);
     const canUseDangerZone = canManageSubjectParticipation;
     const canGenerateOverviewReport = !!user && capabilities.can_view_reports;
     const canGenerateSubjectReport = !!user && capabilities.can_view_reports;

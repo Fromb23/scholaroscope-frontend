@@ -139,13 +139,13 @@ export function resolveClassSubjectReportTermLabel({
 }
 
 export function ClassSubjectReportHeaderContext({
-  isInstructorRoute,
+  isTeachingReportRoute,
   assignedInstructor,
   viewerName,
   periodLabel,
   generatedAt,
 }: {
-  isInstructorRoute: boolean;
+  isTeachingReportRoute: boolean;
   assignedInstructor?: ClassSubjectReportPayload['instructor'];
   viewerName?: string | null;
   periodLabel: string;
@@ -153,7 +153,7 @@ export function ClassSubjectReportHeaderContext({
 }) {
   return (
     <div className="mt-4 space-y-1 text-sm theme-muted">
-      {isInstructorRoute ? (
+      {isTeachingReportRoute ? (
         <p>{viewerName ? `Viewing as ${viewerName}` : 'Your class subject workspace'}</p>
       ) : null}
       {assignedInstructor ? (
@@ -161,7 +161,7 @@ export function ClassSubjectReportHeaderContext({
           Assigned instructor: {assignedInstructor.name}
           {assignedInstructor.email ? ` · ${assignedInstructor.email}` : ''}
         </p>
-      ) : !isInstructorRoute ? (
+      ) : !isTeachingReportRoute ? (
         <p>No formal instructor assignment recorded</p>
       ) : null}
       <p>{periodLabel}</p>
@@ -416,7 +416,7 @@ export function ClassSubjectReportPage({
   const cohortSubjectId = Number(params.id);
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
   const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
-  const isInstructorRoute = pathname.startsWith('/reports/instructor/');
+  const isTeachingReportRoute = pathname.startsWith('/reports/instructor/');
   const returnTo = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
     fallbackHref: fallbackReturnTo
@@ -552,7 +552,7 @@ export function ClassSubjectReportPage({
       report.cohort_subject.id,
       { returnTo: currentReturnTo },
     );
-    const learnerReportHref = isInstructorRoute
+    const learnerReportHref = isTeachingReportRoute
       ? null
       : buildLearnerReportHref(row.learner.id, {
           cohort: report.cohort.id,
@@ -575,7 +575,7 @@ export function ClassSubjectReportPage({
         cbcProgressHref={cbcProgressHref}
       />
     );
-  }, [currentReturnTo, hasCbcProgress, isInstructorRoute, report]);
+  }, [currentReturnTo, hasCbcProgress, isTeachingReportRoute, report]);
 
   if (cohortSubjectsLoading && cohortIdOverride == null && !cohortSubjectMeta) {
     return (
@@ -617,7 +617,7 @@ export function ClassSubjectReportPage({
 
                 {report ? (
                   <ClassSubjectReportHeaderContext
-                    isInstructorRoute={isInstructorRoute}
+                    isTeachingReportRoute={isTeachingReportRoute}
                     assignedInstructor={report.instructor}
                     viewerName={viewerName}
                     periodLabel={reportPeriodLabel}

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import type { OrgType, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { OperatingContext, OrgType, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import type { Curriculum } from '@/app/core/types/academic';
 
 export interface NavItem {
@@ -22,7 +22,7 @@ export type PluginNavigationSlot =
     | 'instructor.secondary.beforeSubmitRequest';
 
 export interface PluginNavigationContext {
-    role: Role;
+    activeOperatingContext: OperatingContext | null;
     orgType?: OrgType | null;
     workspaceBehavior?: string | null;
     canTeach?: boolean;

@@ -1,6 +1,6 @@
 // app/utils/permissions.ts
 
-import type { Role, WorkspaceCapabilities } from '../core/types/auth';
+import type { Role, WorkspaceCapabilities } from './authorityTypes';
 
 type User = {
     is_superadmin?: boolean;
@@ -10,14 +10,16 @@ type CapabilityProjection = Partial<WorkspaceCapabilities> | null;
 // Deprecated compatibility predicates. They are retained for presentation-only
 // legacy callers and must not be used as authorization fallbacks.
 
-export const isAdmin = (activeRole: Role | null): boolean =>
-    activeRole === 'ADMIN';
+export const isAdmin = (_legacyRole: Role | null): boolean => {
+    void _legacyRole;
+    return false;
+};
 
-export const isInstructor = (activeRole: Role | null): boolean =>
-    activeRole === 'INSTRUCTOR';
-
-export const isAdminOrAbove = (user: User, activeRole: Role | null): boolean =>
-    !!user && activeRole === 'ADMIN';
+export const isAdminOrAbove = (_user: User, _legacyRole: Role | null): boolean => {
+    void _user;
+    void _legacyRole;
+    return false;
+};
 
 export const isAuthenticated = (user: User): boolean =>
     !!user;
@@ -26,9 +28,11 @@ export const isAuthenticated = (user: User): boolean =>
 
 export const hasRouteAccess = (
     user: User,
-    activeRole: Role | null,
-    allowedRoles: Role[]
+    _legacyRole: Role | null,
+    _legacyAllowedRoles: Role[]
 ): boolean => {
+    void _legacyRole;
+    void _legacyAllowedRoles;
     if (!user) return false;
     return false;
 };
@@ -38,81 +42,124 @@ export const hasRouteAccess = (
 
 export const canManageUsers = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
 ): boolean => {
+    void user;
+    void _legacyRole;
     if (capabilities) return Boolean(capabilities.can_manage_staff);
     return false;
 };
 
 export const canManageStaff = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(capabilities?.can_manage_staff);
+): boolean => {
+    void user;
+    void _legacyRole;
+    return Boolean(capabilities?.can_manage_staff);
+};
 
 export const canManageCurriculum = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(capabilities?.can_manage_academic_setup);
+): boolean => {
+    void user;
+    void _legacyRole;
+    return Boolean(capabilities?.can_manage_academic_setup);
+};
 
 export const canManageCohorts = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(capabilities?.can_manage_cohorts);
+): boolean => {
+    void user;
+    void _legacyRole;
+    return Boolean(capabilities?.can_manage_cohorts);
+};
 
 export const canManageAssessments = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(capabilities?.can_manage_assessments);
+): boolean => {
+    void user;
+    void _legacyRole;
+    return Boolean(capabilities?.can_manage_assessments);
+};
 
 export const canManagePlugins = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(user && capabilities?.can_manage_plugins);
+): boolean => {
+    void _legacyRole;
+    return Boolean(user && capabilities?.can_manage_plugins);
+};
 
 export const canCreateSession = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(capabilities?.can_teach);
+): boolean => {
+    void user;
+    void _legacyRole;
+    return Boolean(capabilities?.can_teach);
+};
 
 export const canMarkAttendance = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(capabilities?.can_teach);
+): boolean => {
+    void user;
+    void _legacyRole;
+    return Boolean(capabilities?.can_teach);
+};
 
 export const canViewReports = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(capabilities?.can_view_reports);
+): boolean => {
+    void user;
+    void _legacyRole;
+    return Boolean(capabilities?.can_view_reports);
+};
 
 export const canManageRequests = (user: User): boolean =>
     !!user;
 
 export const canManageAnnouncements = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(user && capabilities?.can_manage_announcements);
+): boolean => {
+    void _legacyRole;
+    return Boolean(user && capabilities?.can_manage_announcements);
+};
 
 export const canViewAnnouncements = (user: User): boolean =>
     !!user;
 
 export const canBulkUploadStudents = (
     user: User,
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capabilities?: CapabilityProjection,
-): boolean => Boolean(capabilities?.can_manage_learners);
+): boolean => {
+    void user;
+    void _legacyRole;
+    return Boolean(capabilities?.can_manage_learners);
+};
 
-export const canDeleteRecords = (user: User, activeRole: Role | null): boolean =>
-    false;
+export const canDeleteRecords = (_user: User, _legacyRole: Role | null): boolean => {
+    void _user;
+    void _legacyRole;
+    return false;
+};
 
 type Capability =
     | 'EDIT_LEARNER'
@@ -120,10 +167,11 @@ type Capability =
     | 'MANAGE_ENROLLMENT';
 
 export const hasCapability = (
-    activeRole: Role | null,
+    _legacyRole: Role | null,
     capability: Capability,
     capabilities?: CapabilityProjection,
 ): boolean => {
+    void _legacyRole;
     switch (capability) {
         case 'CREATE_LEARNER':
         case 'EDIT_LEARNER':

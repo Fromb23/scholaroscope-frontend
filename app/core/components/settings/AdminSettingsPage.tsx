@@ -10,6 +10,7 @@ import { MembersTab, PluginsTab } from '@/app/core/components/settings/SettingsC
 import { useAuth } from '@/app/context/AuthContext';
 import { getWorkspaceSettingsTabs } from '@/app/core/lib/settingsAuthority';
 import { renderSettingsExtensions } from '@/app/core/registry/settingsExtensions';
+import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 
 type Tab = 'general' | 'members' | 'plugins';
 
@@ -28,7 +29,7 @@ function GeneralTab() {
 function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { activeOrg, activeRole, capabilities, loading } = useAuth();
+  const { activeOrg, activeOperatingContext, capabilities, loading } = useAuth();
   const isFreelance = activeOrg?.org_type === 'PERSONAL'
     || capabilities.workspace_behavior === 'FREELANCE_TEACHER';
   const authorizedTabs = getWorkspaceSettingsTabs(capabilities, { isFreelance });
@@ -65,9 +66,9 @@ function SettingsContent() {
           <h1 className="text-xl font-semibold theme-text">You do not have permission to manage organization settings.</h1>
           <p className="text-sm theme-muted">Each settings area requires its corresponding workspace permission.</p>
           <div className="flex justify-center gap-2">
-            <Link href={activeRole === 'INSTRUCTOR' ? '/profile' : '/dashboard'}>
+            <Link href={operatingContextHomeRoute(activeOperatingContext)}>
               <Button type="button" variant="secondary">
-                Back to {activeRole === 'INSTRUCTOR' ? 'Profile' : 'Dashboard'}
+                Back to Dashboard
               </Button>
             </Link>
           </div>

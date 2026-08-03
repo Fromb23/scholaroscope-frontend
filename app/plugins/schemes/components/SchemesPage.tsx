@@ -263,16 +263,15 @@ function buildAdminSchemeGroups(
 export function SchemesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { activeOrg, activeRole, capabilities, user } = useAuth();
-  const isInstructor = activeRole === 'INSTRUCTOR';
-  const isAdminLike = activeRole === 'ADMIN';
+  const { activeOrg, activeOperatingContext, capabilities, user } = useAuth();
+  const teachingSurface = activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach);
+  const managementSurface = activeOperatingContext === 'WORKSPACE_MANAGEMENT';
   const canUseTeacherModeAsAdmin = isSelfManagedTeachingAdmin({
-    activeRole,
     activeOrg,
     capabilities,
     user,
   });
-  const isInstitutionalAdminSupervisor = isAdminLike && !isInstructor && !canUseTeacherModeAsAdmin;
+  const isInstitutionalAdminSupervisor = managementSurface && !teachingSurface && !canUseTeacherModeAsAdmin;
   const instructorAccess = useInstructorCohortAccess();
   const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
   const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
@@ -301,7 +300,7 @@ export function SchemesPage() {
     const value = searchParams.get('returnTo');
     return parseAppDestination(value);
   }, [searchParams]);
-  const effectiveMyTeachingMode = isInstructor || canUseTeacherModeAsAdmin || viewMode === 'my_teaching';
+  const effectiveMyTeachingMode = teachingSurface || canUseTeacherModeAsAdmin || viewMode === 'my_teaching';
   const institutionComplianceMode = isInstitutionalAdminSupervisor && !effectiveMyTeachingMode;
   const queryTerm = useMemo(() => toOptionalNumber(searchParams.get('term') ?? ''), [searchParams]);
   const explicitTermId = useMemo(
@@ -372,11 +371,11 @@ export function SchemesPage() {
     schemeFilters,
     { enabled: !institutionComplianceMode && !termsLoading && selectedTermId !== null },
   );
-  const showCreateDraft = (isInstructor || canUseTeacherModeAsAdmin) && selectedTermAcceptsNewWork;
+  const showCreateDraft = (teachingSurface || canUseTeacherModeAsAdmin) && selectedTermAcceptsNewWork;
   const createButtonLabel = effectiveMyTeachingMode
     ? 'Create my draft scheme'
     : 'Create draft scheme';
-  const subtitle = isInstructor
+  const subtitle = teachingSurface
     ? 'Create draft schemes, review term coverage, and keep your teaching sequence organized.'
     : viewMode === 'my_teaching'
       ? 'Use My Teaching to view only schemes tied to your own teaching work.'

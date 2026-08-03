@@ -464,19 +464,19 @@ describe('academic term calendar access', () => {
         });
 
         expect(canEditTermCalendar({
-            isAdminLike: true,
+            canManageTerms: true,
             term: activeIncompleteTerm,
         })).toBe(true);
         expect(canAddTermCalendarEvent({
-            isAdminLike: true,
+            canManageTerms: true,
             term: activeIncompleteTerm,
         })).toBe(true);
         expect(canCompleteTermCalendar({
-            isAdminLike: true,
+            canManageTerms: true,
             term: activeIncompleteTerm,
         })).toBe(true);
         expect(canReopenTermCalendar({
-            isAdminLike: true,
+            canManageTerms: true,
             term: activeIncompleteTerm,
         })).toBe(false);
     });
@@ -499,23 +499,23 @@ describe('academic term calendar access', () => {
         });
 
         expect(canEditTermCalendar({
-            isAdminLike: true,
+            canManageTerms: true,
             term: serverOpenEndedTerm,
         })).toBe(false);
         expect(canEditTermCalendarEvent({
-            isAdminLike: true,
+            canManageTerms: true,
             term: serverOpenEndedTerm,
         })).toBe(false);
         expect(canAddTermCalendarEvent({
-            isAdminLike: true,
+            canManageTerms: true,
             term: serverOpenEndedTerm,
         })).toBe(false);
         expect(canDeleteTermCalendarEvent({
-            isAdminLike: true,
+            canManageTerms: true,
             term: serverOpenEndedTerm,
         })).toBe(false);
         expect(canCompleteTermCalendar({
-            isAdminLike: true,
+            canManageTerms: true,
             term: serverOpenEndedTerm,
         })).toBe(false);
     });
@@ -541,15 +541,15 @@ describe('academic term calendar access', () => {
         });
 
         expect(canEditTermCalendar({
-            isAdminLike: true,
+            canManageTerms: true,
             term: historicalTerm,
         })).toBe(false);
         expect(canDeleteTermCalendarEvent({
-            isAdminLike: true,
+            canManageTerms: true,
             term: historicalTerm,
         })).toBe(false);
         expect(canReopenTermCalendar({
-            isAdminLike: true,
+            canManageTerms: true,
             term: historicalTerm,
         })).toBe(false);
     });

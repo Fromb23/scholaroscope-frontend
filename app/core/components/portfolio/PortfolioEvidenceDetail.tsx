@@ -4,9 +4,10 @@ import { ExternalLink, Paperclip, X } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { EntityLoadingState } from '@/app/components/ui/loading';
 import { buildPortfolioSourceRecordHref } from '@/app/core/components/portfolio/portfolioSourceNavigation';
+import { resolveLearnerError } from '@/app/core/errors';
 import type { PortfolioArtifact, PortfolioEvidence, PortfolioLearnerWorkPayload } from '@/app/core/types/portfolio';
 
 function formatDate(value: string | null | undefined): string {
@@ -144,9 +145,14 @@ export function PortfolioEvidenceDetail({
 
   if (error) {
     return (
-      <ErrorBanner
-        title={errorStatus === 403 ? 'No access to this evidence' : 'Evidence unavailable'}
-        message={error}
+      <AppErrorBanner
+        error={resolveLearnerError({
+          status: errorStatus ?? undefined,
+          message: error,
+        }, {
+          action: 'load',
+          entityLabel: 'portfolio evidence',
+        })}
         onDismiss={() => undefined}
       />
     );

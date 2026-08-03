@@ -60,6 +60,13 @@ function isAllowedRawRolePath(relative) {
   ].some((pattern) => pattern.test(relative));
 }
 
+function isAllowedActiveRolePath(relative) {
+  return [
+    /^context\/AuthContext\.tsx$/,
+    /^core\/types\//,
+  ].some((pattern) => pattern.test(relative));
+}
+
 function isAllowedWorkspaceBehaviorPath(relative) {
   return [
     /^core\/lib\/workspaces\.ts$/,
@@ -121,7 +128,33 @@ const RULES = [
   {
     id: 'raw-admin-role-check',
     skip: isAllowedRawRolePath,
-    test: (source) => countMatches(source, /\b(?:activeRole|role)\s*(?:===|!==)\s*['"]ADMIN['"]/g),
+    test: (source) => countMatches(source, /\b(?:activeRole|role)\s*(?:===|!==)\s*['"](?:ADMIN|INSTRUCTOR)['"]/g),
+  },
+  {
+    id: 'active-role-runtime-dependency',
+    skip: isAllowedActiveRolePath,
+    test: (source) => countMatches(source, /\bactiveRole\b/g),
+  },
+  {
+    id: 'allowed-roles-authority',
+    skip: () => false,
+    test: (source) => countMatches(source, /\ballowedRoles\b/g),
+  },
+  {
+    id: 'role-home-route-redirect',
+    skip: () => false,
+    test: (source) => countMatches(source, /\broleHomeRoute\b/g),
+  },
+  {
+    id: 'synthetic-legacy-role-adapter',
+    skip: () => false,
+    test: (source) => (
+      countMatches(source, /\bregistryRole\b/g)
+      + countMatches(
+        source,
+        /\bactiveOperatingContext\b[\s\S]{0,120}['"](?:ADMIN|INSTRUCTOR)['"]/g,
+      )
+    ),
   },
   {
     id: 'admin-or-above-workspace-ui',

@@ -232,17 +232,13 @@ describe('session detail progressive disclosure visibility', () => {
 
 describe('session list instructor identity display policy', () => {
   it('hides instructor identity for instructor self-teaching views', () => {
-    expect(shouldShowInstructorIdentity({
-      activeRole: 'INSTRUCTOR',
-      effectiveMyTeachingMode: true,
+    expect(shouldShowInstructorIdentity({      effectiveMyTeachingMode: true,
       showInstitutionSupervision: false,
     })).toBe(false);
   });
 
   it('hides instructor identity for effective My Lessons self-teaching views', () => {
-    expect(shouldShowInstructorIdentity({
-      activeRole: 'ADMIN',
-      viewMode: 'my_teaching',
+    expect(shouldShowInstructorIdentity({      viewMode: 'my_teaching',
       groupingMode: 'class',
       effectiveMyTeachingMode: true,
       showInstitutionSupervision: false,
@@ -250,17 +246,13 @@ describe('session list instructor identity display policy', () => {
   });
 
   it('shows instructor identity for administrator supervision and instructor grouping views', () => {
-    expect(shouldShowInstructorIdentity({
-      activeRole: 'ADMIN',
-      viewMode: 'admin_supervision',
+    expect(shouldShowInstructorIdentity({      viewMode: 'admin_supervision',
       groupingMode: 'class',
       effectiveMyTeachingMode: false,
       showInstitutionSupervision: true,
     })).toBe(true);
 
-    expect(shouldShowInstructorIdentity({
-      activeRole: 'ADMIN',
-      viewMode: 'admin_supervision',
+    expect(shouldShowInstructorIdentity({      viewMode: 'admin_supervision',
       groupingMode: 'instructor',
       effectiveMyTeachingMode: false,
       showInstitutionSupervision: true,

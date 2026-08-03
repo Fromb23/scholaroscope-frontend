@@ -55,7 +55,7 @@ function getRequestSubmitError(err: unknown): string {
 
 export function NewRequestPage() {
     const router = useRouter();
-    const { activeOrg, activeRole } = useAuth();
+    const { activeOrg, activeOperatingContext } = useAuth();
 
     const [form, setForm] = useState<FormData>(EMPTY);
     const [errors, setErrors] = useState<Partial<FormData>>({});
@@ -65,7 +65,7 @@ export function NewRequestPage() {
     const formRef = useRef<FormData>(EMPTY);
     const submittedRef = useRef(submitted);
 
-    const isAdmin = activeRole === 'ADMIN';
+    const isAdmin = activeOperatingContext === 'WORKSPACE_MANAGEMENT';
     const typeOptions = isAdmin ? ADMIN_REQUEST_OPTIONS : INSTRUCTOR_REQUEST_OPTIONS;
 
     useEffect(() => {

@@ -13,19 +13,20 @@ import { useAssistantPageContext } from '@/app/core/components/assistant/useAssi
 import { useRequestDetail } from '@/app/plugins/requests/hooks/useRequests';
 import { Button } from '@/app/components/ui/Button';
 import { RequestDetailPanel } from '@/app/plugins/requests/components/RequestShared';
+import { hasPermission } from '@/app/utils/permissions';
 
 export function RequestDetailPage() {
     const router = useRouter();
     const params = useParams();
-    const { activeRole } = useAuth();
+    const { capabilities } = useAuth();
     const id = Number(params.id);
 
     const { request, loading, error, addComment, reviewRequest, executeRequest } = useRequestDetail(id);
 
-    const isAdmin = activeRole === 'ADMIN';
-    const canReview = isAdmin
-        ? request?.submitted_by_role === 'INSTRUCTOR'
-        : false;
+    const canReviewRequests = hasPermission(capabilities, 'requests.review')
+        || hasPermission(capabilities, 'requests.manage');
+    const canSubmitRequest = hasPermission(capabilities, 'requests.create');
+    const canReview = canReviewRequests && Boolean(request);
 
     const handleReview = async (action: 'approve' | 'reject' | 'review', note: string) => {
         await reviewRequest({ action, resolution_note: note });
@@ -52,7 +53,7 @@ export function RequestDetailPage() {
                 is_loading: loading,
                 is_empty: !loading && !request,
                 request_status: request?.status ?? null,
-                can_submit_request: activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR',
+                can_submit_request: canSubmitRequest,
                 can_review_request: Boolean(canReview && isPending),
             },
             visibleActions: [
@@ -87,7 +88,7 @@ export function RequestDetailPage() {
                 ? 'This request could not be loaded.'
                 : undefined,
         };
-    }, [activeRole, canReview, loading, request, scrollToReviewSection]);
+    }, [canReview, canSubmitRequest, loading, request, scrollToReviewSection]);
 
     useAssistantPageContext(assistantContext);
 
@@ -123,7 +124,7 @@ export function RequestDetailPage() {
                 onExecute={canReview ? handleExecute : undefined}
                 onAddComment={handleAddComment}
                 canReview={canReview}
-                reviewerRole={activeRole ?? ''}
+                canWriteInternalNote={canReviewRequests}
             />
         </div>
     );

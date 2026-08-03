@@ -525,7 +525,7 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
       const data = await subjectAPI.getAll(params);
       const allSubjects = Array.isArray(data) ? data : (data as { results?: Subject[] })?.results ?? [];
       setSubjects(
-        instructorAccess.isInstructor
+        instructorAccess.hasTeachingProjection
           ? allSubjects.filter(subject => allowedSubjectIds.has(subject.id))
           : allSubjects
       );
@@ -535,7 +535,7 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
     } finally {
       setLoading(false);
     }
-  }, [allowedSubjectIds, curriculumId, enabled, instructorAccess.isInstructor, organizationId]);
+  }, [allowedSubjectIds, curriculumId, enabled, instructorAccess.hasTeachingProjection, organizationId]);
 
   useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
 
@@ -711,7 +711,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       const data = await cohortAPI.getAll(resolvedFilters);
       const allCohorts = Array.isArray(data) ? data : (data as { results?: Cohort[] })?.results ?? [];
       setCohorts(
-        instructorAccess.isInstructor
+        instructorAccess.hasTeachingProjection
           ? allCohorts.filter(cohort => allowedCohortIds.has(cohort.id))
           : allCohorts
       );
@@ -721,7 +721,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, enabled, instructorAccess.isInstructor, resolvedFilters]);
+  }, [allowedCohortIds, enabled, instructorAccess.hasTeachingProjection, resolvedFilters]);
 
   useEffect(() => { fetchCohorts(); }, [fetchCohorts]);
 

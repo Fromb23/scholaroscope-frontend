@@ -49,8 +49,6 @@ function actorFor(context: ResolveAppErrorContext): string {
   if (isTeacherWorkspaceBehavior(context.workspaceBehavior)) return 'teacher';
   if (isTeacherWorkspaceBehavior(context.capabilities?.workspace_behavior)) return 'teacher';
   if (context.capabilities?.can_teach === true && context.capabilities.can_manage_staff === false) return 'teacher';
-  if (context.role === 'INSTRUCTOR') return 'teacher';
-  if (context.role === 'ADMIN') return 'admin';
   if (context.role === 'SUPERADMIN') return 'superadmin';
   return 'user';
 }

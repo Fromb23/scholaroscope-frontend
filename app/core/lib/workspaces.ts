@@ -2,7 +2,6 @@ import type {
   ActiveOrg,
   OrgType,
   RegisterOrgType,
-  Role,
   User,
   WorkspaceCapabilities,
   WorkspaceMode,
@@ -116,7 +115,6 @@ export function isSelfManagedTeachingWorkspace(params: {
 }
 
 export function isSelfManagedTeachingAdmin(params: {
-  activeRole?: Role | null;
   activeOrg?: ActiveOrg | null;
   capabilities?: WorkspaceCapabilities | null;
   user?: User | null;
@@ -136,7 +134,6 @@ export function isSelfManagedTeachingAdmin(params: {
 }
 
 export function isTeachingActorView(params: {
-  activeRole?: Role | null;
   activeOrg?: ActiveOrg | null;
   capabilities?: WorkspaceCapabilities | null;
   user?: User | null;
@@ -152,7 +149,6 @@ export function normalizeRegisterOrgType(orgType?: RegisterOrgType | OrgType | s
 }
 
 export interface TeachingCapabilityParams {
-  role?: Role | null;
   orgType?: OrgType | null;
   isSuperadmin?: boolean;
   isWorkspaceOwner?: boolean;
@@ -213,10 +209,6 @@ export function canManageReportPolicyAuthoring(params: {
 }
 
 export function canUseTeachingMode({
-  role,
-  orgType,
-  isSuperadmin,
-  isWorkspaceOwner,
   capabilities,
 }: TeachingCapabilityParams): boolean {
   return Boolean(capabilities?.can_teach);

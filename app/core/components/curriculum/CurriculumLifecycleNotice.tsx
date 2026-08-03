@@ -2,7 +2,7 @@
 
 import { AlertCircle, AlertTriangle, Clock3, Info, ShieldAlert, Siren } from 'lucide-react';
 import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/CurriculumLifecycleBadge';
-import { getCurriculumStatusMessage } from '@/app/core/lib/curriculumLifecycle';
+import { getCurriculumStatusMessage, type CurriculumLifecycleSurface } from '@/app/core/lib/curriculumLifecycle';
 import type { CurriculumOfferingStatus } from '@/app/core/types/academic';
 
 function renderNoticeIcon(status?: CurriculumOfferingStatus | null) {
@@ -100,12 +100,12 @@ export function CurriculumLifecycleNotice({
   status,
   title,
   message,
-  role = 'ADMIN',
+  surface = 'MANAGEMENT',
 }: {
   status?: CurriculumOfferingStatus | null;
   title?: string;
   message?: string | null;
-  role?: 'ADMIN' | 'INSTRUCTOR';
+  surface?: CurriculumLifecycleSurface;
 }) {
   const variant = getNoticeVariant(status);
   const accentColor = getNoticeAccentColor(variant);
@@ -141,7 +141,7 @@ export function CurriculumLifecycleNotice({
             <CurriculumLifecycleBadge status={status} />
           </div>
           <p className="text-sm leading-6 theme-text">
-            {message ?? getCurriculumStatusMessage(status, role)}
+            {message ?? getCurriculumStatusMessage(status, surface)}
           </p>
         </div>
       </div>

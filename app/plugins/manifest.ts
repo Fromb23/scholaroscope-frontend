@@ -1,7 +1,6 @@
 'use client';
 
 import type { ActiveOrg, WorkspaceCapabilities } from '@/app/core/types/auth';
-import type { Role } from '@/app/core/types/auth';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { getProductCapability } from '@/app/core/lib/productCapabilities';
 import {
@@ -13,8 +12,6 @@ export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'sch
 
 export type PluginLoadContext = {
   activeOrg?: ActiveOrg | null;
-  /** @deprecated Ignored compatibility metadata; plugin loading uses capabilities. */
-  activeRole?: Role | null;
   capabilities: WorkspaceCapabilities;
   curriculumTypes: string[];
   enabledFeatures: string[];

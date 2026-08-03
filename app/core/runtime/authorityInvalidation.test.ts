@@ -69,7 +69,7 @@ function pluginContext(
   workspaceCapabilities: WorkspaceCapabilities,
 ): PluginNavigationContext {
   return {
-    role: 'ADMIN',
+    activeOperatingContext: 'WORKSPACE_MANAGEMENT',
     orgType: activeOrg.org_type,
     workspaceBehavior: workspaceCapabilities.workspace_behavior,
     canTeach: workspaceCapabilities.can_teach,
@@ -96,7 +96,7 @@ function flattenNav(items: NavItem[]): NavItem[] {
 function navNames(workspaceCapabilities: WorkspaceCapabilities): string[] {
   const resolved = resolveNavConfig({
     user,
-    activeRole: 'ADMIN',
+    activeOperatingContext: 'WORKSPACE_MANAGEMENT',
     orgType: activeOrg.org_type,
     capabilities: workspaceCapabilities,
     pluginNavigationContext: pluginContext(workspaceCapabilities),

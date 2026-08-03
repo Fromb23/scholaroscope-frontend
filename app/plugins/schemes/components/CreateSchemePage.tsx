@@ -137,16 +137,15 @@ function parseIntegerInput(value: string): number | null {
 export function CreateSchemePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { activeRole, activeOrg, capabilities, user } = useAuth();
-  const isInstructor = activeRole === 'INSTRUCTOR';
+  const { activeOperatingContext, activeOrg, capabilities, user } = useAuth();
+  const teachingSurface = activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach);
   const selfManagedTeachingAdmin = isSelfManagedTeachingAdmin({
-    activeRole,
     activeOrg,
     capabilities,
     user,
   });
-  const isTeachingActor = isInstructor || selfManagedTeachingAdmin;
-  const isInstitutionalAdmin = activeRole === 'ADMIN' && !selfManagedTeachingAdmin;
+  const isTeachingActor = teachingSurface || selfManagedTeachingAdmin;
+  const isInstitutionalAdmin = activeOperatingContext === 'WORKSPACE_MANAGEMENT' && !selfManagedTeachingAdmin;
   const { curricula, loading: curriculaLoading } = useCurricula();
   const { subjects, loading: subjectsLoading } = useSubjects();
   const instructorAccess = useInstructorCohortAccess();

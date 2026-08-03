@@ -16,7 +16,7 @@ export type CurriculumRouteIntent =
   | 'admin-disable'
   | 'admin-reactivate';
 
-export type CurriculumLifecycleRole = 'ADMIN' | 'INSTRUCTOR';
+export type CurriculumLifecycleSurface = 'MANAGEMENT' | 'TEACHING';
 
 export interface CurriculumRouteAccessDecision {
   allowed: boolean;
@@ -112,31 +112,31 @@ export function getCurriculumStatusLabel(status?: CurriculumOfferingStatus | nul
 
 export function getCurriculumStatusMessage(
   status?: CurriculumOfferingStatus | null,
-  role: CurriculumLifecycleRole = 'ADMIN',
+  surface: CurriculumLifecycleSurface = 'MANAGEMENT',
 ): string {
   switch (status) {
     case 'ACTIVE':
       return 'This curriculum is active.';
     case 'DISABLE_REQUESTED':
-      return role === 'INSTRUCTOR'
+      return surface === 'TEACHING'
         ? 'This curriculum is being disabled for this workspace. You can view historical records, but cannot create or modify academic work while shutdown is running.'
         : 'This curriculum disable is in progress. Academic work is read-only until this process is cancelled or completed.';
     case 'DRAINING':
-      return role === 'INSTRUCTOR'
+      return surface === 'TEACHING'
         ? 'This curriculum is being phased out. New work is blocked. You may only complete already active work where allowed.'
         : 'This curriculum is being disabled. New work is blocked while existing work is being drained.';
     case 'FINALIZING':
-      return role === 'INSTRUCTOR'
+      return surface === 'TEACHING'
         ? 'The system is finalizing this curriculum. Actions are temporarily unavailable.'
         : 'The system is finalizing reports and closing pending work.';
     case 'DISABLED':
-      return role === 'INSTRUCTOR'
+      return surface === 'TEACHING'
         ? 'This curriculum is disabled. Your historical records remain available for viewing.'
         : 'This curriculum is disabled. Historical records remain available in read-only form.';
     case 'REACTIVATING':
       return 'This curriculum is being reactivated. Wait until it becomes active again before creating new work.';
     case 'FAILED':
-      return role === 'INSTRUCTOR'
+      return surface === 'TEACHING'
         ? 'This curriculum disable workflow failed. Historical records remain visible, but new work is unavailable until an admin resolves it.'
         : 'This curriculum disable workflow failed. Review the failure reason and retry or reactivate as needed.';
     default:
@@ -184,7 +184,7 @@ export function canEditCurriculumWork(
 export function canUseCurriculumRoute(
   curriculum: Pick<Curriculum, 'is_active' | 'offering_status'> | null | undefined,
   routeIntent: CurriculumRouteIntent,
-  role: CurriculumLifecycleRole = 'ADMIN',
+  surface: CurriculumLifecycleSurface = 'MANAGEMENT',
 ): boolean {
   if (!curriculum) {
     return false;
@@ -206,9 +206,9 @@ export function canUseCurriculumRoute(
         )
       );
     case 'admin-disable':
-      return role !== 'INSTRUCTOR';
+      return surface !== 'TEACHING';
     case 'admin-reactivate':
-      return role !== 'INSTRUCTOR'
+      return surface !== 'TEACHING'
         && (
           curriculum.offering_status === 'DISABLED'
           || curriculum.offering_status === 'FAILED'
@@ -223,14 +223,14 @@ export function canUseCurriculumRoute(
 export function getCurriculumRouteAccessDecision(
   curriculum: Pick<Curriculum, 'is_active' | 'offering_status'>,
   routeIntent: CurriculumRouteIntent,
-  role: CurriculumLifecycleRole = 'ADMIN',
+  surface: CurriculumLifecycleSurface = 'MANAGEMENT',
 ): CurriculumRouteAccessDecision {
   const label = getCurriculumStatusLabel(curriculum.offering_status);
-  const message = getCurriculumStatusMessage(curriculum.offering_status, role);
+  const message = getCurriculumStatusMessage(curriculum.offering_status, surface);
   const readOnly = isCurriculumReadOnly(curriculum);
 
   return {
-    allowed: canUseCurriculumRoute(curriculum, routeIntent, role),
+    allowed: canUseCurriculumRoute(curriculum, routeIntent, surface),
     readOnly,
     label,
     message,
@@ -240,17 +240,17 @@ export function getCurriculumRouteAccessDecision(
 export function getCurriculumActionBlockReason(
   curriculum?: Pick<Curriculum, 'is_active' | 'offering_status'> | null,
   routeIntent: Exclude<CurriculumRouteIntent, 'read' | 'admin-disable' | 'admin-reactivate'> = 'create',
-  role: CurriculumLifecycleRole = 'ADMIN',
+  surface: CurriculumLifecycleSurface = 'MANAGEMENT',
 ): string | null {
   if (!curriculum) {
     return 'This curriculum is not available for this action.';
   }
 
-  if (canUseCurriculumRoute(curriculum, routeIntent, role)) {
+  if (canUseCurriculumRoute(curriculum, routeIntent, surface)) {
     return null;
   }
 
-  return getCurriculumStatusMessage(curriculum.offering_status, role);
+  return getCurriculumStatusMessage(curriculum.offering_status, surface);
 }
 
 const CURRICULUM_PLUGIN_KEY_BY_TYPE: Record<string, string> = {

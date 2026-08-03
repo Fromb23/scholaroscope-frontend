@@ -107,17 +107,17 @@ function getRequestPanelMessage(
     case 'CANCELLED':
       return isCurriculumAvailableForDisable(curriculum)
         ? 'This curriculum is active. You can start a new disable request if needed.'
-        : getCurriculumStatusMessage(curriculum.offering_status, 'ADMIN');
+        : getCurriculumStatusMessage(curriculum.offering_status, 'MANAGEMENT');
     case 'FAILED':
       return isCurriculumAvailableForDisable(curriculum)
         ? 'This curriculum is active. Review the reason, then start a new disable request if needed.'
-        : getCurriculumStatusMessage(curriculum.offering_status, 'ADMIN');
+        : getCurriculumStatusMessage(curriculum.offering_status, 'MANAGEMENT');
     case 'COMPLETED':
       return canStartWorkflow
         ? 'This curriculum is active again. You can start a new disable request if needed.'
         : 'This curriculum is disabled. Historical records remain available in read-only form.';
     default:
-      return getCurriculumStatusMessage(curriculum.offering_status, 'ADMIN');
+      return getCurriculumStatusMessage(curriculum.offering_status, 'MANAGEMENT');
   }
 }
 
@@ -536,7 +536,7 @@ export function CurriculumDisableWorkflowModal({
     <div className="space-y-4">
       <CurriculumLifecycleNotice
         status={curriculum.offering_status}
-        role="ADMIN"
+        surface="MANAGEMENT"
       />
 
       <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">

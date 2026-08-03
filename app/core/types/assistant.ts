@@ -1,4 +1,4 @@
-import type { Role } from '@/app/core/types/auth';
+import type { OperatingContext } from '@/app/core/types/auth';
 
 export type AssistantActionType = 'navigate' | 'page_action' | 'feedback' | 'external' | 'chat_prompt';
 export type AssistantConfidence = 'low' | 'medium' | 'high';
@@ -37,7 +37,7 @@ export interface AssistantChatRequest {
   message: string;
   path: string;
   page_key?: string;
-  role?: Role | null;
+  operating_context?: OperatingContext | null;
   context?: {
     page_title?: string;
     state?: Record<string, unknown>;
@@ -66,7 +66,7 @@ export interface AssistantSuggestion {
 export interface AssistantSuggestRequest {
   path: string;
   page_key?: string;
-  role?: Role | null;
+  operating_context?: OperatingContext | null;
   context?: {
     page_title?: string;
     state?: Record<string, unknown>;
@@ -83,7 +83,7 @@ export interface AssistantFeedbackPayload {
   description: string;
   category: AssistantFeedbackCategory;
   path: string;
-  role?: Role | null;
+  operating_context?: OperatingContext | null;
   context?: {
     source?: string;
     page_key?: string;
