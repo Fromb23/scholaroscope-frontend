@@ -3,6 +3,6 @@ import { registerPluginRouteAccess } from '@/app/utils/pluginRouteAccess';
 registerPluginRouteAccess({
     key: 'announcements-route-access',
     rules: [
-        { pattern: /^\/announcements/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+        { pattern: /^\/announcements/, requiredAnyPermission: ['announcements.view', 'announcements.create', 'announcements.manage'] },
     ],
 });

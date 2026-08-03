@@ -6,7 +6,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useInstructorCohortAccess, type InstructorCurriculumKey } from '@/app/core/hooks/useInstructorCohortAccess';
 import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
 import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
-import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { PermissionResolvingState } from '@/app/components/ui/loading';
 
 interface CurriculumAccessGuardProps {
@@ -22,7 +22,7 @@ export function CurriculumAccessGuard({
 }: CurriculumAccessGuardProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const { user, activeRole, loading } = useAuth();
+    const { user, activeOperatingContext, capabilities, loading } = useAuth();
     const access = useInstructorCohortAccess();
 
     const curriculumType = curriculum === 'CBC' ? 'CBE' : 'CAMBRIDGE';
@@ -46,10 +46,10 @@ export function CurriculumAccessGuard({
         return 'read' as const;
     })();
 
-    const allowed = !user
-        ? false
-        : activeRole === 'ADMIN'
-            || (activeRole === 'INSTRUCTOR' && access.hasCurriculumAccess(curriculum));
+    const allowed = Boolean(user) && (
+        capabilities.can_manage_academic_setup
+        || (capabilities.can_teach && access.hasCurriculumAccess(curriculum))
+    );
 
     const lifecycle = useCurriculumLifecycleGuard({
         curriculumType,
@@ -59,9 +59,9 @@ export function CurriculumAccessGuard({
     });
 
     useEffect(() => {
-        if (loading || access.isLoading || allowed || !activeRole) return;
-        router.replace(roleHomeRoute[activeRole]);
-    }, [access.isLoading, activeRole, allowed, loading, router]);
+        if (loading || access.isLoading || allowed) return;
+        router.replace(operatingContextHomeRoute(activeOperatingContext));
+    }, [access.isLoading, activeOperatingContext, allowed, loading, router]);
 
     if (loading || access.isLoading) return <PermissionResolvingState message={`Checking ${curriculum} access...`} />;
     if (!allowed) return <>{fallback}</>;
@@ -72,7 +72,7 @@ export function CurriculumAccessGuard({
                 title={`${curriculum} route unavailable`}
                 status={lifecycle.curriculum?.offering_status ?? null}
                 message={lifecycle.message}
-                backHref={activeRole ? roleHomeRoute[activeRole] : '/dashboard'}
+                backHref={operatingContextHomeRoute(activeOperatingContext)}
                 backLabel="Back"
                 primaryHref={curriculum === 'CAMBRIDGE' ? '/cambridge/setup' : '/academic/curricula'}
                 primaryLabel={curriculum === 'CAMBRIDGE' ? 'Open Cambridge Setup' : 'Open Curricula'}

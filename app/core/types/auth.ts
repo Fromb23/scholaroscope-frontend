@@ -1,6 +1,12 @@
 // app/core/types/auth.ts
 
+/**
+ * Deprecated compatibility metadata from OrganizationMembership.role.
+ * Do not import this type into guards, route access, navigation, or permission
+ * helpers as an authority source.
+ */
 export type Role = 'ADMIN' | 'INSTRUCTOR';
+export type OperatingContext = 'WORKSPACE_MANAGEMENT' | 'MY_TEACHING';
 export type OrgType =
   | 'INSTITUTION'
   | 'PERSONAL'
@@ -108,6 +114,7 @@ export interface WorkspaceCapabilities {
     roles: Array<{
       id: number | null;
       name: string;
+      slug?: string;
       role_kind?: string;
       is_workspace_admin?: boolean;
       assignment_id?: number;

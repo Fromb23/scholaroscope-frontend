@@ -35,8 +35,8 @@ interface CurriculumLifecycleGuardResult {
   role: CurriculumLifecycleRole;
 }
 
-function resolveLifecycleRole(activeRole: ReturnType<typeof useAuth>['activeRole']): CurriculumLifecycleRole {
-  if (activeRole === 'INSTRUCTOR') {
+function resolveLifecycleRole(activeOperatingContext: ReturnType<typeof useAuth>['activeOperatingContext']): CurriculumLifecycleRole {
+  if (activeOperatingContext === 'MY_TEACHING') {
     return 'INSTRUCTOR';
   }
 
@@ -48,9 +48,9 @@ export function useCurriculumLifecycleGuard(
 ): CurriculumLifecycleGuardResult {
   const { curricula, loading: curriculaLoading } = useCurricula();
   const { plugins, loading: pluginsLoading } = usePlugins();
-  const { activeRole } = useAuth();
+  const { activeOperatingContext } = useAuth();
 
-  const role = resolveLifecycleRole(activeRole);
+  const role = resolveLifecycleRole(activeOperatingContext);
 
   const curriculum = useMemo(() => {
     if (typeof options.curriculumId === 'number' && options.curriculumId > 0) {

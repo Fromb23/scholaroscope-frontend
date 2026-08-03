@@ -43,6 +43,7 @@ import type {
   RegisterPayload,
   RegisterResponse,
   Role,
+  OperatingContext,
   SwitchOrgResponse,
   User,
   WorkspaceCapabilities,
@@ -53,6 +54,10 @@ interface AuthContextType {
   activeOrg: ActiveOrg | null;
   memberships: OrgMembership[];
   capabilities: WorkspaceCapabilities;
+  availableOperatingContexts: OperatingContext[];
+  activeOperatingContext: OperatingContext | null;
+  setActiveOperatingContext: (context: OperatingContext) => void;
+  /** @deprecated compatibility metadata only; do not authorize from this. */
   activeRole: Role | null;
   loading: boolean;
   loggingOut: boolean;
@@ -121,6 +126,55 @@ function resolveActiveRole(
   return resolveMembershipRoleForOrganization(user, activeOrg, memberships);
 }
 
+const OPERATING_CONTEXT_STORAGE_KEY = 'scholaroscope_operating_context';
+
+function readStoredOperatingContext(): OperatingContext | null {
+  if (typeof window === 'undefined') return null;
+  const value = window.localStorage.getItem(OPERATING_CONTEXT_STORAGE_KEY);
+  return value === 'WORKSPACE_MANAGEMENT' || value === 'MY_TEACHING' ? value : null;
+}
+
+function writeStoredOperatingContext(context: OperatingContext | null) {
+  if (typeof window === 'undefined') return;
+  if (context) {
+    window.localStorage.setItem(OPERATING_CONTEXT_STORAGE_KEY, context);
+  } else {
+    window.localStorage.removeItem(OPERATING_CONTEXT_STORAGE_KEY);
+  }
+}
+
+function hasAnyPermission(capabilities: WorkspaceCapabilities, keys: string[]): boolean {
+  const permissionKeys = capabilities.authorization?.permission_keys ?? [];
+  return keys.some((key) => permissionKeys.includes(key));
+}
+
+function deriveOperatingContexts(capabilities: WorkspaceCapabilities): OperatingContext[] {
+  const contexts: OperatingContext[] = [];
+  const canManage = Boolean(
+    capabilities.can_manage_staff
+    || capabilities.can_manage_roles
+    || capabilities.can_manage_academic_setup
+    || capabilities.can_manage_learners
+    || capabilities.can_manage_cohorts
+    || capabilities.can_manage_subjects
+    || capabilities.can_manage_assessments
+    || capabilities.can_manage_plugins
+    || capabilities.can_manage_announcements
+    || hasAnyPermission(capabilities, [
+      'workspace.view',
+      'workspace.members.view',
+      'workspace.roles.view',
+      'academic.view',
+      'academic.terms.manage',
+      'learners.manage',
+      'reports.view',
+    ])
+  );
+  if (canManage) contexts.push('WORKSPACE_MANAGEMENT');
+  if (capabilities.can_teach) contexts.push('MY_TEACHING');
+  return contexts;
+}
+
 function buildAccessNotices(...noticeGroups: Array<AccessNotice[] | undefined>): AccessNotice[] {
   const notices = noticeGroups.flatMap((group) => group ?? []);
   const seen = new Set<string>();
@@ -164,12 +218,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [savedOperatingContext, setSavedOperatingContext] = useState<OperatingContext | null>(() => readStoredOperatingContext());
   const authStateVersionRef = useRef(0);
 
   const activeRole = useMemo(
     () => resolveActiveRole(user, activeOrg, memberships),
     [user, activeOrg, memberships]
   );
+  const availableOperatingContexts = useMemo(
+    () => (user && activeOrg ? deriveOperatingContexts(capabilities) : []),
+    [activeOrg, capabilities, user]
+  );
+  const activeOperatingContext = useMemo<OperatingContext | null>(() => {
+    if (availableOperatingContexts.length === 0) return null;
+    if (savedOperatingContext && availableOperatingContexts.includes(savedOperatingContext)) {
+      return savedOperatingContext;
+    }
+    return availableOperatingContexts[0];
+  }, [availableOperatingContexts, savedOperatingContext]);
+
+  const selectOperatingContext = useCallback((context: OperatingContext) => {
+    setSavedOperatingContext(context);
+    writeStoredOperatingContext(context);
+  }, []);
 
   const advanceAuthority = useCallback((reason: WorkspaceGenerationReason) => {
     queryClient.clear();
@@ -186,6 +257,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveOrg(null);
     setMemberships([]);
     setCapabilities(DEFAULT_WORKSPACE_CAPABILITIES);
+    setSavedOperatingContext(null);
+    writeStoredOperatingContext(null);
     setMembershipVersion(0);
     setAccessNotices([]);
     advanceAuthority(reason);
@@ -455,6 +528,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       activeOrg,
       memberships,
       capabilities,
+      availableOperatingContexts,
+      activeOperatingContext,
+      setActiveOperatingContext: selectOperatingContext,
       activeRole,
       loading,
       loggingOut,

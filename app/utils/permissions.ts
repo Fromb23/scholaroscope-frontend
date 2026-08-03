@@ -1,21 +1,14 @@
 // app/utils/permissions.ts
 
-type Role = 'ADMIN' | 'INSTRUCTOR';
+import type { Role, WorkspaceCapabilities } from '../core/types/auth';
+
 type User = {
     is_superadmin?: boolean;
 } | null;
-type WorkspaceCapabilities = {
-    can_manage_staff?: boolean;
-    can_manage_academic_setup?: boolean;
-    can_manage_cohorts?: boolean;
-    can_manage_subjects?: boolean;
-    can_manage_learners?: boolean;
-    can_manage_assessments?: boolean;
-    can_teach?: boolean;
-    can_view_reports?: boolean;
-} | null;
+type CapabilityProjection = Partial<WorkspaceCapabilities> | null;
 
-// ── Core role checks (take activeRole, not activeRole) ─────────────────────────
+// Deprecated compatibility predicates. They are retained for presentation-only
+// legacy callers and must not be used as authorization fallbacks.
 
 export const isAdmin = (activeRole: Role | null): boolean =>
     activeRole === 'ADMIN';
@@ -37,8 +30,7 @@ export const hasRouteAccess = (
     allowedRoles: Role[]
 ): boolean => {
     if (!user) return false;
-    if (!activeRole) return false;
-    return allowedRoles.includes(activeRole);
+    return false;
 };
 
 
@@ -47,62 +39,68 @@ export const hasRouteAccess = (
 export const canManageUsers = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
+    capabilities?: CapabilityProjection,
 ): boolean => {
     if (capabilities) return Boolean(capabilities.can_manage_staff);
-    return isAdminOrAbove(user, activeRole);
+    return false;
 };
 
 export const canManageStaff = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
-): boolean => capabilities?.can_manage_staff ?? isAdminOrAbove(user, activeRole);
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(capabilities?.can_manage_staff);
 
 export const canManageCurriculum = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
-): boolean => capabilities?.can_manage_academic_setup ?? isAdminOrAbove(user, activeRole);
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(capabilities?.can_manage_academic_setup);
 
 export const canManageCohorts = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
-): boolean => capabilities?.can_manage_cohorts ?? isAdminOrAbove(user, activeRole);
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(capabilities?.can_manage_cohorts);
 
 export const canManageAssessments = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
-): boolean => capabilities?.can_manage_assessments ?? isAdminOrAbove(user, activeRole);
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(capabilities?.can_manage_assessments);
 
-export const canManagePlugins = (user: User, activeRole: Role | null): boolean =>
-    isAdminOrAbove(user, activeRole);
+export const canManagePlugins = (
+    user: User,
+    activeRole: Role | null,
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(user && capabilities?.can_manage_plugins);
 
 export const canCreateSession = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
-): boolean => capabilities?.can_teach ?? (activeRole === 'INSTRUCTOR' || isAdminOrAbove(user, activeRole));
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(capabilities?.can_teach);
 
 export const canMarkAttendance = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
-): boolean => capabilities?.can_teach ?? (activeRole === 'INSTRUCTOR' || isAdminOrAbove(user, activeRole));
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(capabilities?.can_teach);
 
 export const canViewReports = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
-): boolean => capabilities?.can_view_reports ?? isAdminOrAbove(user, activeRole);
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(capabilities?.can_view_reports);
 
 export const canManageRequests = (user: User): boolean =>
     !!user;
 
-export const canManageAnnouncements = (user: User, activeRole: Role | null): boolean =>
-    isAdminOrAbove(user, activeRole);
+export const canManageAnnouncements = (
+    user: User,
+    activeRole: Role | null,
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(user && capabilities?.can_manage_announcements);
 
 export const canViewAnnouncements = (user: User): boolean =>
     !!user;
@@ -110,11 +108,11 @@ export const canViewAnnouncements = (user: User): boolean =>
 export const canBulkUploadStudents = (
     user: User,
     activeRole: Role | null,
-    capabilities?: WorkspaceCapabilities,
-): boolean => capabilities?.can_manage_learners ?? isAdminOrAbove(user, activeRole);
+    capabilities?: CapabilityProjection,
+): boolean => Boolean(capabilities?.can_manage_learners);
 
 export const canDeleteRecords = (user: User, activeRole: Role | null): boolean =>
-    isAdminOrAbove(user, activeRole);
+    false;
 
 type Capability =
     | 'EDIT_LEARNER'
@@ -124,25 +122,21 @@ type Capability =
 export const hasCapability = (
     activeRole: Role | null,
     capability: Capability,
-    capabilities?: WorkspaceCapabilities,
+    capabilities?: CapabilityProjection,
 ): boolean => {
-    if (capabilities) {
-        switch (capability) {
-            case 'CREATE_LEARNER':
-            case 'EDIT_LEARNER':
-            case 'MANAGE_ENROLLMENT':
-                return Boolean(capabilities.can_manage_learners);
-            default:
-                return false;
-        }
-    }
-
     switch (capability) {
         case 'CREATE_LEARNER':
         case 'EDIT_LEARNER':
         case 'MANAGE_ENROLLMENT':
-            return activeRole === 'ADMIN';
+            return Boolean(capabilities?.can_manage_learners);
         default:
             return false;
     }
 };
+
+export function hasPermission(
+    capabilities: CapabilityProjection | undefined,
+    permissionKey: string,
+): boolean {
+    return Boolean(capabilities?.authorization?.permission_keys?.includes(permissionKey));
+}

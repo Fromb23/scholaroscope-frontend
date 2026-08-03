@@ -47,7 +47,7 @@ export default function CambridgeInstallationSubjectFrameworksPage() {
 
   return (
     <TenantGuard>
-      <PermissionGuard allowedRoles={['ADMIN', 'INSTRUCTOR']}>
+      <PermissionGuard requiredAnyPermission={['academic.curricula.view', 'academic.curricula.manage']}>
         <div className="space-y-6">
           <CambridgeWorkflowNav />
           <CambridgeBreadcrumb

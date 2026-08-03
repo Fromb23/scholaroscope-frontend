@@ -48,8 +48,8 @@ function activePluginKeys(plugins: ReturnType<typeof usePlugins>['plugins']): st
 
 export function PluginRegistryProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { activeOrg, activeRole, capabilities, loading: authLoading, user } = useAuth();
-  const canLoadPlugins = Boolean(user) && !authLoading && Boolean(activeRole);
+  const { activeOrg, capabilities, loading: authLoading, user } = useAuth();
+  const canLoadPlugins = Boolean(user) && !authLoading && Boolean(activeOrg);
   const { plugins } = usePlugins({ enabled: canLoadPlugins });
   const { curricula } = useCurricula({ enabled: canLoadPlugins });
   const [loadedPluginIds, setLoadedPluginIds] = useState<PluginId[]>(() => getLoadedPluginIds());
@@ -60,7 +60,6 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     const enabledFeatures = activePluginKeys(plugins);
     return {
       activeOrg,
-      activeRole,
       capabilities,
       curriculumTypes: curricula
         .filter((curriculum) => curriculum.is_active !== false)
@@ -70,7 +69,6 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     };
   }, [
     activeOrg,
-    activeRole,
     capabilities,
     curricula,
     pathname,
