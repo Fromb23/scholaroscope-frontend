@@ -121,10 +121,7 @@ export function isSelfManagedTeachingAdmin(params: {
   capabilities?: WorkspaceCapabilities | null;
   user?: User | null;
 }): boolean {
-  const { activeRole, activeOrg, capabilities } = params;
-  if (activeRole !== 'ADMIN') {
-    return false;
-  }
+  const { activeOrg, capabilities } = params;
 
   const orgType = activeOrg?.org_type ?? null;
   const isSelfManagedTeaching = isSelfManagedTeachingWorkspace({
@@ -135,11 +132,7 @@ export function isSelfManagedTeachingAdmin(params: {
     return false;
   }
 
-  if (!capabilities) {
-    return true;
-  }
-
-  return Boolean(capabilities.can_teach || capabilities.is_workspace_owner);
+  return Boolean(capabilities?.can_teach && capabilities.is_workspace_owner);
 }
 
 export function isTeachingActorView(params: {
@@ -148,7 +141,7 @@ export function isTeachingActorView(params: {
   capabilities?: WorkspaceCapabilities | null;
   user?: User | null;
 }): boolean {
-  return params.activeRole === 'INSTRUCTOR' || isSelfManagedTeachingAdmin(params);
+  return Boolean(params.capabilities?.can_teach) || isSelfManagedTeachingAdmin(params);
 }
 
 export function normalizeRegisterOrgType(orgType?: RegisterOrgType | OrgType | string): RegisterOrgType {
@@ -226,27 +219,11 @@ export function canUseTeachingMode({
   isWorkspaceOwner,
   capabilities,
 }: TeachingCapabilityParams): boolean {
-  if (capabilities) {
-    return capabilities.can_teach;
-  }
-
-  if (isSuperadmin) {
-    return false;
-  }
-
-  if (role === 'INSTRUCTOR') {
-    return true;
-  }
-
-  if (role === 'ADMIN') {
-    return workspaceAllowsSelfManagedTeaching(orgType) && Boolean(isWorkspaceOwner);
-  }
-
-  return false;
+  return Boolean(capabilities?.can_teach);
 }
 
 export function canShowAdminMyTeaching(params: TeachingCapabilityParams): boolean {
-  return params.role === 'ADMIN' && canUseTeachingMode(params);
+  return canUseTeachingMode(params);
 }
 
 export function canCreateTeachingRecord(params: TeachingCapabilityParams): boolean {
@@ -254,15 +231,11 @@ export function canCreateTeachingRecord(params: TeachingCapabilityParams): boole
 }
 
 export function isSupervisionOnlyAdmin(params: TeachingCapabilityParams): boolean {
-  return params.role === 'ADMIN' && !canUseTeachingMode(params);
+  return canManageWorkspaceUsers(params) && !canUseTeachingMode(params);
 }
 
 export function canManageWorkspaceUsers(params: TeachingCapabilityParams): boolean {
-  if (params.capabilities) {
-    return Boolean(params.capabilities.can_manage_staff);
-  }
-
-  return params.role === 'ADMIN';
+  return Boolean(params.capabilities?.can_manage_staff);
 }
 
 export function canShowStaffManagement(params: TeachingCapabilityParams): boolean {

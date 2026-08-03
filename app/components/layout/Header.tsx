@@ -2,47 +2,70 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2, Plus, Settings, Moon, Sun } from 'lucide-react';
-import { useAuth } from '@/app/context/AuthContext';
-import { useTheme } from '@/app/context/ThemeContext';
 import { useRouter } from 'next/navigation';
-import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
-import { roleHomeRoute } from '@/app/utils/routeAccess';
-import { useSidebar } from '@/app/context/SidebarContext';
+import {
+  Building2,
+  Check,
+  ChevronDown,
+  Loader2,
+  LogOut,
+  Menu,
+  Moon,
+  Plus,
+  Settings,
+  Sun,
+  User,
+} from 'lucide-react';
+
 import { GlobalPeopleSearch } from '@/app/components/layout/GlobalPeopleSearch';
 import { NotificationBell } from '@/app/components/layout/NotificationBell';
+import { useAuth } from '@/app/context/AuthContext';
+import { useSidebar } from '@/app/context/SidebarContext';
+import { useTheme } from '@/app/context/ThemeContext';
 import { themeAPI } from '@/app/core/api/theme';
+import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { themeModeToAppearanceMode } from '@/app/core/theme/effectiveTheme';
 
 export default function Header() {
-  const { user, activeOrg, activeRole, memberships, logout, loggingOut, switchOrg } = useAuth();
+  const {
+    user,
+    activeOrg,
+    activeOperatingContext,
+    availableOperatingContexts,
+    setActiveOperatingContext,
+    capabilities,
+    memberships,
+    logout,
+    loggingOut,
+    switchOrg,
+  } = useAuth();
   const { themeMode, setThemeMode, isDark } = useTheme();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { toggleSidebar } = useSidebar();
+  const router = useRouter();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [switching, setSwitching] = useState<number | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const router = useRouter();
-
   const logoutPending = isLoggingOut || loggingOut;
 
-  const handleLogout = () => {
-    if (logoutPending) {
-      return;
-    }
+  const contextLabel = activeOperatingContext === 'MY_TEACHING'
+    ? 'My teaching'
+    : activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+      ? 'Workspace management'
+      : 'Workspace';
 
+  const handleLogout = () => {
+    if (logoutPending) return;
     setIsLoggingOut(true);
     setDropdownOpen(false);
     setOrgDropdownOpen(false);
-
     try {
       void logout().catch(() => undefined);
-    } catch {
-      // Local auth state must still be cleared and the user must still leave the dashboard.
     } finally {
       window.location.replace('/login');
     }
   };
+
   const handleToggleTheme = () => {
     const nextMode = themeMode === 'DARK' ? 'DEFAULT' : 'DARK';
     setThemeMode(nextMode);
@@ -58,14 +81,9 @@ export default function Header() {
     }
     setSwitching(orgId);
     try {
-      const response = await switchOrg(orgId);
-      const nextRole = resolveMembershipRoleForOrganization(
-        response.user,
-        response.active_org,
-        response.memberships,
-      );
+      await switchOrg(orgId);
       setOrgDropdownOpen(false);
-      router.replace(nextRole ? (roleHomeRoute[nextRole] ?? '/dashboard') : '/dashboard');
+      router.replace(operatingContextHomeRoute(activeOperatingContext));
     } catch (err) {
       console.error('Failed to switch org:', err);
     } finally {
@@ -74,8 +92,12 @@ export default function Header() {
   };
 
   const showWorkspaceControl = user && !user.is_superadmin;
-  const showPeopleSearch = !!user && activeRole === 'ADMIN';
-  const showSettingsLink = !!user && activeRole === 'ADMIN';
+  const showPeopleSearch = Boolean(user && capabilities.can_manage_staff);
+  const permissionKeys = capabilities.authorization?.permission_keys ?? [];
+  const showSettingsLink = Boolean(
+    user
+    && (permissionKeys.includes('workspace.settings.view') || permissionKeys.includes('workspace.settings.manage'))
+  );
 
   return (
     <header className="theme-header sticky top-0 z-30 flex h-16 items-center justify-between border-b theme-border px-4 lg:px-6">
@@ -87,7 +109,6 @@ export default function Header() {
       </button>
 
       <div className="ml-auto flex items-center gap-3">
-        {/* Workspace control — always visible for non-superadmin */}
         {showWorkspaceControl && (
           <div className="relative">
             <button
@@ -119,7 +140,7 @@ export default function Header() {
                         disabled={!!switching}
                         className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-sm theme-hover-surface disabled:opacity-60"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
                           <div
                             className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 ${isActive ? 'theme-brand-icon' : 'theme-surface-muted'}`}
                           >
@@ -128,13 +149,11 @@ export default function Header() {
                             />
                           </div>
                           <div className="min-w-0 text-left">
-                            <p
-                              className={`truncate font-medium ${isActive ? 'theme-link' : 'theme-text'}`}
-                            >
+                            <p className={`truncate font-medium ${isActive ? 'theme-link' : 'theme-text'}`}>
                               {m.organization.name}
                             </p>
-                            <p className="theme-subtle text-xs capitalize">
-                              {m.role.toLowerCase()}
+                            <p className="theme-subtle text-xs">
+                              {m.role_display || m.role}
                             </p>
                           </div>
                         </div>
@@ -168,11 +187,8 @@ export default function Header() {
         )}
 
         {showPeopleSearch && <GlobalPeopleSearch />}
-
-        {/* Notification bell */}
         <NotificationBell />
 
-        {/* User dropdown */}
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -183,7 +199,7 @@ export default function Header() {
             </div>
             <div className="hidden text-left md:block">
               <p className="text-sm font-medium theme-text">{user?.full_name}</p>
-              <p className="theme-subtle text-xs">{activeRole ?? '—'}</p>
+              <p className="theme-subtle text-xs">{contextLabel}</p>
             </div>
           </button>
 
@@ -207,6 +223,29 @@ export default function Header() {
                     Settings
                   </Link>
                 ) : null}
+
+                {availableOperatingContexts.length > 1 ? (
+                  <div className="border-t theme-border py-2">
+                    <p className="theme-subtle px-4 pb-1 text-xs font-semibold uppercase tracking-wide">
+                      Operating context
+                    </p>
+                    {availableOperatingContexts.map((context) => (
+                      <button
+                        key={context}
+                        onClick={() => {
+                          setActiveOperatingContext(context);
+                          setDropdownOpen(false);
+                          router.replace(operatingContextHomeRoute(context));
+                        }}
+                        className="flex w-full items-center justify-between gap-3 px-4 py-2 text-sm theme-text theme-hover-surface"
+                      >
+                        <span>{context === 'WORKSPACE_MANAGEMENT' ? 'Workspace management' : 'My teaching'}</span>
+                        {context === activeOperatingContext ? <Check className="h-3.5 w-3.5 theme-icon-emphasis" /> : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
                 <div className="border-t theme-border pt-2">
                   <button
                     onClick={handleToggleTheme}

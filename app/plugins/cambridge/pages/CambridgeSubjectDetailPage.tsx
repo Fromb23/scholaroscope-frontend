@@ -75,7 +75,7 @@ export default function CambridgeSubjectDetailPage() {
 
   return (
     <TenantGuard>
-      <PermissionGuard allowedRoles={['ADMIN', 'INSTRUCTOR']}>
+      <PermissionGuard requiredAnyPermission={['academic.subjects.view', 'academic.subjects.manage']}>
         <div className="space-y-6">
           <CambridgeWorkflowNav />
           <CambridgeBreadcrumb

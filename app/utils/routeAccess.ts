@@ -1,9 +1,11 @@
 // app/utils/routeAccess.ts
 
-import { getPluginRouteAccessRules, type RouteAccessRole, type RouteAccessRule } from './pluginRouteAccess';
-
-type Role = RouteAccessRole;
-type RouteRule = RouteAccessRule;
+import type { OperatingContext, Role, WorkspaceCapabilities } from '../core/types/auth';
+import {
+    getPluginRouteAccessRules,
+    type RouteAccessContext,
+    type RouteAccessRule,
+} from './pluginRouteAccess';
 
 function hasPositiveParam(url: URL, key: string): boolean {
     const value = Number(url.searchParams.get(key));
@@ -23,89 +25,116 @@ export function isScopedInstructorAttendanceReport(path: string): boolean {
     return hasLearner && hasClassSubject;
 }
 
-const kernelRouteRules: RouteRule[] = [
-    // ADMIN ONLY
-    { pattern: /^\/dashboard\/admin/, allowedRoles: ['ADMIN'] },
-    // The page performs action-specific permission checks for each settings surface.
-    { pattern: /^\/admin\/settings(?:\/|$)/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/admin/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/curricula/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/years/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/terms/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/subjects/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/cohorts\/[^/]+\/students$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/topics$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/topics\/new/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/topics\/\d+\/edit/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/topics\/browser/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/progress/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/learners\/new$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/learners\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/assessments\/new$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/assessments\/[^/]+\/edit$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/reports\/instructor(?:\/|$)/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/reports\/learners\/[^/]+\/subject$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/reports\/learners\/[^/]+\/assessments$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/reports\/learners\/[^/]+\/overview$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/reports\/learners\/[^/]+\/assignments$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/reports\/instructors(?:\/|$)/, allowedRoles: ['ADMIN'] },
+const kernelRouteRules: RouteAccessRule[] = [
+    { pattern: /^\/dashboard\/admin/, requiredContext: 'WORKSPACE_MANAGEMENT' },
+    { pattern: /^\/dashboard\/instructor/, requiredContext: 'MY_TEACHING', requiredCapability: 'can_teach' },
+    { pattern: /^\/admin\/settings(?:\/|$)/, requiredAnyPermission: ['workspace.settings.view', 'workspace.settings.manage'] },
+    { pattern: /^\/admin/, requiredContext: 'WORKSPACE_MANAGEMENT', requiredAnyPermission: ['workspace.members.view', 'workspace.members.manage'] },
+    { pattern: /^\/academic\/curricula/, requiredCapability: 'can_manage_academic_setup' },
+    { pattern: /^\/academic\/years/, requiredCapability: 'can_manage_academic_setup' },
+    { pattern: /^\/academic\/terms/, requiredCapability: 'can_manage_academic_setup' },
+    { pattern: /^\/academic\/subjects/, requiredAnyPermission: ['academic.subjects.view', 'academic.subjects.manage'] },
+    { pattern: /^\/academic\/cohorts\/[^/]+\/students$/, requiredCapability: 'can_manage_learners' },
+    { pattern: /^\/academic\/topics/, requiredCapability: 'can_manage_academic_setup' },
+    { pattern: /^\/academic\/progress/, requiredAnyPermission: ['reports.view'] },
+    { pattern: /^\/learners\/new$/, requiredCapability: 'can_manage_learners' },
+    { pattern: /^\/learners\/[^/]+\/edit$/, requiredCapability: 'can_manage_learners' },
+    { pattern: /^\/assessments\/new$/, requiredAnyPermission: ['assessments.create', 'assessments.manage'] },
+    { pattern: /^\/assessments\/[^/]+\/edit$/, requiredAnyPermission: ['assessments.manage', 'assessments.review'] },
+    { pattern: /^\/reports\/instructor(?:\/|$)/, requiredCapability: 'can_teach' },
+    { pattern: /^\/reports\/learners\/[^/]+\/(subject|assessments|overview|assignments)$/, requiredAnyPermission: ['reports.view'] },
+    { pattern: /^\/reports\/instructors(?:\/|$)/, requiredAnyPermission: ['reports.view'] },
     {
         pattern: /^\/reports\/attendance$/,
-        allowedRoles: ['ADMIN', 'INSTRUCTOR'],
-        isAllowed: ({ role, url }) => (
-            role !== 'INSTRUCTOR'
+        requiredAnyPermission: ['reports.view'],
+        isAllowed: ({ operatingContext, url }) => (
+            operatingContext !== 'MY_TEACHING'
             || isScopedInstructorAttendanceReport(`${url.pathname}${url.search}`)
         ),
     },
-    { pattern: /^\/reports$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/reports\/(students|cohorts|subjects|assessments|policies|compute)(\/.*)?$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/reports\/grade-policies(\/.*)?$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/reports/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/revenue(?:\/|$)/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-
-    // INSTRUCTOR ONLY
-    { pattern: /^\/dashboard\/instructor/, allowedRoles: ['INSTRUCTOR'] },
-
-    // ADMIN + INSTRUCTOR
-    { pattern: /^\/academic\/cohorts$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/academic\/cohorts\/\d+$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/academic\/cohort-subjects\/\d+\/learners$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/sessions/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/lesson-plans/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/learners/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/assessments/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/profile/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/reports\/grade-policies(\/.*)?$/, requiredAnyPermission: ['reports.manage_policy'] },
+    { pattern: /^\/reports\/(students|cohorts|subjects|assessments|policies|compute)(\/.*)?$/, requiredAnyPermission: ['reports.view', 'reports.compute', 'reports.manage_policy'] },
+    { pattern: /^\/reports/, requiredAnyPermission: ['reports.view'] },
+    { pattern: /^\/revenue(?:\/|$)/, requiredAnyPermission: ['revenue.program.view'] },
+    { pattern: /^\/academic\/cohorts$/, requiredAnyPermission: ['academic.cohorts.view', 'academic.cohorts.manage'] },
+    { pattern: /^\/academic\/cohorts\/\d+$/, requiredAnyPermission: ['academic.cohorts.view', 'academic.cohorts.manage'] },
+    { pattern: /^\/academic\/cohort-subjects\/\d+\/learners$/, requiredAnyPermission: ['learners.view', 'learners.manage'] },
+    { pattern: /^\/sessions/, requiredAnyPermission: ['lessons.view', 'attendance.view', 'attendance.record', 'attendance.manage'] },
+    { pattern: /^\/lesson-plans/, requiredAnyPermission: ['lessons.view', 'lessons.prepare', 'lessons.manage', 'lessons.review'] },
+    { pattern: /^\/learners/, requiredAnyPermission: ['learners.view', 'learners.manage'] },
+    { pattern: /^\/assessments/, requiredAnyPermission: ['assessments.view', 'assessments.create', 'assessments.manage', 'assessments.review'] },
+    { pattern: /^\/profile/ },
 ];
 
-export const routeRules: RouteRule[] = kernelRouteRules;
+export const routeRules: RouteAccessRule[] = kernelRouteRules;
 
-export function getRouteRules(): RouteRule[] {
+export function getRouteRules(): RouteAccessRule[] {
     return [...kernelRouteRules, ...getPluginRouteAccessRules()];
 }
 
-export function routeAllowedForRole(path: string, role: Role): boolean {
-    const url = new URL(path, 'https://scholaroscope.local');
-    const matchedRule = getRouteRules().find((rule) => rule.pattern.test(url.pathname));
-    if (!matchedRule) {
-        return true;
-    }
-    if (!matchedRule.allowedRoles.includes(role)) {
-        return false;
-    }
-    return matchedRule.isAllowed?.({ role, pathname: url.pathname, url }) ?? true;
+function hasPermission(capabilities: WorkspaceCapabilities | null | undefined, key: string): boolean {
+    return Boolean(capabilities?.authorization?.permission_keys?.includes(key));
 }
 
-export const roleHomeRoute: Record<Role, string> = {
+function ruleAllows(rule: RouteAccessRule, context: RouteAccessContext): boolean {
+    if (rule.requiredContext && context.operatingContext !== rule.requiredContext) {
+        return false;
+    }
+    if (rule.requiredCapability && !context.capabilities?.[rule.requiredCapability]) {
+        return false;
+    }
+    if (rule.requiredPermissions?.some((key) => !hasPermission(context.capabilities, key))) {
+        return false;
+    }
+    if (
+        rule.requiredAnyPermission
+        && !rule.requiredAnyPermission.some((key) => hasPermission(context.capabilities, key))
+    ) {
+        return false;
+    }
+    return rule.isAllowed?.(context) ?? true;
+}
+
+export function routeAllowedForContext(
+    path: string,
+    context: Pick<RouteAccessContext, 'operatingContext' | 'capabilities'>,
+): boolean {
+    const url = new URL(path, 'https://scholaroscope.local');
+    const matchedRule = getRouteRules().find((rule) => rule.pattern.test(url.pathname));
+    if (!matchedRule) return true;
+    return ruleAllows(matchedRule, {
+        ...context,
+        pathname: url.pathname,
+        url,
+    });
+}
+
+/** @deprecated Legacy roles never grant route access. */
+export function routeAllowedForRole(path: string, role: Role): boolean {
+    return false;
+}
+
+export function operatingContextHomeRoute(context: OperatingContext | null): string {
+    if (context === 'MY_TEACHING') return '/dashboard/instructor';
+    if (context === 'WORKSPACE_MANAGEMENT') return '/dashboard/admin';
+    return '/dashboard';
+}
+
+export const roleHomeRoute = {
     ADMIN: '/dashboard/admin',
     INSTRUCTOR: '/dashboard/instructor',
-};
+} as const;
 
-export function getUnauthorizedRouteFallback(
-    role: Role,
-    path: string,
-): string {
-    if (role === 'INSTRUCTOR' && path.startsWith('/reports')) {
+function normalizeFallbackContext(context: OperatingContext | Role | null): OperatingContext | null {
+    if (context === 'ADMIN') return 'WORKSPACE_MANAGEMENT';
+    if (context === 'INSTRUCTOR') return 'MY_TEACHING';
+    return context;
+}
+
+export function getUnauthorizedRouteFallback(context: OperatingContext | Role | null, path: string): string {
+    context = normalizeFallbackContext(context);
+    if (context === 'MY_TEACHING' && path.startsWith('/reports')) {
         return '/reports/instructor';
     }
-    return roleHomeRoute[role];
+    return operatingContextHomeRoute(context);
 }

@@ -14,9 +14,8 @@ import type { ApiError } from '@/app/core/types/errors';
 
 export type InstructorCurriculumKey = 'CBC' | 'CAMBRIDGE';
 export function useMyTeachingLoad(options?: { enabled?: boolean; includeProgress?: boolean }) {
-    const { user, activeRole, activeOrg, capabilities } = useAuth();
+    const { user, activeOrg, capabilities } = useAuth();
     const isTeachingActor = isTeachingActorView({
-        activeRole,
         activeOrg,
         capabilities,
         user,
@@ -24,7 +23,7 @@ export function useMyTeachingLoad(options?: { enabled?: boolean; includeProgress
     const enabled = options?.enabled ?? true;
 
     return useQuery<MyTeachingLoadResponse, Error>({
-        queryKey: ['my-teaching-load', activeOrg?.id ?? null, user?.id ?? null, activeRole, options?.includeProgress ?? false],
+        queryKey: ['my-teaching-load', activeOrg?.id ?? null, user?.id ?? null, capabilities.can_teach, options?.includeProgress ?? false],
         queryFn: async () => {
             try {
                 return await teachingLoadAPI.getMyTeachingLoad(
@@ -48,15 +47,14 @@ function uniqueSortedNumbers(values: Array<number | null | undefined>): number[]
 }
 
 export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
-    const { user, activeRole, activeOrg, capabilities } = useAuth();
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const { user, activeOrg, capabilities } = useAuth();
+    const isInstructor = Boolean(capabilities.can_teach);
     const selfManagedTeachingAdmin = isSelfManagedTeachingAdmin({
-        activeRole,
         activeOrg,
         capabilities,
         user,
     });
-    const isTeachingActor = isInstructor || selfManagedTeachingAdmin;
+    const isTeachingActor = Boolean(capabilities.can_teach || selfManagedTeachingAdmin);
     const { data, isLoading, error } = useMyTeachingLoad(options);
 
     const assignments = useMemo(

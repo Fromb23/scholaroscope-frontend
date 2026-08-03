@@ -481,7 +481,7 @@ function TeachingWorkspaceCard({
 
 export function InstructorDashboard() {
     const router = useRouter();
-    const { user, activeOrg, activeRole } = useAuth();
+    const { user, activeOrg, activeOperatingContext, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const isTeachingDashboardActor = instructorAccess.isTeachingActor;
 
@@ -494,7 +494,7 @@ export function InstructorDashboard() {
         assignmentWork,
     } = useInstructorDashboard();
     const academicLifecycleQuery = useAcademicLifecycleContext({
-        enabled: Boolean(activeOrg) && Boolean(activeRole),
+        enabled: Boolean(activeOrg) && capabilities.can_teach,
     });
     const sessionReminderState = useSessionLifecycleReminders();
 
@@ -607,13 +607,13 @@ export function InstructorDashboard() {
     useAssistantPageContext(assistantContext);
 
     useEffect(() => {
-        if (activeRole && !isTeachingDashboardActor) {
+        if (activeOperatingContext === 'MY_TEACHING' && !isTeachingDashboardActor) {
             router.push('/dashboard');
         }
-    }, [activeRole, isTeachingDashboardActor, router]);
+    }, [activeOperatingContext, isTeachingDashboardActor, router]);
 
-    if (!user || activeRole === null) return null;
-    if (!isTeachingDashboardActor) return null;
+    if (!user || activeOperatingContext === null) return null;
+    if (activeOperatingContext !== 'MY_TEACHING' || !capabilities.can_teach || !isTeachingDashboardActor) return null;
     if (dashboardLoading) {
         return (
             <div className="max-w-[1800px] mx-auto space-y-6">

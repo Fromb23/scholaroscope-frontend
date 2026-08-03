@@ -13,7 +13,7 @@ import {
 } from '@/app/core/lib/academicSetup';
 import {
   getUnauthorizedRouteFallback,
-  routeAllowedForRole,
+  routeAllowedForContext,
 } from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
 import MobileBottomNav from '@/app/components/layout/MobileBottomNav';
@@ -88,21 +88,22 @@ function DashboardContent({
   notices: AccessNotice[];
   onDismissNotice: () => void;
 }) {
-  const { user, activeOrg, activeRole, capabilities } = useAuth();
+  const { user, activeOrg, activeOperatingContext, capabilities } = useAuth();
   const { plugins, hasPlugin } = usePlugins();
   const { curricula } = useCurricula();
   const academicSetupQuery = useAcademicSetupStatus({
     enabled: capabilities.can_manage_academic_setup && Boolean(activeOrg),
   });
   const academicTodayModeQuery = useAcademicTodayMode({
-    enabled: activeRole === 'INSTRUCTOR' && Boolean(activeOrg),
+    enabled: activeOperatingContext === 'MY_TEACHING' && Boolean(activeOrg),
   });
   const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
 
+  const registryRole = (activeOperatingContext === 'MY_TEACHING' ? 'INSTRUCTOR' : 'ADMIN') as Role;
   const pluginNavigationContext = useMemo<PluginNavigationContext>(
     () => ({
-      role: (activeRole ?? 'ADMIN') as Role,
+      role: registryRole,
       user,
       orgType: activeOrg?.org_type ?? null,
       workspaceBehavior: capabilities.workspace_behavior,
@@ -123,7 +124,7 @@ function DashboardContent({
       },
     }),
     [
-      activeRole,
+      registryRole,
       activeOrg?.org_type,
       badges,
       capabilities,
@@ -138,7 +139,7 @@ function DashboardContent({
   const navConfig = useMemo<NavigationConfig>(
     () => resolveNavConfig({
       user,
-      activeRole,
+      activeOperatingContext,
       orgType: activeOrg?.org_type,
       pluginNavigationContext,
       academicSetup: academicSetupQuery.data ?? null,
@@ -148,7 +149,7 @@ function DashboardContent({
     }),
     [
       user,
-      activeRole,
+      activeOperatingContext,
       activeOrg?.org_type,
       pluginNavigationContext,
       academicSetupQuery.data,
@@ -184,7 +185,7 @@ function DashboardContent({
 }
 
 function DashboardLayoutContent({ children }: { children: ReactNode }) {
-  const { user, activeOrg, activeRole, loading, loggingOut, offline, accessNotices, clearAccessNotices, capabilities } = useAuth();
+  const { user, activeOrg, activeOperatingContext, availableOperatingContexts, loading, loggingOut, offline, accessNotices, clearAccessNotices, capabilities } = useAuth();
   const pluginRegistry = usePluginRegistryStatus();
   const academicSetupQuery = useAcademicSetupStatus({
     enabled: (
@@ -245,7 +246,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (activeRole === null) {
+    if (!activeOrg || availableOperatingContexts.length === 0) {
       router.replace(buildLoginPath(currentPath, { reason: 'no_access' }));
       return;
     }
@@ -257,21 +258,21 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     const search = searchParams.toString();
     const routePath = search ? `${pathname}?${search}` : pathname;
 
-    if (!routeAllowedForRole(routePath, activeRole)) {
-      router.replace(getUnauthorizedRouteFallback(activeRole, pathname));
+    if (!routeAllowedForContext(routePath, { operatingContext: activeOperatingContext, capabilities })) {
+      router.replace(getUnauthorizedRouteFallback(activeOperatingContext, pathname));
       return;
     }
 
     if (!routeAllowedByCapabilities(pathname, capabilities, activeOrg?.org_type ?? null)) {
-      if (activeRole === 'ADMIN' && isAcademicSetupAdminPath(pathname)) {
+      if (activeOperatingContext === 'WORKSPACE_MANAGEMENT' && isAcademicSetupAdminPath(pathname)) {
         return;
       }
-      router.replace(getUnauthorizedRouteFallback(activeRole, pathname));
+      router.replace(getUnauthorizedRouteFallback(activeOperatingContext, pathname));
       return;
     }
 
     if (
-      activeRole === 'ADMIN'
+      activeOperatingContext === 'WORKSPACE_MANAGEMENT'
       && activeOrg
       && academicSetupQuery.data
       && isAcademicSetupIncomplete(academicSetupQuery.data)
@@ -285,7 +286,8 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
   }, [
     academicSetupQuery.data,
     activeOrg,
-    activeRole,
+    activeOperatingContext,
+    availableOperatingContexts.length,
     capabilities,
     isLegacyWorkspaceCreationRedirectRoute,
     loading,
@@ -303,7 +305,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     !loading
     && Boolean(user)
     && !user?.is_superadmin
-    && activeRole === 'ADMIN'
+    && activeOperatingContext === 'WORKSPACE_MANAGEMENT'
     && isAcademicSetupAdminPath(pathname)
     && !capabilities.can_manage_academic_setup
   );
@@ -326,7 +328,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     loading
     || !user
     || (
-      activeRole === 'ADMIN'
+      activeOperatingContext === 'WORKSPACE_MANAGEMENT'
       && Boolean(activeOrg)
       && isAcademicSetupOperationalAdminPath(pathname)
       && academicSetupQuery.isLoading

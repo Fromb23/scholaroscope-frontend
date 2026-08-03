@@ -26,7 +26,7 @@ import {
   CalendarDays,
   CircleDollarSign,
 } from 'lucide-react';
-import type { OrgType, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { OperatingContext, OrgType, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import {
   getPluginNavigationItems,
   type NavItem as RegistryNavItem,
@@ -68,7 +68,9 @@ const MAX_MOBILE_PRIMARY_ITEMS = 4;
 
 export interface ResolveNavConfigInput {
   user: User | null;
-  activeRole: Role | null;
+  activeOperatingContext?: OperatingContext | null;
+  /** @deprecated Ignored compatibility field for stale tests/callers. */
+  activeRole?: Role | null;
   orgType?: OrgType | null;
   pluginNavigationContext: PluginNavigationContext;
   academicSetup?: AdminAcademicSetupNavStatus | null;
@@ -117,7 +119,7 @@ export const FREELANCER_WORKSPACE_COLORS: RoleColorScheme = {
 };
 
 export function getRoleColorScheme(role: Role, orgType?: OrgType | null): RoleColorScheme {
-  if (role === 'ADMIN' && isPersonalFreelancerWorkspace(orgType)) {
+  if (isPersonalFreelancerWorkspace(orgType)) {
     return FREELANCER_WORKSPACE_COLORS;
   }
   return ROLE_COLORS[role] ?? ROLE_COLORS.ADMIN;
@@ -170,7 +172,7 @@ export function resolveMobilePrimaryNav(navConfig: NavigationConfig): RegistryNa
 
 export function resolveNavConfig({
   user,
-  activeRole,
+  activeOperatingContext,
   orgType,
   pluginNavigationContext,
   academicSetup = null,
@@ -180,17 +182,18 @@ export function resolveNavConfig({
 }: ResolveNavConfigInput): NavigationConfig {
   if (!user) return { primary: [] };
   if (user.is_superadmin) return { primary: [] };
+  activeOperatingContext = activeOperatingContext ?? null;
 
-  switch (activeRole) {
-    case 'ADMIN':
-      return getAdminNav(
+  switch (activeOperatingContext) {
+    case 'WORKSPACE_MANAGEMENT':
+      return getWorkspaceManagementNav(
         pluginNavigationContext,
         orgType,
         academicSetup,
         capabilities,
       );
-    case 'INSTRUCTOR':
-      return getInstructorNav(pluginNavigationContext, academicTodayMode, instructorAssignedCohortCount);
+    case 'MY_TEACHING':
+      return getMyTeachingNav(pluginNavigationContext, academicTodayMode, instructorAssignedCohortCount);
     default:
       return { primary: [] };
   }
@@ -224,7 +227,7 @@ function selfManagedAcademicSetupNav(): RegistryNavItem {
   };
 }
 
-export function getAdminNav(
+export function getWorkspaceManagementNav(
   pluginContext: PluginNavigationContext,
   orgType?: OrgType | null,
   academicSetup?: (Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'> & Partial<AcademicSetupStatus>) | null,
@@ -486,7 +489,7 @@ export function getInstructorClassesLabel(cohortCount?: number | null): string {
   return cohortCount === 1 ? 'My Class' : 'My Classes';
 }
 
-export function getInstructorNav(
+export function getMyTeachingNav(
   pluginContext: PluginNavigationContext,
   todayMode?: AcademicTodayModeValue | null,
   assignedCohortCount?: number | null,
@@ -548,13 +551,20 @@ export function getInstructorNav(
   };
 }
 
+/** @deprecated Use getWorkspaceManagementNav. */
+export const getAdminNav = getWorkspaceManagementNav;
+
+/** @deprecated Use getMyTeachingNav. */
+export const getInstructorNav = getMyTeachingNav;
+
 // ── Footer label ──────────────────────────────────────────────────────────
 
-export function getRoleFooterLabel(role: Role, orgType?: OrgType | null): string {
-  if (role === 'ADMIN') {
+export function getRoleFooterLabel(context: OperatingContext | null, orgType?: OrgType | null): string {
+  if (context === 'WORKSPACE_MANAGEMENT') {
     return getWorkspaceManagementLabel(orgType);
   }
-  return 'Teaching Operations';
+  if (context === 'MY_TEACHING') return 'My teaching';
+  return 'Workspace';
 }
 
 // ── App logo icon ─────────────────────────────────────────────────────────

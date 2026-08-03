@@ -113,7 +113,7 @@ export default function CambridgeOfferingCohortsPage() {
 
   return (
     <TenantGuard>
-      <PermissionGuard allowedRoles={['ADMIN']}>
+      <PermissionGuard requiredAnyPermission={['academic.curricula.manage']}>
         <div className="space-y-6">
           <CambridgeWorkflowNav />
           <CambridgeBreadcrumb

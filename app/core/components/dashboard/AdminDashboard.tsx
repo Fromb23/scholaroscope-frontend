@@ -213,13 +213,13 @@ function QuickActions() {
 
 export function AdminDashboard() {
     const router = useRouter();
-    const { user, activeOrg, activeRole } = useAuth();
+    const { user, activeOrg, activeOperatingContext, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const academicSetupQuery = useAcademicSetupStatus({
-        enabled: activeRole === 'ADMIN' && Boolean(activeOrg),
+        enabled: activeOperatingContext === 'WORKSPACE_MANAGEMENT' && Boolean(activeOrg),
     });
     const academicLifecycleQuery = useAcademicLifecycleContext({
-        enabled: activeRole === 'ADMIN' && Boolean(activeOrg),
+        enabled: activeOperatingContext === 'WORKSPACE_MANAGEMENT' && Boolean(activeOrg),
     });
 
     const {
@@ -274,13 +274,13 @@ export function AdminDashboard() {
     useAssistantPageContext(assistantContext);
 
     useEffect(() => {
-        if (activeRole && activeRole !== 'ADMIN') {
+        if (activeOperatingContext && activeOperatingContext !== 'WORKSPACE_MANAGEMENT') {
             router.push('/dashboard');
         }
-    }, [activeRole, router]);
+    }, [activeOperatingContext, router]);
 
-    if (!user || activeRole === null) return null;
-    if (activeRole !== 'ADMIN') return null;
+    if (!user || activeOperatingContext === null) return null;
+    if (activeOperatingContext !== 'WORKSPACE_MANAGEMENT' || !capabilities.can_manage_academic_setup) return null;
     if (academicSetupQuery.isLoading && !setupStatus) {
         return (
             <div className="space-y-6">

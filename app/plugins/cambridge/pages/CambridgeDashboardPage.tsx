@@ -38,8 +38,8 @@ export default function CambridgeDashboardPage() {
   return (
     <TenantGuard>
       <PermissionGuard
-        allowedRoles={['ADMIN', 'INSTRUCTOR']}
-        fallback={<p className="text-sm text-gray-600">Cambridge dashboard is not available for this role.</p>}
+        requiredAnyPermission={['academic.curricula.view', 'academic.curricula.manage', 'lessons.view', 'reports.view']}
+        fallback={<p className="text-sm text-gray-600">Cambridge dashboard is not available for your current workspace responsibility.</p>}
       >
         <div className="space-y-6">
           <div>

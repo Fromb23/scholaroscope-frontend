@@ -1,6 +1,7 @@
 'use client';
 
-import type { ActiveOrg, Role, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { ActiveOrg, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { Role } from '@/app/core/types/auth';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { getProductCapability } from '@/app/core/lib/productCapabilities';
 import {
@@ -12,6 +13,7 @@ export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'sch
 
 export type PluginLoadContext = {
   activeOrg?: ActiveOrg | null;
+  /** @deprecated Ignored compatibility metadata; plugin loading uses capabilities. */
   activeRole?: Role | null;
   capabilities: WorkspaceCapabilities;
   curriculumTypes: string[];
@@ -73,8 +75,9 @@ function isPersonalOrFreelanceWorkspace(context: PluginLoadContext): boolean {
   });
 }
 
-function isWorkspaceRole(context: PluginLoadContext): boolean {
-  return new Set<Role>(['ADMIN', 'INSTRUCTOR']).has(context.activeRole as Role);
+function hasAnyWorkspacePermission(context: PluginLoadContext, keys: string[]): boolean {
+  const permissionKeys = context.capabilities.authorization?.permission_keys ?? [];
+  return keys.some((key) => permissionKeys.includes(key));
 }
 
 export const pluginManifest: PluginManifestEntry[] = [
@@ -143,7 +146,10 @@ export const pluginManifest: PluginManifestEntry[] = [
       if (resolved !== null) return resolved;
       return routeMatches(context, pluginManifestById.announcements)
         || hasLegacyInstalledFeature(context, 'announcements')
-        || (isWorkspaceRole(context) && !isPersonalOrFreelanceWorkspace(context));
+        || (
+          !isPersonalOrFreelanceWorkspace(context)
+          && hasAnyWorkspacePermission(context, ['announcements.view', 'announcements.create', 'announcements.manage'])
+        );
     },
     load: async () => {
       const { registerAnnouncementsPlugin } = await import('./announcements/register');
@@ -165,7 +171,7 @@ export const pluginManifest: PluginManifestEntry[] = [
       if (resolved !== null) return resolved;
       return routeMatches(context, pluginManifestById.requests)
         || hasLegacyInstalledFeature(context, 'requests')
-        || isWorkspaceRole(context);
+        || hasAnyWorkspacePermission(context, ['requests.view', 'requests.create', 'requests.review', 'requests.manage']);
     },
     load: async () => {
       const { registerRequestsPlugin } = await import('./requests/register');

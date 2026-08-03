@@ -97,7 +97,7 @@ export default function CambridgeTeachingSessionPage() {
 
     return (
         <TenantGuard>
-            <PermissionGuard allowedRoles={['ADMIN', 'INSTRUCTOR']}>
+            <PermissionGuard requiredAnyPermission={['lessons.view', 'lessons.prepare']}>
                 <div className="space-y-6">
                     <div className="flex flex-wrap items-center gap-3">
                         <Link href={sharedSessionHref}>

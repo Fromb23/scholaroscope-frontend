@@ -1,14 +1,20 @@
-export type RouteAccessRole = 'ADMIN' | 'INSTRUCTOR';
+import type { OperatingContext, Role, WorkspaceCapabilities } from '../core/types/auth';
 
 export interface RouteAccessContext {
-    role: RouteAccessRole;
+    operatingContext: OperatingContext | null;
+    capabilities: WorkspaceCapabilities | null | undefined;
     pathname: string;
     url: URL;
 }
 
 export interface RouteAccessRule {
     pattern: RegExp;
-    allowedRoles: RouteAccessRole[];
+    /** @deprecated Ignored. Legacy roles never grant route access. */
+    allowedRoles?: Role[];
+    requiredPermissions?: string[];
+    requiredAnyPermission?: string[];
+    requiredContext?: OperatingContext;
+    requiredCapability?: keyof WorkspaceCapabilities;
     isAllowed?: (context: RouteAccessContext) => boolean;
 }
 
