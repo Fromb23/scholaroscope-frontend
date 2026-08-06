@@ -167,6 +167,28 @@ const RULES = [
     test: countCanManageUsersWithoutCapabilities,
   },
   {
+    id: 'dashboard-shell-coarse-route-authority',
+    skip: () => false,
+    test: (source, relative) => {
+      if (relative !== '(dashboard)/DashboardClientShell.tsx') return 0;
+      return countMatches(
+        source,
+        /\brouteAllowedByCapabilities\b|function\s+\w*Allowed\w*Capabilities/g,
+      );
+    },
+  },
+  {
+    id: 'management-nav-missing-route-authority-filter',
+    skip: () => false,
+    test: (source, relative) => {
+      if (relative !== 'components/layout/navConfig.ts') return 0;
+      return (
+        source.includes('routeAllowedForContext')
+        && source.includes('filterNavigationConfigForRouteAuthority')
+      ) ? 0 : 1;
+    },
+  },
+  {
     id: 'raw-workspace-behavior-check',
     skip: isAllowedWorkspaceBehaviorPath,
     test: (source) => countMatches(

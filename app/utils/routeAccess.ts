@@ -12,6 +12,31 @@ function hasPositiveParam(url: URL, key: string): boolean {
     return Number.isInteger(value) && value > 0;
 }
 
+function permissionKeys(capabilities: WorkspaceCapabilities | null | undefined): string[] {
+    return capabilities?.authorization?.permission_keys ?? [];
+}
+
+function hasCapabilityPermission(
+    capabilities: WorkspaceCapabilities | null | undefined,
+    key: string,
+): boolean {
+    return permissionKeys(capabilities).includes(key);
+}
+
+function announcementsAvailable(capabilities: WorkspaceCapabilities | null | undefined): boolean {
+    const governance = capabilities?.workspace_governance;
+    if (governance && !governance.supports_announcements) return false;
+    return (
+        hasCapabilityPermission(capabilities, 'announcements.view')
+        || hasCapabilityPermission(capabilities, 'announcements.manage')
+        || Boolean(capabilities?.can_manage_announcements)
+    );
+}
+
+function revenueApplicable(orgType?: string | null): boolean {
+    return !['PERSONAL', 'INDEPENDENT_TEACHER', 'HOMESCHOOL', 'LEARNER_WORKSPACE'].includes(orgType ?? '');
+}
+
 export function isScopedInstructorAttendanceReport(path: string): boolean {
     const url = new URL(path, 'https://scholaroscope.local');
     const hasLearner = hasPositiveParam(url, 'student');
@@ -29,16 +54,21 @@ const kernelRouteRules: RouteAccessRule[] = [
     { pattern: /^\/dashboard\/admin/, requiredContext: 'WORKSPACE_MANAGEMENT' },
     { pattern: /^\/dashboard\/instructor/, requiredContext: 'MY_TEACHING', requiredCapability: 'can_teach' },
     { pattern: /^\/admin\/settings(?:\/|$)/, requiredAnyPermission: ['workspace.settings.view', 'workspace.settings.manage'] },
+    { pattern: /^\/admin\/lesson-plans(?:\/|$)/, requiredContext: 'WORKSPACE_MANAGEMENT', requiredAnyPermission: ['lessons.review', 'lessons.manage'] },
+    { pattern: /^\/admin\/alerts(?:\/|$)/, requiredContext: 'WORKSPACE_MANAGEMENT', requiredAnyPermission: ['workspace.audit.view'] },
+    { pattern: /^\/admin\/instructors(?:\/|$)/, requiredContext: 'WORKSPACE_MANAGEMENT', requiredAnyPermission: ['workspace.members.view', 'workspace.members.manage'] },
     { pattern: /^\/admin/, requiredContext: 'WORKSPACE_MANAGEMENT', requiredAnyPermission: ['workspace.members.view', 'workspace.members.manage'] },
-    { pattern: /^\/academic\/curricula/, requiredCapability: 'can_manage_academic_setup' },
-    { pattern: /^\/academic\/years/, requiredCapability: 'can_manage_academic_setup' },
-    { pattern: /^\/academic\/terms/, requiredCapability: 'can_manage_academic_setup' },
+    { pattern: /^\/workspace-access\/roles(?:\/|$)/, requiredContext: 'WORKSPACE_MANAGEMENT', requiredAnyPermission: ['workspace.roles.view', 'workspace.roles.manage'] },
+    { pattern: /^\/academic\/curricula/, requiredAnyPermission: ['academic.curricula.view', 'academic.curricula.manage'] },
+    { pattern: /^\/academic\/years/, requiredAnyPermission: ['academic.years.view', 'academic.years.manage'] },
+    { pattern: /^\/academic\/terms/, requiredAnyPermission: ['academic.terms.view', 'academic.terms.manage'] },
     { pattern: /^\/academic\/subjects/, requiredAnyPermission: ['academic.subjects.view', 'academic.subjects.manage'] },
-    { pattern: /^\/academic\/cohorts\/[^/]+\/students$/, requiredCapability: 'can_manage_learners' },
-    { pattern: /^\/academic\/topics/, requiredCapability: 'can_manage_academic_setup' },
+    { pattern: /^\/academic\/cohorts\/[^/]+\/students$/, requiredAnyPermission: ['learners.view', 'learners.manage'] },
+    { pattern: /^\/academic\/topics/, requiredAnyPermission: ['academic.subjects.view', 'academic.subjects.manage'] },
     { pattern: /^\/academic\/progress/, requiredAnyPermission: ['reports.view'] },
-    { pattern: /^\/learners\/new$/, requiredCapability: 'can_manage_learners' },
-    { pattern: /^\/learners\/[^/]+\/edit$/, requiredCapability: 'can_manage_learners' },
+    { pattern: /^\/academic(?:\/)?$/, requiredAnyPermission: ['academic.view', 'academic.curricula.view', 'academic.curricula.manage', 'academic.years.view', 'academic.years.manage', 'academic.terms.view', 'academic.terms.manage', 'academic.subjects.view', 'academic.subjects.manage', 'academic.cohorts.view', 'academic.cohorts.manage'] },
+    { pattern: /^\/learners\/new$/, requiredAnyPermission: ['learners.create', 'learners.manage'] },
+    { pattern: /^\/learners\/[^/]+\/edit$/, requiredAnyPermission: ['learners.manage'] },
     { pattern: /^\/assessments\/new$/, requiredAnyPermission: ['assessments.create', 'assessments.manage'] },
     { pattern: /^\/assessments\/[^/]+\/edit$/, requiredAnyPermission: ['assessments.manage', 'assessments.review'] },
     { pattern: /^\/reports\/instructor(?:\/|$)/, requiredCapability: 'can_teach' },
@@ -53,14 +83,23 @@ const kernelRouteRules: RouteAccessRule[] = [
         ),
     },
     { pattern: /^\/reports\/grade-policies(\/.*)?$/, requiredAnyPermission: ['reports.manage_policy'] },
-    { pattern: /^\/reports\/(students|cohorts|subjects|assessments|policies|compute)(\/.*)?$/, requiredAnyPermission: ['reports.view', 'reports.compute', 'reports.manage_policy'] },
+    { pattern: /^\/reports\/policies(\/.*)?$/, requiredAnyPermission: ['reports.manage_policy'] },
+    { pattern: /^\/reports\/compute(\/.*)?$/, requiredAnyPermission: ['reports.compute', 'reports.manage_policy'] },
+    { pattern: /^\/reports\/(students|cohorts|subjects|assessments)(\/.*)?$/, requiredAnyPermission: ['reports.view'] },
     { pattern: /^\/reports/, requiredAnyPermission: ['reports.view'] },
-    { pattern: /^\/revenue(?:\/|$)/, requiredAnyPermission: ['revenue.program.view'] },
+    {
+        pattern: /^\/revenue(?:\/|$)/,
+        requiredAnyPermission: ['revenue.program.view'],
+        isAllowed: ({ orgType }) => revenueApplicable(orgType),
+    },
     { pattern: /^\/academic\/cohorts$/, requiredAnyPermission: ['academic.cohorts.view', 'academic.cohorts.manage'] },
     { pattern: /^\/academic\/cohorts\/\d+$/, requiredAnyPermission: ['academic.cohorts.view', 'academic.cohorts.manage'] },
     { pattern: /^\/academic\/cohort-subjects\/\d+\/learners$/, requiredAnyPermission: ['learners.view', 'learners.manage'] },
     { pattern: /^\/sessions/, requiredAnyPermission: ['lessons.view', 'attendance.view', 'attendance.record', 'attendance.manage'] },
     { pattern: /^\/lesson-plans/, requiredAnyPermission: ['lessons.view', 'lessons.prepare', 'lessons.manage', 'lessons.review'] },
+    { pattern: /^\/announcements/, isAllowed: ({ capabilities }) => announcementsAvailable(capabilities) },
+    { pattern: /^\/requests\/new$/, requiredAnyPermission: ['requests.create'] },
+    { pattern: /^\/requests/, requiredAnyPermission: ['requests.view', 'requests.create', 'requests.review', 'requests.manage'] },
     { pattern: /^\/learners/, requiredAnyPermission: ['learners.view', 'learners.manage'] },
     { pattern: /^\/assessments/, requiredAnyPermission: ['assessments.view', 'assessments.create', 'assessments.manage', 'assessments.review'] },
     { pattern: /^\/profile/ },
@@ -73,7 +112,7 @@ export function getRouteRules(): RouteAccessRule[] {
 }
 
 function hasPermission(capabilities: WorkspaceCapabilities | null | undefined, key: string): boolean {
-    return Boolean(capabilities?.authorization?.permission_keys?.includes(key));
+    return hasCapabilityPermission(capabilities, key);
 }
 
 function ruleAllows(rule: RouteAccessRule, context: RouteAccessContext): boolean {
@@ -97,7 +136,7 @@ function ruleAllows(rule: RouteAccessRule, context: RouteAccessContext): boolean
 
 export function routeAllowedForContext(
     path: string,
-    context: Pick<RouteAccessContext, 'operatingContext' | 'capabilities'>,
+    context: Pick<RouteAccessContext, 'operatingContext' | 'capabilities' | 'orgType'>,
 ): boolean {
     const url = new URL(path, 'https://scholaroscope.local');
     const matchedRule = getRouteRules().find((rule) => rule.pattern.test(url.pathname));

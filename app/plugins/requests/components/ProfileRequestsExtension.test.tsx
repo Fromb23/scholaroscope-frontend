@@ -43,6 +43,8 @@ describe('profile requests extension workspace visibility', () => {
     useAuthMock.mockReturnValue({
       activeOrg: { id: 1, name: 'Solo', org_type: 'PERSONAL' },
       capabilities: {
+        can_teach: true,
+        can_manage_staff: false,
         workspace_behavior: 'FREELANCE_TEACHER',
       },
     } as ReturnType<typeof useAuth>);
@@ -57,6 +59,8 @@ describe('profile requests extension workspace visibility', () => {
     useAuthMock.mockReturnValue({
       activeOrg: { id: 2, name: 'Institution', org_type: 'INSTITUTION' },
       capabilities: {
+        can_teach: false,
+        can_manage_staff: true,
         workspace_behavior: 'INSTITUTION',
       },
     } as ReturnType<typeof useAuth>);

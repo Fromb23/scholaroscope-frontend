@@ -227,14 +227,14 @@ describe('resolveAppError', () => {
     expect(error.message).toContain('this teacher should be allowed');
   });
 
-  it('keeps institution admin, instructor, and superadmin recovery language distinct', () => {
+  it('does not derive workspace recovery language from legacy admin or instructor roles', () => {
     const makeError = (role: 'ADMIN' | 'INSTRUCTOR' | 'SUPERADMIN') => resolveAppError(
       { response: { status: 403, data: { detail: 'You do not have permission to perform this action.' } } },
       { domain: role === 'SUPERADMIN' ? 'superadmin' : 'reports', action: 'load', entityLabel: 'class report', role },
     );
 
-    expect(makeError('ADMIN').message).toContain('this admin should be allowed');
-    expect(makeError('INSTRUCTOR').message).toContain('this teacher should be allowed');
+    expect(makeError('ADMIN').message).toContain('this user should be allowed');
+    expect(makeError('INSTRUCTOR').message).toContain('this user should be allowed');
     expect(makeError('SUPERADMIN').message).toContain('this superadmin should be allowed');
   });
 

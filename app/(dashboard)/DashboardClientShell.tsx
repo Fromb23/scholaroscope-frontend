@@ -27,7 +27,7 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
 import { useNavBadges } from '@/app/core/registry/navBadges';
-import { canViewRevenueProgram, resolveNavConfig, type NavigationConfig } from '@/app/components/layout/navConfig';
+import { resolveNavConfig, type NavigationConfig } from '@/app/components/layout/navConfig';
 import { RegistrySlotProvider } from '@/app/core/registry/slots';
 import { NavBadgeProvider } from '@/app/core/registry/navBadges';
 import { AssistantProvider } from '@/app/core/components/assistant/AssistantProvider';
@@ -40,44 +40,14 @@ import {
   usePluginRegistryStatus,
 } from '@/app/plugins/PluginRegistryProvider';
 import { AlertTriangle } from 'lucide-react';
-import type { AccessNotice, OrgType } from '@/app/core/types/auth';
+import type { AccessNotice } from '@/app/core/types/auth';
 import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { OfflineRetryState } from '@/app/offline/OfflineRetryState';
-import { canUseAnnouncements } from '@/app/core/lib/workspaceGovernance';
 import { WorkspaceGenerationBoundary } from '@/app/core/runtime/workspaceGeneration';
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
-
-function routeAllowedByCapabilities(
-  pathname: string,
-  capabilities: ReturnType<typeof useAuth>['capabilities'],
-  orgType?: OrgType | null,
-): boolean {
-  if (/^\/announcements/.test(pathname)) {
-    return canUseAnnouncements(capabilities);
-  }
-  if (/^\/admin\/(instructors|alerts)/.test(pathname)) {
-    return capabilities.can_manage_staff;
-  }
-  if (/^\/learners\/(new|[^/]+\/edit)$/.test(pathname)) {
-    return capabilities.can_manage_learners;
-  }
-  if (/^\/academic\/(curricula|years|terms|subjects|topics|progress)/.test(pathname)) {
-    return capabilities.can_manage_academic_setup;
-  }
-  if (/^\/assessments\/(new|[^/]+\/edit)$/.test(pathname)) {
-    return capabilities.can_manage_assessments;
-  }
-  if (/^\/reports/.test(pathname)) {
-    return capabilities.can_view_reports;
-  }
-  if (/^\/revenue/.test(pathname)) {
-    return canViewRevenueProgram(capabilities, orgType);
-  }
-  return true;
-}
 
 function DashboardContent({
   children,
@@ -257,15 +227,11 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     const search = searchParams.toString();
     const routePath = search ? `${pathname}?${search}` : pathname;
 
-    if (!routeAllowedForContext(routePath, { operatingContext: activeOperatingContext, capabilities })) {
-      router.replace(getUnauthorizedRouteFallback(activeOperatingContext, pathname));
-      return;
-    }
-
-    if (!routeAllowedByCapabilities(pathname, capabilities, activeOrg?.org_type ?? null)) {
-      if (activeOperatingContext === 'WORKSPACE_MANAGEMENT' && isAcademicSetupAdminPath(pathname)) {
-        return;
-      }
+    if (!routeAllowedForContext(routePath, {
+      operatingContext: activeOperatingContext,
+      capabilities,
+      orgType: activeOrg?.org_type ?? null,
+    })) {
       router.replace(getUnauthorizedRouteFallback(activeOperatingContext, pathname));
       return;
     }

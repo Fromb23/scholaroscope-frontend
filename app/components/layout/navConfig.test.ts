@@ -63,6 +63,107 @@ const soloGovernanceCapabilities = {
   },
 };
 
+const managementPermissionKeys = [
+  'workspace.settings.view',
+  'workspace.settings.manage',
+  'workspace.members.view',
+  'workspace.members.manage',
+  'workspace.roles.view',
+  'academic.view',
+  'academic.curricula.view',
+  'academic.years.view',
+  'academic.terms.view',
+  'academic.subjects.view',
+  'academic.cohorts.view',
+  'learners.view',
+  'learners.manage',
+  'lessons.view',
+  'lessons.review',
+  'attendance.view',
+  'assessments.view',
+  'assessments.create',
+  'assessments.review',
+  'reports.view',
+  'reports.compute',
+  'reports.manage_policy',
+  'workspace.audit.view',
+];
+
+function capabilitiesWithKeys(
+  keys: string[],
+  overrides: Partial<WorkspaceCapabilities> = {},
+): WorkspaceCapabilities {
+  return {
+    can_teach: false,
+    can_manage_academic_setup: keys.some((key) => key.startsWith('academic.') && key.endsWith('.manage')),
+    can_manage_learners: keys.includes('learners.manage'),
+    can_manage_cohorts: keys.includes('academic.cohorts.manage'),
+    can_manage_subjects: keys.includes('academic.subjects.manage'),
+    can_manage_assessments: keys.includes('assessments.manage'),
+    can_view_reports: keys.includes('reports.view'),
+    can_manage_staff: keys.includes('workspace.members.manage'),
+    is_workspace_owner: false,
+    workspace_mode: 'SCHOOL',
+    workspace_behavior: 'MANAGED_TEAM',
+    workspace_governance: {
+      mode: 'MANAGED_TEAM' as const,
+      supports_custom_roles: true,
+      supports_staff_management: true,
+      supports_announcements: true,
+      supports_internal_requests: true,
+      supports_internal_approvals: true,
+      default_action_authority: 'ROLE_DEPENDENT' as const,
+    },
+    authorization: {
+      enforced: true,
+      permission_keys: keys,
+      roles: [],
+      admin_slots: null,
+      migration_state: null,
+    },
+    ...overrides,
+  } as WorkspaceCapabilities;
+}
+
+const broadManagementCapabilities = capabilitiesWithKeys(managementPermissionKeys, {
+  can_manage_academic_setup: true,
+  can_manage_learners: true,
+  can_manage_cohorts: true,
+  can_manage_subjects: true,
+  can_manage_assessments: true,
+  can_view_reports: true,
+  can_manage_staff: true,
+});
+
+const broadTeachingCapabilities = capabilitiesWithKeys([
+  'lessons.view',
+  'lessons.prepare',
+  'attendance.view',
+  'attendance.record',
+  'academic.cohorts.view',
+  'learners.view',
+  'assessments.view',
+  'assessments.create',
+  'reports.view',
+  'requests.create',
+], {
+  can_teach: true,
+  workspace_behavior: 'TEACHING',
+});
+
+function normalizeTestCapabilities(
+  capabilities: WorkspaceCapabilities | null | undefined,
+  fallback: WorkspaceCapabilities,
+): WorkspaceCapabilities {
+  if (!capabilities) return fallback;
+  if (capabilities.authorization) return capabilities;
+  return {
+    ...fallback,
+    ...capabilities,
+    authorization: fallback.authorization,
+  } as WorkspaceCapabilities;
+}
+
 let resolveNavConfig: typeof import('./navConfig').resolveNavConfig;
 let resolveMobilePrimaryNav: typeof import('./navConfig').resolveMobilePrimaryNav;
 
@@ -95,7 +196,10 @@ function getAdminNav(
     ...context,
     activeOperatingContext: 'WORKSPACE_MANAGEMENT' as const,
     orgType,
-    capabilities: capabilities ?? context.capabilities ?? null,
+    capabilities: normalizeTestCapabilities(
+      capabilities ?? context.capabilities ?? null,
+      broadManagementCapabilities,
+    ),
   };
   return resolveNavConfig({
     user: testUser(),
@@ -103,7 +207,7 @@ function getAdminNav(
     orgType,
     pluginNavigationContext: nextContext as PluginNavigationContext,
     academicSetup,
-    capabilities,
+    capabilities: nextContext.capabilities,
   });
 }
 
@@ -116,16 +220,31 @@ function getInstructorNav(
   const nextContext = {
     ...context,
     activeOperatingContext: 'MY_TEACHING' as const,
-    capabilities: capabilities ?? context.capabilities ?? null,
+    capabilities: normalizeTestCapabilities(
+      capabilities ?? context.capabilities ?? null,
+      broadTeachingCapabilities,
+    ),
   };
   return resolveNavConfig({
     user: testUser(),
     activeOperatingContext: 'MY_TEACHING',
     pluginNavigationContext: nextContext as PluginNavigationContext,
-    capabilities,
+    capabilities: nextContext.capabilities,
     academicTodayMode,
     instructorAssignedCohortCount,
   });
+}
+
+function allNavHrefs(nav: ReturnType<typeof getAdminNav>): string[] {
+  const collect = (items = nav.primary): string[] => items.flatMap((item) => [
+    item.href,
+    ...collect(item.children ?? []),
+  ]);
+  return [
+    ...collect(nav.primary),
+    ...collect(nav.secondary ?? []),
+    ...collect(nav.mobilePrimary ?? []),
+  ];
 }
 
 describe('admin navigation config', () => {
@@ -372,13 +491,13 @@ describe('admin navigation config', () => {
       'Academic Setup',
       'Dashboard',
     ]);
-    expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
+    expect(nav.secondary?.map((item) => item.name)).toEqual(['Workspace Roles', 'Settings']);
   });
 
   it('hides workspace role management when governance marks it not applicable', () => {
     const nav = getAdminNav(pluginContext, 'PERSONAL', null, soloGovernanceCapabilities);
 
-    expect(nav.secondary?.map((item) => item.name)).not.toContain('Workspace Roles');
+    expect(nav.secondary?.map((item) => item.name) ?? []).not.toContain('Workspace Roles');
   });
 
   it('prioritizes institution admin mobile navigation for daily oversight', () => {
@@ -425,10 +544,65 @@ describe('admin navigation config', () => {
       is_workspace_owner: false,
       workspace_mode: 'SCHOOL',
       workspace_behavior: 'MANAGED_TEAM',
+      authorization: {
+        enforced: true,
+        permission_keys: [...managementPermissionKeys, 'revenue.program.view'],
+        roles: [],
+        admin_slots: null,
+        migration_state: null,
+      },
     });
 
     expect(withoutRevenue.primary.some((item) => item.href === '/revenue')).toBe(false);
     expect(withRevenue.primary.find((item) => item.href === '/revenue')?.name).toBe('Revenue cycle');
+  });
+
+  it('does not expose unrelated management navigation for a learners-only manager', () => {
+    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys(['learners.manage']));
+    const hrefs = allNavHrefs(nav);
+
+    expect(hrefs).toContain('/learners');
+    expect(hrefs).not.toContain('/reports');
+    expect(hrefs).not.toContain('/admin/instructors');
+    expect(hrefs).not.toContain('/academic/subjects');
+  });
+
+  it('does not expose unrelated management navigation for a reports-only viewer', () => {
+    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys(['reports.view']));
+    const hrefs = allNavHrefs(nav);
+
+    expect(hrefs).toContain('/reports');
+    expect(hrefs).not.toContain('/learners');
+    expect(hrefs).not.toContain('/admin/instructors');
+    expect(hrefs).not.toContain('/academic/subjects');
+  });
+
+  it('does not expose unrelated management navigation for a staff-only manager', () => {
+    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys(['workspace.members.manage']));
+    const hrefs = allNavHrefs(nav);
+
+    expect(hrefs).toContain('/admin/instructors');
+    expect(hrefs).not.toContain('/learners');
+    expect(hrefs).not.toContain('/reports');
+    expect(hrefs).not.toContain('/academic/subjects');
+  });
+
+  it('filters academic setup children independently for subject-only viewers', () => {
+    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys(['academic.subjects.view']));
+    const hrefs = allNavHrefs(nav);
+
+    expect(hrefs).toContain('/academic');
+    expect(hrefs).toContain('/academic/subjects');
+    expect(hrefs).not.toContain('/academic/cohorts');
+    expect(hrefs).not.toContain('/learners');
+    expect(hrefs).not.toContain('/reports');
+  });
+
+  it('hides protected management links when no relevant permissions exist', () => {
+    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys([]));
+    const hrefs = allNavHrefs(nav);
+
+    expect(hrefs).toEqual(['/dashboard/admin']);
   });
 
   it('renames instructor dashboard navigation during midterm modes', () => {

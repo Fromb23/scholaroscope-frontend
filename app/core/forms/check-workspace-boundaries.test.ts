@@ -98,16 +98,16 @@ describe('workspace boundary checker', () => {
     const root = makeFixtureRoot();
     try {
       writeFileSync(join(root, 'Feature.tsx'), `
-        export function Feature({ activeRole }) {
-          return activeRole === 'ADMIN' ? <div /> : null;
+        export function Feature({ role }) {
+          return role === 'ADMIN' ? <div /> : null;
         }
       `);
 
       expect(runChecker(root, { 'Feature.tsx::raw-admin-role-check': baselineEntry }).ok).toBe(true);
 
       writeFileSync(join(root, 'Feature.tsx'), `
-        export function Feature({ activeRole, role }) {
-          return activeRole === 'ADMIN' || role === 'ADMIN' ? <div /> : null;
+        export function Feature({ role }) {
+          return role === 'ADMIN' || role === 'INSTRUCTOR' ? <div /> : null;
         }
       `);
 

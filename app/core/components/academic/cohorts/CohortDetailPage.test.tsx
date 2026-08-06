@@ -5,8 +5,19 @@ const mocks = vi.hoisted(() => ({
   auth: {
     user: { id: 5, email: 'teacher@example.com' },
     activeRole: 'INSTRUCTOR' as 'ADMIN' | 'INSTRUCTOR',
+    activeOperatingContext: 'MY_TEACHING',
     activeOrg: { id: 1, org_type: 'INSTITUTION' },
-    capabilities: [],
+    capabilities: {
+      can_teach: true,
+      can_manage_academic_setup: false,
+      can_manage_cohorts: false,
+      can_manage_subjects: false,
+      can_manage_learners: false,
+      can_manage_staff: false,
+      authorization: {
+        permission_keys: [] as string[],
+      },
+    },
     loading: false,
   },
   pluginState: {
@@ -159,7 +170,19 @@ function renderPage() {
 describe('CohortDetailPage instructor and CBC capability presentation', () => {
   beforeEach(() => {
     mocks.auth.activeRole = 'INSTRUCTOR';
+    mocks.auth.activeOperatingContext = 'MY_TEACHING';
     mocks.auth.user = { id: 5, email: 'teacher@example.com' };
+    mocks.auth.capabilities = {
+      can_teach: true,
+      can_manage_academic_setup: false,
+      can_manage_cohorts: false,
+      can_manage_subjects: false,
+      can_manage_learners: false,
+      can_manage_staff: false,
+      authorization: {
+        permission_keys: [] as string[],
+      },
+    };
     mocks.pluginState.state = 'available';
     mocks.pluginState.message = null;
     mocks.instructorAccess.isTeachingActor = true;
@@ -184,7 +207,19 @@ describe('CohortDetailPage instructor and CBC capability presentation', () => {
 
   it('shows the instructor column for administrators', () => {
     mocks.auth.activeRole = 'ADMIN';
+    mocks.auth.activeOperatingContext = 'WORKSPACE_MANAGEMENT';
     mocks.auth.user = { id: 6, email: 'admin@example.com' };
+    mocks.auth.capabilities = {
+      ...mocks.auth.capabilities,
+      can_teach: false,
+      can_manage_academic_setup: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_staff: true,
+      authorization: {
+        permission_keys: ['academic.cohorts.view', 'academic.subjects.view'],
+      },
+    };
     mocks.instructorAccess.isTeachingActor = false;
     mocks.instructorAccess.cohortSubjectIds = [];
 

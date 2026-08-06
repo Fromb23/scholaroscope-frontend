@@ -49,6 +49,7 @@ import {
   supportsCustomRoles,
   supportsInternalRequests,
 } from '@/app/core/lib/workspaceGovernance';
+import { routeAllowedForContext } from '@/app/utils/routeAccess';
 
 export type { NavItem } from '@/app/core/registry/pluginNavigation';
 
@@ -168,6 +169,64 @@ export function resolveMobilePrimaryNav(navConfig: NavigationConfig): RegistryNa
     .map(({ item }) => item);
 }
 
+function filterNavItemsForRouteAuthority(
+  items: RegistryNavItem[] | undefined,
+  operatingContext: OperatingContext | null,
+  capabilities?: WorkspaceCapabilities | null,
+  orgType?: OrgType | null,
+): RegistryNavItem[] {
+  if (!items?.length) return [];
+  return items.flatMap((item) => {
+    const routeAllowed = routeAllowedForContext(item.href, {
+      operatingContext,
+      capabilities: capabilities ?? null,
+      orgType,
+    });
+    if (!routeAllowed) return [];
+    const children = filterNavItemsForRouteAuthority(
+      item.children,
+      operatingContext,
+      capabilities,
+      orgType,
+    );
+    return [{
+      ...item,
+      ...(children.length ? { children } : { children: undefined }),
+    }];
+  });
+}
+
+function filterNavigationConfigForRouteAuthority(
+  navConfig: NavigationConfig,
+  operatingContext: OperatingContext | null,
+  capabilities?: WorkspaceCapabilities | null,
+  orgType?: OrgType | null,
+): NavigationConfig {
+  const primary = filterNavItemsForRouteAuthority(
+    navConfig.primary,
+    operatingContext,
+    capabilities,
+    orgType,
+  );
+  const secondary = filterNavItemsForRouteAuthority(
+    navConfig.secondary,
+    operatingContext,
+    capabilities,
+    orgType,
+  );
+  const mobilePrimary = filterNavItemsForRouteAuthority(
+    navConfig.mobilePrimary,
+    operatingContext,
+    capabilities,
+    orgType,
+  );
+  return {
+    primary,
+    ...(secondary.length ? { secondary } : {}),
+    ...(mobilePrimary.length ? { mobilePrimary } : {}),
+  };
+}
+
 export function resolveNavConfig({
   user,
   activeOperatingContext,
@@ -182,19 +241,28 @@ export function resolveNavConfig({
   if (user.is_superadmin) return { primary: [] };
   activeOperatingContext = activeOperatingContext ?? null;
 
+  let navConfig: NavigationConfig;
   switch (activeOperatingContext) {
     case 'WORKSPACE_MANAGEMENT':
-      return getWorkspaceManagementNav(
+      navConfig = getWorkspaceManagementNav(
         pluginNavigationContext,
         orgType,
         academicSetup,
         capabilities,
       );
+      break;
     case 'MY_TEACHING':
-      return getMyTeachingNav(pluginNavigationContext, academicTodayMode, instructorAssignedCohortCount);
+      navConfig = getMyTeachingNav(pluginNavigationContext, academicTodayMode, instructorAssignedCohortCount);
+      break;
     default:
       return { primary: [] };
   }
+  return filterNavigationConfigForRouteAuthority(
+    navConfig,
+    activeOperatingContext,
+    capabilities,
+    orgType,
+  );
 }
 
 // ── Nav config builders ───────────────────────────────────────────────────
@@ -240,6 +308,8 @@ export function getWorkspaceManagementNav(
     capabilities,
   });
   const workspaceAccessNavItems: RegistryNavItem[] = (
+    !isSelfManagedWorkspace(orgType)
+    &&
     supportsCustomRoles(capabilities)
     && capabilities?.authorization?.permission_keys.includes('workspace.roles.view')
   )

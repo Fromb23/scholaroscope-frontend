@@ -39,8 +39,8 @@ describe('workspace permission helpers', () => {
     expect(canManageUsers({ is_superadmin: true }, null)).toBe(false);
   });
 
-  it('keeps the legacy admin fallback when capabilities are absent', () => {
-    expect(canManageUsers({ is_superadmin: false }, 'ADMIN')).toBe(true);
+  it('fails closed instead of using the legacy admin fallback when capabilities are absent', () => {
+    expect(canManageUsers({ is_superadmin: false }, 'ADMIN')).toBe(false);
     expect(canManageUsers({ is_superadmin: false }, 'INSTRUCTOR')).toBe(false);
   });
 });

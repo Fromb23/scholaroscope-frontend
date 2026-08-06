@@ -45,6 +45,7 @@ const mocks = vi.hoisted(() => ({
       last_login: '2026-01-01T00:00:00Z',
     },
     activeRole: 'ADMIN' as 'ADMIN' | 'INSTRUCTOR',
+    activeOperatingContext: 'WORKSPACE_MANAGEMENT',
     activeOrg: {
       id: 2,
       name: 'Institution',
@@ -63,6 +64,9 @@ const mocks = vi.hoisted(() => ({
       is_workspace_owner: false,
       workspace_mode: 'SCHOOL',
       workspace_behavior: null,
+      authorization: {
+        permission_keys: ['lessons.review'],
+      },
     },
   },
   sessions: [] as Session[],
