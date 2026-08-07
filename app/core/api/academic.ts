@@ -29,6 +29,8 @@ import {
   AcademicLifecycleContext,
   AcademicTodayMode,
   SubjectCatalogItem,
+  CurriculumImportRequestPayload,
+  CurriculumImportRequestResponse,
   SubjectOfferingMutationPayload,
   LearnerSubjectOptionsResponse,
 } from '@/app/core/types/academic';
@@ -397,6 +399,16 @@ export const subjectOfferingAPI = {
     const response = await apiClient.post<SubjectCatalogItem>(
       `/academic/subject-offerings/${encodeURIComponent(offeringId)}/reoffer/`,
       curriculumId ? { curriculum: curriculumId } : undefined,
+    );
+    return response.data;
+  },
+
+  requestCurriculumImport: async (
+    payload: CurriculumImportRequestPayload,
+  ): Promise<CurriculumImportRequestResponse> => {
+    const response = await apiClient.post<CurriculumImportRequestResponse>(
+      '/academic/curriculum-import-requests/',
+      payload,
     );
     return response.data;
   },

@@ -23,10 +23,13 @@ import {
   canReoffer,
   canRestore,
   catalogRowLabel,
+  compareCatalogItemsByPriority,
   contentMissingMessage,
   contentReadinessLabel,
+  curriculumImportRequestPayload,
   formatCatalogLevel,
   getCatalogStatus,
+  isCurriculumImportRequested,
   isDroppedHistoricalOffering,
   isContentReady,
   isScheduledRemoval,
@@ -159,11 +162,7 @@ export function SubjectCataloguePage() {
       .filter((item) => offeringStateMatches(item, stateFilter))
       .filter((item) => contentMatches(item, contentFilter))
       .filter((item) => matchesCatalogSearch(item, search))
-      .sort((left, right) => {
-        const levelGap = formatCatalogLevel(left.level).localeCompare(formatCatalogLevel(right.level));
-        if (levelGap !== 0) return levelGap;
-        return left.name.localeCompare(right.name);
-      }),
+      .sort(compareCatalogItemsByPriority),
     [catalog, contentFilter, levelFilter, search, stateFilter],
   );
 
@@ -257,6 +256,26 @@ export function SubjectCataloguePage() {
     }
   };
 
+  const handleRequestCurriculumImport = async (item: SubjectCatalogItem) => {
+    if (!activeCurriculum) return;
+    const label = catalogRowLabel(item);
+    setActionId(item.id);
+    setRowErrors((current) => ({ ...current, [item.id]: '' }));
+    try {
+      const result = await subjectOfferingAPI.requestCurriculumImport(
+        curriculumImportRequestPayload(item, activeCurriculum.id),
+      );
+      await loadCatalog();
+      showToast({ message: result.detail || `Curriculum import requested for ${label}.`, severity: 'success' });
+    } catch (error) {
+      const message = resolveErrorMessage(error as ApiError, `Failed to request curriculum import for ${label}.`);
+      setRowErrors((current) => ({ ...current, [item.id]: message }));
+      showToast({ message, severity: 'error' });
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const renderAction = (item: SubjectCatalogItem) => {
     const status = getCatalogStatus(item) as SubjectOfferingCatalogStatus;
     if (!canManageSubjects) {
@@ -264,9 +283,18 @@ export function SubjectCataloguePage() {
     }
     if (status === 'DROPPED_HISTORICAL' && canReoffer(item) && item.offering_id) {
       if (!isContentReady(item)) {
+        const requested = isCurriculumImportRequested(item);
         return (
-          <Button type="button" size="sm" variant="secondary" disabled>
-            Request curriculum import
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={requested || actionId === item.id}
+            onClick={() => handleRequestCurriculumImport(item)}
+          >
+            <ButtonPendingContent pending={actionId === item.id} pendingLabel="Sending...">
+              {requested ? 'Request sent' : 'Request curriculum import'}
+            </ButtonPendingContent>
           </Button>
         );
       }
@@ -281,9 +309,18 @@ export function SubjectCataloguePage() {
     }
     if (canOffer(item) && status !== 'DROPPED_HISTORICAL') {
       if (!isContentReady(item)) {
+        const requested = isCurriculumImportRequested(item);
         return (
-          <Button type="button" size="sm" variant="secondary" disabled>
-            Request curriculum import
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={requested || actionId === item.id}
+            onClick={() => handleRequestCurriculumImport(item)}
+          >
+            <ButtonPendingContent pending={actionId === item.id} pendingLabel="Sending...">
+              {requested ? 'Request sent' : 'Request curriculum import'}
+            </ButtonPendingContent>
           </Button>
         );
       }

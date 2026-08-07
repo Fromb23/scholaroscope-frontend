@@ -28,7 +28,6 @@ import type { OrgType } from '@/app/core/types/auth';
 import { CapabilityList } from './CapabilityList';
 import { CommercialQuoteSummary } from './CommercialQuoteSummary';
 import { PremiumPluginSelector } from './PremiumPluginSelector';
-import { formatMoney } from '@/app/core/lib/money';
 
 interface CommercialRateCardsProps {
   authenticated?: boolean;
@@ -339,7 +338,7 @@ export function CommercialRateCards({
                     </div>
                     <h3 className="mt-4 text-base font-bold">{item.name}</h3>
                     <p className="theme-muted mt-2 line-clamp-3 text-sm leading-6">{item.description}</p>
-                    <p className="mt-5 text-2xl font-bold">{formatMoney(item.standard.price, item.standard.currency)}</p>
+                    <p className="mt-5 text-sm font-semibold theme-text">Subscription choice available</p>
                     <p className="theme-subtle text-xs">{billingPeriodLabel}</p>
                     {disabled ? (
                       <span className="mt-3 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide theme-border theme-subtle">
@@ -414,8 +413,8 @@ export function CommercialRateCards({
                     <p className="mt-2 text-sm leading-6 theme-muted">
                       {premiumCard ? 'Standard foundation plus selected premium capabilities.' : rateCard.summary || copy.body}
                     </p>
-                    <p className="mt-5 text-2xl font-bold">
-                      {premiumCard ? `From ${formatMoney(workspaceType.standard.price, workspaceType.standard.currency)}` : formatMoney(workspaceType.standard.price, workspaceType.standard.currency)}
+                    <p className="mt-5 text-sm font-semibold theme-text">
+                      {premiumCard ? 'Premium capabilities selectable' : 'Standard subscription option'}
                     </p>
                     <p className="theme-subtle text-xs">
                       {premiumCard ? 'Premium selections are added in the next step' : billingPeriodLabel}

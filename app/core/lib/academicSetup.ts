@@ -84,6 +84,17 @@ export function getAcademicSetupPageState(
         return 'done';
     }
 
+    const step = getAcademicSetupStep(status, stepKey);
+    if (step?.status === 'locked' || step?.available === false) {
+        return 'blocked';
+    }
+    if (step?.status === 'complete') {
+        return 'completed';
+    }
+    if (step?.status === 'current') {
+        return 'current';
+    }
+
     const currentIndex = ACADEMIC_SETUP_STEP_ORDER.indexOf(status.current_step);
     const pageIndex = ACADEMIC_SETUP_STEP_ORDER.indexOf(stepKey);
 
@@ -188,6 +199,15 @@ export function isAcademicSetupAdminPath(path: string): boolean {
     return ACADEMIC_SETUP_ADMIN_PATHS.some((pattern) => pattern.test(path));
 }
 
+export function getAcademicSetupStepKeyForPath(path: string): AcademicSetupStepKey | null {
+    if (/^\/academic\/curricula(\/.*)?$/.test(path)) return 'CURRICULUM';
+    if (/^\/academic\/years(\/.*)?$/.test(path)) return 'ACADEMIC_YEAR';
+    if (/^\/academic\/terms(\/.*)?$/.test(path)) return 'TERMS';
+    if (/^\/academic\/subjects(\/.*)?$/.test(path)) return 'SUBJECTS';
+    if (/^\/academic\/cohorts(\/.*)?$/.test(path)) return 'COHORTS';
+    return null;
+}
+
 export function buildAcademicSetupRedirectHref(
     status: AcademicSetupStatus,
     blockedPath?: string | null,
@@ -284,15 +304,15 @@ export function getAcademicSetupAvailableNavItems(
         ];
     }
 
-    return [
-        { label: 'Overview', href: '/academic' },
-        ...status.steps
-            .filter((step) => step.status === 'complete' || step.status === 'current' || step.status === 'pending')
-            .map((step) => ({
-                label: step.key === 'SUBJECTS'
-                    ? 'Subjects / Offerings'
-                    : getAcademicSetupDisplayLabel(step.key, step.label),
-                href: getAcademicSetupStepHref(step),
-            })),
-    ];
+    return status.steps
+        .filter((step) => (
+            step.available !== false
+            && (step.status === 'complete' || step.status === 'current' || step.status === 'pending')
+        ))
+        .map((step) => ({
+            label: step.key === 'SUBJECTS'
+                ? 'Subjects / Offerings'
+                : getAcademicSetupDisplayLabel(step.key, step.label),
+            href: getAcademicSetupStepHref(step),
+        }));
 }

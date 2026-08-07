@@ -23,7 +23,7 @@ export function CommercialSection() {
         <div className="grid gap-4 sm:grid-cols-2">
           {[
             ['Choose workspace', 'Select the teaching setup that matches how your organization works.'],
-            ['Compare plans', 'Review Standard and Premium side by side with current published prices.'],
+            ['Compare plans', 'Review Standard and Premium side by side before choosing a subscription path.'],
             ['Add Premium', 'Select only the premium capabilities that matter to your workspace.'],
             ['Confirm quote', 'Continue with the quote Scholaroscope confirms for your selection.'],
           ].map(([title, body]) => (

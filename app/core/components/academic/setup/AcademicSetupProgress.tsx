@@ -40,9 +40,13 @@ export function AcademicSetupProgress({
 }: {
     status: AcademicSetupStatus;
 }) {
+    const visibleSteps = status.steps.filter((step) => (
+        step.available !== false && step.status !== 'locked'
+    ));
+
     return (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {status.steps.map((step, index) => (
+            {visibleSteps.map((step, index) => (
                 <div
                     key={step.key}
                     className={`flex min-h-56 flex-col rounded-2xl border p-5 theme-border ${

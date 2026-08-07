@@ -7,6 +7,7 @@ import type { ApiError } from '@/app/core/types/errors';
 import { resolveErrorMessage } from '@/app/core/types/errors';
 import type {
   GenerateSchemePayload,
+  SchemeGenerationJob,
   SchemeEntry,
   SchemeEntryUpdatePayload,
   SchemeComplianceQueryParams,
@@ -141,7 +142,7 @@ export function useGenerateScheme() {
     setError(null);
   }, []);
 
-  const generateScheme = async (payload: GenerateSchemePayload): Promise<SchemeOfWork> => {
+  const generateScheme = async (payload: GenerateSchemePayload): Promise<SchemeGenerationJob> => {
     try {
       setSubmitting(true);
       setError(null);

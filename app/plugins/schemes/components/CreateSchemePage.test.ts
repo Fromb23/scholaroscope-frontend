@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,6 +10,10 @@ import {
 const incompleteTerm = { configuration_state: 'SETUP_OPEN' as const, configuration_locked_reason: null };
 const completeTerm = { configuration_state: 'SETUP_LOCKED' as const, configuration_locked_reason: 'Term configuration locked.' };
 const historicalTerm = { configuration_state: 'HISTORICAL_LOCKED' as const, configuration_locked_reason: 'Historical terms are locked.' };
+const source = readFileSync(
+  join(process.cwd(), 'app/plugins/schemes/components/CreateSchemePage.tsx'),
+  'utf8',
+);
 
 describe('create scheme term calendar setup copy', () => {
   it('keeps institution teacher wording when the term calendar is incomplete', () => {
@@ -40,5 +46,12 @@ describe('create scheme term calendar setup copy', () => {
       selfManagedTeachingAdmin: true,
       isTeachingActor: true,
     })).toBe('Historical terms are locked.');
+  });
+
+  it('uses asynchronous scheme generation job polling', () => {
+    expect(source).toContain('schemesAPI.getGenerationJob');
+    expect(source).toContain('Generation already queued.');
+    expect(source).toContain('generated.result_payload.scheme');
+    expect(source).toContain('Scheme generation failed. Please retry.');
   });
 });

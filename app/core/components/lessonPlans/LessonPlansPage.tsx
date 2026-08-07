@@ -774,10 +774,17 @@ export function LessonPlansPage() {
 
         try {
             if (action === 'reviewed') {
-                await markReviewed(lessonPlan.id);
+                await markReviewed(lessonPlan.id, {
+                    introduction: lessonPlan.introduction ?? '',
+                    lesson_development: lessonPlan.lesson_development ?? '',
+                    learner_activities: lessonPlan.learner_activities ?? '',
+                    assessment_strategy: lessonPlan.assessment_strategy ?? '',
+                    differentiation: lessonPlan.differentiation ?? '',
+                    conclusion: lessonPlan.conclusion ?? '',
+                });
                 setLessonPlanFeedback(lessonPlan.id, {
                     action,
-                    message: 'Lesson plan marked as reviewed.',
+                    message: 'Lesson plan reviewed.',
                     variant: 'success',
                 });
             } else if (action === 'archived') {

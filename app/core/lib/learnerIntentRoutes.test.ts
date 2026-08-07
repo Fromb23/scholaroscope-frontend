@@ -20,7 +20,7 @@ describe('learner intent routes', () => {
       subjectId: 5,
       returnTo: '/sessions/22?section=attendance',
     })).toBe(
-      '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
+      '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11&subject=5&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
     );
   });
 
@@ -42,7 +42,21 @@ describe('learner intent routes', () => {
       cohortId: 9,
       cohortSubjectId: 11,
     })).toBe(
-      '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
+      '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11&session=22&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
+    );
+  });
+
+  it('preserves a session-specific constraint even when cohort-subject scope is present', () => {
+    expect(buildLearnerAttendanceReportHref({
+      studentId: 74,
+      termId: 3,
+      cohortId: 9,
+      subjectId: 5,
+      cohortSubjectId: 11,
+      sessionId: 22,
+      returnTo: '/sessions/22?section=attendance',
+    })).toBe(
+      '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11&subject=5&session=22&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
     );
   });
 
