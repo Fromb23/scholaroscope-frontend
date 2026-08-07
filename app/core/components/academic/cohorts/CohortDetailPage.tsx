@@ -754,6 +754,9 @@ export default function CohortHubPage() {
         : workflowSubjectCount === 0
             ? 'No CBC subjects assigned to this cohort yet.'
             : undefined;
+    const teachingSetupDisabledReason = !cohortSetupReady
+        ? 'Complete class-subject setup before using teaching workflows for this class.'
+        : undefined;
     const openAssignSubjects = () => setAssignSubjectsOpen(true);
     const handleCohortSubjectsChanged = async () => {
         await refetchCohort();
@@ -878,14 +881,16 @@ export default function CohortHubPage() {
                                         title="Sessions"
                                         description="Open sessions filtered to this cohort."
                                         icon={Calendar}
-                                        href={sessionsHref}
+                                        href={cohortSetupReady ? sessionsHref : undefined}
+                                        disabledReason={teachingSetupDisabledReason}
                                         footerLabel="Open sessions"
                                     />
                                     <ActionCard
                                         title="Assignments"
                                         description="Open cohort-scoped assignments while keeping creation authority pinned to cohort subjects."
                                         icon={ClipboardList}
-                                        href={`/academic/cohorts/${cohort.id}/assignments`}
+                                        href={cohortSetupReady ? `/academic/cohorts/${cohort.id}/assignments` : undefined}
+                                        disabledReason={teachingSetupDisabledReason}
                                         footerLabel="Manage assignments"
                                     />
                                 </>
@@ -1025,14 +1030,16 @@ export default function CohortHubPage() {
                             title="Sessions"
                             description="Open sessions filtered to this cohort."
                             icon={Calendar}
-                            href={sessionsHref}
+                            href={cohortSetupReady ? sessionsHref : undefined}
+                            disabledReason={teachingSetupDisabledReason}
                             footerLabel="Open sessions"
                         />
                         <ActionCard
                             title="Assignments"
                             description="Open cohort-scoped assignments while keeping creation authority pinned to cohort subjects."
                             icon={ClipboardList}
-                            href={`/academic/cohorts/${cohort.id}/assignments`}
+                            href={cohortSetupReady ? `/academic/cohorts/${cohort.id}/assignments` : undefined}
+                            disabledReason={teachingSetupDisabledReason}
                             footerLabel="Manage assignments"
                         />
                         <ActionCard

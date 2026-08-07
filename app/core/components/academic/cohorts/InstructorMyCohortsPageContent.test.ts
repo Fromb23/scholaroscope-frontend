@@ -29,4 +29,20 @@ describe('InstructorMyCohortsPageContent class-list contract', () => {
     expect(pageSource).not.toContain('My Teaching Load');
     expect(pageSource).not.toContain('No teaching load found');
   });
+
+  it('renders incomplete cohorts without requiring fake subject assignments', () => {
+    const pageSource = source();
+    const hookSource = readFileSync(
+      join(process.cwd(), 'app/core/hooks/useInstructorMyCohorts.ts'),
+      'utf8',
+    );
+
+    expect(hookSource).toContain('cohortAssignments.forEach((assignment) => {');
+    expect(hookSource).toContain('subjects: []');
+    expect(hookSource).toContain("setup_status: assignment.setup_status ?? ((subjectCount ?? 0) > 0 ? 'READY' : 'INCOMPLETE')");
+    expect(pageSource).toContain('Setup incomplete');
+    expect(pageSource).toContain('Class-subject setup incomplete');
+    expect(pageSource).toContain('0 class subjects configured. No teaching assignments are being fabricated for this class.');
+    expect(pageSource).toContain('Complete class-subject setup');
+  });
 });

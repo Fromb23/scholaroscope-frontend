@@ -21,6 +21,11 @@ export interface Cohort {
   student_count: number;
   is_active: boolean;
   subjects_count: number;
+  is_operational?: boolean;
+  setup_status?: 'READY' | 'INCOMPLETE';
+  setup_incomplete_reason?: string | null;
+  valid_class_subject_count?: number;
+  invalid_class_subject_count?: number;
   is_current_year: boolean;
   created_at: string;
   updated_at: string;
