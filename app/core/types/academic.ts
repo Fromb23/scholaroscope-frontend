@@ -40,6 +40,7 @@ export interface AcademicSetupStep {
   key: AcademicSetupStepKey;
   label: string;
   status: AcademicSetupStepStatus;
+  available?: boolean;
   href: string;
   description: string;
   locked_reason?: string | null;

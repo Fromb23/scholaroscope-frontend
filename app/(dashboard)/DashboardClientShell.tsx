@@ -7,6 +7,8 @@ import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus'
 import { shouldRefreshForOrganizationChange } from '@/app/core/lib/organizationScope';
 import {
   buildAcademicSetupRedirectHref,
+  getAcademicSetupPageState,
+  getAcademicSetupStepKeyForPath,
   isAcademicSetupAdminPath,
   isAcademicSetupIncomplete,
   isAcademicSetupOperationalAdminPath,
@@ -241,10 +243,18 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       && activeOrg
       && academicSetupQuery.data
       && isAcademicSetupIncomplete(academicSetupQuery.data)
-      && isAcademicSetupOperationalAdminPath(pathname)
     ) {
       const nextActionPath = academicSetupQuery.data.next_action.href.split('?')[0];
-      if (nextActionPath !== pathname) {
+      const setupStepKey = getAcademicSetupStepKeyForPath(pathname);
+      const blockedSetupPath = (
+        isAcademicSetupAdminPath(pathname)
+        && setupStepKey
+        && getAcademicSetupPageState(academicSetupQuery.data, setupStepKey) === 'blocked'
+      );
+      if (
+        nextActionPath !== pathname
+        && (isAcademicSetupOperationalAdminPath(pathname) || blockedSetupPath)
+      ) {
         router.replace(buildAcademicSetupRedirectHref(academicSetupQuery.data, pathname));
       }
     }

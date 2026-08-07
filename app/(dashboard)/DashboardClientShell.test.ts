@@ -53,4 +53,12 @@ describe('DashboardClientShell offline boot state', () => {
     expect(offlineReturnIndex).toBeGreaterThan(offlineGuardIndex);
     expect(offlineReturnIndex).toBeLessThan(redirectIndex);
   });
+
+  it('redirects locked downstream academic setup pages to the backend current setup action', () => {
+    const shell = read('app/(dashboard)/DashboardClientShell.tsx');
+
+    expect(shell).toContain('getAcademicSetupStepKeyForPath(pathname)');
+    expect(shell).toContain("getAcademicSetupPageState(academicSetupQuery.data, setupStepKey) === 'blocked'");
+    expect(shell).toContain('isAcademicSetupOperationalAdminPath(pathname) || blockedSetupPath');
+  });
 });

@@ -115,6 +115,15 @@ describe('SessionDetailPage attendance learner links', () => {
     expect(component).toContain('setAttendanceOpen(false)');
   });
 
+  it('keeps final attendance collapsed until the user or deep link opens it', () => {
+    const component = source();
+
+    expect(component).toContain('const [attendanceOpen, setAttendanceOpen] = useState(false)');
+    expect(component).toContain("if (section === 'attendance')");
+    expect(component).toContain('revealAttendanceSection();');
+    expect(component).not.toContain('if (showFinalAttendanceSheet) {\\n            setLessonPreparationOpen(false);\\n            setAttendanceOpen(true);');
+  });
+
   it('closes taught outcomes immediately after successful confirmation', () => {
     const component = source();
     const confirmMutation = component.indexOf('await confirmTaughtOutcomes({');

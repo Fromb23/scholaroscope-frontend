@@ -41,13 +41,17 @@ function attachmentSummary(metadata: unknown[]): string {
   return `${metadata.length} attachment metadata item${metadata.length === 1 ? '' : 's'}`;
 }
 
-const learnerAssignmentReportError = (message: string): AppError => ({
+const learnerAssignmentReportError = (
+  message: string,
+  overrides: Partial<AppError> = {},
+): AppError => ({
   kind: 'report_not_ready',
   title: 'This learner assignment report is not ready yet.',
   message,
   retryable: true,
   severity: 'warning',
   actionLabel: 'Try again',
+  ...overrides,
 });
 
 function RowCard({ row, highlighted }: { row: LearnerAssignmentReportRow; highlighted: boolean }) {
@@ -166,13 +170,23 @@ export function LearnerAssignmentReportPage() {
   }
 
   if (error) {
-    if (errorStatus === 403 || errorStatus === 404) {
-      return (
-        <ReportPreparingState
-          title="Assignment report unavailable"
-          description={error}
-        />
-      );
+    if (errorStatus === 403) {
+      return <AppErrorBanner error={learnerAssignmentReportError(error, {
+        kind: 'permission',
+        title: 'Assignment report access denied.',
+        retryable: false,
+        severity: 'error',
+        actionLabel: undefined,
+      })} />;
+    }
+    if (errorStatus === 404) {
+      return <AppErrorBanner error={learnerAssignmentReportError(error, {
+        kind: 'not_found',
+        title: 'Assignment report unavailable.',
+        retryable: false,
+        severity: 'warning',
+        actionLabel: undefined,
+      })} />;
     }
     return <AppErrorBanner error={learnerAssignmentReportError(error)} onDismiss={() => void refetch()} />;
   }

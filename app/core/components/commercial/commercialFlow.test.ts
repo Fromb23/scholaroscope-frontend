@@ -161,7 +161,11 @@ describe('commercial onboarding contract', () => {
     expect(commercialSource).toContain('workspaceTypes.map');
     expect(commercialSource).not.toMatch(/KES\s?\d/);
     expect(commercialSource).not.toMatch(/price\s*=\s*['"`]\d/);
-    expect(commercialSummarySource).toContain("quote ? formatMoney(quote.total, quote.currency) : 'Confirm quote'");
+    expect(commercialSource).not.toContain('formatMoney');
+    expect(commercialSummarySource).not.toContain('formatMoney');
+    expect(premiumPluginSelectorSource).not.toContain('formatMoney');
+    expect(commercialSummarySource).toContain("'Confirm selection and continue'");
+    expect(commercialSummarySource).toContain("quote ? 'Confirmed' : 'Confirm selection'");
     expect(commercialSummarySource).not.toContain('premiumTotal');
     expect(moneySource).toContain('Intl.NumberFormat');
     expect(moneySource).toContain('minimumFractionDigits: hasFraction ? 2 : 0');

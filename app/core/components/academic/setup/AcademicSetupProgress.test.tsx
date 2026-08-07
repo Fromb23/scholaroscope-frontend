@@ -70,4 +70,22 @@ describe('AcademicSetupProgress', () => {
         expect(html).toContain('/academic/terms?setup=1');
         expect(html).toContain('/academic/subjects?setup=1');
     });
+
+    it('hides backend-unavailable downstream setup steps', () => {
+        const html = renderToStaticMarkup(<AcademicSetupProgress status={{
+            ...status,
+            current_step: 'CURRICULUM',
+            steps: [
+                { ...status.steps[0], status: 'current', available: true },
+                { ...status.steps[1], status: 'locked', available: false },
+                { ...status.steps[2], status: 'locked', available: false },
+                { ...status.steps[3], status: 'locked', available: false },
+            ],
+        }} />);
+
+        expect(html).toContain('Choose curriculum');
+        expect(html).not.toContain('Create current academic year');
+        expect(html).not.toContain('Set up terms');
+        expect(html).not.toContain('Add subjects.');
+    });
 });

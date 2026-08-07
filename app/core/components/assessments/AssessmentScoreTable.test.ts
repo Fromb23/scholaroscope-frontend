@@ -42,12 +42,12 @@ describe('AssessmentScoreTable learner reporting links', () => {
   it('passes term-scoped cohort subject context and returnTo into the learner assessment report link', () => {
     const tableSource = source();
 
+    expect(tableSource).toContain('assessmentId: assessment.id');
     expect(tableSource).toContain('cohortSubjectId: assessment.cohort_subject');
     expect(tableSource).toContain('termId: assessment.term');
     expect(tableSource).toContain('subjectId: assessment.subject_id');
     expect(tableSource).toContain('cohortId: assessment.cohort_id');
     expect(tableSource).toContain('returnTo');
-    expect(tableSource).not.toContain('assessmentId: assessment.id');
     expect(tableSource).not.toContain('assessmentType: assessment.assessment_type');
   });
 });

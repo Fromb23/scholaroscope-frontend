@@ -28,4 +28,15 @@ describe('LearnerAssignmentReportPage', () => {
     expect(pageSource).toContain('row.assignment_id === highlightAssignment');
     expect(pageSource).toContain('<Link href={returnTo}>');
   });
+
+  it('does not present synchronous 403 or 404 responses as report preparation', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain("errorStatus === 403");
+    expect(pageSource).toContain("kind: 'permission'");
+    expect(pageSource).toContain("errorStatus === 404");
+    expect(pageSource).toContain("kind: 'not_found'");
+    expect(pageSource).not.toContain('if (errorStatus === 403 || errorStatus === 404)');
+    expect(pageSource).not.toContain('title="Assignment report unavailable"');
+  });
 });

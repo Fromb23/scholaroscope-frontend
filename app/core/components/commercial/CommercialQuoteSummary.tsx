@@ -7,7 +7,6 @@ import type {
   CommercialWorkspaceType,
 } from '@/app/core/types/commercialCatalog';
 import { Button } from '@/app/components/ui/Button';
-import { formatMoney } from '@/app/core/lib/money';
 
 interface CommercialQuoteSummaryProps {
   workspaceType: CommercialWorkspaceType | null;
@@ -48,19 +47,17 @@ export function CommercialQuoteSummary({
   onQuote,
   onContinue,
 }: CommercialQuoteSummaryProps) {
-  const basePrice = workspaceType?.standard.price ?? '0';
-  const currency = workspaceType?.standard.currency ?? quote?.currency ?? 'KES';
   const ctaLabel = mode === 'PREMIUM' && selectedPlugins.length === 0
     ? 'Select a premium capability'
     : quote
       ? authenticated ? 'Create this workspace' : 'Create account'
-      : 'Confirm price and continue';
+      : 'Confirm selection and continue';
 
   return (
     <aside className={`rounded-xl border p-5 shadow-sm theme-card lg:sticky lg:top-24 lg:self-start ${className}`}>
       <div className="border-b pb-4 theme-border">
         <h2 id={headingId} className="text-sm font-semibold theme-text">Quote summary</h2>
-        <p className="theme-subtle mt-1 text-xs">Scholaroscope confirms the final price before registration.</p>
+        <p className="theme-subtle mt-1 text-xs">Scholaroscope confirms the selected subscription composition before registration.</p>
       </div>
 
       <div className="space-y-4 py-5">
@@ -83,7 +80,7 @@ export function CommercialQuoteSummary({
                 {selectedPlugins.map((plugin) => (
                   <div key={plugin.price_id} className="flex items-start justify-between gap-3 text-sm">
                     <span className="theme-text">{plugin.plugin_name}</span>
-                    <span className="font-semibold theme-text">{formatMoney(plugin.price, plugin.currency)}</span>
+                    <span className="font-semibold theme-subtle">Selected</span>
                   </div>
                 ))}
               </div>
@@ -107,19 +104,19 @@ export function CommercialQuoteSummary({
 
         <div className="space-y-2 border-t pt-4 theme-border">
           <div className="flex justify-between text-sm">
-            <span className="theme-muted">Base price</span>
-            <span className="font-semibold theme-text">{formatMoney(quote?.base_price ?? basePrice, currency)}</span>
+            <span className="theme-muted">Base subscription</span>
+            <span className="font-semibold theme-text">{workspaceType ? 'Selected' : 'Pending'}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="theme-muted">{quote ? 'Premium total' : 'Premium selections'}</span>
+            <span className="theme-muted">Premium selections</span>
             <span className="font-semibold theme-text">
-              {quote ? formatMoney(quote.premium_total, quote.currency) : selectedPlugins.length ? `${selectedPlugins.length} selected` : 'None'}
+              {selectedPlugins.length ? `${selectedPlugins.length} selected` : 'None'}
             </span>
           </div>
           <div className="flex items-end justify-between border-t pt-3 theme-border">
-            <span className="text-sm font-semibold theme-text">{quote ? 'Confirmed total' : 'Total'}</span>
-            <span className="text-2xl font-bold theme-text">
-              {quote ? formatMoney(quote.total, quote.currency) : 'Confirm quote'}
+            <span className="text-sm font-semibold theme-text">Selection status</span>
+            <span className="text-lg font-bold theme-text">
+              {quote ? 'Confirmed' : 'Confirm selection'}
             </span>
           </div>
         </div>

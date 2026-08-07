@@ -67,6 +67,7 @@ export function AssessmentScoreTable({
     const buildLearnerHref = (learnerId: number) => buildLearnerAssessmentReportHref(
         learnerId,
         {
+            assessmentId: assessment.id,
             cohortSubjectId: assessment.cohort_subject,
             termId: assessment.term,
             subjectId: assessment.subject_id,

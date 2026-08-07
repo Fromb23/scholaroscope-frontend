@@ -52,10 +52,9 @@ export function buildLearnerAttendanceReportHref(
 
   if (state.cohortSubjectId && state.cohortSubjectId > 0) {
     setPositiveParam(params, 'cohortSubject', state.cohortSubjectId);
-  } else {
-    setPositiveParam(params, 'subject', state.subjectId ?? null);
-    setPositiveParam(params, 'session', state.sessionId ?? null);
   }
+  setPositiveParam(params, 'subject', state.subjectId ?? null);
+  setPositiveParam(params, 'session', state.sessionId ?? null);
 
   setReturnToParam(params, state.returnTo ?? null);
 

@@ -1,7 +1,6 @@
 import { CheckCircle2, PlugZap } from 'lucide-react';
 
 import type { CommercialPremiumPlugin } from '@/app/core/types/commercialCatalog';
-import { formatMoney } from '@/app/core/lib/money';
 
 interface PremiumPluginSelectorProps {
   plugins: CommercialPremiumPlugin[];
@@ -56,8 +55,8 @@ export function PremiumPluginSelector({
                   <PlugZap className="h-4 w-4 text-[color:var(--color-primary)]" />
                   {plugin.plugin_name}
                 </p>
-                <p className="whitespace-nowrap text-sm font-semibold">
-                  {formatMoney(plugin.price, plugin.currency)}
+                <p className="whitespace-nowrap text-sm font-semibold theme-subtle">
+                  Premium add-on
                 </p>
               </div>
               <p className="theme-muted mt-2 text-sm leading-6">{plugin.plugin_description}</p>

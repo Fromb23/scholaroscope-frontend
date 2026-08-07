@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
     buildAcademicSetupRedirectHref,
+    getAcademicSetupAvailableNavItems,
     getAcademicSetupCurrentStepNavItem,
     getAcademicSetupDisplayLabel,
     getAcademicSetupPageState,
+    getAcademicSetupStepKeyForPath,
     isAcademicSetupAdminPath,
     isAcademicSetupOperationalAdminPath,
     resolveAcademicSetupOrigin,
@@ -97,6 +99,41 @@ describe('academic setup helpers', () => {
         expect(isAcademicSetupAdminPath('/academic/subjects')).toBe(true);
         expect(isAcademicSetupAdminPath('/academic/cohorts')).toBe(true);
         expect(isAcademicSetupAdminPath('/sessions')).toBe(false);
+    });
+
+    it('maps setup paths to backend setup step keys for fail-closed redirects', () => {
+        expect(getAcademicSetupStepKeyForPath('/academic/curricula')).toBe('CURRICULUM');
+        expect(getAcademicSetupStepKeyForPath('/academic/years')).toBe('ACADEMIC_YEAR');
+        expect(getAcademicSetupStepKeyForPath('/academic/terms')).toBe('TERMS');
+        expect(getAcademicSetupStepKeyForPath('/academic/subjects')).toBe('SUBJECTS');
+        expect(getAcademicSetupStepKeyForPath('/academic/cohorts')).toBe('COHORTS');
+        expect(getAcademicSetupStepKeyForPath('/academic')).toBeNull();
+    });
+
+    it('hides unavailable downstream setup nav items when curriculum is current step', () => {
+        const curriculumOnlyStatus: AcademicSetupStatus = {
+            ...incompleteStatus,
+            current_step: 'CURRICULUM',
+            current_step_label: 'Choose curriculum',
+            next_action: {
+                label: 'Choose curriculum',
+                href: '/admin/settings?tab=plugins&from=academic-setup',
+            },
+            has_active_curriculum: false,
+            steps: [
+                { ...incompleteStatus.steps[0], status: 'current', available: true },
+                ...incompleteStatus.steps.slice(1).map((step) => ({
+                    ...step,
+                    status: 'locked' as const,
+                    available: false,
+                })),
+            ],
+        };
+
+        expect(getAcademicSetupAvailableNavItems(curriculumOnlyStatus).map((item) => item.label)).toEqual([
+            'Choose curriculum',
+        ]);
+        expect(getAcademicSetupPageState(curriculumOnlyStatus, 'ACADEMIC_YEAR')).toBe('blocked');
     });
 
     it('treats schemes of work as the guided step after cohorts', () => {

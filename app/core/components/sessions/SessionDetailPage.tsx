@@ -1154,14 +1154,6 @@ export function SessionDetailPage() {
     }, [sessionId]);
 
     useEffect(() => {
-        if (showFinalAttendanceSheet) {
-            setLessonPreparationOpen(false);
-            setAttendanceOpen(true);
-            setTaughtOutcomesOpen(false);
-            setAttendanceReviewRequested(false);
-            return;
-        }
-
         if (currentWorkflowStep === 'scheduled') {
             setLessonPreparationOpen(hasLessonPlan);
             setAttendanceOpen(false);
@@ -1196,7 +1188,7 @@ export function SessionDetailPage() {
         setAttendanceOpen(false);
         setTaughtOutcomesOpen(false);
         setAttendanceReviewRequested(false);
-    }, [currentWorkflowStep, defaultOpenWorkflowSection, hasLessonPlan, showFinalAttendanceSheet]);
+    }, [currentWorkflowStep, defaultOpenWorkflowSection, hasLessonPlan]);
 
     useEffect(() => {
         const section = searchParams.get('section');
