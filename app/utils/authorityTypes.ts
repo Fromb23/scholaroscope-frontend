@@ -16,6 +16,9 @@ export interface WorkspaceCapabilities {
     is_workspace_owner?: boolean;
     workspace_mode?: string | null;
     workspace_behavior?: string | null;
+    workspace_governance?: {
+        supports_announcements?: boolean;
+    } | null;
     authorization?: {
         enforced?: boolean;
         permission_keys?: string[];

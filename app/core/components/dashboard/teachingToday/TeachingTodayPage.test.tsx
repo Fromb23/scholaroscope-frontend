@@ -30,6 +30,10 @@ vi.mock('@/app/context/AuthContext', () => ({
   useAuth: () => ({
     user: { id: 11, first_name: 'Teacher', is_superadmin: false },
     activeRole: 'INSTRUCTOR',
+    activeOperatingContext: 'MY_TEACHING',
+    capabilities: {
+      can_teach: true,
+    },
   }),
 }));
 

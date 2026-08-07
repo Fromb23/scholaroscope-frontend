@@ -3,6 +3,7 @@ import type { OperatingContext, WorkspaceCapabilities } from './authorityTypes';
 export interface RouteAccessContext {
     operatingContext: OperatingContext | null;
     capabilities: WorkspaceCapabilities | null | undefined;
+    orgType?: string | null;
     pathname: string;
     url: URL;
 }

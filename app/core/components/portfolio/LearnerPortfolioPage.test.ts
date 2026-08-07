@@ -106,11 +106,13 @@ describe('Learner Portfolio route and UI contract', () => {
   });
 
   it('handles access failure, empty states, missing artifacts, and invalid evidence detail', () => {
-    expect(pageSource).toContain('No learner portfolio access');
+    expect(pageSource).toContain('resolveLearnerError');
+    expect(pageSource).toContain('errorStatus ?? undefined');
     expect(pageSource).toContain('No visible learner evidence has been recorded');
     expect(pageSource).toContain('No visible evidence matches the active portfolio filters');
     expect(detailSource).toContain('missing or inaccessible');
-    expect(detailSource).toContain('No access to this evidence');
+    expect(detailSource).toContain('resolveLearnerError');
+    expect(detailSource).toContain('entityLabel: \'portfolio evidence\'');
   });
 
   it('supports the required filter controls', () => {

@@ -2,19 +2,20 @@
 
 Backend authority is canonical. The frontend renders the server contract; it does not decide final mutation authority.
 
-## Frontend Problem
+## Frontend Contract
 
-Scholaroscope still has legacy shell roles (`ADMIN` and `INSTRUCTOR`) while the backend now resolves action authority through governance, entitlement, lifecycle, membership, permission keys, scopes, and teaching assignments. UI code becomes unsafe when a page enables a protected action because `activeRole === 'ADMIN'`, `activeRole === 'INSTRUCTOR'`, or a capability boolean is true.
+Scholaroscope resolves workspace authority through active membership, workspace role assignments, named permissions, effective scopes, target resources, domain relationships/responsibilities, governance, lifecycle, and entitlement. Frontend code renders that server contract; it must not infer authority from legacy persona labels.
 
 ## Rendering Rules
 
-- `activeRole` may choose shell, layout, navigation, and broad page grouping.
-- `activeRole` must not grant protected mutation authority.
-- Permission keys and backend action metadata drive action buttons, forms, mutations, and destructive commands.
+- `activeOperatingContext` selects the presentation/workflow family, such as workspace management or my teaching.
+- `activeOperatingContext` does not grant actions, routes, or menu items inside that family.
+- Every protected route and navigation item must require backend-derived capability or named permission for its target surface.
+- Permission keys and backend action metadata drive action buttons, forms, mutations, destructive commands, routing, and protected navigation.
 - Capability booleans are display hints and summaries.
 - Product entitlement and lifecycle are not guessed locally.
 - Missing backend action metadata must render read-only or blocked fallback state.
-- No page-level role hacks for protected actions.
+- No page-level role hacks for protected actions, routes, or navigation.
 
 ## Backend Decision Inputs
 
@@ -40,7 +41,11 @@ Render the server action mode:
 
 ## Legacy Roles
 
-`ADMIN` and `INSTRUCTOR` are legacy membership lanes and shell compatibility values. Institution admins do not teach by admin authority. Teacher role assignment is not a teaching assignment and does not grant global teaching access.
+`activeRole`, `ADMIN`, and `INSTRUCTOR` are compatibility projections only. They must not control production routing, navigation, authorization, resource visibility, workflow mode, or privileged recovery guidance.
+
+`OrganizationMembership.role` values `ADMIN` and `INSTRUCTOR` have no workspace authority semantics. Institution workspace administrators do not teach by administrator authority. Teacher responsibility is separate from actual teaching assignment and does not grant global teaching access.
+
+`SUPERADMIN` remains separate as the platform/control-plane boundary. It does not implicitly receive workspace authority.
 
 Staff, teacher, role, and teaching assignment are separate concepts:
 

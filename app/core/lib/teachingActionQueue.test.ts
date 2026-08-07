@@ -334,7 +334,7 @@ describe('teachingActionQueue', () => {
     expect(queue.primaryAction?.objectType).toBe('assessment');
     expect(queue.actions.filter((action) => action.objectKey === 'assessment:91')).toHaveLength(1);
     expect(queue.primaryAction?.description).toContain('2 learner scores needing review');
-    expect(queue.primaryAction?.primaryHref).toBe('/assessments/91?focus=score-entry');
+    expect(queue.primaryAction?.primaryHref).toBe('/assessments/91?focus=score-entry&student=301');
   });
 
   it('keeps draft and active assessments in teaching memory until finalized', () => {

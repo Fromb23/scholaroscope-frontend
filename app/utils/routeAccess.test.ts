@@ -35,8 +35,9 @@ function canAccess(
   path: string,
   operatingContext: OperatingContext | null,
   caps: WorkspaceCapabilities,
+  orgType: string | null = 'INSTITUTION',
 ) {
-  return routeAllowedForContext(path, { operatingContext, capabilities: caps });
+  return routeAllowedForContext(path, { operatingContext, capabilities: caps, orgType });
 }
 
 function getMatchedRule(path: string) {
@@ -84,6 +85,31 @@ describe('route access', () => {
     expect(matchedRule).toBeDefined();
     expect(matchedRule?.requiredAnyPermission).toContain('revenue.program.view');
     expect(canAccess('/revenue', 'WORKSPACE_MANAGEMENT', capabilities(['revenue.program.view']))).toBe(true);
+    expect(canAccess('/revenue', 'WORKSPACE_MANAGEMENT', capabilities(['revenue.program.view']), 'PERSONAL')).toBe(false);
     expect(routeAllowedForRole('/revenue', 'ADMIN')).toBe(false);
+  });
+
+  it('allows assessment creation from create permission without manage permission', () => {
+    expect(canAccess('/assessments/new', 'WORKSPACE_MANAGEMENT', capabilities(['assessments.create']))).toBe(true);
+    expect(canAccess('/assessments/new', 'WORKSPACE_MANAGEMENT', capabilities())).toBe(false);
+  });
+
+  it('honors exact assessment edit manage or review permission', () => {
+    expect(canAccess('/assessments/42/edit', 'WORKSPACE_MANAGEMENT', capabilities(['assessments.review']))).toBe(true);
+    expect(canAccess('/assessments/42/edit', 'WORKSPACE_MANAGEMENT', capabilities(['assessments.create']))).toBe(false);
+  });
+
+  it('uses specific academic subject view permission', () => {
+    expect(canAccess('/academic/subjects', 'WORKSPACE_MANAGEMENT', capabilities(['academic.subjects.view']))).toBe(true);
+    expect(canAccess('/academic/subjects', 'WORKSPACE_MANAGEMENT', capabilities(['academic.cohorts.view']))).toBe(false);
+  });
+
+  it('fails closed with missing capabilities or permission keys', () => {
+    expect(routeAllowedForContext('/reports', {
+      operatingContext: 'WORKSPACE_MANAGEMENT',
+      capabilities: null,
+      orgType: 'INSTITUTION',
+    })).toBe(false);
+    expect(canAccess('/reports', 'WORKSPACE_MANAGEMENT', { authorization: { permission_keys: [] } } as WorkspaceCapabilities)).toBe(false);
   });
 });

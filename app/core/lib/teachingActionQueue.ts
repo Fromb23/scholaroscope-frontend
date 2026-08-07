@@ -510,7 +510,7 @@ function buildAssessmentActions(
             title: 'Review learner scores',
             description: `${firstRow.assessment_name} has ${orderedRows.length} learner score${orderedRows.length === 1 ? '' : 's'} needing review.`,
             primaryLabel: 'Open assessment',
-            primaryHref: `/assessments/${assessmentId}?focus=score-entry`,
+            primaryHref: `/assessments/${assessmentId}?focus=score-entry&student=${firstRow.student}`,
             secondaryActions: [{ label: 'Open assessment', href: `/assessments/${assessmentId}` }],
             stageLabel: 'Scores need review',
             source: 'assessment_review',
