@@ -515,6 +515,9 @@ export default function CohortHubPage() {
     const cohortReturnTo = cohortReturnParams.toString()
         ? `${defaultCohortHref}?${cohortReturnParams.toString()}`
         : defaultCohortHref;
+    const cohortSubjectSetupReturnParams = new URLSearchParams(cohortReturnParams);
+    cohortSubjectSetupReturnParams.set('open', 'subjects');
+    const cohortSubjectSetupReturnTo = `${defaultCohortHref}?${cohortSubjectSetupReturnParams.toString()}`;
     const backHref = safeReturnTo
         ?? (effectiveSetupMode ? withAcademicSetupMode('/academic/cohorts') : '/academic/cohorts');
     const instructorClassesLabel = getInstructorClassesLabel(instructorAccess.cohortIds.length);
@@ -722,6 +725,21 @@ export default function CohortHubPage() {
         cohortSubjectsLoading,
         subjectParticipationQuery.loading,
         visibleCohortSubjects.length,
+    ]);
+
+    useEffect(() => {
+        if (searchParams.get('open') !== 'subjects' || !canLinkSubjects || linkSubjectsDisabledReason) {
+            return;
+        }
+        setAssignSubjectsOpen(true);
+        void refetchCohort();
+        void refetchCohortSubjects();
+    }, [
+        canLinkSubjects,
+        linkSubjectsDisabledReason,
+        refetchCohort,
+        refetchCohortSubjects,
+        searchParams,
     ]);
 
     useAssistantPageContext(assistantContext);
@@ -1083,6 +1101,7 @@ export default function CohortHubPage() {
                     isOpen={assignSubjectsOpen}
                     onClose={() => setAssignSubjectsOpen(false)}
                     cohort={cohort}
+                    returnTo={cohortSubjectSetupReturnTo}
                     onSubjectsChanged={handleCohortSubjectsChanged}
                 />
             ) : null}
