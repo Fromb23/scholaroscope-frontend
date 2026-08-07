@@ -29,7 +29,9 @@ describe('academic lifecycle presentation', () => {
     expect(presentation.title).toBe('Term ended');
     expect(presentation.actionLabel).toBe('Create next term');
     expect(presentation.actionHref).toBe('/academic/terms?action=create&curriculum=2&academicYear=4');
-    expect(presentation.disabledTeachingReason).toContain('Create the next term');
+    expect(presentation.message).toContain("Your previous term has ended.");
+    expect(presentation.message).toContain("Set up the next term when you're ready.");
+    expect(presentation.disabledTeachingReason).toContain('active term is available');
   });
 
   it('tells institution instructors to contact an administrator instead of linking setup', () => {

@@ -7,6 +7,7 @@ import {
     getAcademicSetupDisplayLabel,
     getAcademicSetupPageState,
     getAcademicSetupStepKeyForPath,
+    isAcademicSetupIncomplete,
     isAcademicSetupAdminPath,
     isAcademicSetupOperationalAdminPath,
     resolveAcademicSetupOrigin,
@@ -34,7 +35,11 @@ const incompleteStatus: AcademicSetupStatus = {
     has_active_curriculum: true,
     has_current_academic_year: false,
     has_terms_for_current_academic_year: false,
+    has_active_current_term: false,
     has_active_or_configured_term: false,
+    is_established_workspace: false,
+    current_term_availability: 'NOT_CONFIGURED',
+    requires_next_term_setup: false,
     has_subjects: false,
     has_cohorts_for_current_academic_year: false,
     current_academic_year_id: null,
@@ -80,6 +85,48 @@ describe('academic setup helpers', () => {
         expect(isAcademicSetupOperationalAdminPath('/reports')).toBe(true);
         expect(isAcademicSetupOperationalAdminPath('/schemes')).toBe(true);
         expect(isAcademicSetupOperationalAdminPath('/cbc/classes')).toBe(true);
+    });
+
+    it('does not classify established between-term workspaces as setup incomplete', () => {
+        const establishedBetweenTerms: AcademicSetupStatus = {
+            ...incompleteStatus,
+            complete: true,
+            current_step: null,
+            current_step_label: null,
+            current_step_description: null,
+            next_action: {
+                label: 'Open admin dashboard',
+                href: '/dashboard/admin',
+            },
+            locked_until_complete: [],
+            has_current_academic_year: true,
+            has_terms_for_current_academic_year: true,
+            has_active_current_term: false,
+            has_active_or_configured_term: true,
+            is_established_workspace: true,
+            current_term_availability: 'NO_ACTIVE_TERM',
+            requires_next_term_setup: true,
+            has_subjects: true,
+            has_cohorts_for_current_academic_year: true,
+            current_academic_year_id: 1,
+            counts: {
+                curricula: 1,
+                academic_years: 1,
+                terms: 1,
+                subjects: 1,
+                cohorts: 1,
+            },
+            steps: incompleteStatus.steps.map((step) => ({
+                ...step,
+                status: 'complete' as const,
+            })),
+        };
+
+        expect(establishedBetweenTerms.has_active_current_term).toBe(false);
+        expect(establishedBetweenTerms.current_term_availability).toBe('NO_ACTIVE_TERM');
+        expect(establishedBetweenTerms.requires_next_term_setup).toBe(true);
+        expect(isAcademicSetupIncomplete(establishedBetweenTerms)).toBe(false);
+        expect(establishedBetweenTerms.complete).toBe(true);
     });
 
     it('does not treat academic setup pages as operationally locked paths', () => {
