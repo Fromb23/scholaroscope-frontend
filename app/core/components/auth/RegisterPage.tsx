@@ -501,12 +501,6 @@ function RegisterForm() {
                         {commercialQuote.starts_on} to {commercialQuote.ends_on}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold theme-text">
-                        {commercialQuote.currency} {commercialQuote.total}
-                      </p>
-                      <p className="theme-subtle text-xs">Server quote</p>
-                    </div>
                   </div>
                   {commercialQuote.selected_premium_plugins.length > 0 ? (
                     <p className="theme-muted text-xs">

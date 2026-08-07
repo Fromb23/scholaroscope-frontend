@@ -1,4 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -259,5 +261,19 @@ describe('CohortDetailPage instructor and CBC capability presentation', () => {
     expect(html).toContain('You are not authorized to verify CBC tools for this organization.');
     expect(html).not.toContain('/cbc/browser?cohort=9');
     expect(html).not.toContain('/cbc/progress?cohort=9');
+  });
+});
+
+describe('CohortDetailPage setup readiness contract', () => {
+  it('does not enable teaching workflow action cards until class-subject setup is ready', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/academic/cohorts/CohortDetailPage.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('teachingSetupDisabledReason');
+    expect(source).toContain('Complete class-subject setup before using teaching workflows for this class.');
+    expect(source).toContain('href={cohortSetupReady ? sessionsHref : undefined}');
+    expect(source).toContain('href={cohortSetupReady ? `/academic/cohorts/${cohort.id}/assignments` : undefined}');
   });
 });

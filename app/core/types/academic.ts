@@ -64,6 +64,9 @@ export interface AcademicSetupStatus {
   requires_next_term_setup: boolean;
   has_subjects: boolean;
   has_cohorts_for_current_academic_year: boolean;
+  has_operational_cohorts_for_current_academic_year?: boolean;
+  valid_current_year_cohort_subject_count?: number;
+  invalid_current_year_cohort_subject_count?: number;
   scheme_first_required?: boolean;
   has_required_schemes?: boolean;
   missing_required_scheme_count?: number;
@@ -672,6 +675,11 @@ export interface Cohort {
   subjects_count: number;
   is_current_year: boolean;
   cbc_profile?: CbcCohortProfileSummary | null;
+  is_operational?: boolean;
+  setup_status?: 'READY' | 'INCOMPLETE';
+  setup_incomplete_reason?: string | null;
+  valid_class_subject_count?: number;
+  invalid_class_subject_count?: number;
   created_at: string;
 }
 
@@ -848,6 +856,12 @@ export interface InstructorCohortAccessAssignment {
   subjects_count?: number | null;
   is_current_year: boolean;
   current_term?: AcademicTermContextSummary | null;
+  is_operational?: boolean;
+  setup_status?: 'READY' | 'INCOMPLETE';
+  setup_incomplete_reason?: string | null;
+  valid_class_subject_count?: number | null;
+  invalid_class_subject_count?: number | null;
+  assignment_source?: string | null;
 }
 
 export interface TeachingAssignment {

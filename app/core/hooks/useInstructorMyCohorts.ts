@@ -22,6 +22,9 @@ export type InstructorMyCohort = Record<string, unknown> & {
     students_count: number | null;
     subjects_count: number | null;
     is_current_year: boolean;
+    is_operational: boolean;
+    setup_status: 'READY' | 'INCOMPLETE';
+    setup_incomplete_reason: string | null;
 };
 
 export type InstructorTeachingLoadSubject = {
@@ -47,6 +50,10 @@ export type InstructorTeachingLoadGroup = {
     level: string | null;
     stream: string | null;
     learner_count: number | null;
+    subject_count: number | null;
+    is_operational: boolean;
+    setup_status: 'READY' | 'INCOMPLETE';
+    setup_incomplete_reason: string | null;
     is_current_year: boolean;
     subjects: InstructorTeachingLoadSubject[];
 };
@@ -127,6 +134,9 @@ export function useInstructorMyCohorts(options?: { enabled?: boolean }) {
                     students_count: assignment.students_count ?? null,
                     subjects_count: assignment.subjects_count ?? null,
                     is_current_year: assignment.is_current_year,
+                    is_operational: assignment.is_operational ?? (assignment.subjects_count ?? 0) > 0,
+                    setup_status: assignment.setup_status ?? ((assignment.subjects_count ?? 0) > 0 ? 'READY' : 'INCOMPLETE'),
+                    setup_incomplete_reason: assignment.setup_incomplete_reason ?? null,
                 });
                 return;
             }
@@ -139,6 +149,9 @@ export function useInstructorMyCohorts(options?: { enabled?: boolean }) {
             existing.students_count = existing.students_count ?? assignment.students_count ?? null;
             existing.subjects_count = existing.subjects_count ?? assignment.subjects_count ?? null;
             existing.is_current_year = existing.is_current_year || assignment.is_current_year;
+            existing.is_operational = existing.is_operational || Boolean(assignment.is_operational);
+            existing.setup_status = existing.is_operational ? 'READY' : (assignment.setup_status ?? existing.setup_status);
+            existing.setup_incomplete_reason = existing.is_operational ? null : (existing.setup_incomplete_reason ?? assignment.setup_incomplete_reason ?? null);
         });
 
         return Array.from(cohortMap.values());
@@ -169,6 +182,31 @@ export function useInstructorMyCohorts(options?: { enabled?: boolean }) {
             });
         });
 
+        cohortAssignments.forEach((assignment) => {
+            if (groupMap.has(assignment.cohort_id)) {
+                return;
+            }
+            const academicYearName = resolveAcademicYearName(assignment);
+            const subjectCount = assignment.subjects_count ?? null;
+            groupMap.set(assignment.cohort_id, {
+                cohort_id: assignment.cohort_id,
+                cohort_name: assignment.cohort_name,
+                curriculum_name: assignment.curriculum_name ?? 'Curriculum',
+                curriculum_type: assignment.curriculum_type,
+                academic_year_id: toNullableNumber(assignment.academic_year_id),
+                academic_year_name: academicYearName,
+                level: assignment.level ?? null,
+                stream: assignment.stream ?? null,
+                learner_count: assignment.students_count ?? null,
+                subject_count: subjectCount,
+                is_operational: assignment.is_operational ?? (subjectCount ?? 0) > 0,
+                setup_status: assignment.setup_status ?? ((subjectCount ?? 0) > 0 ? 'READY' : 'INCOMPLETE'),
+                setup_incomplete_reason: assignment.setup_incomplete_reason ?? null,
+                is_current_year: assignment.is_current_year,
+                subjects: [],
+            });
+        });
+
         assignments.forEach((assignment) => {
             const cohortMeta = cohortMetaById.get(assignment.cohort_id);
             const academicYearName =
@@ -195,6 +233,10 @@ export function useInstructorMyCohorts(options?: { enabled?: boolean }) {
                     level: cohortMeta?.level ?? assignment.level ?? null,
                     stream: cohortMeta?.stream ?? null,
                     learner_count: cohortMeta?.students_count ?? null,
+                    subject_count: cohortMeta?.subjects_count ?? null,
+                    is_operational: cohortMeta?.is_operational ?? true,
+                    setup_status: cohortMeta?.setup_status ?? 'READY',
+                    setup_incomplete_reason: cohortMeta?.setup_incomplete_reason ?? null,
                     is_current_year: cohortMeta?.is_current_year ?? assignment.is_current_year,
                     subjects: [],
                 });
@@ -220,6 +262,10 @@ export function useInstructorMyCohorts(options?: { enabled?: boolean }) {
                 level: assignment.level ?? cohortMeta?.level ?? null,
                 is_current_year: assignment.is_current_year,
             });
+            group.subject_count = group.subjects.length;
+            group.is_operational = true;
+            group.setup_status = 'READY';
+            group.setup_incomplete_reason = null;
         });
 
         return Array.from(groupMap.values())

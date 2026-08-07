@@ -326,6 +326,9 @@ export function InstructorMyCohortsPageContent() {
                                                     Historical
                                                 </Badge>
                                             ) : null}
+                                            {group.setup_status === 'INCOMPLETE' ? (
+                                                <Badge variant="warning" size="sm">Setup incomplete</Badge>
+                                            ) : null}
                                         </div>
                                         <div>
                                             <Link
@@ -345,13 +348,23 @@ export function InstructorMyCohortsPageContent() {
 
                                     <Link href={buildClassDetailHref(group.cohort_id)} className="w-full lg:w-auto">
                                         <Button variant="secondary" size="sm" className="w-full lg:w-auto">
-                                            Open Class
+                                            {group.setup_status === 'INCOMPLETE' ? 'Complete class-subject setup' : 'Open Class'}
                                         </Button>
                                     </Link>
                                 </div>
 
                                 <div className="grid gap-3">
-                                    {group.subjects.map((subject) => (
+                                    {group.subjects.length === 0 ? (
+                                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                            <h3 className="text-base font-semibold text-amber-950">Class-subject setup incomplete</h3>
+                                            <p className="mt-1 text-sm text-amber-800">
+                                                {group.setup_incomplete_reason ?? 'Complete class-subject setup before preparing lessons, sessions, assessments, or schemes for this class.'}
+                                            </p>
+                                            <p className="mt-2 text-xs text-amber-700">
+                                                0 class subjects configured. No teaching assignments are being fabricated for this class.
+                                            </p>
+                                        </div>
+                                    ) : group.subjects.map((subject) => (
                                         <div key={subject.teaching_key} className="rounded-xl border border-gray-200 p-4">
                                             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                                 <div className="min-w-0 space-y-2">

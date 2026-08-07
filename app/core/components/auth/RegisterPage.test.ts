@@ -74,4 +74,13 @@ describe('RegisterPage form validation feedback', () => {
     expect(hookSource).toContain('handleOpenCreatedWorkspace');
     expect(pageSource).toContain('handleOpenExistingPersonalWorkspace');
   });
+
+  it('does not render registration quote monetary amounts while quote tokens remain usable', () => {
+    expect(pageSource).toContain('commercialQuote.commercial_mode');
+    expect(pageSource).toContain('commercialQuote.starts_on');
+    expect(pageSource).toContain('Scholaroscope will validate this quote when you submit.');
+    expect(pageSource).not.toContain('{commercialQuote.currency} {commercialQuote.total}');
+    expect(pageSource).not.toContain('Server quote');
+    expect(hookSource).toContain('quoteToken');
+  });
 });
