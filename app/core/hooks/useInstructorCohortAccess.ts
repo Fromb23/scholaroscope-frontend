@@ -49,6 +49,12 @@ function uniqueSortedNumbers(values: Array<number | null | undefined>): number[]
 export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
     const { user, activeOrg, capabilities } = useAuth();
     const hasTeachingProjection = Boolean(capabilities.can_teach);
+    const hasManagementProjection = Boolean(
+        capabilities.can_manage_cohorts
+        || capabilities.can_manage_academic_setup
+        || capabilities.authorization?.permission_keys.includes('academic.cohorts.view')
+        || capabilities.authorization?.permission_keys.includes('academic.cohorts.manage')
+    );
     const selfManagedTeachingAdmin = isSelfManagedTeachingAdmin({
         activeOrg,
         capabilities,
@@ -120,6 +126,7 @@ export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
 
     return {
         hasTeachingProjection,
+        hasManagementProjection,
         isSelfManagedTeachingAdmin: selfManagedTeachingAdmin,
         isTeachingActor,
         isLoading: isTeachingActor ? isLoading : false,

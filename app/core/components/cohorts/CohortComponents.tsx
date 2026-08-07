@@ -8,6 +8,7 @@
 // needs cohort detail (not yet in a hook).
 // ============================================================================
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Check, X, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
@@ -20,6 +21,7 @@ import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/Curr
 import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { cohortAPI } from '@/app/core/api/academic';
+import { useAuth } from '@/app/context/AuthContext';
 import { useSubjects } from '@/app/core/hooks/useAcademic';
 import { isCbcSeniorSchoolEntity } from '@/app/core/lib/cbcSeniorSchool';
 import {
@@ -32,6 +34,7 @@ import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortDetail, AcademicYear, Curriculum } from '@/app/core/types/academic';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import { renderCohortSubjectPanelExtension } from '@/app/core/registry/cohortSubjectPanels';
+import { hasPermission } from '@/app/utils/permissions';
 
 // ── SubjectPanel ──────────────────────────────────────────────────────────
 
@@ -49,6 +52,9 @@ export interface SubjectPanelProps {
     curriculumType: string;
     cohortLevel: string;
     isHistorical: boolean;
+    cohortName?: string;
+    returnTo?: string;
+    canManageSubjectOfferings?: boolean;
     onSubjectsChanged?: () => void | Promise<void>;
 }
 
@@ -58,6 +64,9 @@ export function SubjectPanel({
                                cohortLevel,
                                curriculumType,
                                isHistorical,
+                               cohortName,
+                               returnTo,
+                               canManageSubjectOfferings,
                                onSubjectsChanged,
                              }: SubjectPanelProps) {
   const lifecycle = useCurriculumLifecycleGuard({
@@ -73,6 +82,9 @@ export function SubjectPanel({
     cohortLevel,
     curriculumType,
     isHistorical: readOnlyMode,
+    cohortName,
+    returnTo,
+    canManageSubjectOfferings,
     onSubjectsChanged,
   };
   const pluginSubjectPanel = renderCohortSubjectPanelExtension(pluginPanelContext);
@@ -112,7 +124,10 @@ function KernelSubjectPanel({
                               cohortId,
                               curriculumId,
                               cohortLevel,
+                              cohortName,
                               isHistorical,
+                              returnTo,
+                              canManageSubjectOfferings,
                               onSubjectsChanged,
                             }: SubjectPanelProps) {
   const [detail, setDetail] = useState<CohortDetail | null>(null);
@@ -158,6 +173,14 @@ function KernelSubjectPanel({
       const subjectNorm = normalizeAcademicLevel(s.level);
       return cohortNorm === subjectNorm;
     });
+  const catalogueHref = (() => {
+    const params = new URLSearchParams({
+      curriculum: String(curriculumId),
+      level: normalizeAcademicLevel(cohortLevel),
+      returnTo: returnTo ?? `/academic/cohorts/${cohortId}?open=subjects`,
+    });
+    return `/academic/subjects/catalogue?${params.toString()}`;
+  })();
 
   const handleLink = async (subjectId: number) => {
     setWorking(true);
@@ -275,6 +298,30 @@ function KernelSubjectPanel({
         </div>
       )}
 
+      {!isHistorical && !loading && (detail?.subjects?.length ?? 0) === 0 && unlinked.length === 0 && (
+        <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-amber-950">
+              No compatible subjects have been configured for {cohortName ?? 'this cohort'} yet.
+            </p>
+            <p className="text-sm text-amber-800">
+              Existing subject offerings do not match this cohort&apos;s canonical level. Configure a compatible offering first, then return here to link it explicitly.
+            </p>
+          </div>
+          {canManageSubjectOfferings ? (
+            <Link href={catalogueHref}>
+              <Button type="button" variant="secondary" size="sm">
+                Select subjects from catalogue
+              </Button>
+            </Link>
+          ) : (
+            <p className="text-xs text-amber-700">
+              You are not authorized to configure subject offerings. Ask a workspace manager to add compatible subjects for this cohort.
+            </p>
+          )}
+        </div>
+      )}
+
       {isHistorical && (
         <p className="text-xs text-gray-400 text-center py-2">
           This cohort is from a past academic year and is read-only.
@@ -288,6 +335,7 @@ interface ManageCohortSubjectsModalProps {
     isOpen: boolean;
     onClose: () => void;
     cohort: CohortDetail;
+    returnTo?: string;
     onSubjectsChanged?: () => void | Promise<void>;
 }
 
@@ -295,11 +343,17 @@ export function ManageCohortSubjectsModal({
     isOpen,
     onClose,
     cohort,
+    returnTo,
     onSubjectsChanged,
 }: ManageCohortSubjectsModalProps) {
+    const { capabilities } = useAuth();
     const isCbcSeniorCohort = isCbcSeniorSchoolEntity(cohort);
     const hasSubjects = (cohort.subjects?.length ?? 0) > 0;
     const modalActionLabel = hasSubjects ? 'Manage Class Subjects' : 'Set Up Class Subjects';
+    const canManageSubjectOfferings = Boolean(
+        capabilities.can_manage_subjects
+        || hasPermission(capabilities, 'academic.subjects.manage')
+    );
 
     return (
         <Modal
@@ -320,7 +374,10 @@ export function ManageCohortSubjectsModal({
                     curriculumId={cohort.curriculum}
                     curriculumType={cohort.curriculum_type}
                     cohortLevel={cohort.level}
+                    cohortName={cohort.name}
                     isHistorical={!cohort.is_current_year}
+                    returnTo={returnTo}
+                    canManageSubjectOfferings={canManageSubjectOfferings}
                     onSubjectsChanged={onSubjectsChanged}
                 />
             </div>

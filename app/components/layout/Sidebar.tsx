@@ -33,8 +33,6 @@ export default function Sidebar({ navConfig }: SidebarProps) {
     user,
     activeOrg,
     activeOperatingContext,
-    availableOperatingContexts,
-    setActiveOperatingContext,
   } = useAuth();
   const { isSidebarOpen, closeSidebar } = useSidebar();
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
@@ -103,22 +101,6 @@ export default function Sidebar({ navConfig }: SidebarProps) {
                 </p>
               </div>
             </div>
-
-            {availableOperatingContexts.length > 1 ? (
-              <div className="pl-11">
-                <select
-                  value={activeOperatingContext ?? ''}
-                  onChange={(event) => setActiveOperatingContext(event.target.value as OperatingContext)}
-                  className="theme-input h-9 w-full rounded-md text-sm"
-                >
-                  {availableOperatingContexts.map((context) => (
-                    <option key={context} value={context}>
-                      {contextLabel(context)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
 
             {!user.is_superadmin && activeOrg && (
               <div className="mt-3 pl-11">

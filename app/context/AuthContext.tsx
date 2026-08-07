@@ -279,11 +279,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
   const activeOperatingContext = useMemo<OperatingContext | null>(() => {
     if (availableOperatingContexts.length === 0) return null;
+    if (
+      isSelfManagedTeachingOwnerProjection(capabilities)
+      && availableOperatingContexts.includes('WORKSPACE_MANAGEMENT')
+    ) {
+      return 'WORKSPACE_MANAGEMENT';
+    }
     if (savedOperatingContext && availableOperatingContexts.includes(savedOperatingContext)) {
       return savedOperatingContext;
     }
     return availableOperatingContexts[0];
-  }, [availableOperatingContexts, savedOperatingContext]);
+  }, [availableOperatingContexts, capabilities, savedOperatingContext]);
 
   const selectOperatingContext = useCallback((context: OperatingContext) => {
     setSavedOperatingContext(context);

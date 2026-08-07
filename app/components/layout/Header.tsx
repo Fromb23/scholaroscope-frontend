@@ -31,8 +31,6 @@ export default function Header() {
     user,
     activeOrg,
     activeOperatingContext,
-    availableOperatingContexts,
-    setActiveOperatingContext,
     capabilities,
     memberships,
     logout,
@@ -222,28 +220,6 @@ export default function Header() {
                     <Settings className="h-4 w-4" />
                     Settings
                   </Link>
-                ) : null}
-
-                {availableOperatingContexts.length > 1 ? (
-                  <div className="border-t theme-border py-2">
-                    <p className="theme-subtle px-4 pb-1 text-xs font-semibold uppercase tracking-wide">
-                      Operating context
-                    </p>
-                    {availableOperatingContexts.map((context) => (
-                      <button
-                        key={context}
-                        onClick={() => {
-                          setActiveOperatingContext(context);
-                          setDropdownOpen(false);
-                          router.replace(operatingContextHomeRoute(context));
-                        }}
-                        className="flex w-full items-center justify-between gap-3 px-4 py-2 text-sm theme-text theme-hover-surface"
-                      >
-                        <span>{context === 'WORKSPACE_MANAGEMENT' ? 'Workspace management' : 'My teaching'}</span>
-                        {context === activeOperatingContext ? <Check className="h-3.5 w-3.5 theme-icon-emphasis" /> : null}
-                      </button>
-                    ))}
-                  </div>
                 ) : null}
 
                 <div className="border-t theme-border pt-2">

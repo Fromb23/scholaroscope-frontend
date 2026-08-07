@@ -677,6 +677,10 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
   const { organizationId } = useOrganizationContext();
   const enabled = options?.enabled ?? true;
   const instructorAccess = useInstructorCohortAccess({ enabled });
+  const shouldApplyTeachingProjection = Boolean(
+    instructorAccess.hasTeachingProjection
+    && !instructorAccess.hasManagementProjection
+  );
   const cohortIdsKey = instructorAccess.cohortIdsKey;
   const allowedCohortIds = useMemo(
     () => toIdSet(cohortIdsKey),
@@ -711,7 +715,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       const data = await cohortAPI.getAll(resolvedFilters);
       const allCohorts = Array.isArray(data) ? data : (data as { results?: Cohort[] })?.results ?? [];
       setCohorts(
-        instructorAccess.hasTeachingProjection
+        shouldApplyTeachingProjection
           ? allCohorts.filter(cohort => allowedCohortIds.has(cohort.id))
           : allCohorts
       );
@@ -721,7 +725,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, enabled, instructorAccess.hasTeachingProjection, resolvedFilters]);
+  }, [allowedCohortIds, enabled, resolvedFilters, shouldApplyTeachingProjection]);
 
   useEffect(() => { fetchCohorts(); }, [fetchCohorts]);
 
