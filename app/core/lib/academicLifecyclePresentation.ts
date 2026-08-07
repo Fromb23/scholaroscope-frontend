@@ -98,7 +98,7 @@ export function resolveAcademicLifecyclePresentation(
     const cleanup = context.allows_cleanup
       ? ' Pending records may still be completed during the closure grace period.'
       : '';
-    const adminMessage = `This term has ended.${cleanup} Create the next term before adding new teaching work.`;
+    const adminMessage = `Your previous term has ended.${cleanup} Set up the next term when you're ready. New teaching work remains paused until an active term is available.`;
     return {
       shouldRender: true,
       title: 'Term ended',

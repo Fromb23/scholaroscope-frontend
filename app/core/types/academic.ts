@@ -57,7 +57,11 @@ export interface AcademicSetupStatus {
   has_active_curriculum: boolean;
   has_current_academic_year: boolean;
   has_terms_for_current_academic_year: boolean;
+  has_active_current_term: boolean;
   has_active_or_configured_term: boolean;
+  is_established_workspace: boolean;
+  current_term_availability: 'ACTIVE' | 'CONFIGURED_NOT_ACTIVE' | 'NO_ACTIVE_TERM' | 'NOT_CONFIGURED';
+  requires_next_term_setup: boolean;
   has_subjects: boolean;
   has_cohorts_for_current_academic_year: boolean;
   scheme_first_required?: boolean;
