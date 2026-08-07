@@ -73,4 +73,14 @@ describe('GenerateLessonPlanPage validation and error placement', () => {
     expect(pageSource).toContain('router.push(schemeGenerationHref)');
     expect(pageSource).toContain('First document required: Scheme of Work');
   });
+
+  it('uses asynchronous lesson generation job polling', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('lessonPlanAPI.getGenerationJob');
+    expect(pageSource).toContain('Queued.');
+    expect(pageSource).toContain('Generating...');
+    expect(pageSource).toContain('generated.result_payload.lesson_plan');
+    expect(pageSource).not.toContain('generated.lesson_plan.id');
+  });
 });

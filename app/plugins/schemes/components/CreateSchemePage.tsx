@@ -22,6 +22,7 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { cohortSubjectAPI } from '@/app/core/api/academic';
+import { schemesAPI } from '@/app/core/api/schemes';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { instructorsAPI } from '@/app/core/api/instructors';
 import { useAcademicLifecycleContext, useTermCalendarEvents, useCurricula, useSubjects } from '@/app/core/hooks/useAcademic';
@@ -177,6 +178,8 @@ export function CreateSchemePage() {
   const [rangeInitializedForKey, setRangeInitializedForKey] = useState<string | null>(null);
   const [rangeTouched, setRangeTouched] = useState(false);
   const [generationFailure, setGenerationFailure] = useState<string | null>(null);
+  const [generationStatus, setGenerationStatus] = useState<string | null>(null);
+  const [asyncGenerating, setAsyncGenerating] = useState(false);
   const safeReturnTo = useMemo(() => {
     const value = searchParams.get('returnTo');
     return parseAppDestination(value);
@@ -783,7 +786,9 @@ export function CreateSchemePage() {
     try {
       setStepError(null);
       setGenerationFailure(null);
+      setGenerationStatus(null);
       clearError();
+      setAsyncGenerating(true);
 
       const payload: GenerateSchemePayload = {
         term: selectedTerm.id,
@@ -798,14 +803,36 @@ export function CreateSchemePage() {
           : {}),
       };
 
-      const generated = await generateScheme(payload);
-      router.push(`/schemes/${generated.id}?${new URLSearchParams({
+      const queued = await generateScheme(payload);
+      setGenerationStatus(queued.duplicate ? 'Generation already queued.' : 'Queued.');
+      let generated = queued;
+      for (let attempt = 0; attempt < 90 && generated.status !== 'COMPLETED' && generated.status !== 'FAILED'; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        generated = await schemesAPI.getGenerationJob(queued.job_id);
+        setGenerationStatus(
+          generated.status === 'PROCESSING'
+            ? 'Generating...'
+            : generated.status === 'QUEUED'
+              ? 'Queued.'
+              : generated.status,
+        );
+      }
+      if (generated.status !== 'COMPLETED' || !generated.result_payload.scheme) {
+        const detail = typeof generated.error_payload.detail === 'string'
+          ? generated.error_payload.detail
+          : 'Scheme generation failed. Please retry.';
+        throw new Error(detail);
+      }
+      router.push(`/schemes/${generated.result_payload.scheme.id}?${new URLSearchParams({
         returnTo: safeReturnTo ?? '/schemes',
       }).toString()}`);
     } catch (err) {
       setGenerationFailure(
         resolveErrorMessage(err, 'We could not generate the draft scheme.'),
       );
+      setGenerationStatus(null);
+    } finally {
+      setAsyncGenerating(false);
     }
   };
 
@@ -909,9 +936,17 @@ export function CreateSchemePage() {
           message={visibleError}
           onDismiss={() => {
             setStepError(null);
+            setGenerationFailure(null);
+            setGenerationStatus(null);
             clearError();
           }}
         />
+      ) : null}
+
+      {generationStatus ? (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          {generationStatus} You can keep this page open while Scholaroscope prepares the scheme.
+        </div>
       ) : null}
 
       {currentStep === 1 ? (
@@ -1366,8 +1401,8 @@ export function CreateSchemePage() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Button type="button" onClick={() => void handleGenerate()} disabled={submitting}>
-              {submitting ? 'Retrying...' : 'Retry generation'}
+            <Button type="button" onClick={() => void handleGenerate()} disabled={submitting || asyncGenerating}>
+              {submitting || asyncGenerating ? (generationStatus ?? 'Retrying...') : 'Retry generation'}
             </Button>
             <Button
               type="button"
@@ -1548,8 +1583,8 @@ export function CreateSchemePage() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={() => void handleGenerate()} disabled={submitting}>
-              {submitting ? 'Generating...' : 'Generate Draft Scheme'}
+            <Button type="button" onClick={() => void handleGenerate()} disabled={submitting || asyncGenerating}>
+              {submitting || asyncGenerating ? (generationStatus ?? 'Queueing...') : 'Generate Draft Scheme'}
             </Button>
           )}
         </div>

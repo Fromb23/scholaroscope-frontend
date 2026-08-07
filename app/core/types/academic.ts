@@ -601,6 +601,31 @@ export interface SubjectOfferingMutationPayload {
   level?: string;
 }
 
+export interface CurriculumImportRequestSummary {
+  id: number;
+  status: 'REQUESTED' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+  requested_at: string;
+  requested_by: number | null;
+  support_notification_queued_at?: string | null;
+  support_notification_sent_at?: string | null;
+}
+
+export interface CurriculumImportRequestPayload {
+  curriculum: number;
+  catalog_subject_id: string;
+  subject_code?: string;
+  subject_name: string;
+  level: string;
+  platform_subject_id?: number | null;
+  content_status?: string;
+}
+
+export interface CurriculumImportRequestResponse {
+  detail: string;
+  created: boolean;
+  request: CurriculumImportRequestSummary;
+}
+
 export type SubjectOfferingCatalogStatus =
   | 'AVAILABLE'
   | 'OFFERED'
@@ -620,6 +645,11 @@ export interface SubjectCatalogMetadata {
   can_restore?: boolean;
   can_reoffer?: boolean;
   status_label?: string;
+  content_status?: string;
+  is_content_ready?: boolean;
+  platform_subject_id?: number | null;
+  curriculum_import_requested?: boolean;
+  curriculum_import_request?: CurriculumImportRequestSummary | null;
   [key: string]: unknown;
 }
 

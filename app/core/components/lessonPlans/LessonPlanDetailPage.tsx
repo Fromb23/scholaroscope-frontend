@@ -56,6 +56,7 @@ import {
     type LessonPlan,
     type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
+
 import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
@@ -67,6 +68,15 @@ import {
 } from '@/app/core/components/lessonPlans/lessonPlanDetailVisibility';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
+
+const REVIEW_SECTION_FIELDS = [
+    ['introduction', 'Introduction'],
+    ['lesson_development', 'Lesson development'],
+    ['learner_activities', 'Learner activities'],
+    ['assessment_strategy', 'Assessment strategy'],
+    ['differentiation', 'Differentiation'],
+    ['conclusion', 'Conclusion'],
+] as const;
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     const rawId = params.id;
@@ -273,6 +283,17 @@ export function LessonPlanDetailPage() {
     const [markUsedOpen, setMarkUsedOpen] = useState(false);
     const [markUsedError, setMarkUsedError] = useState<string | null>(null);
     const [reflection, setReflection] = useState('');
+    const [reviewOpen, setReviewOpen] = useState(false);
+    const [reviewForm, setReviewForm] = useState<Record<(typeof REVIEW_SECTION_FIELDS)[number][0], string>>({
+        introduction: '',
+        lesson_development: '',
+        learner_activities: '',
+        assessment_strategy: '',
+        differentiation: '',
+        conclusion: '',
+    });
+    const [reviewError, setReviewError] = useState<string | null>(null);
+    const [reviewFieldErrors, setReviewFieldErrors] = useState<Record<string, string>>({});
     const [scheduleOpen, setScheduleOpen] = useState(false);
     const [scheduleError, setScheduleError] = useState<string | null>(null);
     const [scheduleFieldErrors, setScheduleFieldErrors] = useState<Record<string, string>>({});
@@ -598,6 +619,52 @@ export function LessonPlanDetailPage() {
         setLearnerTaskSuccess(null);
     }, []);
 
+    const handleOpenReview = useCallback(() => {
+        if (!lessonPlan) return;
+        setReviewForm({
+            introduction: lessonPlan.introduction ?? '',
+            lesson_development: lessonPlan.lesson_development ?? '',
+            learner_activities: lessonPlan.learner_activities ?? '',
+            assessment_strategy: lessonPlan.assessment_strategy ?? '',
+            differentiation: lessonPlan.differentiation ?? '',
+            conclusion: lessonPlan.conclusion ?? '',
+        });
+        setReviewError(null);
+        setReviewFieldErrors({});
+        setReviewOpen(true);
+    }, [lessonPlan]);
+
+    const handleSubmitReview = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!lessonPlan) return;
+        setPendingActionKey(actionKey(lessonPlan.id, 'reviewed'));
+        setReviewError(null);
+        setReviewFieldErrors({});
+        try {
+            await markReviewed(reviewForm);
+            await refetch();
+            setReviewOpen(false);
+            setActionSuccess('Lesson plan reviewed. Scheduling is now available.');
+        } catch (err) {
+            const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+            const fieldErrors: Record<string, string> = {};
+            if (data && typeof data === 'object') {
+                REVIEW_SECTION_FIELDS.forEach(([field]) => {
+                    const value = data[field];
+                    if (Array.isArray(value)) {
+                        fieldErrors[field] = String(value[0] ?? '');
+                    } else if (typeof value === 'string') {
+                        fieldErrors[field] = value;
+                    }
+                });
+            }
+            setReviewFieldErrors(fieldErrors);
+            setReviewError(resolveErrorMessage(err, 'Lesson review could not be completed.'));
+        } finally {
+            setPendingActionKey(null);
+        }
+    };
+
     const handleSimpleAction = async (action: 'reviewed' | 'archived' | 'restored') => {
         if (!lessonPlan) {
             return;
@@ -609,8 +676,7 @@ export function LessonPlanDetailPage() {
 
         try {
             if (action === 'reviewed') {
-                await markReviewed();
-                setActionSuccess('Lesson plan marked as reviewed.');
+                handleOpenReview();
             } else if (action === 'archived') {
                 await archive();
                 setActionSuccess('Lesson plan archived.');
@@ -1065,9 +1131,9 @@ export function LessonPlanDetailPage() {
                                     icon: <Download className="h-4 w-4" />,
                                 },
                                 ...(canMarkLessonPlanReviewed(lessonPlan.status) ? [{
-                                    label: 'Mark Reviewed',
+                                    label: 'Review / edit lesson plan',
                                     onSelect: () => {
-                                        void handleSimpleAction('reviewed');
+                                        handleOpenReview();
                                     },
                                     disabled: pendingActionKey === actionKey(lessonPlan.id, 'reviewed'),
                                 }] : []),
@@ -1682,6 +1748,74 @@ export function LessonPlanDetailPage() {
             >
                 <LessonPlanReferences lessonPlan={lessonPlan} />
             </CollapsibleDetailSection>
+
+            <Modal
+                isOpen={reviewOpen}
+                onClose={() => {
+                    setReviewOpen(false);
+                    setReviewError(null);
+                    setReviewFieldErrors({});
+                }}
+                title="Review generated lesson plan"
+                size="lg"
+            >
+                <form onSubmit={handleSubmitReview} className="space-y-4">
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                        Scholaroscope-generated lesson plans are drafts. Reviewing the plan helps you understand and adapt the lesson to your learners and teaching context, and helps remove generic assumptions or bias from AI-generated content. Update each required teaching section before scheduling the lesson.
+                    </div>
+
+                    <div className="rounded-xl border theme-border bg-gray-50 px-4 py-3 text-sm theme-muted">
+                        <p className="font-medium theme-text">System-controlled material</p>
+                        <p className="mt-1">
+                            Title, selected outcomes, and reference materials stay outside the mandatory-change check. Edit them separately only if they need normal planning corrections.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-4">
+                        {REVIEW_SECTION_FIELDS.map(([field, label]) => (
+                            <div key={field} className="space-y-1">
+                                <label className="block text-sm font-medium theme-text">{label}</label>
+                                <textarea
+                                    value={reviewForm[field]}
+                                    onChange={(event) =>
+                                        setReviewForm((current) => ({
+                                            ...current,
+                                            [field]: event.target.value,
+                                        }))
+                                    }
+                                    rows={5}
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                {reviewFieldErrors[field] ? (
+                                    <p className="text-sm text-red-600">{reviewFieldErrors[field]}</p>
+                                ) : null}
+                            </div>
+                        ))}
+                    </div>
+
+                    {reviewError ? (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            {reviewError}
+                        </div>
+                    ) : null}
+
+                    <div className="flex flex-wrap justify-end gap-3">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setReviewOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={pendingActionKey === actionKey(lessonPlan.id, 'reviewed')}
+                        >
+                            Complete review
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
 
             <Modal
                 isOpen={markUsedOpen}

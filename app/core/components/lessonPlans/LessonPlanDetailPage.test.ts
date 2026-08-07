@@ -20,4 +20,26 @@ describe('LessonPlanDetailPage scheme desire path', () => {
     expect(source).toContain('useReportExport');
     expect(source).not.toContain('handleExportPdf');
   });
+
+  it('requires explicit review editing before scheduling a generated lesson', () => {
+    expect(source).toContain('Review / edit lesson plan');
+    expect(source).toContain('REVIEW_SECTION_FIELDS');
+    expect(source).toContain('Scholaroscope-generated lesson plans are drafts');
+    expect(source).toContain('System-controlled material');
+    expect(source).toContain('Complete review');
+    expect(source).toContain('await markReviewed(reviewForm)');
+  });
+
+  it('keeps all six required teaching sections in the review form', () => {
+    [
+      'Introduction',
+      'Lesson development',
+      'Learner activities',
+      'Assessment strategy',
+      'Differentiation',
+      'Conclusion',
+    ].forEach((label) => {
+      expect(source).toContain(label);
+    });
+  });
 });

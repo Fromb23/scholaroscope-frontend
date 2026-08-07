@@ -45,6 +45,23 @@ export interface GenerateSchemePayload {
     generation_mode?: SchemeGenerationMode;
 }
 
+export interface SchemeGenerationJob {
+    job_id: string;
+    job_type: 'LESSON_PLAN' | 'SCHEME_OF_WORK';
+    status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+    stage: string;
+    label: string;
+    progress_percent: number;
+    target_model: string;
+    target_object_id: number | null;
+    request_payload: Record<string, unknown>;
+    result_payload: {
+        scheme?: SchemeOfWork;
+    };
+    error_payload: Record<string, unknown>;
+    duplicate?: boolean;
+}
+
 export interface SchemeEntry {
     id: number;
     scheme: number;

@@ -87,6 +87,10 @@ export function isContentReady(item: SubjectCatalogItem): boolean {
   return item.metadata?.is_content_ready !== false;
 }
 
+export function isCurriculumImportRequested(item: SubjectCatalogItem): boolean {
+  return Boolean(item.metadata?.curriculum_import_requested || item.metadata?.curriculum_import_request);
+}
+
 export function contentReadinessLabel(item: SubjectCatalogItem): string {
   return isContentReady(item) ? 'Content ready' : 'Needs curriculum import';
 }
@@ -130,6 +134,43 @@ export function compareCatalogLevels(left: string, right: string): number {
     return leftValue - rightValue;
   }
   return String(leftValue).localeCompare(String(rightValue));
+}
+
+export function compareCatalogItemsByPriority(left: SubjectCatalogItem, right: SubjectCatalogItem): number {
+  const priority = (item: SubjectCatalogItem): number => {
+    if (getCatalogStatus(item) === 'OFFERED' || getCatalogStatus(item) === 'REACTIVATED') {
+      return 0;
+    }
+    return isContentReady(item) ? 1 : 2;
+  };
+  const priorityGap = priority(left) - priority(right);
+  if (priorityGap !== 0) return priorityGap;
+  const levelGap = compareCatalogLevels(left.level, right.level);
+  if (levelGap !== 0) return levelGap;
+  const nameGap = left.name.localeCompare(right.name);
+  if (nameGap !== 0) return nameGap;
+  return String(left.id).localeCompare(String(right.id));
+}
+
+export function curriculumImportRequestPayload(
+  item: SubjectCatalogItem,
+  curriculumId: number,
+) {
+  return {
+    curriculum: curriculumId,
+    catalog_subject_id: item.catalog_subject_id,
+    subject_code: item.subject_code ?? item.code,
+    subject_name: item.name,
+    level: item.level,
+    platform_subject_id:
+      typeof item.metadata?.platform_subject_id === 'number'
+        ? item.metadata.platform_subject_id
+        : null,
+    content_status:
+      typeof item.metadata?.content_status === 'string'
+        ? item.metadata.content_status
+        : undefined,
+  };
 }
 
 export function groupRowsByLevel(catalog: SubjectCatalogItem[]): CatalogSubjectGroup[] {

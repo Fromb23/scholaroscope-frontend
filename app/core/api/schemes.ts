@@ -3,6 +3,7 @@ import { downloadBlob, getDownloadFileName, normalizeBlobError } from '@/app/cor
 import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type {
   GenerateSchemePayload,
+  SchemeGenerationJob,
   InstructorSchemeDrilldown,
   SchemeEntry,
   SchemeEntryUpdatePayload,
@@ -69,8 +70,15 @@ export const schemesAPI = {
     return response.data;
   },
 
-  generateScheme: async (payload: GenerateSchemePayload): Promise<SchemeOfWork> => {
-    const response = await apiClient.post<SchemeOfWork>(`${SCHEMES_BASE_PATH}/generate/`, payload);
+  generateScheme: async (payload: GenerateSchemePayload): Promise<SchemeGenerationJob> => {
+    const response = await apiClient.post<SchemeGenerationJob>(`${SCHEMES_BASE_PATH}/generate/`, payload);
+    return response.data;
+  },
+
+  getGenerationJob: async (jobId: string): Promise<SchemeGenerationJob> => {
+    const response = await apiClient.get<SchemeGenerationJob>(
+      `${SCHEMES_BASE_PATH}/generation-jobs/${jobId}/`
+    );
     return response.data;
   },
 

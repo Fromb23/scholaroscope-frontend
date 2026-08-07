@@ -24,6 +24,7 @@ import type {
     LessonPlanQueryParams,
     LessonPlanUpdatePayload,
     MarkUsedPayload,
+    ReviewLessonPlanPayload,
     ScheduleLessonPayload,
     ScheduleLessonResponse,
 } from '@/app/core/types/lessonPlans';
@@ -146,8 +147,15 @@ export const lessonPlanAPI = {
         return response.data;
     },
 
-    markReviewed: async (id: number): Promise<LessonPlan> => {
-        const response = await apiClient.post<LessonPlan>(`${LESSON_PLANS_BASE_PATH}/${id}/mark_reviewed/`);
+    markReviewed: async (id: number, payload: ReviewLessonPlanPayload): Promise<LessonPlan> => {
+        const response = await apiClient.post<LessonPlan>(`${LESSON_PLANS_BASE_PATH}/${id}/mark_reviewed/`, payload);
+        return response.data;
+    },
+
+    getGenerationJob: async (jobId: string): Promise<GenerateLessonPlanResponse> => {
+        const response = await apiClient.get<GenerateLessonPlanResponse>(
+            `${LESSON_PLANS_BASE_PATH}/generation-jobs/${jobId}/`
+        );
         return response.data;
     },
 

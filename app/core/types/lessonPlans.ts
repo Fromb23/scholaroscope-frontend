@@ -196,6 +196,7 @@ export interface LessonPlan {
     conclusion: string | null;
     reflection: string | null;
     generated_context: Record<string, unknown> | null;
+    generated_draft_snapshot: Record<string, unknown> | null;
     references_snapshot: Array<Record<string, unknown>>;
     generated_by_ai: boolean;
     ai_provider: string | null;
@@ -251,9 +252,21 @@ export interface GenerateLessonPlanFromSessionPayload {
 
 export interface GenerateLessonPlanResponse {
     detail: string;
-    created: boolean;
-    selected_references_count: number;
-    lesson_plan: LessonPlan;
+    job_id: string;
+    job_type: 'LESSON_PLAN' | 'SCHEME_OF_WORK';
+    status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+    stage: string;
+    label: string;
+    progress_percent: number;
+    target_model: string;
+    target_object_id: number | null;
+    result_payload: {
+        created?: boolean;
+        selected_references_count?: number;
+        lesson_plan?: LessonPlan;
+    };
+    error_payload: Record<string, unknown>;
+    duplicate?: boolean;
 }
 
 export type ScheduleLessonSessionType =
@@ -325,6 +338,15 @@ export interface MarkUsedPayload {
     reflection: string;
 }
 
+export interface ReviewLessonPlanPayload {
+    introduction: string;
+    lesson_development: string;
+    learner_activities: string;
+    assessment_strategy: string;
+    differentiation: string;
+    conclusion: string;
+}
+
 export const LESSON_PLAN_STATUS_OPTIONS: Array<{
     value: LessonPlanStatus;
     label: string;
@@ -342,7 +364,7 @@ export function canMarkLessonPlanReviewed(status: LessonPlanStatus): boolean {
 }
 
 export function canScheduleLesson(status: LessonPlanStatus): boolean {
-    return status === 'GENERATED' || status === 'REVIEWED';
+    return status === 'REVIEWED';
 }
 
 export function canPrepareAssignmentDraft(status: LessonPlanStatus): boolean {

@@ -88,6 +88,8 @@ export function GenerateLessonPlanPage() {
     const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<LessonPlanGenerationField>>({});
     const [useAi, setUseAi] = useState(true);
     const [submittingError, setSubmittingError] = useState<string | null>(null);
+    const [generationStatus, setGenerationStatus] = useState<string | null>(null);
+    const [asyncGenerating, setAsyncGenerating] = useState(false);
     const [showRetryWithoutAi, setShowRetryWithoutAi] = useState(false);
     const [guidanceOpen, setGuidanceOpen] = useState(false);
     const [draftLessonPlan, setDraftLessonPlan] = useState<{
@@ -172,7 +174,7 @@ export function GenerateLessonPlanPage() {
         requestedCohortSubjectId,
     ]);
 
-    const submitting = creatingLessonPlan || generatingLessonPlan;
+    const submitting = creatingLessonPlan || generatingLessonPlan || asyncGenerating;
     const plannedOutcomeMap = useMemo(
         () => new Map(plannedOutcomes.map((outcome) => [outcome.outcome_id, outcome])),
         [plannedOutcomes]
@@ -342,6 +344,7 @@ export function GenerateLessonPlanPage() {
 
     const submitGeneration = async (requestedUseAi: boolean) => {
         setSubmittingError(null);
+        setGenerationStatus(null);
         setShowRetryWithoutAi(false);
         clearCreateError();
         clearGenerateError();
@@ -391,6 +394,7 @@ export function GenerateLessonPlanPage() {
         }
 
         try {
+            setAsyncGenerating(true);
             const lessonPlan = await upsertDraftLessonPlan({
                 cohort_subject: selectedCohortSubjectId,
                 term: selectedTermId,
@@ -399,21 +403,44 @@ export function GenerateLessonPlanPage() {
                 reference_pages: validatedReferences.payload,
             });
 
-            const generated = await generateLessonPlan(lessonPlan.id, {
+            const queued = await generateLessonPlan(lessonPlan.id, {
                 force_regenerate: false,
                 use_ai: requestedUseAi,
             });
-            const generationMode = generated.lesson_plan.generated_by_ai
+
+            setGenerationStatus(queued.duplicate ? 'Generation already queued.' : 'Queued.');
+            let generated = queued;
+            for (let attempt = 0; attempt < 60 && generated.status !== 'COMPLETED' && generated.status !== 'FAILED'; attempt += 1) {
+                await new Promise((resolve) => window.setTimeout(resolve, 1000));
+                generated = await lessonPlanAPI.getGenerationJob(queued.job_id);
+                setGenerationStatus(
+                    generated.status === 'PROCESSING'
+                        ? 'Generating...'
+                        : generated.status === 'QUEUED'
+                            ? 'Queued.'
+                            : generated.status,
+                );
+            }
+
+            if (generated.status !== 'COMPLETED' || !generated.result_payload.lesson_plan) {
+                const detail = typeof generated.error_payload.detail === 'string'
+                    ? generated.error_payload.detail
+                    : 'Generation failed. Please retry.';
+                throw new Error(detail);
+            }
+
+            const completedPlan = generated.result_payload.lesson_plan;
+            const generationMode = completedPlan.generated_by_ai
                 ? 'ai'
-                : generated.lesson_plan.ai_fallback_reason
+                : completedPlan.ai_fallback_reason
                     ? 'fallback'
                     : 'rule-based';
 
             router.push(
-                `/lesson-plans/${generated.lesson_plan.id}?${new URLSearchParams({
-                    notice: generated.created ? 'generated' : 'existing',
+                `/lesson-plans/${completedPlan.id}?${new URLSearchParams({
+                    notice: generated.result_payload.created ? 'generated' : 'existing',
                     mode: generationMode,
-                    references: String(generated.selected_references_count),
+                    references: String(generated.result_payload.selected_references_count ?? 0),
                     returnTo: safeReturnTo ?? '/lesson-plans',
                 }).toString()}`
             );
@@ -430,6 +457,9 @@ export function GenerateLessonPlanPage() {
                 return;
             }
             setSubmittingError(message);
+            setGenerationStatus(null);
+        } finally {
+            setAsyncGenerating(false);
         }
     };
 
@@ -587,6 +617,12 @@ export function GenerateLessonPlanPage() {
                         You selected {plannedOutcomes.length} outcome{plannedOutcomes.length === 1 ? '' : 's'}, but{' '}
                         {referenceCoverage.missingOutcomes.length} {referenceCoverage.missingOutcomes.length === 1 ? 'still needs' : 'still need'} a reference.
                         Add one for each outcome, or continue if that is intentional.
+                    </div>
+                ) : null}
+
+                {generationStatus ? (
+                    <div className="theme-info-surface rounded-xl p-4 text-sm theme-text">
+                        {generationStatus} You can keep this page open while Scholaroscope prepares the draft.
                     </div>
                 ) : null}
             </div>
@@ -749,7 +785,7 @@ export function GenerateLessonPlanPage() {
                 {!schemeFirstBlocked ? (
                     <div className="hidden justify-end md:flex">
                         <Button type="submit" disabled={submitButtonDisabled}>
-                            {submitting ? 'Generating...' : 'Generate lesson plan'}
+                            {submitting ? (generationStatus ?? 'Queueing...') : 'Generate lesson plan'}
                         </Button>
                     </div>
                 ) : null}
@@ -764,7 +800,7 @@ export function GenerateLessonPlanPage() {
                             className="w-full"
                             disabled={submitButtonDisabled}
                         >
-                            {submitting ? 'Generating...' : 'Generate lesson plan'}
+                            {submitting ? (generationStatus ?? 'Queueing...') : 'Generate lesson plan'}
                         </Button>
                     </div>
                 </div>

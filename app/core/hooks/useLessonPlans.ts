@@ -21,6 +21,7 @@ import type {
     LessonPlanQueryParams,
     LessonPlanUpdatePayload,
     MarkUsedPayload,
+    ReviewLessonPlanPayload,
     ScheduleLessonPayload,
     ScheduleLessonResponse,
 } from '@/app/core/types/lessonPlans';
@@ -203,9 +204,9 @@ export const useLessonPlans = (
         }
     };
 
-    const markReviewed = async (id: number): Promise<LessonPlan> => {
+    const markReviewed = async (id: number, payload: ReviewLessonPlanPayload): Promise<LessonPlan> => {
         try {
-            const updated = await lessonPlanAPI.markReviewed(id);
+            const updated = await lessonPlanAPI.markReviewed(id, payload);
             setLessonPlans((prev) => replaceLessonPlan(prev, updated));
             return updated;
         } catch (err) {
@@ -357,17 +358,20 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         }
     };
 
-    const markReviewed = async (): Promise<LessonPlan> => {
+    const markReviewed = async (payload: ReviewLessonPlanPayload): Promise<LessonPlan> => {
         if (!lessonPlanId) {
             throw new Error('This lesson plan could not be found.');
         }
 
         try {
-            const updated = await lessonPlanAPI.markReviewed(lessonPlanId);
+            const updated = await lessonPlanAPI.markReviewed(lessonPlanId, payload);
             setLessonPlan(updated);
             return updated;
         } catch (err) {
-            throw new Error(getLessonPlanDetailMessage(err as ApiError));
+            const apiError = err as ApiError;
+            throw Object.assign(new Error(getLessonPlanDetailMessage(apiError)), {
+                response: apiError.response,
+            });
         }
     };
 
