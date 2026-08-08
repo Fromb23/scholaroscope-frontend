@@ -8,6 +8,7 @@ import { CohortSubject } from '../types/academic';
 import { StudentDetail } from '../types/student';
 import { ApiError, resolveErrorMessage } from '../types/errors';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { filterByTeachingProjection } from '@/app/core/lib/teachingProjectionBoundary';
 
 function toIdSet(idsKey: string): Set<number> {
   if (!idsKey) return new Set<number>();
@@ -31,6 +32,13 @@ export function useCohorts(filters?: {
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const instructorAccess = useInstructorCohortAccess({ enabled });
+  const cohortTeachingProjectionBoundary = useMemo(
+    () => ({
+      hasTeachingProjection: instructorAccess.hasTeachingProjection,
+      hasManagementProjection: instructorAccess.hasManagementProjection,
+    }),
+    [instructorAccess.hasManagementProjection, instructorAccess.hasTeachingProjection]
+  );
   const curriculum = filters?.curriculum;
   const academicYear = filters?.academic_year;
   const level = filters?.level;
@@ -65,9 +73,7 @@ export function useCohorts(filters?: {
       const data = await cohortsAPI.getCohorts(requestFilters);
       const allCohorts = Array.isArray(data) ? data : data.results ?? [];
       setCohorts(
-        instructorAccess.hasTeachingProjection
-          ? allCohorts.filter(cohort => allowedCohortIds.has(cohort.id))
-          : allCohorts
+        filterByTeachingProjection(allCohorts, allowedCohortIds, cohortTeachingProjectionBoundary)
       );
     } catch (err) {
       setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohorts'));
@@ -75,7 +81,7 @@ export function useCohorts(filters?: {
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, enabled, instructorAccess.hasTeachingProjection, requestFilters]);
+  }, [allowedCohortIds, cohortTeachingProjectionBoundary, enabled, requestFilters]);
 
   useEffect(() => {
     void loadCohorts();
