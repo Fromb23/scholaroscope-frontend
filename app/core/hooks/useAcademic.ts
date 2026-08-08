@@ -28,6 +28,7 @@ import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { ApiError, ApiErrorWithCode, extractErrorCode, resolveErrorMessage } from '@/app/core/types/errors';
 import { academicKeys } from '@/app/core/lib/queryKeys';
+import { filterByTeachingProjection } from '@/app/core/lib/teachingProjectionBoundary';
 
 export interface CohortFilters {
   academic_year?: number;
@@ -504,6 +505,13 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
   const { organizationId } = useOrganizationContext();
   const enabled = options?.enabled ?? true;
   const instructorAccess = useInstructorCohortAccess({ enabled });
+  const subjectTeachingProjectionBoundary = useMemo(
+    () => ({
+      hasTeachingProjection: instructorAccess.hasTeachingProjection,
+      hasManagementProjection: instructorAccess.hasManagementProjection,
+    }),
+    [instructorAccess.hasManagementProjection, instructorAccess.hasTeachingProjection]
+  );
   const subjectIdsKey = instructorAccess.subjectIdsKey;
   const allowedSubjectIds = useMemo(
     () => toIdSet(subjectIdsKey),
@@ -525,9 +533,7 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
       const data = await subjectAPI.getAll(params);
       const allSubjects = Array.isArray(data) ? data : (data as { results?: Subject[] })?.results ?? [];
       setSubjects(
-        instructorAccess.hasTeachingProjection
-          ? allSubjects.filter(subject => allowedSubjectIds.has(subject.id))
-          : allSubjects
+        filterByTeachingProjection(allSubjects, allowedSubjectIds, subjectTeachingProjectionBoundary)
       );
       setError(null);
     } catch (err) {
@@ -535,7 +541,7 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
     } finally {
       setLoading(false);
     }
-  }, [allowedSubjectIds, curriculumId, enabled, instructorAccess.hasTeachingProjection, organizationId]);
+  }, [allowedSubjectIds, curriculumId, enabled, organizationId, subjectTeachingProjectionBoundary]);
 
   useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
 
@@ -677,9 +683,12 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
   const { organizationId } = useOrganizationContext();
   const enabled = options?.enabled ?? true;
   const instructorAccess = useInstructorCohortAccess({ enabled });
-  const shouldApplyTeachingProjection = Boolean(
-    instructorAccess.hasTeachingProjection
-    && !instructorAccess.hasManagementProjection
+  const cohortTeachingProjectionBoundary = useMemo(
+    () => ({
+      hasTeachingProjection: instructorAccess.hasTeachingProjection,
+      hasManagementProjection: instructorAccess.hasManagementProjection,
+    }),
+    [instructorAccess.hasManagementProjection, instructorAccess.hasTeachingProjection]
   );
   const cohortIdsKey = instructorAccess.cohortIdsKey;
   const allowedCohortIds = useMemo(
@@ -715,9 +724,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       const data = await cohortAPI.getAll(resolvedFilters);
       const allCohorts = Array.isArray(data) ? data : (data as { results?: Cohort[] })?.results ?? [];
       setCohorts(
-        shouldApplyTeachingProjection
-          ? allCohorts.filter(cohort => allowedCohortIds.has(cohort.id))
-          : allCohorts
+        filterByTeachingProjection(allCohorts, allowedCohortIds, cohortTeachingProjectionBoundary)
       );
       setError(null);
     } catch (err) {
@@ -725,7 +732,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, enabled, resolvedFilters, shouldApplyTeachingProjection]);
+  }, [allowedCohortIds, cohortTeachingProjectionBoundary, enabled, resolvedFilters]);
 
   useEffect(() => { fetchCohorts(); }, [fetchCohorts]);
 

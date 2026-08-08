@@ -33,6 +33,7 @@ import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortDetail, AcademicYear, Curriculum } from '@/app/core/types/academic';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
+import { getAvailableCohortSubjectOfferings } from '@/app/core/lib/cohortSubjectCompatibility';
 import { renderCohortSubjectPanelExtension } from '@/app/core/registry/cohortSubjectPanels';
 import { hasPermission } from '@/app/utils/permissions';
 
@@ -167,12 +168,7 @@ function KernelSubjectPanel({
 
   const linkedIds = new Set((detail?.subjects ?? []).map((s: CohortSubjectLink) => s.subject));
 
-  const unlinked = allSubjects.filter((s) => {
-      if (linkedIds.has(s.id)) return false;
-      const cohortNorm = normalizeAcademicLevel(cohortLevel);
-      const subjectNorm = normalizeAcademicLevel(s.level);
-      return cohortNorm === subjectNorm;
-    });
+  const unlinked = getAvailableCohortSubjectOfferings(allSubjects, linkedIds, cohortLevel);
   const catalogueHref = (() => {
     const params = new URLSearchParams({
       curriculum: String(curriculumId),
