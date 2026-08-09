@@ -25,6 +25,7 @@ import type { CBCInstructorSubjectSelection } from '@/app/plugins/cbc/lib/visibi
 import { sanitizeInternalReturnTo } from '@/app/plugins/cbc/lib/navigation';
 import { Select } from '@/app/components/ui/Select';
 import { sanitizeServerMessage } from '@/app/core/errors';
+import { useAuth } from '@/app/context/AuthContext';
 
 // ============================================================================
 // CBC Nav — single source, never duplicated across pages
@@ -38,10 +39,17 @@ const NAV_ITEMS = [
 ] as const;
 
 export function CBCNav() {
+  const { activeOperatingContext } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeHref = NAV_ITEMS.find(({ href }) => pathname.startsWith(href))?.href ?? '';
+  const visibleItems = useMemo(
+    () => NAV_ITEMS.filter((item) => (
+      item.href !== '/cbc/teaching' || activeOperatingContext === 'MY_TEACHING'
+    )),
+    [activeOperatingContext],
+  );
   const contextualQuery = useMemo(() => {
     const next = new URLSearchParams();
     const subject = searchParams.get('subject');
@@ -71,13 +79,13 @@ export function CBCNav() {
           }}
           options={[
             { value: '', label: 'Choose section', disabled: true },
-            ...NAV_ITEMS.map((item) => ({ value: item.href, label: item.label })),
+            ...visibleItems.map((item) => ({ value: item.href, label: item.label })),
           ]}
         />
       </div>
 
       <nav className="theme-card hidden gap-1.5 rounded-xl p-1.5 md:flex">
-        {NAV_ITEMS.map(({ href, label }) => {
+        {visibleItems.map(({ href, label }) => {
           const active = pathname.startsWith(href);
           return (
             <Link

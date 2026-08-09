@@ -14,7 +14,8 @@ export interface Strand {
   curriculum: number | null;
   curriculum_name: string | null;
   subject: number | null;
-  subject_profile_id?: number | null;
+  subject_profile: number | null;
+  subject_profile_id: number | null;
   subject_level: string | null;
   subject_org_id: number | null;
   subject_name: string | null;
@@ -525,6 +526,8 @@ export interface CBCTeachingAssignment {
   cohort_id: number;
   cohort_name: string;
   subject_id: number;
+  topic_subject_id?: number | null;
+  cbc_cohort_subject_id?: number | null;
   subject_name: string;
   subject_code: string;
   subject_offering_status?: string | null;
@@ -658,7 +661,14 @@ export interface CbcAssessmentReportResult {
   component_scores: Record<string, unknown>;
   diagnostic_scores: Record<string, unknown>;
   missing_components: string[];
-  computation_details: Record<string, unknown>;
+  calculation_summary: {
+    status: string;
+    policy_display_name: string | null;
+    required_components_complete: boolean;
+    incomplete_components: string[];
+    last_calculated_at: string | null;
+    warnings: string[];
+  };
   is_stale: boolean;
   computed_at: string | null;
   created_at: string;
@@ -673,4 +683,32 @@ export interface CbcAssessmentReportResultFilters {
   subject_profile?: number;
   result_status?: CbcAssessmentResultStatus;
   is_stale?: boolean;
+  freshness?: 'fresh' | 'stale';
+  search?: string;
+  page?: number;
+  page_size?: number;
+  authority_mode?: 'teaching' | 'supervision';
+}
+
+export interface CbcResultCohortOverview {
+  cohort_id: number;
+  cohort_name: string;
+  distinct_learner_count: number;
+  learners_with_results_count: number;
+  subject_result_record_count: number;
+  matching_result_count: number;
+  final_count: number;
+  provisional_count: number;
+  incomplete_count: number;
+  stale_count: number;
+  missing_result_count: number;
+}
+
+export interface CbcResultLearnerSummary {
+  learner_id: number;
+  learner_name: string;
+  admission_number: string;
+  subject_result_count: number;
+  final_count: number;
+  stale_count: number;
 }

@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { parseAppDestination } from '@/app/core/auth/navigation';
+import { useAuth } from '@/app/context/AuthContext';
 import {
     CBCBreadcrumb,
     CBCError,
@@ -54,25 +56,44 @@ function getStatusBadgeVariant(status: CbcAssessmentResultStatus): BadgeVariant 
     }
 }
 
-function hasObjectValues(value: Record<string, unknown>) {
-    return Object.keys(value).length > 0;
+function humanizeLabel(value: string) {
+    return value.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
-function JsonPanel({
+function scoreRows(value: Record<string, unknown>, prefix = ''): Array<{ label: string; value: string }> {
+    return Object.entries(value).flatMap(([key, item]) => {
+        const label = prefix ? `${prefix} · ${humanizeLabel(key)}` : humanizeLabel(key);
+        if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+            return scoreRows(item as Record<string, unknown>, label);
+        }
+        if (Array.isArray(item)) {
+            return [{ label, value: item.filter(entry => ['string', 'number', 'boolean'].includes(typeof entry)).join(', ') || '—' }];
+        }
+        return [{ label, value: item === null || item === undefined || item === '' ? '—' : String(item) }];
+    });
+}
+
+function ScorePanel({
     title,
     value,
 }: {
     title: string;
     value: Record<string, unknown>;
 }) {
+    const rows = scoreRows(value);
     return (
         <Card>
             <div className="space-y-3">
                 <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-                {hasObjectValues(value) ? (
-                    <pre className="rounded-lg bg-gray-50 p-4 text-xs text-gray-700 whitespace-pre-wrap break-words">
-                        {JSON.stringify(value, null, 2)}
-                    </pre>
+                {rows.length ? (
+                    <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                        {rows.map(row => (
+                            <div key={row.label} className="grid gap-1 px-4 py-3 sm:grid-cols-2">
+                                <dt className="text-sm text-gray-500">{row.label}</dt>
+                                <dd className="text-sm font-medium text-gray-900 sm:text-right">{row.value}</dd>
+                            </div>
+                        ))}
+                    </dl>
                 ) : (
                     <p className="text-sm text-gray-500">No data available.</p>
                 )}
@@ -99,6 +120,9 @@ function MissingComponents({ result }: { result: CbcAssessmentReportResult }) {
 
 export function CBCAssessmentReportResultDetailPage() {
     const params = useParams();
+    const searchParams = useSearchParams();
+    const { activeOperatingContext } = useAuth();
+    const safeReturnTo = parseAppDestination(searchParams.get('returnTo'));
     const resultId = useMemo(() => {
         const rawId = params.id;
         const value = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -112,7 +136,10 @@ export function CBCAssessmentReportResultDetailPage() {
         loading,
         error,
         refetch,
-    } = useCbcAssessmentReportResult(resultId);
+    } = useCbcAssessmentReportResult(
+        resultId,
+        activeOperatingContext === 'WORKSPACE_MANAGEMENT' ? 'supervision' : 'teaching',
+    );
 
     if (!resultId) {
         return <CBCError error="Invalid CBC result id." />;
@@ -135,7 +162,7 @@ export function CBCAssessmentReportResultDetailPage() {
             <CBCNav />
             <CBCBreadcrumb
                 segments={[
-                    { label: 'Results', href: '/cbc/assessment-results' },
+                    { label: 'Results', href: safeReturnTo ?? '/cbc/assessment-results' },
                     { label: result.student_name },
                 ]}
             />
@@ -164,10 +191,12 @@ export function CBCAssessmentReportResultDetailPage() {
                     </div>
                 </div>
 
-                <Link href="/cbc/assessment-results">
+                <Link href={safeReturnTo ?? '/cbc/assessment-results'}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-1.5 h-4 w-4" />
-                        Back to CBC Results
+                        {safeReturnTo?.includes('/learners/')
+                            ? `Back to ${result.student_name}’s Results`
+                            : 'Back to CBC Results'}
                     </Button>
                 </Link>
             </div>
@@ -267,11 +296,22 @@ export function CBCAssessmentReportResultDetailPage() {
             </Card>
 
             <div className="grid gap-4 xl:grid-cols-2">
-                <JsonPanel title="Component Scores" value={result.component_scores} />
-                <JsonPanel title="Diagnostic Scores" value={result.diagnostic_scores} />
+                <ScorePanel title="Component Scores" value={result.component_scores} />
+                <ScorePanel title="Diagnostic Scores" value={result.diagnostic_scores} />
             </div>
 
-            <JsonPanel title="Computation Details" value={result.computation_details} />
+            <Card>
+                <div className="space-y-3">
+                    <h2 className="text-lg font-semibold text-gray-900">Calculation Summary</h2>
+                    <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                        <div><dt className="text-gray-500">Status</dt><dd className="font-medium text-gray-900">{result.calculation_summary?.status || '—'}</dd></div>
+                        <div><dt className="text-gray-500">Policy</dt><dd className="font-medium text-gray-900">{result.calculation_summary?.policy_display_name || result.policy_name || '—'}</dd></div>
+                        <div><dt className="text-gray-500">Required components</dt><dd className="font-medium text-gray-900">{result.calculation_summary?.required_components_complete ? 'Complete' : 'Incomplete'}</dd></div>
+                        <div><dt className="text-gray-500">Last calculated</dt><dd className="font-medium text-gray-900">{formatCbcDateTime(result.calculation_summary?.last_calculated_at ?? result.computed_at)}</dd></div>
+                    </dl>
+                    {(result.calculation_summary?.warnings ?? []).map(warning => <p key={warning} className="text-sm text-amber-700">{warning}</p>)}
+                </div>
+            </Card>
         </div>
     );
 }

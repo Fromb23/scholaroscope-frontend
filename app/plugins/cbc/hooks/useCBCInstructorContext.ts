@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import type { CohortSubject, Subject } from '@/app/core/types/academic';
-import { isTeachingActorView } from '@/app/core/lib/workspaces';
 import { cbcTeachingLoadAPI, cbcCatalogAPI } from '@/app/plugins/cbc/api/cbc';
 import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
 import {
@@ -34,7 +33,7 @@ function mapAssignmentsToCohortSubjects(assignments: CBCTeachingAssignment[]): C
         cohort: assignment.cohort_id,
         cohort_name: assignment.cohort_name,
         cohort_level: assignment.level,
-        subject: assignment.subject_id,
+        subject: assignment.topic_subject_id ?? assignment.subject_id,
         subject_name: assignment.subject_name,
         subject_code: assignment.subject_code,
         curriculum_name: 'CBC',
@@ -60,12 +59,9 @@ function uniqueSortedIds(values: number[]) {
 }
 
 export function useCBCInstructorContext(selectedCurriculumId: number | null) {
-    const { user, activeOrg, capabilities } = useAuth();
-    const isTeachingActor = isTeachingActorView({
-        activeOrg,
-        capabilities,
-        user,
-    });
+    const { user, activeOrg, activeOperatingContext, capabilities } = useAuth();
+    const isTeachingActor = activeOperatingContext === 'MY_TEACHING'
+        && Boolean(capabilities.can_teach);
     const userId = user?.id ?? 0;
     const organizationId = activeOrg?.id ?? 0;
     const curriculumId = selectedCurriculumId ?? 0;

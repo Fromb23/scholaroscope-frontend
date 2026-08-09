@@ -8,6 +8,20 @@ import {
 } from './InstructorDashboard';
 
 describe('freelance dashboard quick actions', () => {
+  it('keeps the direct instructor route assignment-scoped and renders explicit unresolved or denied states', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain("activeOperatingContext === 'MY_TEACHING'");
+    expect(source).toContain('capabilities.can_teach');
+    expect(source).toContain('managementEmbedAllowed');
+    expect(source).toContain('embeddedInManagement');
+    expect(source).toContain('Checking teaching dashboard access...');
+    expect(source).toContain('Teaching dashboard access required');
+    expect(source).not.toContain("if (!teachingRouteAllowed && !managementEmbedAllowed) {\n        return null;");
+  });
   it('prioritizes lesson preparation and classes', () => {
     expect(getFreelanceDashboardPrimaryActions().map((action) => action.label)).toEqual([
       'Lesson preparations',

@@ -18,6 +18,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import { Select } from '@/app/components/ui/Select';
 import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
 import {
     buildCbcPath,
@@ -25,6 +26,7 @@ import {
     getCbcBackLabel,
     sanitizeInternalReturnTo,
 } from '@/app/plugins/cbc/lib/navigation';
+import type { Cohort } from '@/app/core/types/academic';
 
 function formatLevelLabel(level: string | null | undefined) {
     return (level ?? '')
@@ -89,16 +91,15 @@ export function CBCBrowserPage() {
             is_loading: page.isLoading,
         },
         visibleActions: [
-            {
+            ...(!page.isAdmin ? [{
                 label: 'Open CBC Teaching',
                 type: 'navigate' as const,
                 href: '/cbc/teaching',
-            },
-            {
+            }, {
                 label: 'Open CBC Sessions',
                 type: 'navigate' as const,
                 href: '/cbc/teaching/sessions',
-            },
+            }] : []),
             {
                 label: 'Open CBC Progress',
                 type: 'navigate' as const,
@@ -144,6 +145,7 @@ export function CBCBrowserPage() {
         hasSubjectFilter,
         isEmpty,
         currentWorkspaceHref,
+        page.isAdmin,
         page.isLoading,
         selectedCohortName,
         selectedSubjectName,
@@ -229,6 +231,26 @@ export function CBCBrowserPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="lg:col-span-1">
+                    <div className="space-y-4">
+                    {page.isAdmin ? (
+                        <Card>
+                            <h3 className="mb-3 text-sm font-semibold theme-text">Class</h3>
+                            <Select
+                                label=""
+                                value={page.effectiveCohortId?.toString() ?? ''}
+                                onChange={(event) => page.handleCohortChange(
+                                    event.target.value ? Number(event.target.value) : null
+                                )}
+                                options={[
+                                    { value: '', label: 'All classes' },
+                                    ...page.cohorts.map((cohort: Cohort) => ({
+                                        value: String(cohort.id),
+                                        label: cohort.name,
+                                    })),
+                                ]}
+                            />
+                        </Card>
+                    ) : null}
                     <Card>
                         <div className="flex items-center gap-2 mb-3">
                             <BookOpen className="h-4 w-4 theme-subtle" />
@@ -246,6 +268,7 @@ export function CBCBrowserPage() {
                             instructorSelections={page.instructorSubjectSelections}
                         />
                     </Card>
+                    </div>
                 </div>
 
                 <div className="lg:col-span-3 space-y-4">

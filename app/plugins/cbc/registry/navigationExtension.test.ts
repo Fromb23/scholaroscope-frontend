@@ -87,6 +87,7 @@ describe('CBC plugin navigation capability boundaries', () => {
 
         expect(children.map((item) => item.name)).not.toContain('Academic Policies');
         expect(children.map((item) => item.href)).not.toContain('/reports/policies/cbc');
+        expect(children.map((item) => item.href)).not.toContain('/cbc/teaching');
     });
 
     it('bridges to CBC academic policies only when the target capability allows governance authoring', () => {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useStrands } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
-import { useSubjects } from '@/app/core/hooks/useAcademic';
+import { useCohorts, useSubjects } from '@/app/core/hooks/useAcademic';
 import { useResolvedCBCInstructorContext } from '@/app/plugins/cbc/hooks/useCBCInstructorContext';
 import { matchesCBCStrandToSubjectSelection } from '@/app/plugins/cbc/lib/visibility';
 import type { Subject } from '@/app/core/types/academic';
@@ -24,6 +24,8 @@ export function useCBCBrowserPage() {
         selectedCurriculumId,
         selectedSubjectId,
         selectedCohortId,
+        setSelectedSubject,
+        setSelectedCohort,
         allowedSubjectIds,
         allowedCohortIds,
         teachingLoading,
@@ -31,14 +33,23 @@ export function useCBCBrowserPage() {
         curriculumLoading,
     } = useCBCContext();
 
+    const { cohorts = [], loading: cohortsLoading } = useCohorts(
+        isAdmin ? { curriculum: selectedCurriculumId ?? undefined } : undefined,
+        { enabled: isAdmin }
+    );
+
     const {
         subjects: adminSubjects = [],
         loading: subjectsLoading,
     } = useSubjects(selectedCurriculumId ?? undefined, { enabled: isAdmin });
 
     const strandQueryParams = useMemo(
-        () => (selectedCurriculumId ? { curriculum: selectedCurriculumId } : undefined),
-        [selectedCurriculumId]
+        () => (selectedCurriculumId ? {
+            curriculum: selectedCurriculumId,
+            cohort: selectedCohortId ?? undefined,
+            authority_mode: isAdmin ? 'supervision' as const : 'teaching' as const,
+        } : undefined),
+        [isAdmin, selectedCohortId, selectedCurriculumId]
     );
 
     const {
@@ -69,6 +80,11 @@ export function useCBCBrowserPage() {
         error: instructorContextError,
         refetch: refetchInstructorContext,
     } = instructorContext;
+    const effectiveCohortIdForContext = isAdmin ? selectedCohortId : effectiveCohortId;
+    const effectiveCohortForContext = isAdmin
+        ? cohorts.find(cohort => cohort.id === selectedCohortId) ?? null
+        : effectiveCohort;
+    const effectiveSubjectId = isAdmin ? selectedSubjectId : selectedVisibleSubjectId;
 
     const subjectsForCurriculum = useMemo(() => {
         if (!selectedCurriculumId) return [];
@@ -110,10 +126,10 @@ export function useCBCBrowserPage() {
     const visible = useMemo(() => {
         let result = assignedVisibleStrands;
 
-        if (selectedVisibleSubjectId !== null) {
+        if (effectiveSubjectId !== null) {
             result = result.filter(strand => (
                 isAdmin
-                    ? strand.subject_org_id === selectedVisibleSubjectId
+                    ? strand.subject_org_id === effectiveSubjectId
                     : (resolvedInstructorSubjectSelection
                         ? matchesCBCStrandToSubjectSelection(strand, resolvedInstructorSubjectSelection)
                         : true)
@@ -121,11 +137,11 @@ export function useCBCBrowserPage() {
         }
 
         if (search.trim()) {
-            const query = search.toLowerCase();
+            const query = search.trim().toLowerCase();
             result = result.filter(strand => (
-                strand.code.toLowerCase().includes(query) ||
-                strand.name.toLowerCase().includes(query) ||
-                strand.description?.toLowerCase().includes(query)
+                (strand.code ?? '').toLowerCase().includes(query) ||
+                (strand.name ?? '').toLowerCase().includes(query) ||
+                (strand.description ?? '').toLowerCase().includes(query)
             ));
         }
 
@@ -135,17 +151,17 @@ export function useCBCBrowserPage() {
         isAdmin,
         resolvedInstructorSubjectSelection,
         search,
-        selectedVisibleSubjectId,
+        effectiveSubjectId,
     ]);
 
     const resolvedSubject = useMemo(
-        () => subjectsForCurriculum.find(subject => subject.id === selectedVisibleSubjectId)
+        () => subjectsForCurriculum.find(subject => subject.id === effectiveSubjectId)
             ?? (subjectsForCurriculum.length === 1 ? subjectsForCurriculum[0] : null),
-        [selectedVisibleSubjectId, subjectsForCurriculum]
+        [effectiveSubjectId, subjectsForCurriculum]
     );
 
     const isLoading = isAdmin
-        ? curriculumLoading || subjectsLoading || strandsLoading
+        ? curriculumLoading || cohortsLoading || subjectsLoading || strandsLoading
         : curriculumLoading || instructorContextLoading || strandsLoading;
     const error = isAdmin ? strandsError : (instructorContextError ?? strandsError);
 
@@ -263,8 +279,7 @@ export function useCBCBrowserPage() {
     return {
         setupStrand,
         setSetupStrand,
-        selectedSubjectFilterId,
-        setSelectedSubjectFilterId,
+        selectedSubjectFilterId: effectiveSubjectId,
         search,
         setSearch,
         isAdmin,
@@ -272,15 +287,22 @@ export function useCBCBrowserPage() {
         error,
         refetch,
         subjectsForCurriculum,
+        cohorts,
         instructorSubjectSelections,
         visible,
         hasVisibleProfiles,
-        effectiveCohort,
-        effectiveCohortId,
+        effectiveCohort: effectiveCohortForContext,
+        effectiveCohortId: effectiveCohortIdForContext,
         assignedCohorts,
         resolvedSubject,
         resolvedInstructorSubjectSelection,
         strandsError,
         strandFetchDebugContext,
+        setSelectedSubjectFilterId: isAdmin ? setSelectedSubject : setSelectedSubjectFilterId,
+        handleCohortChange: (cohortId: number | null) => {
+            setSelectedCohort(cohortId);
+            setSelectedSubject(null);
+            setSelectedSubjectFilterId(null);
+        },
     };
 }

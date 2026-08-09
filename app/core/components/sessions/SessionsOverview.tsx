@@ -449,7 +449,10 @@ function SessionWorkspaceView() {
     const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const [selectedCohortId, setSelectedCohortId] = useState<number | undefined>();
-    const [selectedInstructorFilter, setSelectedInstructorFilter] = useState('');
+    const [selectedInstructorFilter, setSelectedInstructorFilter] = useState(() => {
+        const instructorId = parsePositiveId(searchParams.get('instructor_id'));
+        return instructorId ? `id:${instructorId}` : '';
+    });
     const cleanupFilterActive = searchParams.get('filter') === 'pending_cleanup'
         || searchParams.get('status') === 'needs_completion';
     const cleanupSessionIds = useMemo(
@@ -586,6 +589,18 @@ function SessionWorkspaceView() {
             params.set('term', value);
         } else {
             params.delete('term');
+        }
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/sessions?${nextQuery}` : '/sessions', { scroll: false });
+    };
+
+    const handleInstructorChange = (value: string) => {
+        setSelectedInstructorFilter(value);
+        const params = new URLSearchParams(searchParams.toString());
+        if (value.startsWith('id:')) {
+            params.set('instructor_id', value.slice(3));
+        } else {
+            params.delete('instructor_id');
         }
         const nextQuery = params.toString();
         router.replace(nextQuery ? `/sessions?${nextQuery}` : '/sessions', { scroll: false });
@@ -1485,7 +1500,7 @@ function SessionWorkspaceView() {
                             <Select
                                 label="Instructor"
                                 value={selectedInstructorFilter}
-                                onChange={(event) => setSelectedInstructorFilter(event.target.value)}
+                                onChange={(event) => handleInstructorChange(event.target.value)}
                                 options={[
                                     { value: '', label: 'All instructors' },
                                     ...instructorOptions,

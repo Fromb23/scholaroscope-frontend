@@ -133,6 +133,8 @@ export interface SessionQueryParams {
   cohort_subject__subject?: number;
   session_type?: string;
   session_date?: string;
+  session_date__gte?: string;
+  session_date__lte?: string;
   authority_mode?: 'teaching';
 }
 

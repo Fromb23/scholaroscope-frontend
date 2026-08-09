@@ -750,6 +750,7 @@ export interface CohortSubjectLearnerListResponse {
   cohort_subject_id: number;
   cohort_id: number;
   subject_id: number;
+  topic_subject_id?: number | null;
   subject_name: string;
   counts: CohortSubjectLearnerCounts;
   enrolled: StudentSummary[];
@@ -874,6 +875,8 @@ export interface TeachingAssignment {
   cohort_id: number;
   cohort_name: string;
   subject_id: number;
+  /** Kernel/workspace Subject identity. CBC subject_id is the CBC teaching link identity. */
+  topic_subject_id?: number | null;
   assigned?: boolean;
   subject_name: string;
   subject_code?: string | null;

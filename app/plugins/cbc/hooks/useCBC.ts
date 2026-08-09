@@ -43,6 +43,7 @@ import type {
   CBCCatalog,
 } from '@/app/plugins/cbc/types/cbc';
 import { toArray } from '@/app/plugins/cbc/lib/apiHelpers';
+import type { CbcCatalogueScopeParams } from '@/app/plugins/cbc/api/cbc';
 
 function uniqueSortedIds(values: number[]) {
   return Array.from(new Set(values))
@@ -188,7 +189,7 @@ function getEligibleSessionLearnerIds(
 // Structural — Strands
 // ============================================================================
 
-export const useStrands = (params?: { curriculum?: number; subject?: number; subject_profile?: number }) =>
+export const useStrands = (params?: CbcCatalogueScopeParams) =>
   useQuery<Strand[]>({
     queryKey: cbcKeys.strands.list(params),
     queryFn: async () => {
@@ -221,10 +222,13 @@ export const useStrandDetail = (id: number | null) =>
     staleTime: 5 * 60 * 1000,
   });
 
-export const useStrandsByCurriculum = (curriculumId: number | null) =>
+export const useStrandsByCurriculum = (
+  curriculumId: number | null,
+  scope?: Omit<CbcCatalogueScopeParams, 'curriculum'>,
+) =>
   useQuery<StrandDetail[]>({
-    queryKey: cbcKeys.strands.byCurriculum(curriculumId!),
-    queryFn: () => strandAPI.getByCurriculum(curriculumId!),
+    queryKey: cbcKeys.strands.byCurriculum(curriculumId!, scope),
+    queryFn: () => strandAPI.getByCurriculum(curriculumId!, scope),
     enabled: !!curriculumId,
     staleTime: 5 * 60 * 1000,
   });
@@ -649,13 +653,21 @@ export const useCohortSummary = (cohortId: number | null) =>
 export const useCBCProgressSummary = (params: {
   cohort_id: number | null;
   subject_id: number | null;
+  cohort_subject_id?: number | null;
+  cbc_cohort_subject_id?: number | null;
+  instructor_id?: number | null;
+  authority_mode: 'teaching' | 'supervision';
 }) =>
   useQuery<CBCProgressSummary>({
-    queryKey: cbcKeys.outcomeProgress.cbcSummary(params.cohort_id!, params.subject_id!),
+    queryKey: cbcKeys.outcomeProgress.cbcSummary(params),
     queryFn: () =>
       outcomeProgressAPI.cbcProgressSummary({
         cohort_id: params.cohort_id!,
         subject_id: params.subject_id!,
+        cohort_subject_id: params.cohort_subject_id ?? undefined,
+        cbc_cohort_subject_id: params.cbc_cohort_subject_id ?? undefined,
+        instructor_id: params.instructor_id ?? undefined,
+        authority_mode: params.authority_mode,
       }),
     enabled: !!params.cohort_id && !!params.subject_id,
     staleTime: 2 * 60 * 1000,

@@ -11,6 +11,7 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -18,6 +19,7 @@ import { instructorsAPI } from '@/app/core/api/instructors';
 import {
     useInstructorProgress,
 } from '@/app/core/hooks/useInstructorProgress';
+import type { InstructorProgressScope } from '@/app/core/hooks/useInstructorProgress';
 import {
     EditModal,
     ResetPasswordModal,
@@ -69,6 +71,33 @@ function resolveProgressBackTarget(returnTo: string | null) {
     };
 }
 
+function buildSchemeDetailHref(schemeId: number, returnTo: string) {
+    const params = new URLSearchParams();
+    if (isSafeNextPath(returnTo)) params.set('returnTo', returnTo);
+    return `/schemes/${schemeId}${params.size ? `?${params.toString()}` : ''}`;
+}
+
+function buildRelatedLessonsHref({
+    cohortSubjectId,
+    termId,
+    instructorId,
+    returnTo,
+}: {
+    cohortSubjectId: number;
+    termId?: number;
+    instructorId: number;
+    returnTo: string;
+}) {
+    const params = new URLSearchParams({
+        cohort_subject: String(cohortSubjectId),
+        instructor_id: String(instructorId),
+        authority_mode: 'supervision',
+    });
+    if (termId) params.set('term', String(termId));
+    if (isSafeNextPath(returnTo)) params.set('returnTo', returnTo);
+    return `/sessions?${params.toString()}`;
+}
+
 export default function InstructorProgressPage() {
     const params = useParams();
     const pathname = usePathname();
@@ -82,11 +111,23 @@ export default function InstructorProgressPage() {
     const initialSubjectSource = searchParams.get('subject_source');
     const shouldOpenTeachingModal = searchParams.get('open') === 'teaching' || hasInitialCohortSubjectId;
 
+    const inheritedScope = useMemo<InstructorProgressScope>(() => {
+        if (searchParams.get('source') !== 'lesson-plan-review') return {};
+        return {
+            startDate: searchParams.get('review_start_date') || undefined,
+            endDate: searchParams.get('review_end_date') || undefined,
+            termId: positiveNumberParam(searchParams.get('review_term_id')),
+            subjectId: positiveNumberParam(searchParams.get('review_subject_id')),
+            cohortId: positiveNumberParam(searchParams.get('review_cohort_id')),
+        };
+    }, [searchParams]);
+    const [activeScope, setActiveScope] = useState<InstructorProgressScope>(inheritedScope);
+
     const {
         instructor, sessions, loading, error,
         refetch, teachingAssignments, cbcTeachingAssignments,
         sessionStats, attendanceStats, schemes,
-    } = useInstructorProgress(instructorId);
+    } = useInstructorProgress(instructorId, activeScope);
 
     const [submitting, setSubmitting] = useState(false);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
@@ -103,24 +144,15 @@ export default function InstructorProgressPage() {
         const query = searchParams.toString();
         return `${pathname}${query ? `?${query}` : ''}#sessions`;
     }, [pathname, searchParams]);
-    const planningReviewScope = useMemo(() => {
-        if (searchParams.get('source') !== 'lesson-plan-review') {
-            return undefined;
+    const planningReviewScope = activeScope.startDate && activeScope.endDate
+        ? {
+            startDate: activeScope.startDate,
+            endDate: activeScope.endDate,
+            termId: activeScope.termId,
+            subjectId: activeScope.subjectId,
+            cohortId: activeScope.cohortId,
         }
-        const startDate = searchParams.get('review_start_date');
-        const endDate = searchParams.get('review_end_date');
-        if (!startDate || !endDate) {
-            return undefined;
-        }
-
-        return {
-            startDate,
-            endDate,
-            termId: positiveNumberParam(searchParams.get('review_term_id')),
-            subjectId: positiveNumberParam(searchParams.get('review_subject_id')),
-            cohortId: positiveNumberParam(searchParams.get('review_cohort_id')),
-        };
-    }, [searchParams]);
+        : undefined;
 
     useEffect(() => {
         if (shouldOpenTeachingModal) {
@@ -226,6 +258,72 @@ export default function InstructorProgressPage() {
             <Button variant="ghost" size="sm" onClick={() => router.push(progressBackTarget.href)}>
                 <ArrowLeft className="h-4 w-4 mr-2" />{progressBackTarget.label}
             </Button>
+
+            {searchParams.get('source') === 'lesson-plan-review' ? (
+                <Card>
+                    <div className="p-4">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <h2 className="text-sm font-semibold text-gray-900">Instructor progress scope</h2>
+                                <p className="text-xs text-gray-500">Inherited from Lesson Plan Review; edits apply only on this page.</p>
+                            </div>
+                            <Button type="button" size="sm" variant="ghost" onClick={() => setActiveScope({})}>
+                                Clear inherited scope
+                            </Button>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                            <Input
+                                label="Term ID"
+                                type="number"
+                                min={1}
+                                value={activeScope.termId ?? ''}
+                                onChange={(event) => setActiveScope((current) => ({
+                                    ...current,
+                                    termId: positiveNumberParam(event.target.value),
+                                }))}
+                            />
+                            <Input
+                                label="Subject ID"
+                                type="number"
+                                min={1}
+                                value={activeScope.subjectId ?? ''}
+                                onChange={(event) => setActiveScope((current) => ({
+                                    ...current,
+                                    subjectId: positiveNumberParam(event.target.value),
+                                }))}
+                            />
+                            <Input
+                                label="Cohort ID"
+                                type="number"
+                                min={1}
+                                value={activeScope.cohortId ?? ''}
+                                onChange={(event) => setActiveScope((current) => ({
+                                    ...current,
+                                    cohortId: positiveNumberParam(event.target.value),
+                                }))}
+                            />
+                            <Input
+                                label="From"
+                                type="date"
+                                value={activeScope.startDate ?? ''}
+                                onChange={(event) => setActiveScope((current) => ({
+                                    ...current,
+                                    startDate: event.target.value || undefined,
+                                }))}
+                            />
+                            <Input
+                                label="To"
+                                type="date"
+                                value={activeScope.endDate ?? ''}
+                                onChange={(event) => setActiveScope((current) => ({
+                                    ...current,
+                                    endDate: event.target.value || undefined,
+                                }))}
+                            />
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
 
             {feedback && (
                 <div className={`flex items-center gap-2 p-3 rounded-lg text-sm border ${feedback.type === 'success'
@@ -429,11 +527,16 @@ export default function InstructorProgressPage() {
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <Link href={`/schemes/${scheme.id}`}>
+                                                    <Link href={buildSchemeDetailHref(scheme.id, progressReturnTo)}>
                                                         <Button size="sm" variant="secondary">View scheme</Button>
                                                     </Link>
                                                     {scheme.cohort_subject_id ? (
-                                                        <Link href={`/sessions?cohort_subject=${scheme.cohort_subject_id}`}>
+                                                        <Link href={buildRelatedLessonsHref({
+                                                            cohortSubjectId: scheme.cohort_subject_id,
+                                                            termId: scheme.term?.id ?? activeScope.termId,
+                                                            instructorId,
+                                                            returnTo: progressReturnTo,
+                                                        })}>
                                                             <Button size="sm" variant="ghost">View related lessons</Button>
                                                         </Link>
                                                     ) : null}

@@ -279,8 +279,17 @@ export function AdminDashboard() {
         }
     }, [activeOperatingContext, router]);
 
-    if (!user || activeOperatingContext === null) return null;
-    if (activeOperatingContext !== 'WORKSPACE_MANAGEMENT' || !capabilities.can_manage_academic_setup) return null;
+    if (!user || activeOperatingContext === null) {
+        return <LoadingMessage title="Checking workspace dashboard access..." />;
+    }
+    if (activeOperatingContext !== 'WORKSPACE_MANAGEMENT' || !capabilities.can_manage_academic_setup) {
+        return (
+            <div className="theme-card mx-auto max-w-2xl rounded-xl p-6">
+                <h1 className="text-lg font-semibold theme-text">Workspace management access required</h1>
+                <p className="mt-2 text-sm theme-muted">Returning you to an available dashboard.</p>
+            </div>
+        );
+    }
     if (academicSetupQuery.isLoading && !setupStatus) {
         return (
             <div className="space-y-6">
@@ -293,7 +302,7 @@ export function AdminDashboard() {
         return <AcademicSetupDashboard status={setupStatus} title="Complete Academic Setup" />;
     }
     if (instructorAccess.isSelfManagedTeachingAdmin) {
-        return <InstructorDashboard />;
+        return <InstructorDashboard embeddedInManagement />;
     }
     if (isLoading) {
         return (

@@ -124,16 +124,15 @@ export function CBCProgressPage() {
                 type: 'navigate' as const,
                 href: cbcBrowserHref,
             },
-            {
+            ...(!page.isAdmin ? [{
                 label: 'Open CBC Teaching',
                 type: 'navigate' as const,
                 href: '/cbc/teaching',
-            },
-            {
+            }, {
                 label: 'Open CBC Sessions',
                 type: 'navigate' as const,
                 href: '/cbc/teaching/sessions',
-            },
+            }] : []),
             {
                 label: 'Open CBC Results',
                 type: 'navigate' as const,

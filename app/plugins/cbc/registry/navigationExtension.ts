@@ -27,7 +27,6 @@ registerPluginNavigationEntry({
                 { name: 'CBC Results', href: '/cbc/assessment-results', icon: BarChart3 },
                 ...cbcReportPolicyChildren,
                 { name: 'Browser', href: '/cbc/browser', icon: BookOpen },
-                { name: 'Teaching', href: '/cbc/teaching', icon: Target },
             ],
         };
     },
