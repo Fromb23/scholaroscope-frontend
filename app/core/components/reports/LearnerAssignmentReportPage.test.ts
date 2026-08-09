@@ -24,7 +24,10 @@ describe('LearnerAssignmentReportPage', () => {
 
     expect(pageSource).toContain("searchParams.get('cohort_subject')");
     expect(pageSource).toContain("searchParams.get('highlightAssignment')");
-    expect(pageSource).toContain("isSafeNextPath(searchParams.get('returnTo'))");
+    expect(pageSource).toContain("returnTo: searchParams.get('returnTo')");
+    expect(pageSource).toContain('resolveOperationalDetailBack');
+    expect(pageSource).toContain('getOperationalDetailBackLabel');
+    expect(pageSource).toContain('/assignments/${highlightAssignment}');
     expect(pageSource).toContain('row.assignment_id === highlightAssignment');
     expect(pageSource).toContain('<Link href={returnTo}>');
   });

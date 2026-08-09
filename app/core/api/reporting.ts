@@ -1,10 +1,7 @@
 import { GradePolicy, ComputedGradeDTO } from '../types/gradePolicy';
 import { apiClient, refreshAccessToken } from './client';
 import { getAccessToken } from '@/app/core/auth/tokenStore';
-import {
-  getDownloadFileName,
-  normalizeBlobError,
-} from './downloads';
+import { getDownloadFileName, normalizeBlobError } from './downloads';
 import {
   AttendanceSummary,
   AttendanceRiskLevel,
@@ -96,12 +93,19 @@ function parseSseBlock(block: string): ReportComputeProgressEvent | null {
   if (!lines.length) return null;
   if (lines.every((line) => line.startsWith(':'))) return null;
 
-  const rawId = lines.find((line) => line.startsWith('id:'))?.slice(3).trim();
+  const rawId = lines
+    .find((line) => line.startsWith('id:'))
+    ?.slice(3)
+    .trim();
   const sequence = rawId && /^\d+$/.test(rawId) ? Number(rawId) : undefined;
-  const rawEvent = lines.find((line) => line.startsWith('event:'))?.slice(6).trim();
-  const event = rawEvent === 'progress' || rawEvent === 'complete' || rawEvent === 'error'
-    ? rawEvent
-    : undefined;
+  const rawEvent = lines
+    .find((line) => line.startsWith('event:'))
+    ?.slice(6)
+    .trim();
+  const event =
+    rawEvent === 'progress' || rawEvent === 'complete' || rawEvent === 'error'
+      ? rawEvent
+      : undefined;
   const data = lines
     .filter((line) => line.startsWith('data:'))
     .map((line) => line.slice(5).trim())
@@ -114,7 +118,7 @@ function parseSseBlock(block: string): ReportComputeProgressEvent | null {
   try {
     const parsed = JSON.parse(data);
     return isRecord(parsed)
-      ? { event, sequence, ...parsed } as ReportComputeProgressEvent
+      ? ({ event, sequence, ...parsed } as ReportComputeProgressEvent)
       : { event, sequence, stage: event ?? 'message', label: String(parsed) };
   } catch {
     return { event, sequence, stage: 'parse_error', label: data };
@@ -122,11 +126,13 @@ function parseSseBlock(block: string): ReportComputeProgressEvent | null {
 }
 
 function isTerminalProgressEvent(event: ReportComputeProgressEvent): boolean {
-  return event.event === 'complete'
-    || event.event === 'error'
-    || event.status === 'COMPLETED'
-    || event.status === 'FAILED'
-    || event.status === 'BLOCKED';
+  return (
+    event.event === 'complete' ||
+    event.event === 'error' ||
+    event.status === 'COMPLETED' ||
+    event.status === 'FAILED' ||
+    event.status === 'BLOCKED'
+  );
 }
 
 function appendAfterCursor(url: string, after: number | null): string {
@@ -138,15 +144,13 @@ function appendAfterCursor(url: string, after: number | null): string {
 }
 
 function streamDelay(attempt: number): number {
-  const base = Math.min(30000, 1000 * (2 ** attempt));
+  const base = Math.min(30000, 1000 * 2 ** attempt);
   const jitter = Math.floor(Math.random() * 350);
   return base + jitter;
 }
 
 function toAttendanceRiskLevel(value: unknown): AttendanceRiskLevel {
-  return value === 'WATCH' || value === 'RISK' || value === 'CRITICAL'
-    ? value
-    : 'WATCH';
+  return value === 'WATCH' || value === 'RISK' || value === 'CRITICAL' ? value : 'WATCH';
 }
 
 function normalizeInstructorLearnersReport(
@@ -164,14 +168,18 @@ function normalizeInstructorPerformanceReport(
   return {
     ...report,
     grade_distribution: Array.isArray(report.grade_distribution) ? report.grade_distribution : [],
-    grade_status_counts: Array.isArray(report.grade_status_counts) ? report.grade_status_counts : [],
+    grade_status_counts: Array.isArray(report.grade_status_counts)
+      ? report.grade_status_counts
+      : [],
     assessment_type_breakdown: Array.isArray(report.assessment_type_breakdown)
       ? report.assessment_type_breakdown
       : [],
   };
 }
 
-function normalizeInstructorAttendanceRiskItem(value: unknown): InstructorAttendanceRiskItem | null {
+function normalizeInstructorAttendanceRiskItem(
+  value: unknown,
+): InstructorAttendanceRiskItem | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -207,7 +215,9 @@ function normalizeInstructorAttendanceRiskItem(value: unknown): InstructorAttend
   };
 }
 
-function normalizeInstructorAttendanceRiskResponse(value: unknown): InstructorAttendanceRiskResponse {
+function normalizeInstructorAttendanceRiskResponse(
+  value: unknown,
+): InstructorAttendanceRiskResponse {
   if (!isRecord(value)) {
     return {
       scope: 'instructor',
@@ -228,9 +238,8 @@ function normalizeInstructorAttendanceRiskResponse(value: unknown): InstructorAt
     .filter((item): item is InstructorAttendanceRiskItem => item !== null);
   const uniqueLearnerCount = new Set(items.map((item) => item.student_id)).size;
   const rawCount = 'count' in value ? value.count : value.total;
-  const rawUniqueLearnerCount = 'unique_learner_count' in value
-    ? value.unique_learner_count
-    : value.uniqueLearnerCount;
+  const rawUniqueLearnerCount =
+    'unique_learner_count' in value ? value.unique_learner_count : value.uniqueLearnerCount;
 
   return {
     scope: toString(value.scope, 'instructor'),
@@ -253,11 +262,11 @@ function normalizeTeacherPerformanceReflectionItem(
   }
 
   const reflectionText = (
-    toNullableString(value.reflection_text)
-    ?? toNullableString(value.reflectionText)
-    ?? toNullableString(value.full_text)
-    ?? toNullableString(value.text)
-    ?? ''
+    toNullableString(value.reflection_text) ??
+    toNullableString(value.reflectionText) ??
+    toNullableString(value.full_text) ??
+    toNullableString(value.text) ??
+    ''
   ).trim();
   const excerpt = toString(value.excerpt, reflectionText).trim();
 
@@ -315,10 +324,7 @@ async function fetchReportDownload(
     });
     return {
       blob: response.data,
-      fileName: getDownloadFileName(
-        response.headers['content-disposition'],
-        fallbackFileName,
-      ),
+      fileName: getDownloadFileName(response.headers['content-disposition'], fallbackFileName),
     };
   } catch (error) {
     return normalizeBlobError(error);
@@ -330,17 +336,16 @@ async function fetchReportDownload(
 // ============================================================================
 export const attendanceSummaryAPI = {
   getAll: async (params?: ReportFilters) => {
-    const response = await apiClient.get<AttendanceSummary[]>(
-      '/reporting/attendance-summaries/',
-      { params }
-    );
+    const response = await apiClient.get<AttendanceSummary[]>('/reporting/attendance-summaries/', {
+      params,
+    });
     return response.data;
   },
 
   getByStudent: async (studentId: number) => {
     const response = await apiClient.get<AttendanceSummary[]>(
       '/reporting/attendance-summaries/by_student/',
-      { params: { student_id: studentId } }
+      { params: { student_id: studentId } },
     );
     return response.data;
   },
@@ -348,7 +353,7 @@ export const attendanceSummaryAPI = {
   getByTerm: async (termId: number) => {
     const response = await apiClient.get<AttendanceSummary[]>(
       '/reporting/attendance-summaries/by_term/',
-      { params: { term_id: termId } }
+      { params: { term_id: termId } },
     );
     return response.data;
   },
@@ -356,7 +361,7 @@ export const attendanceSummaryAPI = {
   getByCohort: async (cohortId: number, termId: number) => {
     const response = await apiClient.get<AttendanceSummary[]>(
       '/reporting/attendance-summaries/by_cohort/',
-      { params: { cohort_id: cohortId, term_id: termId } }
+      { params: { cohort_id: cohortId, term_id: termId } },
     );
     return response.data;
   },
@@ -364,10 +369,10 @@ export const attendanceSummaryAPI = {
   compute: async (termId: number) => {
     const response = await apiClient.post<ComputeResponse>(
       '/reporting/attendance-summaries/compute/',
-      { term_id: termId }
+      { term_id: termId },
     );
     return response.data;
-  }
+  },
 };
 
 // ============================================================================
@@ -375,52 +380,45 @@ export const attendanceSummaryAPI = {
 // ============================================================================
 export const gradeSummaryAPI = {
   getAll: async (params?: ReportFilters) => {
-    const response = await apiClient.get<GradeSummary[]>(
-      '/reporting/grade-summaries/',
-      { params }
-    );
+    const response = await apiClient.get<GradeSummary[]>('/reporting/grade-summaries/', { params });
     return response.data;
   },
 
   getByStudent: async (studentId: number) => {
-    const response = await apiClient.get<GradeSummary[]>(
-      '/reporting/grade-summaries/by_student/',
-      { params: { student_id: studentId } }
-    );
+    const response = await apiClient.get<GradeSummary[]>('/reporting/grade-summaries/by_student/', {
+      params: { student_id: studentId },
+    });
     return response.data;
   },
 
   getByTerm: async (termId: number) => {
-    const response = await apiClient.get<GradeSummary[]>(
-      '/reporting/grade-summaries/by_term/',
-      { params: { term_id: termId } }
-    );
+    const response = await apiClient.get<GradeSummary[]>('/reporting/grade-summaries/by_term/', {
+      params: { term_id: termId },
+    });
     return response.data;
   },
 
   getByCohort: async (cohortId: number, termId: number) => {
-    const response = await apiClient.get<GradeSummary[]>(
-      '/reporting/grade-summaries/by_cohort/',
-      { params: { cohort_id: cohortId, term_id: termId } }
-    );
+    const response = await apiClient.get<GradeSummary[]>('/reporting/grade-summaries/by_cohort/', {
+      params: { cohort_id: cohortId, term_id: termId },
+    });
     return response.data;
   },
 
   getClassRanking: async (termId: number, cohortSubjectId: number) => {
     const response = await apiClient.get<GradeSummary[]>(
       '/reporting/grade-summaries/class_ranking/',
-      { params: { term_id: termId, cohort_subject_id: cohortSubjectId } }
+      { params: { term_id: termId, cohort_subject_id: cohortSubjectId } },
     );
     return response.data;
   },
 
   compute: async (termId: number) => {
-    const response = await apiClient.post<ComputeResponse>(
-      '/reporting/grade-summaries/compute/',
-      { term_id: termId }
-    );
+    const response = await apiClient.post<ComputeResponse>('/reporting/grade-summaries/compute/', {
+      term_id: termId,
+    });
     return response.data;
-  }
+  },
 };
 
 // ============================================================================
@@ -428,20 +426,18 @@ export const gradeSummaryAPI = {
 // ============================================================================
 export const cohortSummaryAPI = {
   getAll: async (params?: ReportFilters) => {
-    const response = await apiClient.get<CohortSummary[]>(
-      '/reporting/cohort-summaries/',
-      { params }
-    );
+    const response = await apiClient.get<CohortSummary[]>('/reporting/cohort-summaries/', {
+      params,
+    });
     return response.data;
   },
 
   compute: async (termId: number) => {
-    const response = await apiClient.post<ComputeResponse>(
-      '/reporting/cohort-summaries/compute/',
-      { term_id: termId }
-    );
+    const response = await apiClient.post<ComputeResponse>('/reporting/cohort-summaries/compute/', {
+      term_id: termId,
+    });
     return response.data;
-  }
+  },
 };
 
 // ============================================================================
@@ -449,20 +445,19 @@ export const cohortSummaryAPI = {
 // ============================================================================
 export const subjectSummaryAPI = {
   getAll: async (params?: ReportFilters) => {
-    const response = await apiClient.get<SubjectSummary[]>(
-      '/reporting/subject-summaries/',
-      { params }
-    );
+    const response = await apiClient.get<SubjectSummary[]>('/reporting/subject-summaries/', {
+      params,
+    });
     return response.data;
   },
 
   compute: async (termId: number) => {
     const response = await apiClient.post<ComputeResponse>(
       '/reporting/subject-summaries/compute/',
-      { term_id: termId }
+      { term_id: termId },
     );
     return response.data;
-  }
+  },
 };
 
 // ============================================================================
@@ -472,7 +467,7 @@ export const assessmentTypeSummaryAPI = {
   getAll: async (params?: ReportFilters) => {
     const response = await apiClient.get<AssessmentTypeSummary[]>(
       '/reporting/assessment-type-summaries/',
-      { params }
+      { params },
     );
     return response.data;
   },
@@ -480,10 +475,10 @@ export const assessmentTypeSummaryAPI = {
   compute: async (termId: number) => {
     const response = await apiClient.post<ComputeResponse>(
       '/reporting/assessment-type-summaries/compute/',
-      { term_id: termId }
+      { term_id: termId },
     );
     return response.data;
-  }
+  },
 };
 
 export const reportingAPI = {
@@ -498,12 +493,9 @@ export const reportingAPI = {
     if (params?.threshold !== undefined) queryParams.threshold = params.threshold;
     if (params?.instructor_id !== undefined) queryParams.instructor_id = params.instructor_id;
 
-    const response = await apiClient.get<unknown>(
-      '/reports/instructor/attendance-risk/',
-      {
-        params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
-      }
-    );
+    const response = await apiClient.get<unknown>('/reports/instructor/attendance-risk/', {
+      params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    });
 
     return normalizeInstructorAttendanceRiskResponse(response.data);
   },
@@ -514,31 +506,26 @@ export const reportingAPI = {
 // ============================================================================
 export const adminReportsAPI = {
   getOverview: async (termId?: number | null) => {
-    const response = await apiClient.get<DashboardOverview>(
-      '/reports/admin/overview/',
-      {
-        params: termId ? { term_id: termId } : undefined,
-      }
-    );
+    const response = await apiClient.get<DashboardOverview>('/reports/admin/overview/', {
+      params: termId ? { term_id: termId } : undefined,
+    });
     return response.data;
   },
 
-  exportOverview: async (format: ReportExportFormat, termId?: number | null) => fetchReportDownload(
-    '/reports/admin/overview/',
-    {
-      format,
-      term_id: termId ?? undefined,
-    },
-    `admin-reporting-overview.${format}`,
-  ),
+  exportOverview: async (format: ReportExportFormat, termId?: number | null) =>
+    fetchReportDownload(
+      '/reports/admin/overview/',
+      {
+        format,
+        term_id: termId ?? undefined,
+      },
+      `admin-reporting-overview.${format}`,
+    ),
 
   getCohortSummary: async (cohortId: number, termId?: number | null) => {
-    const response = await apiClient.get<ClassSummary>(
-      `/reports/admin/cohorts/${cohortId}/`,
-      {
-        params: termId ? { term_id: termId } : undefined,
-      }
-    );
+    const response = await apiClient.get<ClassSummary>(`/reports/admin/cohorts/${cohortId}/`, {
+      params: termId ? { term_id: termId } : undefined,
+    });
     return response.data;
   },
 
@@ -546,22 +533,20 @@ export const adminReportsAPI = {
     cohortId: number,
     format: ReportExportFormat,
     termId?: number | null,
-  ) => fetchReportDownload(
-    `/reports/admin/cohorts/${cohortId}/`,
-    {
-      format,
-      term_id: termId ?? undefined,
-    },
-    `cohort-report-${cohortId}.${format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      `/reports/admin/cohorts/${cohortId}/`,
+      {
+        format,
+        term_id: termId ?? undefined,
+      },
+      `cohort-report-${cohortId}.${format}`,
+    ),
 
   getSubjectOverview: async (subjectId: number, termId?: number | null) => {
-    const response = await apiClient.get<SubjectAnalysis>(
-      `/reports/admin/subjects/${subjectId}/`,
-      {
-        params: termId ? { term_id: termId } : undefined,
-      }
-    );
+    const response = await apiClient.get<SubjectAnalysis>(`/reports/admin/subjects/${subjectId}/`, {
+      params: termId ? { term_id: termId } : undefined,
+    });
     return response.data;
   },
 
@@ -569,21 +554,22 @@ export const adminReportsAPI = {
     subjectId: number,
     format: ReportExportFormat,
     termId?: number | null,
-  ) => fetchReportDownload(
-    `/reports/admin/subjects/${subjectId}/`,
-    {
-      format,
-      term_id: termId ?? undefined,
-    },
-    `subject-report-${subjectId}.${format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      `/reports/admin/subjects/${subjectId}/`,
+      {
+        format,
+        term_id: termId ?? undefined,
+      },
+      `subject-report-${subjectId}.${format}`,
+    ),
 
   getStudentReportCard: async (studentId: number, termId?: number | null) => {
     const response = await apiClient.get<StudentReportCard>(
       `/reports/admin/students/${studentId}/report-card/`,
       {
         params: termId ? { term_id: termId } : undefined,
-      }
+      },
     );
     return response.data;
   },
@@ -592,14 +578,15 @@ export const adminReportsAPI = {
     studentId: number,
     format: ReportExportFormat,
     termId?: number | null,
-  ) => fetchReportDownload(
-    `/reports/admin/students/${studentId}/report-card/`,
-    {
-      format,
-      term_id: termId ?? undefined,
-    },
-    `student-report-${studentId}.${format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      `/reports/admin/students/${studentId}/report-card/`,
+      {
+        format,
+        term_id: termId ?? undefined,
+      },
+      `student-report-${studentId}.${format}`,
+    ),
 
   getAttendanceScope: async (params?: {
     termId?: number | null;
@@ -609,19 +596,16 @@ export const adminReportsAPI = {
     cohortSubjectId?: number | null;
     sessionId?: number | null;
   }) => {
-    const response = await apiClient.get<AttendanceScopeReportPayload>(
-      '/reports/attendance/',
-      {
-        params: {
-          term_id: params?.termId ?? undefined,
-          student_id: params?.studentId ?? undefined,
-          cohort_id: params?.cohortId ?? undefined,
-          subject_id: params?.subjectId ?? undefined,
-          cohort_subject_id: params?.cohortSubjectId ?? undefined,
-          session_id: params?.sessionId ?? undefined,
-        },
+    const response = await apiClient.get<AttendanceScopeReportPayload>('/reports/attendance/', {
+      params: {
+        term_id: params?.termId ?? undefined,
+        student_id: params?.studentId ?? undefined,
+        cohort_id: params?.cohortId ?? undefined,
+        subject_id: params?.subjectId ?? undefined,
+        cohort_subject_id: params?.cohortSubjectId ?? undefined,
+        session_id: params?.sessionId ?? undefined,
       },
-    );
+    });
     return response.data;
   },
 
@@ -635,27 +619,27 @@ export const adminReportsAPI = {
       cohortSubjectId?: number | null;
       sessionId?: number | null;
     },
-  ) => fetchReportDownload(
-    '/reports/attendance/',
-    {
-      format,
-      term_id: params?.termId ?? undefined,
-      student_id: params?.studentId ?? undefined,
-      cohort_id: params?.cohortId ?? undefined,
-      subject_id: params?.subjectId ?? undefined,
-      cohort_subject_id: params?.cohortSubjectId ?? undefined,
-      session_id: params?.sessionId ?? undefined,
-    },
-    `attendance-report.${format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      '/reports/attendance/',
+      {
+        format,
+        term_id: params?.termId ?? undefined,
+        student_id: params?.studentId ?? undefined,
+        cohort_id: params?.cohortId ?? undefined,
+        subject_id: params?.subjectId ?? undefined,
+        cohort_subject_id: params?.cohortSubjectId ?? undefined,
+        session_id: params?.sessionId ?? undefined,
+      },
+      `attendance-report.${format}`,
+    ),
 };
 
 export const instructorReportsAPI = {
   getOverview: async (authorityMode: 'teaching' | 'supervision' = 'teaching') => {
-    const response = await apiClient.get<InstructorOverview>(
-      '/reports/instructor/overview/',
-      { params: { authority_mode: authorityMode } },
-    );
+    const response = await apiClient.get<InstructorOverview>('/reports/instructor/overview/', {
+      params: { authority_mode: authorityMode },
+    });
     return response.data;
   },
 
@@ -676,7 +660,7 @@ export const instructorReportsAPI = {
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/learners/`,
       {
         params: { term_id: termId ?? undefined, authority_mode: authorityMode },
-      }
+      },
     );
     return normalizeInstructorLearnersReport(response.data);
   },
@@ -690,7 +674,7 @@ export const instructorReportsAPI = {
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/performance/`,
       {
         params: { term_id: termId ?? undefined, authority_mode: authorityMode },
-      }
+      },
     );
     return normalizeInstructorPerformanceReport(response.data);
   },
@@ -704,7 +688,7 @@ export const instructorReportsAPI = {
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/teaching-activity/`,
       {
         params: { term_id: termId ?? undefined, authority_mode: authorityMode },
-      }
+      },
     );
     return response.data;
   },
@@ -717,7 +701,12 @@ export const cohortSubjectReportsAPI = {
   ) => {
     const response = await apiClient.get<ClassSubjectReportPayload>(
       `/reporting/cohort-subjects/${cohortSubjectId}/overview/`,
-      { params: { term_id: params?.termId ?? undefined, authority_mode: params?.authorityMode ?? 'teaching' } },
+      {
+        params: {
+          term_id: params?.termId ?? undefined,
+          authority_mode: params?.authorityMode ?? 'teaching',
+        },
+      },
     );
     return response.data;
   },
@@ -728,7 +717,12 @@ export const cohortSubjectReportsAPI = {
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectLearnersReport>(
       `/reporting/cohort-subjects/${cohortSubjectId}/learners/`,
-      { params: { term_id: params?.termId ?? undefined, authority_mode: params?.authorityMode ?? 'teaching' } },
+      {
+        params: {
+          term_id: params?.termId ?? undefined,
+          authority_mode: params?.authorityMode ?? 'teaching',
+        },
+      },
     );
     return normalizeInstructorLearnersReport(response.data);
   },
@@ -739,7 +733,12 @@ export const cohortSubjectReportsAPI = {
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectPerformanceReport>(
       `/reporting/cohort-subjects/${cohortSubjectId}/performance/`,
-      { params: { term_id: params?.termId ?? undefined, authority_mode: params?.authorityMode ?? 'teaching' } },
+      {
+        params: {
+          term_id: params?.termId ?? undefined,
+          authority_mode: params?.authorityMode ?? 'teaching',
+        },
+      },
     );
     return normalizeInstructorPerformanceReport(response.data);
   },
@@ -750,7 +749,12 @@ export const cohortSubjectReportsAPI = {
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectTeachingActivityReport>(
       `/reporting/cohort-subjects/${cohortSubjectId}/teaching-activity/`,
-      { params: { term_id: params?.termId ?? undefined, authority_mode: params?.authorityMode ?? 'teaching' } },
+      {
+        params: {
+          term_id: params?.termId ?? undefined,
+          authority_mode: params?.authorityMode ?? 'teaching',
+        },
+      },
     );
     return response.data;
   },
@@ -780,7 +784,7 @@ export const learnerReportingAPI = {
           subject_id: params.subjectId ?? undefined,
           cohort_id: params.cohortId ?? undefined,
         },
-      }
+      },
     );
     return response.data;
   },
@@ -801,7 +805,7 @@ export const learnerReportingAPI = {
           cohort_id: params.cohortId ?? undefined,
           academic_year_id: params.academicYearId ?? undefined,
         },
-      }
+      },
     );
     return response.data;
   },
@@ -820,7 +824,7 @@ export const learnerReportingAPI = {
           assignment_id: params.assignmentId ?? undefined,
           authority_mode: params.authorityMode ?? 'teaching',
         },
-      }
+      },
     );
     return response.data;
   },
@@ -833,37 +837,33 @@ export const learnerReportingAPI = {
       subjectId?: number | null;
       cohortId?: number | null;
     },
-  ) => fetchReportDownload(
-    `/reporting/learners/${learnerId}/subject-report/export/`,
-    {
-      format: params.format,
-      cohort_subject_id: params.cohortSubjectId ?? undefined,
-      subject_id: params.subjectId ?? undefined,
-      cohort_id: params.cohortId ?? undefined,
-    },
-    `learner-subject-report-${learnerId}.${params.format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      `/reporting/learners/${learnerId}/subject-report/export/`,
+      {
+        format: params.format,
+        cohort_subject_id: params.cohortSubjectId ?? undefined,
+        subject_id: params.subjectId ?? undefined,
+        cohort_id: params.cohortId ?? undefined,
+      },
+      `learner-subject-report-${learnerId}.${params.format}`,
+    ),
 
   getLearnerOverviewReport: async (learnerId: number) => {
     const response = await apiClient.get<LearnerOverviewReportPayload>(
-      `/reporting/learners/${learnerId}/overview-report/`
+      `/reporting/learners/${learnerId}/overview-report/`,
     );
     return response.data;
   },
 
-  exportLearnerOverviewReport: async (
-    learnerId: number,
-    format: ReportExportFormat,
-  ) => fetchReportDownload(
-    `/reporting/learners/${learnerId}/overview-report/export/`,
-    { format },
-    `learner-overview-report-${learnerId}.${format}`,
-  ),
+  exportLearnerOverviewReport: async (learnerId: number, format: ReportExportFormat) =>
+    fetchReportDownload(
+      `/reporting/learners/${learnerId}/overview-report/export/`,
+      { format },
+      `learner-overview-report-${learnerId}.${format}`,
+    ),
 
-  getLearnerTermProgressReport: async (
-    learnerId: number,
-    termId: number,
-  ) => {
+  getLearnerTermProgressReport: async (learnerId: number, termId: number) => {
     const response = await apiClient.get<LearnerTermProgressReportPayload>(
       `/reporting/learners/${learnerId}/term-progress-report/`,
       {
@@ -879,14 +879,15 @@ export const learnerReportingAPI = {
       termId: number;
       format: 'pdf';
     },
-  ) => fetchReportDownload(
-    `/reporting/learners/${learnerId}/term-progress-report/export/`,
-    {
-      term_id: params.termId,
-      format: params.format,
-    },
-    `learner-term-progress-report-${learnerId}.${params.format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      `/reporting/learners/${learnerId}/term-progress-report/export/`,
+      {
+        term_id: params.termId,
+        format: params.format,
+      },
+      `learner-term-progress-report-${learnerId}.${params.format}`,
+    ),
 
   getClassSubjectReport: async (
     cohortId: number,
@@ -906,7 +907,7 @@ export const learnerReportingAPI = {
           term_id: params.termId ?? undefined,
           authority_mode: params.authorityMode ?? 'teaching',
         },
-      }
+      },
     );
     return response.data;
   },
@@ -914,10 +915,11 @@ export const learnerReportingAPI = {
   getCohortSubjectReportTerms: async (
     cohortSubjectId: number,
     authorityMode: 'teaching' | 'supervision' = 'teaching',
+    termId?: number | null,
   ): Promise<CohortSubjectReportTermsResponse> => {
     const response = await apiClient.get<CohortSubjectReportTermsResponse>(
       `/reporting/cohort-subjects/${cohortSubjectId}/terms/`,
-      { params: { authority_mode: authorityMode } },
+      { params: { authority_mode: authorityMode, term_id: termId ?? undefined } },
     );
     return response.data;
   },
@@ -930,25 +932,24 @@ export const learnerReportingAPI = {
       subjectId?: number | null;
       termId?: number | null;
     },
-  ) => fetchReportDownload(
-    `/reporting/classes/${cohortId}/subject-report/export/`,
-    {
-      format: params.format,
-      cohort_subject_id: params.cohortSubjectId ?? undefined,
-      subject_id: params.subjectId ?? undefined,
-      term_id: params.termId ?? undefined,
-    },
-    `class-subject-report-${cohortId}.${params.format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      `/reporting/classes/${cohortId}/subject-report/export/`,
+      {
+        format: params.format,
+        cohort_subject_id: params.cohortSubjectId ?? undefined,
+        subject_id: params.subjectId ?? undefined,
+        term_id: params.termId ?? undefined,
+      },
+      `class-subject-report-${cohortId}.${params.format}`,
+    ),
 
-  getInstructorTeacherReport: async (
-    params?: {
-      termId?: number | null;
-      cohortSubjectId?: number | null;
-      startDate?: string | null;
-      endDate?: string | null;
-    },
-  ) => {
+  getInstructorTeacherReport: async (params?: {
+    termId?: number | null;
+    cohortSubjectId?: number | null;
+    startDate?: string | null;
+    endDate?: string | null;
+  }) => {
     const response = await apiClient.get<TeacherPerformanceReportPayload>(
       '/reporting/instructor/me/teacher-report/',
       {
@@ -958,7 +959,7 @@ export const learnerReportingAPI = {
           start_date: params?.startDate ?? undefined,
           end_date: params?.endDate ?? undefined,
         },
-      }
+      },
     );
     return normalizeTeacherPerformanceReportPayload(response.data);
   },
@@ -971,17 +972,18 @@ export const learnerReportingAPI = {
       startDate?: string | null;
       endDate?: string | null;
     },
-  ) => fetchReportDownload(
-    '/reporting/instructor/me/teacher-report/',
-    {
-      format,
-      term_id: params?.termId ?? undefined,
-      cohort_subject_id: params?.cohortSubjectId ?? undefined,
-      start_date: params?.startDate ?? undefined,
-      end_date: params?.endDate ?? undefined,
-    },
-    `teacher-performance-report.${format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      '/reporting/instructor/me/teacher-report/',
+      {
+        format,
+        term_id: params?.termId ?? undefined,
+        cohort_subject_id: params?.cohortSubjectId ?? undefined,
+        start_date: params?.startDate ?? undefined,
+        end_date: params?.endDate ?? undefined,
+      },
+      `teacher-performance-report.${format}`,
+    ),
 
   getAdminInstructorTeacherReport: async (
     instructorId: number,
@@ -1001,7 +1003,7 @@ export const learnerReportingAPI = {
           start_date: params?.startDate ?? undefined,
           end_date: params?.endDate ?? undefined,
         },
-      }
+      },
     );
     return normalizeTeacherPerformanceReportPayload(response.data);
   },
@@ -1015,17 +1017,18 @@ export const learnerReportingAPI = {
       startDate?: string | null;
       endDate?: string | null;
     },
-  ) => fetchReportDownload(
-    `/reporting/admin/instructors/${instructorId}/teacher-report/`,
-    {
-      format,
-      term_id: params?.termId ?? undefined,
-      cohort_subject_id: params?.cohortSubjectId ?? undefined,
-      start_date: params?.startDate ?? undefined,
-      end_date: params?.endDate ?? undefined,
-    },
-    `teacher-performance-report-${instructorId}.${format}`,
-  ),
+  ) =>
+    fetchReportDownload(
+      `/reporting/admin/instructors/${instructorId}/teacher-report/`,
+      {
+        format,
+        term_id: params?.termId ?? undefined,
+        cohort_subject_id: params?.cohortSubjectId ?? undefined,
+        start_date: params?.startDate ?? undefined,
+        end_date: params?.endDate ?? undefined,
+      },
+      `teacher-performance-report-${instructorId}.${format}`,
+    ),
 };
 
 export const cbcReportingAPI = {
@@ -1063,10 +1066,9 @@ export const reportsAPI = {
   },
 
   prepareTermForReports: async (termId: number): Promise<ReportComputeReadiness> => {
-    const response = await apiClient.post<ReportComputeReadiness>(
-      '/reporting/reports/prepare/',
-      { term: termId },
-    );
+    const response = await apiClient.post<ReportComputeReadiness>('/reporting/reports/prepare/', {
+      term: termId,
+    });
     return response.data;
   },
 
@@ -1081,7 +1083,10 @@ export const reportsAPI = {
     return response.data;
   },
 
-  computeReports: async (termId: number, mode: ReportComputeMode = 'FINAL_RECONCILIATION'): Promise<ReportComputeJob> => {
+  computeReports: async (
+    termId: number,
+    mode: ReportComputeMode = 'FINAL_RECONCILIATION',
+  ): Promise<ReportComputeJob> => {
     if (mode === 'FINAL_RECONCILIATION') {
       const response = await apiClient.post<ReportComputeJob>(
         '/reporting/reports/compute/final-reconciliation/',
@@ -1090,10 +1095,10 @@ export const reportsAPI = {
       return response.data;
     }
 
-    const response = await apiClient.post<ReportComputeJob>(
-      '/reporting/reports/compute/',
-      { term: termId, mode },
-    );
+    const response = await apiClient.post<ReportComputeJob>('/reporting/reports/compute/', {
+      term: termId,
+      mode,
+    });
     return response.data;
   },
 
@@ -1191,7 +1196,8 @@ export const reportsAPI = {
           }
         }
       } catch (error) {
-        if (signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) return;
+        if (signal?.aborted || (error instanceof DOMException && error.name === 'AbortError'))
+          return;
         retryCount += 1;
         if (retryCount > maxRetries) {
           throw new ReportComputeStreamFallbackError();
@@ -1250,18 +1256,17 @@ export const reportsAPI = {
   getLongitudinalStudent: async (studentId: number) => {
     const response = await apiClient.get<LongitudinalStudentData>(
       '/reporting/reports/longitudinal_student/',
-      { params: { student_id: studentId } }
+      { params: { student_id: studentId } },
     );
     return response.data;
-  }
+  },
 };
-
 
 export const policyAPI = {
   // Grade Policies
   getGradePolicies: async (params?: ReportFilters) => {
     const { data } = await apiClient.get<GradePolicy[]>('/reporting/grade-policies/', {
-      params
+      params,
     });
     return data;
   },
@@ -1277,7 +1282,10 @@ export const policyAPI = {
   },
 
   updateGradePolicy: async (id: number, payload: Partial<GradePolicy>) => {
-    const { data } = await apiClient.patch<GradePolicy>(`/reporting/grade-policies/${id}/`, payload);
+    const { data } = await apiClient.patch<GradePolicy>(
+      `/reporting/grade-policies/${id}/`,
+      payload,
+    );
     return data;
   },
 
@@ -1286,14 +1294,16 @@ export const policyAPI = {
   },
 
   duplicateGradePolicy: async (id: number) => {
-    const { data } = await apiClient.post<GradePolicy>(`/reporting/grade-policies/${id}/duplicate/`);
+    const { data } = await apiClient.post<GradePolicy>(
+      `/reporting/grade-policies/${id}/duplicate/`,
+    );
     return data;
   },
 
   getPolicyForContext: async (filters: ReportFilters) => {
     const { data } = await apiClient.get<GradePolicy>(
       '/reporting/grade-policies/get_policy_for_context/',
-      { params: filters }
+      { params: filters },
     );
     return data;
   },
@@ -1301,7 +1311,7 @@ export const policyAPI = {
   // Computed Grades (auditable policy results)
   getComputedGrades: async (filters?: ReportFilters) => {
     const { data } = await apiClient.get<ComputedGradeDTO[]>('/reporting/computed-grades/', {
-      params: filters
+      params: filters,
     });
     return data;
   },
@@ -1318,7 +1328,7 @@ export const policyAPI = {
   }) => {
     const { data } = await apiClient.post<ComputeResponse>(
       '/reporting/computed-grades/compute_with_policy/',
-      payload
+      payload,
     );
     return data;
   },
@@ -1326,8 +1336,8 @@ export const policyAPI = {
   getComputedGradesByStudent: async (studentId: number) => {
     const { data } = await apiClient.get<ComputedGradeDTO[]>(
       '/reporting/computed-grades/by_student/',
-      { params: { student_id: studentId } }
+      { params: { student_id: studentId } },
     );
     return data;
-  }
+  },
 };

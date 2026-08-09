@@ -1,25 +1,10 @@
 import { ComputedGradeDTO } from './gradePolicy';
 
-export type ReportingSource =
-  | 'generic'
-  | 'cbc'
-  | 'cambridge_pending'
-  | 'unsupported';
+export type ReportingSource = 'generic' | 'cbc' | 'cambridge_pending' | 'unsupported';
 
-export type PerformanceSource =
-  | 'generic'
-  | 'cbc'
-  | 'unsupported';
+export type PerformanceSource = 'generic' | 'cbc' | 'unsupported';
 
-export type CbcCode =
-  | 'EE1'
-  | 'EE2'
-  | 'ME1'
-  | 'ME2'
-  | 'AE1'
-  | 'AE2'
-  | 'BE1'
-  | 'BE2';
+export type CbcCode = 'EE1' | 'EE2' | 'ME1' | 'ME2' | 'AE1' | 'AE2' | 'BE1' | 'BE2';
 
 export interface CbcDistributionByCode {
   EE1: number;
@@ -436,10 +421,12 @@ export interface GenericStudentSection {
   component_scores?: Record<string, number | string | null> | null;
   computed_at?: string | null;
   note?: string | null;
-  computed_grade?: (ComputedGradeDTO & {
-    position?: number | null;
-    total_in_class?: number | null;
-  }) | null;
+  computed_grade?:
+    | (ComputedGradeDTO & {
+        position?: number | null;
+        total_in_class?: number | null;
+      })
+    | null;
   grade_summary?: ReportGradeSummaryPreview | null;
 }
 
@@ -572,12 +559,15 @@ export interface CbcObservationRecord {
   review_status?: string | null;
   linked_artifact?: Record<string, unknown> | null;
   provenance?: Record<string, unknown> | null;
-  follow_up?: {
-    action?: string | null;
-    date?: string | null;
-    review_date?: string | null;
-    status?: string | null;
-  } | string | null;
+  follow_up?:
+    | {
+        action?: string | null;
+        date?: string | null;
+        review_date?: string | null;
+        status?: string | null;
+      }
+    | string
+    | null;
 }
 
 export interface CbcAssessmentIndicator {
@@ -1051,6 +1041,7 @@ export interface InstructorCohortSubjectPerformanceReport {
   grade_distribution?: ReportGradeDistributionItem[] | null;
   grade_status_counts?: ReportGradeStatusCountItem[] | null;
   assessment_type_breakdown?: ReportAssessmentTypeBreakdown[] | null;
+  assessment_items?: ReportAssessmentItem[];
 }
 
 export interface InstructorCohortSubjectTeachingActivityReport {
@@ -1069,6 +1060,7 @@ export interface InstructorCohortSubjectTeachingActivityReport {
   attendance_marked: number;
   attendance_expected: number;
   attendance_completeness: number | null;
+  session_items?: ReportSessionItem[];
 }
 
 export interface ComputeResponse {
@@ -1179,7 +1171,13 @@ export interface ReportProjectionFreshness {
 }
 
 export interface TermReportSetReadiness {
-  status: 'DRAFT' | 'RECONCILING' | 'READY_FOR_REVIEW' | 'READY_FOR_PUBLICATION' | 'REQUIRES_RECONCILIATION' | string;
+  status:
+    | 'DRAFT'
+    | 'RECONCILING'
+    | 'READY_FOR_REVIEW'
+    | 'READY_FOR_PUBLICATION'
+    | 'REQUIRES_RECONCILIATION'
+    | string;
   requires_reconciliation: boolean;
   reconciliation_required_reason: string;
   reconciliation_required_at?: string | null;

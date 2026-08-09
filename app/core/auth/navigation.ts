@@ -1,6 +1,7 @@
 const MAX_APP_DESTINATION_LENGTH = 2048;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 const DANGEROUS_SCHEME = /^(?:javascript|data|file|https?):/i;
+const MAX_RETURN_TO_DEPTH = 2;
 
 function appOrigin(): string {
   return typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
@@ -27,22 +28,22 @@ export function parseAppDestination(destination: string | null | undefined): str
     return null;
   }
   if (
-    CONTROL_CHARACTERS.test(destination)
-    || destination.includes('\\')
-    || !destination.startsWith('/')
-    || destination.startsWith('//')
-    || DANGEROUS_SCHEME.test(destination)
+    CONTROL_CHARACTERS.test(destination) ||
+    destination.includes('\\') ||
+    !destination.startsWith('/') ||
+    destination.startsWith('//') ||
+    DANGEROUS_SCHEME.test(destination)
   ) {
     return null;
   }
 
   const decoded = decodeForSecurityInspection(destination);
   if (
-    decoded === null
-    || CONTROL_CHARACTERS.test(decoded)
-    || decoded.includes('\\')
-    || decoded.startsWith('//')
-    || DANGEROUS_SCHEME.test(decoded)
+    decoded === null ||
+    CONTROL_CHARACTERS.test(decoded) ||
+    decoded.includes('\\') ||
+    decoded.startsWith('//') ||
+    DANGEROUS_SCHEME.test(decoded)
   ) {
     return null;
   }
@@ -56,6 +57,30 @@ export function parseAppDestination(destination: string | null | undefined): str
     const normalized = `${parsed.pathname}${parsed.search}${parsed.hash}`;
     if (!normalized.startsWith('/') || normalized.startsWith('//')) {
       return null;
+    }
+    let nested = parsed.searchParams.get('returnTo');
+    let depth = 0;
+    while (nested) {
+      depth += 1;
+      if (depth > MAX_RETURN_TO_DEPTH || nested.length > MAX_APP_DESTINATION_LENGTH) {
+        return null;
+      }
+      const inspected = decodeForSecurityInspection(nested);
+      if (
+        inspected === null ||
+        CONTROL_CHARACTERS.test(inspected) ||
+        inspected.includes('\\') ||
+        !nested.startsWith('/') ||
+        nested.startsWith('//') ||
+        DANGEROUS_SCHEME.test(inspected)
+      ) {
+        return null;
+      }
+      const nestedUrl = new URL(nested, origin);
+      if (nestedUrl.origin !== origin || nestedUrl.username || nestedUrl.password) {
+        return null;
+      }
+      nested = nestedUrl.searchParams.get('returnTo');
     }
     return normalized;
   } catch {
@@ -83,7 +108,7 @@ export function getCurrentPath(): string {
 
 export function buildLoginPath(
   next: string | null | undefined,
-  extras?: Record<string, string | null | undefined>
+  extras?: Record<string, string | null | undefined>,
 ): string {
   const params = new URLSearchParams();
   const safeNext = parseAppDestination(next);

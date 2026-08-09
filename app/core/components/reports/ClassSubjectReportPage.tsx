@@ -16,10 +16,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import {
-  ReportPreparingState,
-  SectionLoading,
-} from '@/app/components/ui/loading';
+import { ReportPreparingState, SectionLoading } from '@/app/components/ui/loading';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
 import {
   formatReportDate,
@@ -33,24 +30,18 @@ import {
 } from '@/app/core/components/reports/ReportSummaryPrimitives';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import { ClassSubjectAssignmentParticipation } from '@/app/core/components/reports/ClassSubjectAssignmentParticipation';
-import {
-  useClassSubjectReport,
-  useInstructorCohortSubjects,
-} from '@/app/core/hooks/useReporting';
+import { useClassSubjectReport, useInstructorCohortSubjects } from '@/app/core/hooks/useReporting';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useAuth } from '@/app/context/AuthContext';
 import { useClassSubjectIntelligence } from '@/app/core/hooks/useAcademicIntelligence';
 import { ClassSubjectIntelligencePanel } from '@/app/core/components/reports/AcademicInsightPrimitives';
-import type {
-  ClassSubjectLearnerRow,
-  ClassSubjectReportPayload,
-} from '@/app/core/types/reporting';
+import type { ClassSubjectLearnerRow, ClassSubjectReportPayload } from '@/app/core/types/reporting';
 import type { ClassSubjectIntelligence } from '@/app/core/types/academicIntelligence';
 import type { Term } from '@/app/core/types/academic';
 import type { User } from '@/app/core/types/auth';
 import {
-  buildAttendanceReportHref,
+  buildCohortSubjectProjectionHref,
   buildCbcCohortProgressHref,
   buildCbcLearnerProgressHref,
   buildLearnerReportHref,
@@ -121,9 +112,9 @@ export function resolveClassSubjectReportTermLabel({
   }
 
   if (
-    selectedTermId
-    && intelligence?.scope.term_id === selectedTermId
-    && intelligence.scope.term_name
+    selectedTermId &&
+    intelligence?.scope.term_id === selectedTermId &&
+    intelligence.scope.term_name
   ) {
     return intelligence.scope.term_name;
   }
@@ -182,16 +173,22 @@ function LearnerReportLinks({
   return (
     <div className="mt-4 flex flex-wrap gap-2">
       <Link href={learnerSubjectHref}>
-        <Button variant="secondary" size="sm">Learner Subject</Button>
+        <Button variant="secondary" size="sm">
+          Learner Subject
+        </Button>
       </Link>
       {learnerReportHref ? (
         <Link href={learnerReportHref}>
-          <Button variant="ghost" size="sm">Learner Report</Button>
+          <Button variant="ghost" size="sm">
+            Learner Report
+          </Button>
         </Link>
       ) : null}
       {cbcProgressHref ? (
         <Link href={cbcProgressHref}>
-          <Button variant="ghost" size="sm">CBC Progress</Button>
+          <Button variant="ghost" size="sm">
+            CBC Progress
+          </Button>
         </Link>
       ) : null}
     </div>
@@ -214,9 +211,10 @@ function LearnerRowsList({
   renderLinks?: (row: ClassSubjectLearnerRow) => ReactNode;
 }) {
   const countVariant = tone === 'support' ? 'warning' : 'success';
-  const cardClassName = tone === 'support'
-    ? 'border border-amber-200 theme-warning-surface p-5'
-    : 'border theme-border p-5';
+  const cardClassName =
+    tone === 'support'
+      ? 'border border-amber-200 theme-warning-surface p-5'
+      : 'border theme-border p-5';
 
   return (
     <section className="space-y-4">
@@ -419,8 +417,8 @@ export function ClassSubjectReportPage({
   const isTeachingReportRoute = pathname.startsWith('/reports/instructor/');
   const returnTo = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
-    fallbackHref: fallbackReturnTo
-      ?? buildInstructorCohortSubjectDetailHref(cohortSubjectId, selectedTermId),
+    fallbackHref:
+      fallbackReturnTo ?? buildInstructorCohortSubjectDetailHref(cohortSubjectId, selectedTermId),
   });
   const selectedCohortId = parsePositiveReportParam(
     searchParams.get('cohort') ?? searchParams.get('cohort_id'),
@@ -438,11 +436,7 @@ export function ClassSubjectReportPage({
   );
   const cohortId = selectedCohortId ?? cohortIdOverride ?? cohortSubjectMeta?.cohort_id ?? null;
 
-  const {
-    report,
-    loading,
-    error,
-  } = useClassSubjectReport(cohortId, cohortSubjectId, {
+  const { report, loading, error } = useClassSubjectReport(cohortId, cohortSubjectId, {
     enabled: Boolean(cohortId && cohortSubjectId && selectedTermId),
     termId: selectedTermId,
   });
@@ -473,7 +467,8 @@ export function ClassSubjectReportPage({
   }, 'class subject report');
 
   const visibleError = error ?? (cohortIdOverride == null ? cohortSubjectsError : null) ?? null;
-  const reportSubjectName = report?.subject.name ?? cohortSubjectMeta?.subject_name ?? 'Class subject';
+  const reportSubjectName =
+    report?.subject.name ?? cohortSubjectMeta?.subject_name ?? 'Class subject';
   const reportSubjectCode = report?.subject.code ?? cohortSubjectMeta?.subject_code ?? null;
   const reportCohortName = report?.cohort.name ?? cohortSubjectMeta?.cohort_name ?? null;
   const viewerName = displayUserName(user);
@@ -484,98 +479,112 @@ export function ClassSubjectReportPage({
     terms,
   });
   const hasCbcProgress = Boolean(
-    report?.reporting_source === 'cbc'
-    || report?.composition?.available_sections?.includes('cbc_progress'),
+    report?.reporting_source === 'cbc' ||
+    report?.composition?.available_sections?.includes('cbc_progress'),
   );
-  const classSubjectActions = report ? [
-    {
-      label: 'Attendance',
-      href: buildAttendanceReportHref({
-        term: selectedTermId ?? report.period?.term_id ?? null,
-        cohort: report.cohort.id,
-        subject: report.subject.id,
-        cohortSubject: report.cohort_subject.id,
-        returnTo: currentReturnTo,
-      }),
-      variant: 'secondary' as const,
-    },
-    ...(hasCbcProgress ? [{
-      label: 'CBC Progress',
-      href: buildCbcCohortProgressHref(report.cohort.id, {
-        subject: report.subject.id,
-        cohortSubject: report.cohort_subject.id,
-        returnTo: currentReturnTo,
-      }),
-      variant: 'secondary' as const,
-    }] : []),
-    {
-      label: 'Assignments',
-      href: buildScopedOperationsHref('/assignments', {
-        term: selectedTermId ?? report.period?.term_id ?? null,
-        cohort_subject: report.cohort_subject.id,
-        cohort: report.cohort.id,
-        subject: report.subject.id,
-        returnTo: currentReturnTo,
-      }),
-      variant: 'ghost' as const,
-    },
-    {
-      label: 'Sessions',
-      href: buildScopedOperationsHref('/sessions', {
-        term: selectedTermId ?? report.period?.term_id ?? null,
-        cohort_subject: report.cohort_subject.id,
-        cohort: report.cohort.id,
-        subject: report.subject.id,
-        returnTo: currentReturnTo,
-      }),
-      variant: 'ghost' as const,
-    },
-    {
-      label: 'Assessments',
-      href: buildScopedOperationsHref('/assessments', {
-        term: selectedTermId ?? report.period?.term_id ?? null,
-        cohort_subject: report.cohort_subject.id,
-        cohort: report.cohort.id,
-        subject: report.subject.id,
-        returnTo: currentReturnTo,
-      }),
-      variant: 'ghost' as const,
-    },
-  ] : [];
-  const renderLearnerLinks = useCallback((row: ClassSubjectLearnerRow) => {
-    if (!report) {
-      return null;
-    }
+  const classSubjectActions = report
+    ? [
+        {
+          label: 'Attendance',
+          href: buildCohortSubjectProjectionHref(
+            report.cohort_subject.id,
+            'attendance',
+            {
+              term: selectedTermId ?? report.period?.term_id ?? null,
+              cohort: report.cohort.id,
+              subject: report.subject.id,
+              cohortSubject: report.cohort_subject.id,
+              returnTo: currentReturnTo,
+            },
+            { instructorRoute: isTeachingReportRoute },
+          ),
+          variant: 'secondary' as const,
+        },
+        ...(hasCbcProgress
+          ? [
+              {
+                label: 'CBC Progress',
+                href: buildCbcCohortProgressHref(report.cohort.id, {
+                  subject: report.subject.id,
+                  cohortSubject: report.cohort_subject.id,
+                  returnTo: currentReturnTo,
+                }),
+                variant: 'secondary' as const,
+              },
+            ]
+          : []),
+        {
+          label: 'Assignments',
+          href: buildScopedOperationsHref('/assignments', {
+            term: selectedTermId ?? report.period?.term_id ?? null,
+            cohort_subject: report.cohort_subject.id,
+            cohort: report.cohort.id,
+            subject: report.subject.id,
+            returnTo: currentReturnTo,
+          }),
+          variant: 'ghost' as const,
+        },
+        {
+          label: 'Sessions',
+          href: buildScopedOperationsHref('/sessions', {
+            term: selectedTermId ?? report.period?.term_id ?? null,
+            cohort_subject: report.cohort_subject.id,
+            cohort: report.cohort.id,
+            subject: report.subject.id,
+            returnTo: currentReturnTo,
+          }),
+          variant: 'ghost' as const,
+        },
+        {
+          label: 'Assessments',
+          href: buildScopedOperationsHref('/assessments', {
+            term: selectedTermId ?? report.period?.term_id ?? null,
+            cohort_subject: report.cohort_subject.id,
+            cohort: report.cohort.id,
+            subject: report.subject.id,
+            returnTo: currentReturnTo,
+          }),
+          variant: 'ghost' as const,
+        },
+      ]
+    : [];
+  const renderLearnerLinks = useCallback(
+    (row: ClassSubjectLearnerRow) => {
+      if (!report) {
+        return null;
+      }
 
-    const learnerSubjectHref = buildLearnerSubjectReportHref(
-      row.learner.id,
-      report.cohort_subject.id,
-      { returnTo: currentReturnTo },
-    );
-    const learnerReportHref = isTeachingReportRoute
-      ? null
-      : buildLearnerReportHref(row.learner.id, {
-          cohort: report.cohort.id,
-          subject: report.subject.id,
-          cohortSubject: report.cohort_subject.id,
-          returnTo: currentReturnTo,
-        });
-    const cbcProgressHref = hasCbcProgress
-      ? buildCbcLearnerProgressHref(row.learner.id, {
-          subject: report.subject.id,
-          cohortSubject: report.cohort_subject.id,
-          returnTo: currentReturnTo,
-        })
-      : null;
+      const learnerSubjectHref = buildLearnerSubjectReportHref(
+        row.learner.id,
+        report.cohort_subject.id,
+        { returnTo: currentReturnTo },
+      );
+      const learnerReportHref = isTeachingReportRoute
+        ? null
+        : buildLearnerReportHref(row.learner.id, {
+            cohort: report.cohort.id,
+            subject: report.subject.id,
+            cohortSubject: report.cohort_subject.id,
+            returnTo: currentReturnTo,
+          });
+      const cbcProgressHref = hasCbcProgress
+        ? buildCbcLearnerProgressHref(row.learner.id, {
+            subject: report.subject.id,
+            cohortSubject: report.cohort_subject.id,
+            returnTo: currentReturnTo,
+          })
+        : null;
 
-    return (
-      <LearnerReportLinks
-        learnerSubjectHref={learnerSubjectHref}
-        learnerReportHref={learnerReportHref}
-        cbcProgressHref={cbcProgressHref}
-      />
-    );
-  }, [currentReturnTo, hasCbcProgress, isTeachingReportRoute, report]);
+      return (
+        <LearnerReportLinks
+          learnerSubjectHref={learnerSubjectHref}
+          learnerReportHref={learnerReportHref}
+          cbcProgressHref={cbcProgressHref}
+        />
+      );
+    },
+    [currentReturnTo, hasCbcProgress, isTeachingReportRoute, report],
+  );
 
   if (cohortSubjectsLoading && cohortIdOverride == null && !cohortSubjectMeta) {
     return (
@@ -606,7 +615,8 @@ export function ClassSubjectReportPage({
               <div>
                 <h1 className="text-2xl font-semibold theme-text">Class Subject Report</h1>
                 <p className="mt-1 text-sm theme-muted">
-                  A printable class view that highlights response, support needs, and next teaching actions.
+                  A printable class view that highlights response, support needs, and next teaching
+                  actions.
                 </p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -638,16 +648,17 @@ export function ClassSubjectReportPage({
         </Card>
       </div>
 
-      {visibleError ? (
-        <ErrorBanner message={visibleError} onDismiss={() => undefined} />
-      ) : null}
+      {visibleError ? <ErrorBanner message={visibleError} onDismiss={() => undefined} /> : null}
 
       {!selectedTermId ? (
         <Card className="p-5">
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold theme-text">Select a term to view class intelligence</h2>
+            <h2 className="text-lg font-semibold theme-text">
+              Select a term to view class intelligence
+            </h2>
             <p className="text-sm theme-muted">
-              This instructor class report is term-scoped. Choose a term in the subject workspace, then reopen the class report.
+              This instructor class report is term-scoped. Choose a term in the subject workspace,
+              then reopen the class report.
             </p>
           </div>
         </Card>
@@ -690,19 +701,34 @@ export function ClassSubjectReportPage({
               label="Attendance"
               value={formatReportPercent(report.attendance_trend.attendance_rate)}
               note="Attendance response"
-              tone={report.attendance_trend.attendance_rate != null && report.attendance_trend.attendance_rate >= 75 ? 'success' : 'warning'}
+              tone={
+                report.attendance_trend.attendance_rate != null &&
+                report.attendance_trend.attendance_rate >= 75
+                  ? 'success'
+                  : 'warning'
+              }
             />
             <ReportMetricCard
               label="Assignments"
               value={formatReportPercent(report.assignment_summary.assignment_completion_rate)}
               note="Assignment completion"
-              tone={report.assignment_summary.assignment_completion_rate != null && report.assignment_summary.assignment_completion_rate >= 70 ? 'success' : 'warning'}
+              tone={
+                report.assignment_summary.assignment_completion_rate != null &&
+                report.assignment_summary.assignment_completion_rate >= 70
+                  ? 'success'
+                  : 'warning'
+              }
             />
             <ReportMetricCard
               label="Mastery"
               value={formatReportPercent(report.progress.mastery_percentage)}
               note="Mastery signal"
-              tone={report.progress.mastery_percentage != null && report.progress.mastery_percentage >= 70 ? 'success' : 'warning'}
+              tone={
+                report.progress.mastery_percentage != null &&
+                report.progress.mastery_percentage >= 70
+                  ? 'success'
+                  : 'warning'
+              }
             />
             <ReportMetricCard
               label="Evidence"
@@ -713,7 +739,11 @@ export function ClassSubjectReportPage({
           </div>
 
           {report.assignment_participation ? (
-            <ClassSubjectAssignmentParticipation participation={report.assignment_participation} />
+            <ClassSubjectAssignmentParticipation
+              participation={report.assignment_participation}
+              cohortId={report.cohort.id}
+              returnTo={currentReturnTo}
+            />
           ) : null}
 
           <Card className="border theme-border p-5">
@@ -731,14 +761,20 @@ export function ClassSubjectReportPage({
                   size="sm"
                   onClick={() => setMobileActionsOpen((current) => !current)}
                 >
-                  {mobileActionsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {mobileActionsOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
                   {mobileActionsOpen ? 'Show less' : 'Show more'}
                 </Button>
                 {mobileActionsOpen ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {classSubjectActions.map((item) => (
                       <Link key={item.label} href={item.href}>
-                        <Button variant={item.variant} size="sm">{item.label}</Button>
+                        <Button variant={item.variant} size="sm">
+                          {item.label}
+                        </Button>
                       </Link>
                     ))}
                   </div>
@@ -747,7 +783,9 @@ export function ClassSubjectReportPage({
               <div className="hidden flex-wrap gap-2 md:flex">
                 {classSubjectActions.map((item) => (
                   <Link key={item.label} href={item.href}>
-                    <Button variant={item.variant} size="sm">{item.label}</Button>
+                    <Button variant={item.variant} size="sm">
+                      {item.label}
+                    </Button>
                   </Link>
                 ))}
               </div>
@@ -767,7 +805,9 @@ export function ClassSubjectReportPage({
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-amber-600" />
               <div>
-                <h2 className="text-lg font-semibold theme-text">Recommended Teaching Interventions</h2>
+                <h2 className="text-lg font-semibold theme-text">
+                  Recommended Teaching Interventions
+                </h2>
                 <p className="mt-1 text-sm theme-muted">
                   Actionable next steps surfaced before the detailed learner breakdown.
                 </p>
@@ -776,21 +816,22 @@ export function ClassSubjectReportPage({
 
             {report.recommended_teaching_interventions.length === 0 ? (
               <Card className="border border-amber-200 theme-warning-surface p-5">
-                <p className="text-sm theme-muted">No teaching interventions are recommended yet.</p>
+                <p className="text-sm theme-muted">
+                  No teaching interventions are recommended yet.
+                </p>
               </Card>
             ) : (
               <div className="grid gap-4 xl:grid-cols-2">
                 {report.recommended_teaching_interventions.map((item, index) => (
-                  <Card
-                    key={item}
-                    className="border border-amber-200 theme-warning-surface p-5"
-                  >
+                  <Card key={item} className="border border-amber-200 theme-warning-surface p-5">
                     <div className="flex items-start gap-4">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-amber-700">
                         {index + 1}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold theme-text">Teaching action {index + 1}</p>
+                        <p className="text-sm font-semibold theme-text">
+                          Teaching action {index + 1}
+                        </p>
                         <p className="mt-1 text-sm theme-text">{item}</p>
                       </div>
                     </div>
@@ -825,7 +866,9 @@ export function ClassSubjectReportPage({
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-blue-700" />
                   <div>
-                    <h3 className="text-base font-semibold theme-text">Learners Exceeding Expectation</h3>
+                    <h3 className="text-base font-semibold theme-text">
+                      Learners Exceeding Expectation
+                    </h3>
                     <p className="mt-1 text-sm theme-muted">
                       Strong performers worth using for peer modelling or extension work.
                     </p>
@@ -874,7 +917,11 @@ export function ClassSubjectReportPage({
                 onClick={() => setFullSummaryOpen((current) => !current)}
               >
                 {fullSummaryOpen ? 'Hide full learner summary' : 'View full learner summary'}
-                {fullSummaryOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {fullSummaryOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </Button>
             </div>
 
@@ -882,7 +929,8 @@ export function ClassSubjectReportPage({
               <FullLearnerSummaryContent rows={report.learner_rows} />
             ) : (
               <p className="mt-4 text-sm theme-muted">
-                This section stays collapsed by default so the report opens with the class summary and action areas first.
+                This section stays collapsed by default so the report opens with the class summary
+                and action areas first.
               </p>
             )}
           </Card>

@@ -45,7 +45,7 @@ import {
 import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
 
 function unwrap<T>(data: T[] | { results?: T[] }): T[] {
-  return Array.isArray(data) ? data : data?.results ?? [];
+  return Array.isArray(data) ? data : (data?.results ?? []);
 }
 
 function statusCode(err: ApiError): number | null {
@@ -87,7 +87,9 @@ export const useDashboardOverview = () => {
     }
   }, []);
 
-  useEffect(() => { fetchOverview(); }, [fetchOverview]);
+  useEffect(() => {
+    fetchOverview();
+  }, [fetchOverview]);
   return { overview, loading, error, refetch: fetchOverview };
 };
 
@@ -106,7 +108,10 @@ export const useAttendanceSummaries = ({
 
   const fetchSummaries = useCallback(async () => {
     const filters = buildReportFilters(student, term, cohort, subject, cohortSubject);
-    if (!filters) { setLoading(false); return; }
+    if (!filters) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setSummaries(unwrap(await attendanceSummaryAPI.getAll(filters)));
@@ -118,7 +123,9 @@ export const useAttendanceSummaries = ({
     }
   }, [cohort, cohortSubject, student, subject, term]);
 
-  useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
+  useEffect(() => {
+    fetchSummaries();
+  }, [fetchSummaries]);
 
   const computeSummaries = async (termId: number): Promise<void> => {
     await attendanceSummaryAPI.compute(termId);
@@ -143,7 +150,10 @@ export const useGradeSummaries = ({
 
   const fetchSummaries = useCallback(async () => {
     const filters = buildReportFilters(student, term, cohort, subject, cohortSubject);
-    if (!filters) { setLoading(false); return; }
+    if (!filters) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setSummaries(unwrap(await gradeSummaryAPI.getAll(filters)));
@@ -155,7 +165,9 @@ export const useGradeSummaries = ({
     }
   }, [cohort, cohortSubject, student, subject, term]);
 
-  useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
+  useEffect(() => {
+    fetchSummaries();
+  }, [fetchSummaries]);
 
   const computeSummaries = async (termId: number): Promise<void> => {
     await gradeSummaryAPI.compute(termId);
@@ -181,9 +193,13 @@ export const useCohortSummaries = ({
   const fetchSummaries = useCallback(async () => {
     try {
       setLoading(true);
-      setSummaries(unwrap(await cohortSummaryAPI.getAll(
-        buildReportFilters(student, term, cohort, subject, cohortSubject)
-      )));
+      setSummaries(
+        unwrap(
+          await cohortSummaryAPI.getAll(
+            buildReportFilters(student, term, cohort, subject, cohortSubject),
+          ),
+        ),
+      );
       setError(null);
     } catch (err) {
       setError(resolveErrorMessage(err as ApiError, 'Failed to fetch cohort summaries'));
@@ -192,7 +208,9 @@ export const useCohortSummaries = ({
     }
   }, [cohort, cohortSubject, student, subject, term]);
 
-  useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
+  useEffect(() => {
+    fetchSummaries();
+  }, [fetchSummaries]);
 
   const computeSummaries = async (termId: number): Promise<void> => {
     await cohortSummaryAPI.compute(termId);
@@ -218,9 +236,13 @@ export const useSubjectSummaries = ({
   const fetchSummaries = useCallback(async () => {
     try {
       setLoading(true);
-      setSummaries(unwrap(await subjectSummaryAPI.getAll(
-        buildReportFilters(student, term, cohort, subject, cohortSubject)
-      )));
+      setSummaries(
+        unwrap(
+          await subjectSummaryAPI.getAll(
+            buildReportFilters(student, term, cohort, subject, cohortSubject),
+          ),
+        ),
+      );
       setError(null);
     } catch (err) {
       setError(resolveErrorMessage(err as ApiError, 'Failed to fetch subject summaries'));
@@ -229,7 +251,9 @@ export const useSubjectSummaries = ({
     }
   }, [cohort, cohortSubject, student, subject, term]);
 
-  useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
+  useEffect(() => {
+    fetchSummaries();
+  }, [fetchSummaries]);
 
   const computeSummaries = async (termId: number): Promise<void> => {
     await subjectSummaryAPI.compute(termId);
@@ -241,13 +265,10 @@ export const useSubjectSummaries = ({
 
 // ── useAssessmentTypeSummaries ────────────────────────────────────────────
 
-export const useAssessmentTypeSummaries = ({
-  student,
-  term,
-  cohort,
-  subject,
-  cohort_subject: cohortSubject,
-}: ReportFilters = {}, options: { enabled?: boolean } = {}) => {
+export const useAssessmentTypeSummaries = (
+  { student, term, cohort, subject, cohort_subject: cohortSubject }: ReportFilters = {},
+  options: { enabled?: boolean } = {},
+) => {
   const enabled = options.enabled ?? true;
   const [summaries, setSummaries] = useState<AssessmentTypeSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -263,9 +284,13 @@ export const useAssessmentTypeSummaries = ({
 
     try {
       setLoading(true);
-      setSummaries(unwrap(await assessmentTypeSummaryAPI.getAll(
-        buildReportFilters(student, term, cohort, subject, cohortSubject)
-      )));
+      setSummaries(
+        unwrap(
+          await assessmentTypeSummaryAPI.getAll(
+            buildReportFilters(student, term, cohort, subject, cohortSubject),
+          ),
+        ),
+      );
       setError(null);
     } catch (err) {
       setError(resolveErrorMessage(err as ApiError, 'Failed to fetch assessment type summaries'));
@@ -274,7 +299,9 @@ export const useAssessmentTypeSummaries = ({
     }
   }, [cohort, cohortSubject, enabled, student, subject, term]);
 
-  useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
+  useEffect(() => {
+    fetchSummaries();
+  }, [fetchSummaries]);
 
   const computeSummaries = async (termId: number): Promise<void> => {
     await assessmentTypeSummaryAPI.compute(termId);
@@ -314,7 +341,9 @@ export const useStudentReportCard = (
     }
   }, [enabled, studentId, termId]);
 
-  useEffect(() => { fetchReportCard(); }, [fetchReportCard]);
+  useEffect(() => {
+    fetchReportCard();
+  }, [fetchReportCard]);
   return { reportCard, loading, error, refetch: fetchReportCard };
 };
 
@@ -348,7 +377,9 @@ export const useClassSummary = (
     }
   }, [cohortId, enabled, termId]);
 
-  useEffect(() => { fetchSummary(); }, [fetchSummary]);
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
   return { summary, loading, error, refetch: fetchSummary };
 };
 
@@ -382,7 +413,9 @@ export const useSubjectAnalysis = (
     }
   }, [enabled, subjectId, termId]);
 
-  useEffect(() => { fetchAnalysis(); }, [fetchAnalysis]);
+  useEffect(() => {
+    fetchAnalysis();
+  }, [fetchAnalysis]);
   return { analysis, loading, error, refetch: fetchAnalysis };
 };
 
@@ -434,7 +467,9 @@ export const useAdminAttendanceScopeReport = (params?: {
     params?.termId,
   ]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
 
   return { report, loading, error, refetch: fetchReport };
 };
@@ -463,7 +498,9 @@ export const useInstructorOverview = () => {
     }
   }, []);
 
-  useEffect(() => { fetchOverview(); }, [fetchOverview]);
+  useEffect(() => {
+    fetchOverview();
+  }, [fetchOverview]);
   return { overview, loading, error, errorStatus, refetch: fetchOverview };
 };
 
@@ -497,7 +534,9 @@ export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => 
     }
   }, [enabled]);
 
-  useEffect(() => { fetchCohortSubjects(); }, [fetchCohortSubjects]);
+  useEffect(() => {
+    fetchCohortSubjects();
+  }, [fetchCohortSubjects]);
   return { cohortSubjects, loading, error, errorStatus, refetch: fetchCohortSubjects };
 };
 
@@ -539,7 +578,9 @@ export const useInstructorCohortSubjectLearners = (
     }
   }, [cohortSubjectId, enabled, termId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -581,7 +622,9 @@ export const useInstructorCohortSubjectPerformance = (
     }
   }, [cohortSubjectId, enabled, termId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -610,7 +653,9 @@ export const useInstructorCohortSubjectTeachingActivity = (
     }
     try {
       setLoading(true);
-      setReport(await instructorReportsAPI.getCohortSubjectTeachingActivity(cohortSubjectId, termId));
+      setReport(
+        await instructorReportsAPI.getCohortSubjectTeachingActivity(cohortSubjectId, termId),
+      );
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -623,7 +668,9 @@ export const useInstructorCohortSubjectTeachingActivity = (
     }
   }, [cohortSubjectId, enabled, termId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -635,7 +682,10 @@ export const useLongitudinalStudent = (studentId: number | null) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!studentId) { setLoading(false); return; }
+    if (!studentId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setData(await reportsAPI.getLongitudinalStudent(studentId));
@@ -647,7 +697,9 @@ export const useLongitudinalStudent = (studentId: number | null) => {
     }
   }, [studentId]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
   return { data, loading, error, refetch: fetchData };
 };
 
@@ -691,7 +743,9 @@ export const useLearnerSubjectReport = (
     }
   }, [cohortSubjectId, enabled, learnerId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -730,15 +784,17 @@ export const useLearnerAssessmentReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getLearnerAssessmentReport(learnerId, {
-        assessmentId,
-        cohortSubjectId,
-        assessmentType,
-        termId,
-        subjectId,
-        cohortId,
-        academicYearId,
-      }));
+      setReport(
+        await learnerReportingAPI.getLearnerAssessmentReport(learnerId, {
+          assessmentId,
+          cohortSubjectId,
+          assessmentType,
+          termId,
+          subjectId,
+          cohortId,
+          academicYearId,
+        }),
+      );
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -761,7 +817,9 @@ export const useLearnerAssessmentReport = (
     termId,
   ]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -791,13 +849,15 @@ export const useLearnerAssignmentReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getLearnerAssignmentReport(learnerId, {
-        cohortSubjectId,
-        termId,
-        academicYearId,
-        assignmentId,
-        authorityMode,
-      }));
+      setReport(
+        await learnerReportingAPI.getLearnerAssignmentReport(learnerId, {
+          cohortSubjectId,
+          termId,
+          academicYearId,
+          assignmentId,
+          authorityMode,
+        }),
+      );
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -810,7 +870,9 @@ export const useLearnerAssignmentReport = (
     }
   }, [academicYearId, assignmentId, authorityMode, cohortSubjectId, enabled, learnerId, termId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -851,7 +913,9 @@ export const useLearnerAvailableReportScopes = (
     }
   }, [enabled, learnerId]);
 
-  useEffect(() => { fetchScopes(); }, [fetchScopes]);
+  useEffect(() => {
+    fetchScopes();
+  }, [fetchScopes]);
   return { scopes, loading, error, errorStatus, refetch: fetchScopes };
 };
 
@@ -892,7 +956,9 @@ export const useLearnerOverviewReport = (
     }
   }, [enabled, learnerId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -934,7 +1000,9 @@ export const useLearnerTermProgressReport = (
     }
   }, [enabled, learnerId, termId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -966,10 +1034,12 @@ export const useClassSubjectReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getClassSubjectReport(cohortId, {
-        cohortSubjectId,
-        termId: options?.termId ?? undefined,
-      }));
+      setReport(
+        await learnerReportingAPI.getClassSubjectReport(cohortId, {
+          cohortSubjectId,
+          termId: options?.termId ?? undefined,
+        }),
+      );
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -982,13 +1052,19 @@ export const useClassSubjectReport = (
     }
   }, [cohortId, cohortSubjectId, enabled, options?.termId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
 export const useCohortSubjectReportTerms = (
   cohortSubjectId: number | null,
-  options?: { enabled?: boolean; authorityMode?: 'teaching' | 'supervision' },
+  options?: {
+    enabled?: boolean;
+    authorityMode?: 'teaching' | 'supervision';
+    termId?: number | null;
+  },
 ) => {
   const enabled = options?.enabled ?? true;
   const [termsResponse, setTermsResponse] = useState<CohortSubjectReportTermsResponse | null>(null);
@@ -1007,10 +1083,13 @@ export const useCohortSubjectReportTerms = (
 
     try {
       setLoading(true);
-      setTermsResponse(await learnerReportingAPI.getCohortSubjectReportTerms(
-        cohortSubjectId,
-        options?.authorityMode ?? 'teaching',
-      ));
+      setTermsResponse(
+        await learnerReportingAPI.getCohortSubjectReportTerms(
+          cohortSubjectId,
+          options?.authorityMode ?? 'teaching',
+          options?.termId,
+        ),
+      );
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -1021,9 +1100,11 @@ export const useCohortSubjectReportTerms = (
     } finally {
       setLoading(false);
     }
-  }, [cohortSubjectId, enabled, options?.authorityMode]);
+  }, [cohortSubjectId, enabled, options?.authorityMode, options?.termId]);
 
-  useEffect(() => { fetchTerms(); }, [fetchTerms]);
+  useEffect(() => {
+    fetchTerms();
+  }, [fetchTerms]);
 
   return {
     termsResponse,
@@ -1056,10 +1137,12 @@ export const useInstructorTeacherReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getInstructorTeacherReport({
-        termId: params?.termId ?? undefined,
-        cohortSubjectId: params?.cohortSubjectId ?? undefined,
-      }));
+      setReport(
+        await learnerReportingAPI.getInstructorTeacherReport({
+          termId: params?.termId ?? undefined,
+          cohortSubjectId: params?.cohortSubjectId ?? undefined,
+        }),
+      );
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -1072,7 +1155,9 @@ export const useInstructorTeacherReport = (
     }
   }, [enabled, params?.cohortSubjectId, params?.termId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
 
@@ -1104,13 +1189,12 @@ export const useAdminInstructorTeacherReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getAdminInstructorTeacherReport(
-        instructorId,
-        {
+      setReport(
+        await learnerReportingAPI.getAdminInstructorTeacherReport(instructorId, {
           termId: params?.termId ?? undefined,
           cohortSubjectId: params?.cohortSubjectId ?? undefined,
-        },
-      ));
+        }),
+      );
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -1123,6 +1207,8 @@ export const useAdminInstructorTeacherReport = (
     }
   }, [enabled, instructorId, params?.cohortSubjectId, params?.termId]);
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };

@@ -10,8 +10,11 @@ import { Card } from '@/app/components/ui/Card';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { EntityLoadingState, ReportPreparingState } from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
-import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { useLearnerAssignmentReport } from '@/app/core/hooks/useReporting';
+import {
+  getOperationalDetailBackLabel,
+  resolveOperationalDetailBack,
+} from '@/app/core/lib/operationalDetailNavigation';
 import { formatDate } from '@/app/core/components/reports/LearnerSubjectReportPresentation';
 import type { AppError } from '@/app/core/errors';
 import type { LearnerAssignmentReportRow } from '@/app/core/types/reporting';
@@ -143,13 +146,19 @@ export function LearnerAssignmentReportPage() {
     searchParams.get('assignment') ?? searchParams.get('highlightAssignment'),
   );
   const authorityMode = searchParams.get('authority_mode') === 'supervision' ? 'supervision' : 'teaching';
-  const returnTo = isSafeNextPath(searchParams.get('returnTo'))
-    ? searchParams.get('returnTo')!
-    : '/reports';
   const { report, loading, error, errorStatus, refetch } = useLearnerAssignmentReport(
     Number.isInteger(learnerId) && learnerId > 0 ? learnerId : null,
     { cohortSubjectId, termId, academicYearId, assignmentId: highlightAssignment, authorityMode },
   );
+  const returnTo = resolveOperationalDetailBack({
+    returnTo: searchParams.get('returnTo'),
+    hierarchicalParent:
+      highlightAssignment && report?.context.cohort_id
+        ? `/academic/cohorts/${report.context.cohort_id}/assignments/${highlightAssignment}`
+        : null,
+    structuralFallback: '/reports',
+  });
+  const returnLabel = getOperationalDetailBackLabel(returnTo);
 
   const subjectOptions = useMemo(() => [
     { value: '', label: 'All visible subjects' },
@@ -219,7 +228,7 @@ export function LearnerAssignmentReportPage() {
         <Link href={returnTo}>
           <Button variant="secondary">
             <ArrowLeft className="h-4 w-4" />
-            Back
+            {returnLabel}
           </Button>
         </Link>
       </div>

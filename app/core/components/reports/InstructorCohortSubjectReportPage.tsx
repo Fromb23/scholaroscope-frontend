@@ -17,21 +17,34 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorState } from '@/app/components/ui/ErrorState';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/app/components/ui/Table';
+import { Skeleton, SkeletonStatCard } from '@/app/components/ui/loading';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { ClassSubjectAssignmentParticipation } from './ClassSubjectAssignmentParticipation';
 import { ReportPageShell } from './ReportLayouts';
 import {
-  buildAttendanceReportHref,
   buildCanonicalLearnerSubjectReportHref,
   buildCbcCohortProgressHref,
-  buildReportReturnTo,
+  buildExactReportReturnTo,
+  buildInstructorCohortSubjectProjectionHref,
   getReportBackLabel,
   resolveReportBackHref,
 } from './reportNavigation';
-import { applyReportStateChange, parseReportIntent, reportAuthorityModeForOperatingContext, type ReportProjection } from './reportIntent';
+import {
+  applyReportStateChange,
+  parseReportIntent,
+  reportAuthorityModeForOperatingContext,
+  type ReportProjection,
+} from './reportIntent';
 import { useAuth } from '@/app/context/AuthContext';
 import { useCohortSubjectReportTerms } from '@/app/core/hooks/useReporting';
 import {
@@ -42,6 +55,7 @@ import {
 } from '@/app/core/hooks/reports/useCanonicalCohortSubjectReport';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
 import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
+import { buildAssessmentDetailHref } from '@/app/core/lib/operationalDetailNavigation';
 
 const PROJECTIONS: Array<{ id: ReportProjection; label: string; icon: typeof FileBarChart }> = [
   { id: 'overview', label: 'Overview', icon: FileBarChart },
@@ -57,7 +71,99 @@ function recordNumber(value: unknown): number | null {
 }
 
 function EmptyProjection({ children }: { children: string }) {
-  return <Card><p className="text-sm theme-muted">{children}</p></Card>;
+  return (
+    <Card>
+      <p className="text-sm theme-muted">{children}</p>
+    </Card>
+  );
+}
+
+const LEARNER_COLUMNS = [
+  'Learner',
+  'Admission/identifier',
+  'Reporting/support status',
+  'Relevant summary',
+  'Action',
+];
+const ASSIGNMENT_COLUMNS = [
+  'Assignment',
+  'Mode',
+  'Expected',
+  'Submitted',
+  'Reviewed',
+  'Missing',
+  'Excused',
+  'Pending',
+  'Action',
+];
+
+function ProjectionTableSkeleton({ columns }: { columns: string[] }) {
+  return (
+    <Card className="overflow-hidden p-0" aria-label={`Loading ${columns[0].toLowerCase()} table`}>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {columns.map((column) => (
+              <TableHead key={column}>{column}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 6 }).map((_, rowIndex) => (
+            <TableRow key={rowIndex}>
+              {columns.map((column, columnIndex) => (
+                <TableCell key={column}>
+                  <Skeleton
+                    className="h-4"
+                    style={{
+                      width: columnIndex === 0 ? '75%' : column === 'Action' ? '4rem' : '55%',
+                    }}
+                  />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  );
+}
+
+function ProjectionLoading({ projection }: { projection: ReportProjection }) {
+  if (projection === 'learners') return <ProjectionTableSkeleton columns={LEARNER_COLUMNS} />;
+  if (projection === 'assignments') {
+    return (
+      <div className="space-y-4" aria-label="Loading assignment participation">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <SkeletonStatCard key={index} />
+          ))}
+        </div>
+        <ProjectionTableSkeleton columns={ASSIGNMENT_COLUMNS} />
+      </div>
+    );
+  }
+  if (projection === 'assessments-results') {
+    return (
+      <div className="space-y-4" aria-label="Loading assessments and results">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <SkeletonStatCard key={index} />
+          ))}
+        </div>
+        <ProjectionTableSkeleton
+          columns={['Assessment', 'Type/category', 'Date', 'Status', 'Action']}
+        />
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <SkeletonStatCard key={index} />
+      ))}
+    </div>
+  );
 }
 
 export default function CanonicalCohortSubjectReportPage() {
@@ -70,35 +176,46 @@ export default function CanonicalCohortSubjectReportPage() {
   const validId = Number.isInteger(cohortSubjectId) && cohortSubjectId > 0;
   const authorityMode = reportAuthorityModeForOperatingContext(activeOperatingContext);
   const intent = useMemo(
-    () => parseReportIntent(
-      { type: 'cohort-subject', cohortSubjectId: validId ? cohortSubjectId : 1 },
-      new URLSearchParams(searchParams.toString()),
-    ),
+    () =>
+      parseReportIntent(
+        { type: 'cohort-subject', cohortSubjectId: validId ? cohortSubjectId : 1 },
+        new URLSearchParams(searchParams.toString()),
+      ),
     [cohortSubjectId, searchParams, validId],
   );
   const projection = intent.projection;
   const selectedTermId = intent.period?.termId ?? null;
-  const { terms, currentTermId, loading: termsLoading, error: termsError } = useCohortSubjectReportTerms(
-    validId ? cohortSubjectId : null,
-    { authorityMode },
-  );
+  const {
+    terms,
+    currentTermId,
+    loading: termsLoading,
+    error: termsError,
+  } = useCohortSubjectReportTerms(validId ? cohortSubjectId : null, {
+    authorityMode,
+    termId: selectedTermId,
+  });
   const allowedTermIds = useMemo(() => new Set(terms.map((term) => term.id)), [terms]);
-  const effectiveTermId = selectedTermId && allowedTermIds.has(selectedTermId)
-    ? selectedTermId
-    : currentTermId ?? terms[0]?.id ?? null;
+  const effectiveTermId =
+    selectedTermId && allowedTermIds.has(selectedTermId)
+      ? selectedTermId
+      : (currentTermId ?? terms[0]?.id ?? null);
   const effectiveTerm = terms.find((term) => term.id === effectiveTermId) ?? null;
 
-  const updateState = useCallback((updates: { projection?: ReportProjection; term?: number | null }, replace = false) => {
-    let next = new URLSearchParams(searchParams.toString());
-    next.delete('tab');
-    if (updates.projection) next = applyReportStateChange(next, 'projection', updates.projection);
-    if (updates.term !== undefined) {
-      next = applyReportStateChange(next, 'term', updates.term ?? null);
-    }
-    const destination = `${pathname}${next.toString() ? `?${next.toString()}` : ''}`;
-    if (replace) router.replace(destination, { scroll: false });
-    else router.push(destination, { scroll: false });
-  }, [pathname, router, searchParams]);
+  const updateState = useCallback(
+    (updates: { projection?: ReportProjection; term?: number | null }, replace = false) => {
+      let next = new URLSearchParams(searchParams.toString());
+      next.delete('tab');
+      if (updates.term !== undefined) {
+        next = applyReportStateChange(next, 'term', updates.term ?? null);
+      }
+      const destination = updates.projection
+        ? buildInstructorCohortSubjectProjectionHref(cohortSubjectId, updates.projection, next)
+        : `${pathname}${next.toString() ? `?${next.toString()}` : ''}`;
+      if (replace) router.replace(destination, { scroll: false });
+      else router.push(destination, { scroll: false });
+    },
+    [cohortSubjectId, pathname, router, searchParams],
+  );
 
   useEffect(() => {
     if (termsLoading || termsError) return;
@@ -107,13 +224,21 @@ export default function CanonicalCohortSubjectReportPage() {
     if (needsProjection || needsTerm) {
       updateState({ projection, term: effectiveTermId }, true);
     }
-  }, [effectiveTermId, projection, searchParams, selectedTermId, termsError, termsLoading, updateState]);
+  }, [
+    effectiveTermId,
+    projection,
+    searchParams,
+    selectedTermId,
+    termsError,
+    termsLoading,
+    updateState,
+  ]);
 
   const overviewQuery = useCanonicalCohortSubjectOverview(
     cohortSubjectId,
     effectiveTermId,
     authorityMode,
-    validId && (projection === 'overview' || projection === 'assignments'),
+    validId,
   );
   const learnersQuery = useCanonicalCohortSubjectLearners(
     cohortSubjectId,
@@ -131,7 +256,10 @@ export default function CanonicalCohortSubjectReportPage() {
     cohortSubjectId,
     effectiveTermId,
     authorityMode,
-    validId && (projection === 'overview' || projection === 'attendance' || projection === 'curriculum-progress'),
+    validId &&
+      (projection === 'overview' ||
+        projection === 'attendance' ||
+        projection === 'curriculum-progress'),
   );
 
   const overview = overviewQuery.data;
@@ -157,47 +285,76 @@ export default function CanonicalCohortSubjectReportPage() {
           curriculumType: performance.curriculum_type,
         }
       : null;
-  const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
-  const structuralFallback = meta
-    ? `/reports/subjects/${meta.subjectId}?term=${effectiveTermId ?? ''}`.replace(/\?term=$/, '')
-    : '/reports/cohorts';
+  const currentReturnTo = buildExactReportReturnTo(pathname, searchParams.toString());
+  const structuralFallback =
+    authorityMode === 'teaching'
+      ? '/reports/instructor'
+      : meta
+        ? `/reports/subjects/${meta.subjectId}?term=${effectiveTermId ?? ''}`.replace(
+            /\?term=$/,
+            '',
+          )
+        : '/reports/cohorts';
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
     fallbackHref: structuralFallback,
   });
   const backLabel = getReturnBackLabel(backHref, getReportBackLabel(backHref));
-  const activeError = overviewQuery.error ?? learnersQuery.error ?? performanceQuery.error ?? activityQuery.error ?? termsError;
-  const activeLoading = termsLoading
-    || overviewQuery.loading
-    || learnersQuery.loading
-    || performanceQuery.loading
-    || activityQuery.loading;
+  const activeError =
+    overviewQuery.error ??
+    learnersQuery.error ??
+    performanceQuery.error ??
+    activityQuery.error ??
+    termsError;
+  const activeLoading =
+    termsLoading ||
+    overviewQuery.loading ||
+    learnersQuery.loading ||
+    performanceQuery.loading ||
+    activityQuery.loading;
 
-  if (!validId) return <ErrorState fullScreen={false} message="This class subject could not be found." />;
+  if (!validId)
+    return <ErrorState fullScreen={false} message="This class subject could not be found." />;
 
   return (
     <ReportPageShell>
       <div className="space-y-3">
         <Link href={backHref}>
-          <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4" />{backLabel}</Button>
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4" />
+            {backLabel}
+          </Button>
         </Link>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold theme-text">
-              {meta ? `${meta.cohortName} — ${meta.subjectName}` : `Class Subject #${cohortSubjectId}`}
+              {meta
+                ? `${meta.cohortName} — ${meta.subjectName}`
+                : `Class Subject #${cohortSubjectId}`}
             </h1>
             <p className="mt-1 text-sm theme-muted">
-              One term-scoped report object for participation, results, teaching activity, and curriculum progress.
+              One term-scoped report object for participation, results, teaching activity, and
+              curriculum progress.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge variant={authorityMode === 'supervision' ? 'purple' : 'blue'}>
                 {authorityMode === 'supervision' ? 'Supervision' : 'My teaching'}
               </Badge>
               {meta?.curriculumType ? <Badge variant="default">{meta.curriculumType}</Badge> : null}
-              {meta?.reportingSource ? <Badge variant="default">{meta.reportingSource}</Badge> : null}
-              {effectiveTerm ? <Badge variant="default">{effectiveTerm.academic_year_name} — {effectiveTerm.name}</Badge> : null}
-              <Badge variant={overview?.instructor ? 'blue' : 'warning'}>
-                {overview?.instructor?.name ?? 'Instructor not assigned'}
+              {meta?.reportingSource ? (
+                <Badge variant="default">{meta.reportingSource}</Badge>
+              ) : null}
+              {effectiveTerm ? (
+                <Badge variant="default">
+                  {effectiveTerm.academic_year_name} — {effectiveTerm.name}
+                </Badge>
+              ) : null}
+              <Badge
+                variant={overviewQuery.loading ? 'default' : overview?.instructor ? 'blue' : 'warning'}
+              >
+                {overviewQuery.loading
+                  ? 'Resolving instructor assignment'
+                  : overview?.instructor?.name ?? 'Instructor not assigned'}
               </Badge>
             </div>
           </div>
@@ -205,11 +362,18 @@ export default function CanonicalCohortSubjectReportPage() {
             <Select
               label="Term"
               value={effectiveTermId?.toString() ?? ''}
-              onChange={(event) => updateState({ term: event.target.value ? Number(event.target.value) : null })}
+              onChange={(event) =>
+                updateState({ term: event.target.value ? Number(event.target.value) : null })
+              }
               disabled={termsLoading || terms.length === 0}
-              options={terms.length > 0
-                ? terms.map((term) => ({ value: String(term.id), label: `${term.academic_year_name} — ${term.name}` }))
-                : [{ value: '', label: termsLoading ? 'Loading terms…' : 'No term configured' }]}
+              options={
+                terms.length > 0
+                  ? terms.map((term) => ({
+                      value: String(term.id),
+                      label: `${term.academic_year_name} — ${term.name}`,
+                    }))
+                  : [{ value: '', label: termsLoading ? 'Loading terms…' : 'No term configured' }]
+              }
             />
           </div>
         </div>
@@ -227,13 +391,14 @@ export default function CanonicalCohortSubjectReportPage() {
               aria-current={active ? 'page' : undefined}
               className={`theme-focus-ring inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${active ? 'border-blue-600 bg-blue-600 text-white' : 'theme-border theme-surface theme-text'}`}
             >
-              <Icon className="h-4 w-4" />{item.label}
+              <Icon className="h-4 w-4" />
+              {item.label}
             </button>
           );
         })}
       </nav>
 
-      {activeLoading ? <LoadingSpinner message={`Loading ${projection.replace(/-/g, ' ')}…`} /> : null}
+      {activeLoading ? <ProjectionLoading projection={projection} /> : null}
       {!activeLoading && activeError ? (
         <ErrorState fullScreen={false} message={activeError} />
       ) : null}
@@ -242,24 +407,80 @@ export default function CanonicalCohortSubjectReportPage() {
         <div className="space-y-5">
           <StatStrip mdColumns={2} xlColumns={4}>
             <StatsCard title="Learners" value={overview.learner_count} icon={Users} color="blue" />
-            <StatsCard title="Sessions conducted" value={activity?.sessions_completed ?? '—'} icon={Activity} color="green" />
-            <StatsCard title="Attendance rate" value={formatPercent(overview.attendance_trend.attendance_rate)} icon={ClipboardCheck} color="indigo" />
-            <StatsCard title="Attendance complete" value={formatPercent(activity?.attendance_completeness)} icon={ClipboardCheck} color="purple" />
-            <StatsCard title="Assessments" value={performance?.assessment_completion?.total_assessments ?? 0} icon={ListChecks} color="blue" />
-            <StatsCard title="Class average" value={formatPercent(performance?.generic_performance?.average_score ?? performance?.cbc_performance?.average_weighted_score)} icon={FileBarChart} color="green" />
-            <StatsCard title="Assignments issued" value={overview.assignment_summary.assignments_total} icon={BookOpen} color="purple" />
-            <StatsCard title="Assignment participation" value={formatPercent(overview.assignment_summary.assignment_completion_rate)} icon={BookOpen} color="indigo" />
-            <StatsCard title="Curriculum coverage" value={formatPercent(overview.progress.coverage_percentage)} icon={Activity} color="green" />
-            <StatsCard title="Evidence records" value={overview.progress.evidence_count} icon={ClipboardCheck} color="blue" />
-            <StatsCard title="Learners needing support" value={overview.learners_needing_support.length} icon={Users} color="orange" />
+            <StatsCard
+              title="Sessions conducted"
+              value={activity?.sessions_completed ?? '—'}
+              icon={Activity}
+              color="green"
+            />
+            <StatsCard
+              title="Attendance rate"
+              value={formatPercent(overview.attendance_trend.attendance_rate)}
+              icon={ClipboardCheck}
+              color="indigo"
+            />
+            <StatsCard
+              title="Attendance complete"
+              value={formatPercent(activity?.attendance_completeness)}
+              icon={ClipboardCheck}
+              color="purple"
+            />
+            <StatsCard
+              title="Assessments"
+              value={performance?.assessment_completion?.total_assessments ?? 0}
+              icon={ListChecks}
+              color="blue"
+            />
+            <StatsCard
+              title="Class average"
+              value={formatPercent(
+                performance?.generic_performance?.average_score ??
+                  performance?.cbc_performance?.average_weighted_score,
+              )}
+              icon={FileBarChart}
+              color="green"
+            />
+            <StatsCard
+              title="Assignments issued"
+              value={overview.assignment_summary.assignments_total}
+              icon={BookOpen}
+              color="purple"
+            />
+            <StatsCard
+              title="Assignment participation"
+              value={formatPercent(overview.assignment_summary.assignment_completion_rate)}
+              icon={BookOpen}
+              color="indigo"
+            />
+            <StatsCard
+              title="Curriculum coverage"
+              value={formatPercent(overview.progress.coverage_percentage)}
+              icon={Activity}
+              color="green"
+            />
+            <StatsCard
+              title="Evidence records"
+              value={overview.progress.evidence_count}
+              icon={ClipboardCheck}
+              color="blue"
+            />
+            <StatsCard
+              title="Learners needing support"
+              value={overview.learners_needing_support.length}
+              icon={Users}
+              color="orange"
+            />
           </StatStrip>
           <Card>
             <h2 className="font-semibold theme-text">Report status</h2>
-            <p className="mt-2 text-sm theme-muted">{overview.class_response_summary || 'No class response summary is available yet.'}</p>
+            <p className="mt-2 text-sm theme-muted">
+              {overview.class_response_summary || 'No class response summary is available yet.'}
+            </p>
             <p className="mt-2 text-sm theme-subtle">
-              {performance?.note || (meta?.reportingSource === 'cbc'
-                ? 'CBC progress and results are presented from CBC-owned projections and freshness rules.'
-                : 'Results use the configured server-owned grading and finalization rules.')}
+              {performance?.note ||
+                (meta?.reportingSource === 'cbc'
+                  ? 'CBC progress and results are presented from CBC-owned projections and freshness rules.'
+                  : 'Results use the configured server-owned grading and finalization rules.')}
             </p>
           </Card>
         </div>
@@ -267,93 +488,280 @@ export default function CanonicalCohortSubjectReportPage() {
 
       {!activeLoading && !activeError && projection === 'learners' ? (
         learners.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {learners.map((row) => (
-              <Card key={row.student.id}>
-                <h2 className="font-semibold theme-text">{row.student.name}</h2>
-                <p className="mt-1 text-sm theme-subtle">{row.student.admission_number}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge variant="default">{row.status ?? 'reportable'}</Badge>
-                  <Badge variant="blue">{formatPercent(row.attendance_summary?.average)}</Badge>
-                </div>
-                <Link href={buildCanonicalLearnerSubjectReportHref(
-                  row.student.id,
-                  cohortSubjectId,
-                  'overview',
-                  { term: effectiveTermId, authorityMode, returnTo: currentReturnTo, originKind: 'hierarchy' },
-                )}>
-                  <Button variant="secondary" size="sm" className="mt-4">Open learner report</Button>
-                </Link>
-              </Card>
-            ))}
-          </div>
-        ) : <EmptyProjection>No learners are available in this reporting scope.</EmptyProjection>
+          <Card className="overflow-hidden p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {LEARNER_COLUMNS.map((column) => (
+                    <TableHead key={column}>{column}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {learners.map((row) => {
+                  const learnerHref = buildCanonicalLearnerSubjectReportHref(
+                    row.student.id,
+                    cohortSubjectId,
+                    'overview',
+                    {
+                      term: effectiveTermId,
+                      authorityMode,
+                      returnTo: currentReturnTo,
+                      originKind: 'hierarchy',
+                    },
+                  );
+                  return (
+                    <TableRow key={row.student.id}>
+                      <TableCell>
+                        <Link href={learnerHref} className="font-medium theme-link hover:underline">
+                          {row.student.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{row.student.admission_number || 'Not recorded'}</TableCell>
+                      <TableCell>
+                        <Badge variant="default">{row.status ?? 'Reportable'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {row.attendance_summary?.average == null ? (
+                          <span className="theme-subtle">No attendance summary</span>
+                        ) : (
+                          <Badge variant="blue">
+                            Attendance {formatPercent(row.attendance_summary.average)}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Link href={learnerHref}>
+                          <Button variant="secondary" size="sm">
+                            Open report
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Card>
+        ) : (
+          <EmptyProjection>No learners are available in this reporting scope.</EmptyProjection>
+        )
       ) : null}
 
       {!activeLoading && !activeError && projection === 'attendance' && activity ? (
         <div className="space-y-4">
           <StatStrip mdColumns={2} xlColumns={4}>
-            <StatsCard title="Sessions" value={activity.sessions_created} icon={Activity} color="blue" />
-            <StatsCard title="Completed sessions" value={activity.sessions_completed} icon={Activity} color="green" />
-            <StatsCard title="Observations marked" value={activity.attendance_marked} icon={ClipboardCheck} color="purple" />
-            <StatsCard title="Completion" value={formatPercent(activity.attendance_completeness)} icon={ClipboardCheck} color="indigo" />
+            <StatsCard
+              title="Sessions"
+              value={activity.sessions_created}
+              icon={Activity}
+              color="blue"
+            />
+            <StatsCard
+              title="Completed sessions"
+              value={activity.sessions_completed}
+              icon={Activity}
+              color="green"
+            />
+            <StatsCard
+              title="Observations marked"
+              value={activity.attendance_marked}
+              icon={ClipboardCheck}
+              color="purple"
+            />
+            <StatsCard
+              title="Completion"
+              value={formatPercent(activity.attendance_completeness)}
+              icon={ClipboardCheck}
+              color="indigo"
+            />
           </StatStrip>
-          {meta ? (
-            <Link href={buildAttendanceReportHref({
-              term: effectiveTermId,
-              cohort: meta.cohortId,
-              subject: meta.subjectId,
-              cohortSubject: cohortSubjectId,
-              authorityMode,
-              returnTo: currentReturnTo,
-            })}><Button variant="secondary">Open attendance detail</Button></Link>
-          ) : null}
+          {(activity.session_items ?? []).length > 0 ? (
+            <Card className="overflow-hidden p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Session</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(activity.session_items ?? []).map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell>{session.title}</TableCell>
+                      <TableCell>
+                        {session.session_date
+                          ? new Date(session.session_date).toLocaleDateString()
+                          : 'Not recorded'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="default">{session.status}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          ) : (
+            <EmptyProjection>
+              No sessions are available for this class subject and term.
+            </EmptyProjection>
+          )}
         </div>
       ) : null}
 
       {!activeLoading && !activeError && projection === 'assessments-results' && performance ? (
         <div className="space-y-4">
           <StatStrip mdColumns={2} xlColumns={4}>
-            <StatsCard title="Assessments" value={performance.assessment_completion?.total_assessments ?? 0} icon={ListChecks} color="blue" />
-            <StatsCard title="Finalized" value={performance.assessment_completion?.finalized_assessments ?? 0} icon={ClipboardCheck} color="green" />
-            <StatsCard title="Missing scores" value={performance.assessment_completion?.missing_scores_count ?? 0} icon={Users} color="orange" />
-            <StatsCard title="Average" value={formatPercent(performance.generic_performance?.average_score ?? performance.cbc_performance?.average_weighted_score)} icon={FileBarChart} color="purple" />
+            <StatsCard
+              title="Assessments"
+              value={performance.assessment_completion?.total_assessments ?? 0}
+              icon={ListChecks}
+              color="blue"
+            />
+            <StatsCard
+              title="Finalized"
+              value={performance.assessment_completion?.finalized_assessments ?? 0}
+              icon={ClipboardCheck}
+              color="green"
+            />
+            <StatsCard
+              title="Missing scores"
+              value={performance.assessment_completion?.missing_scores_count ?? 0}
+              icon={Users}
+              color="orange"
+            />
+            <StatsCard
+              title="Average"
+              value={formatPercent(
+                performance.generic_performance?.average_score ??
+                  performance.cbc_performance?.average_weighted_score,
+              )}
+              icon={FileBarChart}
+              color="purple"
+            />
           </StatStrip>
-          <Card>
-            <p className="text-sm theme-muted">{performance.note || 'No additional result-state note was returned.'}</p>
-          </Card>
+          {(performance.assessment_items ?? []).length > 0 ? (
+            <Card className="overflow-hidden p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Assessment</TableHead>
+                    <TableHead>Type/category</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(performance.assessment_items ?? []).map((assessment) => {
+                    const assessmentHref = buildAssessmentDetailHref(
+                      assessment.id,
+                      currentReturnTo,
+                    );
+                    return (
+                      <TableRow key={assessment.id}>
+                        <TableCell>
+                          <Link
+                            href={assessmentHref}
+                            className="font-medium theme-link hover:underline"
+                          >
+                            {assessment.name}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{assessment.assessment_type}</TableCell>
+                        <TableCell>
+                          {assessment.assessment_date
+                            ? new Date(assessment.assessment_date).toLocaleDateString()
+                            : 'Not recorded'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">{assessment.status}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Link href={assessmentHref}>
+                            <Button variant="ghost" size="sm">
+                              Open
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          ) : (
+            <EmptyProjection>
+              No assessments are available for this class subject and term.
+            </EmptyProjection>
+          )}
         </div>
       ) : null}
 
       {!activeLoading && !activeError && projection === 'assignments' && overview ? (
-        overview.assignment_participation
-          ? <ClassSubjectAssignmentParticipation participation={overview.assignment_participation} />
-          : <EmptyProjection>No assignment participation is available for this term.</EmptyProjection>
+        overview.assignment_participation ? (
+          <ClassSubjectAssignmentParticipation
+            participation={overview.assignment_participation}
+            cohortId={overview.cohort.id}
+            returnTo={currentReturnTo}
+          />
+        ) : (
+          <EmptyProjection>No assignment participation is available for this term.</EmptyProjection>
+        )
       ) : null}
 
       {!activeLoading && !activeError && projection === 'curriculum-progress' && activity ? (
         <div className="space-y-4">
           <StatStrip mdColumns={2} xlColumns={4}>
-            <StatsCard title="Coverage" value={formatPercent(recordNumber(activity.coverage?.percentage))} icon={Activity} color="green" />
-            <StatsCard title="Covered items" value={recordNumber(activity.coverage?.covered) ?? '—'} icon={ClipboardCheck} color="blue" />
-            <StatsCard title="Selected items" value={recordNumber(activity.coverage?.total) ?? '—'} icon={ListChecks} color="purple" />
-            <StatsCard title="Sessions completed" value={activity.sessions_completed} icon={BookOpen} color="indigo" />
+            <StatsCard
+              title="Coverage"
+              value={formatPercent(recordNumber(activity.coverage?.percentage))}
+              icon={Activity}
+              color="green"
+            />
+            <StatsCard
+              title="Covered items"
+              value={recordNumber(activity.coverage?.covered) ?? '—'}
+              icon={ClipboardCheck}
+              color="blue"
+            />
+            <StatsCard
+              title="Selected items"
+              value={recordNumber(activity.coverage?.total) ?? '—'}
+              icon={ListChecks}
+              color="purple"
+            />
+            <StatsCard
+              title="Sessions completed"
+              value={activity.sessions_completed}
+              icon={BookOpen}
+              color="indigo"
+            />
           </StatStrip>
           <Card>
             <p className="text-sm theme-muted">
-              {String(activity.coverage?.note ?? (meta?.reportingSource === 'cbc'
-                ? 'CBC evidence and competency facts remain owned by the CBC domain.'
-                : 'This subject uses curriculum-appropriate teaching activity rather than CBC competency semantics.'))}
+              {String(
+                activity.coverage?.note ??
+                  (meta?.reportingSource === 'cbc'
+                    ? 'CBC evidence and competency facts remain owned by the CBC domain.'
+                    : 'This subject uses curriculum-appropriate teaching activity rather than CBC competency semantics.'),
+              )}
             </p>
           </Card>
           {meta?.reportingSource === 'cbc' && meta ? (
-            <Link href={buildCbcCohortProgressHref(meta.cohortId, {
-              term: effectiveTermId,
-              subject: meta.subjectId,
-              cohortSubject: cohortSubjectId,
-              authorityMode,
-              returnTo: currentReturnTo,
-            })}><Button variant="secondary">Open CBC progress detail</Button></Link>
+            <Link
+              href={buildCbcCohortProgressHref(meta.cohortId, {
+                term: effectiveTermId,
+                subject: meta.subjectId,
+                cohortSubject: cohortSubjectId,
+                authorityMode,
+                returnTo: currentReturnTo,
+              })}
+            >
+              <Button variant="secondary">Open CBC progress detail</Button>
+            </Link>
           ) : null}
         </div>
       ) : null}
