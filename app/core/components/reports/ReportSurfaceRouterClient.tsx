@@ -9,7 +9,7 @@ import { ReportsPageClient } from '@/app/core/components/reports/ReportsPageClie
 import { resolveReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
 
 export function ReportSurfaceRouterClient() {
-  const { user, activeOrg, capabilities, loading } = useAuth();
+  const { user, activeOrg, capabilities, activeOperatingContext, loading } = useAuth();
 
   if (loading) {
     return <LoadingSpinner message="Loading reports..." />;
@@ -19,6 +19,7 @@ export function ReportSurfaceRouterClient() {
     user,
     activeOrg,
     capabilities,
+    operatingContext: activeOperatingContext,
   });
 
   if (surface === 'institution') {

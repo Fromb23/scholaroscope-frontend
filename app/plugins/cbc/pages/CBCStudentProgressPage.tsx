@@ -28,6 +28,7 @@ import {
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { useAuth } from '@/app/context/AuthContext';
 import {
+    buildCanonicalLearnerSubjectReportHref,
     buildReportReturnTo,
     resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
@@ -135,13 +136,28 @@ function resolveSubjectReportHref(
     learnerId: number,
     subject: StudentProgressSubjectSummary,
     returnTo: string,
+    period: { academicYearId?: number; termId?: number },
 ): string {
     const cohortSubjectId = subject.cohort_subject_id
         ?? subject.cohort_subject_ids?.[0]
         ?? subject.cbc_cohort_subject_id
         ?? subject.cbc_cohort_subject_ids?.[0]
         ?? null;
-    return buildLearnerSubjectReportHref(learnerId, cohortSubjectId, { returnTo });
+    if (!cohortSubjectId) {
+        return buildLearnerSubjectReportHref(learnerId, cohortSubjectId, { returnTo });
+    }
+    return buildCanonicalLearnerSubjectReportHref(
+        learnerId,
+        cohortSubjectId,
+        'curriculum-progress',
+        {
+            academicYearId: period.academicYearId,
+            term: period.termId,
+            subjectId: subject.subject_id,
+            returnTo,
+            originKind: 'intent',
+        },
+    );
 }
 
 export function CBCStudentProgressPage() {
@@ -196,6 +212,10 @@ export function CBCStudentProgressPage() {
             || (activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach))
         );
     const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
+    const reportPeriod = {
+        academicYearId: Number(searchParams.get('academic_year') ?? '') || undefined,
+        termId: Number(searchParams.get('term') ?? '') || undefined,
+    };
     const backHref = resolveReportBackHref({
         returnTo: searchParams.get('returnTo'),
         fallbackHref: `/learners/${studentId}`,
@@ -279,10 +299,10 @@ export function CBCStudentProgressPage() {
                 {canGenerateSubjectReport ? (
                     <div className="mt-4 flex flex-wrap gap-2 border-t pt-4 theme-border">
                         {subjectGroups.length > 0 ? (
-                            <Link href={resolveSubjectReportHref(studentId, subjectGroups[0], currentReturnTo)}>
+                            <Link href={resolveSubjectReportHref(studentId, subjectGroups[0], currentReturnTo, reportPeriod)}>
                                 <Button variant="secondary" size="md">
                                     <FileBarChart className="h-4 w-4" />
-                                    Generate Subject Report
+                                    Open Curriculum Progress Report
                                 </Button>
                             </Link>
                         ) : null}
@@ -418,7 +438,7 @@ export function CBCStudentProgressPage() {
                                     </div>
 
                                     {canGenerateSubjectReport ? (
-                                        <Link href={resolveSubjectReportHref(studentId, subject, currentReturnTo)}>
+                                        <Link href={resolveSubjectReportHref(studentId, subject, currentReturnTo, reportPeriod)}>
                                             <Button variant="ghost" size="sm">
                                                 <FileBarChart className="h-4 w-4" />
                                                 Subject Report

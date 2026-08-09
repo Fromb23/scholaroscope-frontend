@@ -3,6 +3,7 @@ import {
   buildLearnerAssignmentReportHref as buildLearnerAssignmentReportHrefFromNavigation,
   buildLearnerOverviewReportHref as buildLearnerOverviewReportHrefFromNavigation,
   buildLearnerSubjectReportHref as buildLearnerSubjectReportHrefFromNavigation,
+  buildCanonicalLearnerSubjectReportHref,
 } from '@/app/core/components/reports/reportNavigation';
 
 export function buildLearnerAssessmentReportHref(
@@ -18,6 +19,22 @@ export function buildLearnerAssessmentReportHref(
     returnTo?: string | null;
   },
 ): string {
+  if (options?.cohortSubjectId) {
+    return buildCanonicalLearnerSubjectReportHref(
+      learnerId,
+      options.cohortSubjectId,
+      'assessments-results',
+      {
+        assessment: options.assessmentId,
+        term: options.termId,
+        academicYearId: options.academicYearId,
+        subjectId: options.subjectId,
+        cohortId: options.cohortId,
+        returnTo: options.returnTo,
+        originKind: 'intent',
+      },
+    );
+  }
   return buildLearnerAssessmentReportHrefFromNavigation(
     learnerId,
     {
@@ -38,9 +55,25 @@ export function buildLearnerAssignmentReportHref(
   options?: {
     cohortSubjectId?: number | null;
     highlightAssignment?: number | null;
+    termId?: number | null;
+    academicYearId?: number | null;
     returnTo?: string | null;
   },
 ): string {
+  if (options?.cohortSubjectId) {
+    return buildCanonicalLearnerSubjectReportHref(
+      learnerId,
+      options.cohortSubjectId,
+      'assignments',
+      {
+        assignment: options.highlightAssignment,
+        term: options.termId,
+        academicYearId: options.academicYearId,
+        returnTo: options.returnTo,
+        originKind: 'intent',
+      },
+    );
+  }
   return buildLearnerAssignmentReportHrefFromNavigation(
     learnerId,
     {
@@ -58,6 +91,14 @@ export function buildLearnerSubjectReportHref(
     returnTo?: string | null;
   },
 ): string {
+  if (cohortSubjectId) {
+    return buildCanonicalLearnerSubjectReportHref(
+      learnerId,
+      cohortSubjectId,
+      'overview',
+      { returnTo: options?.returnTo, originKind: 'hierarchy' },
+    );
+  }
   return buildLearnerSubjectReportHrefFromNavigation(
     learnerId,
     cohortSubjectId,

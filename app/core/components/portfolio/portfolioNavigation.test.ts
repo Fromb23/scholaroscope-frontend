@@ -38,7 +38,7 @@ describe('Portfolio navigation from learner and report surfaces', () => {
     expect(reportSource).toContain('Learner Progress Report');
     expect(reportSource).toContain('Download PDF');
     expect(reportSource).toContain('View supporting evidence');
-    expect(reportSource).toContain('buildLearnerPortfolioHref');
+    expect(reportSource).toContain('buildLearnerPortfolioReportHref');
     expect(reportSource).toContain('term: termId');
     expect(reportSource).toContain('cohortSubject: area.cohort_subject_id');
     expect(reportSource).toContain('outcome: outcomeId');

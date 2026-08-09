@@ -651,16 +651,18 @@ export const adminReportsAPI = {
 };
 
 export const instructorReportsAPI = {
-  getOverview: async () => {
+  getOverview: async (authorityMode: 'teaching' | 'supervision' = 'teaching') => {
     const response = await apiClient.get<InstructorOverview>(
-      '/reports/instructor/overview/'
+      '/reports/instructor/overview/',
+      { params: { authority_mode: authorityMode } },
     );
     return response.data;
   },
 
-  getCohortSubjects: async () => {
+  getCohortSubjects: async (authorityMode: 'teaching' | 'supervision' = 'teaching') => {
     const response = await apiClient.get<InstructorCohortSubjectOverview[]>(
-      '/reports/instructor/cohort-subjects/'
+      '/reports/instructor/cohort-subjects/',
+      { params: { authority_mode: authorityMode } },
     );
     return response.data;
   },
@@ -668,11 +670,12 @@ export const instructorReportsAPI = {
   getCohortSubjectLearners: async (
     cohortSubjectId: number,
     termId?: number | null,
+    authorityMode: 'teaching' | 'supervision' = 'teaching',
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectLearnersReport>(
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/learners/`,
       {
-        params: termId ? { term_id: termId } : undefined,
+        params: { term_id: termId ?? undefined, authority_mode: authorityMode },
       }
     );
     return normalizeInstructorLearnersReport(response.data);
@@ -681,11 +684,12 @@ export const instructorReportsAPI = {
   getCohortSubjectPerformance: async (
     cohortSubjectId: number,
     termId?: number | null,
+    authorityMode: 'teaching' | 'supervision' = 'teaching',
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectPerformanceReport>(
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/performance/`,
       {
-        params: termId ? { term_id: termId } : undefined,
+        params: { term_id: termId ?? undefined, authority_mode: authorityMode },
       }
     );
     return normalizeInstructorPerformanceReport(response.data);
@@ -694,12 +698,59 @@ export const instructorReportsAPI = {
   getCohortSubjectTeachingActivity: async (
     cohortSubjectId: number,
     termId?: number | null,
+    authorityMode: 'teaching' | 'supervision' = 'teaching',
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectTeachingActivityReport>(
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/teaching-activity/`,
       {
-        params: termId ? { term_id: termId } : undefined,
+        params: { term_id: termId ?? undefined, authority_mode: authorityMode },
       }
+    );
+    return response.data;
+  },
+};
+
+export const cohortSubjectReportsAPI = {
+  getOverview: async (
+    cohortSubjectId: number,
+    params?: { termId?: number | null; authorityMode?: 'teaching' | 'supervision' },
+  ) => {
+    const response = await apiClient.get<ClassSubjectReportPayload>(
+      `/reporting/cohort-subjects/${cohortSubjectId}/overview/`,
+      { params: { term_id: params?.termId ?? undefined, authority_mode: params?.authorityMode ?? 'teaching' } },
+    );
+    return response.data;
+  },
+
+  getLearners: async (
+    cohortSubjectId: number,
+    params?: { termId?: number | null; authorityMode?: 'teaching' | 'supervision' },
+  ) => {
+    const response = await apiClient.get<InstructorCohortSubjectLearnersReport>(
+      `/reporting/cohort-subjects/${cohortSubjectId}/learners/`,
+      { params: { term_id: params?.termId ?? undefined, authority_mode: params?.authorityMode ?? 'teaching' } },
+    );
+    return normalizeInstructorLearnersReport(response.data);
+  },
+
+  getPerformance: async (
+    cohortSubjectId: number,
+    params?: { termId?: number | null; authorityMode?: 'teaching' | 'supervision' },
+  ) => {
+    const response = await apiClient.get<InstructorCohortSubjectPerformanceReport>(
+      `/reporting/cohort-subjects/${cohortSubjectId}/performance/`,
+      { params: { term_id: params?.termId ?? undefined, authority_mode: params?.authorityMode ?? 'teaching' } },
+    );
+    return normalizeInstructorPerformanceReport(response.data);
+  },
+
+  getTeachingActivity: async (
+    cohortSubjectId: number,
+    params?: { termId?: number | null; authorityMode?: 'teaching' | 'supervision' },
+  ) => {
+    const response = await apiClient.get<InstructorCohortSubjectTeachingActivityReport>(
+      `/reporting/cohort-subjects/${cohortSubjectId}/teaching-activity/`,
+      { params: { term_id: params?.termId ?? undefined, authority_mode: params?.authorityMode ?? 'teaching' } },
     );
     return response.data;
   },
@@ -764,6 +815,10 @@ export const learnerReportingAPI = {
       {
         params: {
           cohort_subject_id: params.cohortSubjectId ?? undefined,
+          term_id: params.termId ?? undefined,
+          academic_year_id: params.academicYearId ?? undefined,
+          assignment_id: params.assignmentId ?? undefined,
+          authority_mode: params.authorityMode ?? 'teaching',
         },
       }
     );
@@ -839,6 +894,7 @@ export const learnerReportingAPI = {
       cohortSubjectId?: number | null;
       subjectId?: number | null;
       termId?: number | null;
+      authorityMode?: 'teaching' | 'supervision';
     },
   ) => {
     const response = await apiClient.get<ClassSubjectReportPayload>(
@@ -848,6 +904,7 @@ export const learnerReportingAPI = {
           cohort_subject_id: params.cohortSubjectId ?? undefined,
           subject_id: params.subjectId ?? undefined,
           term_id: params.termId ?? undefined,
+          authority_mode: params.authorityMode ?? 'teaching',
         },
       }
     );
@@ -856,9 +913,11 @@ export const learnerReportingAPI = {
 
   getCohortSubjectReportTerms: async (
     cohortSubjectId: number,
+    authorityMode: 'teaching' | 'supervision' = 'teaching',
   ): Promise<CohortSubjectReportTermsResponse> => {
     const response = await apiClient.get<CohortSubjectReportTermsResponse>(
       `/reporting/cohort-subjects/${cohortSubjectId}/terms/`,
+      { params: { authority_mode: authorityMode } },
     );
     return response.data;
   },

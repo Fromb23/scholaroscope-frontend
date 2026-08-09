@@ -1,4 +1,5 @@
 import { isSafeNextPath } from '@/app/core/auth/navigation';
+import { buildCanonicalLearnerSubjectReportHref } from '@/app/core/components/reports/reportNavigation';
 
 function setPositiveParam(
   params: URLSearchParams,
@@ -45,6 +46,21 @@ export function buildLearnerProfileHref(studentId: number): string {
 export function buildLearnerAttendanceReportHref(
   state: LearnerAttendanceReportRouteState,
 ): string {
+  if (state.cohortSubjectId && state.cohortSubjectId > 0) {
+    return buildCanonicalLearnerSubjectReportHref(
+      state.studentId,
+      state.cohortSubjectId,
+      'attendance',
+      {
+        term: state.termId,
+        cohort: state.cohortId,
+        subject: state.subjectId,
+        session: state.sessionId,
+        returnTo: state.returnTo,
+        originKind: 'intent',
+      },
+    );
+  }
   const params = new URLSearchParams();
   setPositiveParam(params, 'student', state.studentId);
   setPositiveParam(params, 'term', state.termId ?? null);

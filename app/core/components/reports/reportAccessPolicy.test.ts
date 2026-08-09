@@ -138,6 +138,22 @@ describe('report access policy', () => {
     })).toBe('instructor');
   });
 
+  it('uses operating context for a manager who also teaches', () => {
+    const managerTeacher = { ...institutionCapabilities, can_teach: true };
+    expect(resolveReportSurface({
+      user,
+      activeOrg: institution,
+      capabilities: managerTeacher,
+      operatingContext: 'WORKSPACE_MANAGEMENT',
+    })).toBe('institution');
+    expect(resolveReportSurface({
+      user,
+      activeOrg: institution,
+      capabilities: managerTeacher,
+      operatingContext: 'MY_TEACHING',
+    })).toBe('instructor');
+  });
+
   it('resolves unauthenticated users to no report surface', () => {
     expect(resolveReportSurface({
       user: null,      activeOrg: null,

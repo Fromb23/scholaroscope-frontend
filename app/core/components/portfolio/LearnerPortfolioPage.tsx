@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookOpenCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { Badge } from '@/app/components/ui/Badge';
@@ -85,10 +85,11 @@ function filtersFromSearchParams(searchParams: URLSearchParams): LearnerPortfoli
 }
 
 export function LearnerPortfolioPage() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ id?: string; learnerId?: string }>();
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const learnerId = Number(params.id);
+  const learnerId = Number(params.id ?? params.learnerId);
   const selectedEvidenceId = parsePositive(searchParams.get('evidence'));
   const returnTo = parseAppDestination(searchParams.get('returnTo'));
   const filters = useMemo(() => filtersFromSearchParams(new URLSearchParams(searchParams.toString())), [searchParams]);
@@ -104,7 +105,9 @@ export function LearnerPortfolioPage() {
     enabled: Boolean(selectedEvidenceId),
   });
 
-  const backHref = returnTo || `/learners/${learnerId}`;
+  const backHref = returnTo || (pathname.startsWith('/reports/')
+    ? `/reports/learners/${learnerId}/overview`
+    : `/learners/${learnerId}`);
   const learningAreas = useMemo<PortfolioLearningArea[]>(() => {
     const represented = portfolio?.filters.represented_learning_areas ?? [];
     return distinctById(represented);
@@ -118,12 +121,12 @@ export function LearnerPortfolioPage() {
 
   const navigateWith = (nextFilters: LearnerPortfolioFilters, nextEvidenceId = selectedEvidenceId) => {
     const query = buildPortfolioQuery(nextFilters, nextEvidenceId, returnTo);
-    router.push(query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`);
+    router.push(query ? `${pathname}?${query}` : pathname);
   };
   const currentPortfolioHref = useMemo(() => {
     const query = buildPortfolioQuery(filters, selectedEvidenceId, returnTo);
-    return query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`;
-  }, [filters, learnerId, returnTo, selectedEvidenceId]);
+    return query ? `${pathname}?${query}` : pathname;
+  }, [filters, pathname, returnTo, selectedEvidenceId]);
 
   useEffect(() => {
     if (!portfolio || !learnerId) {
@@ -144,14 +147,14 @@ export function LearnerPortfolioPage() {
       term: resolvedTerm,
     };
     const query = buildPortfolioQuery(resolvedFilters, selectedEvidenceId, returnTo);
-    router.replace(query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`, { scroll: false });
-  }, [filters, learnerId, portfolio, returnTo, router, searchParams, selectedEvidenceId]);
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [filters, learnerId, pathname, portfolio, returnTo, router, searchParams, selectedEvidenceId]);
 
   const closeDetail = () => navigateWith(filters, null);
   const openDetail = (evidenceId: number) => navigateWith(filters, evidenceId);
   const resetFilters = () => {
     const query = buildPortfolioQuery({}, null, returnTo);
-    router.push(query ? `/learners/${learnerId}/portfolio?${query}` : `/learners/${learnerId}/portfolio`);
+    router.push(query ? `${pathname}?${query}` : pathname);
   };
 
   if (!learnerId) {
@@ -324,6 +327,8 @@ export function LearnerPortfolioPage() {
             error={detailError}
             errorStatus={detailErrorStatus}
             currentPortfolioHref={currentPortfolioHref}
+            learnerId={learnerId}
+            termId={filters.term ?? null}
             onClose={closeDetail}
           />
         </aside>

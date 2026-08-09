@@ -1,28 +1,13 @@
 'use client';
 
-import { useParams, useSearchParams } from 'next/navigation';
-import { ClassSubjectReportPage } from '@/app/core/components/reports/ClassSubjectReportPage';
+import { useParams } from 'next/navigation';
+import CanonicalCohortSubjectReportPage from '@/app/core/components/reports/InstructorCohortSubjectReportPage';
 import { CohortsReportPage } from '@/app/core/components/reports/CohortsReportPage';
 import { StudentsReportPage } from '@/app/core/components/reports/StudentsReportPage';
 import { SubjectsReportPage } from '@/app/core/components/reports/SubjectsReportPage';
-import {
-    buildCohortReportHref,
-    parsePositiveReportParam,
-} from '@/app/core/components/reports/reportNavigation';
 
 export function CohortSubjectReportRoutePage() {
-    const searchParams = useSearchParams();
-    const cohortId = parsePositiveReportParam(
-        searchParams.get('cohort') ?? searchParams.get('cohort_id'),
-    );
-    const termId = parsePositiveReportParam(searchParams.get('term'));
-
-    return (
-        <ClassSubjectReportPage
-            cohortIdOverride={cohortId}
-            fallbackReturnTo={cohortId ? buildCohortReportHref(cohortId, { term: termId }) : '/reports/cohorts'}
-        />
-    );
+    return <CanonicalCohortSubjectReportPage />;
 }
 
 export function CohortReportRoutePage() {

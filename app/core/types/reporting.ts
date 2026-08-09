@@ -304,6 +304,10 @@ export interface ReportAssignmentSummary {
 
 export interface LearnerAssignmentReportQueryParams {
   cohortSubjectId?: number | null;
+  termId?: number | null;
+  academicYearId?: number | null;
+  assignmentId?: number | null;
+  authorityMode?: 'teaching' | 'supervision';
 }
 
 export interface LearnerAssignmentReportRow {

@@ -775,7 +775,7 @@ export const useLearnerAssignmentReport = (
   const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  const { cohortSubjectId } = params;
+  const { cohortSubjectId, termId, academicYearId, assignmentId, authorityMode } = params;
 
   const fetchReport = useCallback(async () => {
     if (!learnerId) {
@@ -793,6 +793,10 @@ export const useLearnerAssignmentReport = (
       setLoading(true);
       setReport(await learnerReportingAPI.getLearnerAssignmentReport(learnerId, {
         cohortSubjectId,
+        termId,
+        academicYearId,
+        assignmentId,
+        authorityMode,
       }));
       setError(null);
       setErrorStatus(null);
@@ -804,7 +808,7 @@ export const useLearnerAssignmentReport = (
     } finally {
       setLoading(false);
     }
-  }, [cohortSubjectId, enabled, learnerId]);
+  }, [academicYearId, assignmentId, authorityMode, cohortSubjectId, enabled, learnerId, termId]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
@@ -984,7 +988,7 @@ export const useClassSubjectReport = (
 
 export const useCohortSubjectReportTerms = (
   cohortSubjectId: number | null,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; authorityMode?: 'teaching' | 'supervision' },
 ) => {
   const enabled = options?.enabled ?? true;
   const [termsResponse, setTermsResponse] = useState<CohortSubjectReportTermsResponse | null>(null);
@@ -1003,7 +1007,10 @@ export const useCohortSubjectReportTerms = (
 
     try {
       setLoading(true);
-      setTermsResponse(await learnerReportingAPI.getCohortSubjectReportTerms(cohortSubjectId));
+      setTermsResponse(await learnerReportingAPI.getCohortSubjectReportTerms(
+        cohortSubjectId,
+        options?.authorityMode ?? 'teaching',
+      ));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -1014,7 +1021,7 @@ export const useCohortSubjectReportTerms = (
     } finally {
       setLoading(false);
     }
-  }, [cohortSubjectId, enabled]);
+  }, [cohortSubjectId, enabled, options?.authorityMode]);
 
   useEffect(() => { fetchTerms(); }, [fetchTerms]);
 

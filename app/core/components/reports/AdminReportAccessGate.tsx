@@ -15,11 +15,12 @@ export function AdminReportAccessGate({
   children,
   allowInstructorScopedAccess = false,
 }: AdminReportAccessGateProps) {
-  const { user, activeOrg, capabilities, loading } = useAuth();
+  const { user, activeOrg, capabilities, activeOperatingContext, loading } = useAuth();
   const surface = resolveReportSurface({
     user,
     activeOrg,
     capabilities,
+    operatingContext: activeOperatingContext,
   });
 
   if (loading) {

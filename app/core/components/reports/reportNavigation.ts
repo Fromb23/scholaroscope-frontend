@@ -1,6 +1,14 @@
 import { isSafeNextPath, parseAppDestination } from '@/app/core/auth/navigation';
+import {
+  buildReportIntentHref,
+  buildReportOrigin,
+  parseReportIntent,
+  type ReportIntent,
+  type ReportProjection,
+} from '@/app/core/components/reports/reportIntent';
 
 export interface ReportNavigationState {
+  projection?: ReportProjection | null;
   term?: number | null;
   tab?: string | null;
   student?: number | null;
@@ -10,9 +18,21 @@ export interface ReportNavigationState {
   instructor?: number | null;
   assessment?: number | null;
   highlightAssignment?: number | null;
+  assignment?: number | null;
   assessmentType?: string | null;
   session?: number | null;
+  strand?: number | null;
+  subStrand?: number | null;
+  outcome?: number | null;
+  evidence?: number | null;
+  source?: string | null;
   q?: string | null;
+  status?: string | null;
+  sort?: string | null;
+  page?: number | null;
+  pageSize?: number | null;
+  authorityMode?: 'teaching' | 'supervision' | null;
+  originKind?: 'intent' | 'hierarchy' | null;
   returnTo?: string | null;
   academicYear?: number | null;
   academicYearId?: number | null;
@@ -70,6 +90,7 @@ function normalizeState(state?: ReportNavigationState | URLSearchParams | string
   }
 
   const params = new URLSearchParams();
+  setStringParam(params, 'projection', state.projection ?? null);
   setPositiveParam(params, 'term', state.term ?? null);
   setStringParam(params, 'tab', state.tab ?? null);
   setPositiveParam(params, 'student', state.student ?? state.studentId ?? null);
@@ -86,9 +107,25 @@ function normalizeState(state?: ReportNavigationState | URLSearchParams | string
     state.instructor ?? state.instructorId ?? null,
   );
   setPositiveParam(params, 'assessment', state.assessment ?? null);
+  setPositiveParam(params, 'assignment', state.assignment ?? state.highlightAssignment ?? null);
   setPositiveParam(params, 'session', state.session ?? null);
+  setPositiveParam(params, 'strand', state.strand ?? null);
+  setPositiveParam(params, 'sub_strand', state.subStrand ?? null);
+  setPositiveParam(params, 'outcome', state.outcome ?? null);
+  setPositiveParam(params, 'evidence', state.evidence ?? null);
   setStringParam(params, 'q', state.q ?? null);
+  setStringParam(params, 'status', state.status ?? null);
+  setStringParam(params, 'sort', state.sort ?? null);
+  setPositiveParam(params, 'page', state.page ?? null);
+  setPositiveParam(params, 'page_size', state.pageSize ?? null);
+  setStringParam(params, 'authority_mode', state.authorityMode ?? null);
+  setStringParam(params, 'origin', state.originKind ?? null);
   setStringParam(params, 'returnTo', state.returnTo ?? null);
+  setPositiveParam(
+    params,
+    'academic_year',
+    state.academicYear ?? state.academicYearId ?? null,
+  );
   return params;
 }
 
@@ -116,11 +153,11 @@ export function buildReportReturnTo(
   pathname: string,
   state?: ReportNavigationState | URLSearchParams | string | null,
 ): string {
-  const params = normalizeState(state);
-  params.delete('returnTo');
-  const query = params.toString();
-  return query ? `${pathname}?${query}` : pathname;
+  return buildReportOrigin(pathname, normalizeState(state));
 }
+
+export { buildReportIntentHref, parseReportIntent };
+export type { ReportIntent };
 
 export function buildLearnerReportHref(
   studentId: number,
@@ -134,6 +171,8 @@ export function buildLearnerOverviewReportHref(
   state?: ReportNavigationState,
 ): string {
   const params = new URLSearchParams();
+  setPositiveParam(params, 'academic_year', state?.academicYear ?? state?.academicYearId ?? null);
+  setPositiveParam(params, 'term', state?.term ?? null);
   const safeReturnTo = parseAppDestination(state?.returnTo);
   if (safeReturnTo) {
     params.set('returnTo', safeReturnTo);
@@ -153,6 +192,8 @@ export function buildLearnerSubjectReportHref(
   if (cohortSubjectId && Number.isInteger(cohortSubjectId) && cohortSubjectId > 0) {
     params.set('cohort_subject', String(cohortSubjectId));
   }
+  setPositiveParam(params, 'academic_year', state?.academicYear ?? state?.academicYearId ?? null);
+  setPositiveParam(params, 'term', state?.term ?? null);
   const safeReturnTo = parseAppDestination(state?.returnTo);
   if (safeReturnTo) {
     params.set('returnTo', safeReturnTo);
@@ -203,6 +244,13 @@ export function buildLearnerAssignmentReportHref(
     state?.cohortSubject ?? state?.cohortSubjectId ?? null,
   );
   setPositiveParam(params, 'highlightAssignment', state?.highlightAssignment ?? null);
+  setPositiveParam(params, 'assignment', state?.assignment ?? state?.highlightAssignment ?? null);
+  setPositiveParam(params, 'term', state?.term ?? null);
+  setPositiveParam(
+    params,
+    'academic_year',
+    state?.academicYear ?? state?.academicYearId ?? null,
+  );
   if (isSafeReturnTo(state?.returnTo)) {
     params.set('returnTo', state.returnTo);
   }
@@ -231,6 +279,78 @@ export function buildCohortSubjectReportHref(
   state?: ReportNavigationState,
 ): string {
   return withQuery(`/reports/cohort-subjects/${cohortSubjectId}`, state);
+}
+
+export function buildCanonicalLearnerSubjectReportHref(
+  learnerId: number,
+  cohortSubjectId: number,
+  projection: Exclude<ReportProjection, 'learners' | 'portfolio'> = 'overview',
+  state?: ReportNavigationState,
+): string {
+  return buildReportIntentHref({
+    object: { type: 'learner-subject', learnerId, cohortSubjectId },
+    projection,
+    period: {
+      academicYearId: normalizePositiveId(state?.academicYear ?? state?.academicYearId) ?? undefined,
+      termId: normalizePositiveId(state?.term) ?? undefined,
+    },
+    focus: {
+      sessionId: normalizePositiveId(state?.session) ?? undefined,
+      assessmentId: normalizePositiveId(state?.assessment) ?? undefined,
+      assignmentId: normalizePositiveId(state?.assignment ?? state?.highlightAssignment) ?? undefined,
+      strandId: normalizePositiveId(state?.strand) ?? undefined,
+      subStrandId: normalizePositiveId(state?.subStrand) ?? undefined,
+      outcomeId: normalizePositiveId(state?.outcome) ?? undefined,
+      evidenceId: normalizePositiveId(state?.evidence) ?? undefined,
+    },
+    filters: {
+      cohortId: normalizePositiveId(state?.cohort ?? state?.cohortId) ?? undefined,
+      subjectId: normalizePositiveId(state?.subject ?? state?.subjectId) ?? undefined,
+      cohortSubjectId: normalizePositiveId(state?.cohortSubject ?? state?.cohortSubjectId) ?? undefined,
+      instructorId: normalizePositiveId(state?.instructor ?? state?.instructorId) ?? undefined,
+      learnerId,
+      assessmentType: state?.assessmentType ?? undefined,
+      evidenceType: state?.source ?? undefined,
+    },
+    table: {
+      query: state?.q ?? undefined,
+      status: state?.status ?? undefined,
+      sort: state?.sort ?? undefined,
+      page: normalizePositiveId(state?.page) ?? undefined,
+      pageSize: normalizePositiveId(state?.pageSize) ?? undefined,
+    },
+    authorityMode: state?.authorityMode ?? undefined,
+    origin: isSafeReturnTo(state?.returnTo)
+      ? { kind: state?.originKind ?? 'intent', returnTo: state.returnTo }
+      : undefined,
+  });
+}
+
+export function buildLearnerPortfolioReportHref(
+  learnerId: number,
+  state?: ReportNavigationState,
+): string {
+  return buildReportIntentHref({
+    object: { type: 'learner-portfolio', learnerId },
+    projection: 'portfolio',
+    period: {
+      academicYearId: normalizePositiveId(state?.academicYear ?? state?.academicYearId) ?? undefined,
+      termId: normalizePositiveId(state?.term) ?? undefined,
+    },
+    focus: {
+      outcomeId: normalizePositiveId(state?.outcome) ?? undefined,
+      evidenceId: normalizePositiveId(state?.evidence) ?? undefined,
+    },
+    filters: {
+      cohortSubjectId: normalizePositiveId(state?.cohortSubject ?? state?.cohortSubjectId) ?? undefined,
+      evidenceType: state?.source ?? undefined,
+    },
+    table: { page: normalizePositiveId(state?.page) ?? undefined },
+    authorityMode: state?.authorityMode ?? undefined,
+    origin: isSafeReturnTo(state?.returnTo)
+      ? { kind: state?.originKind ?? 'intent', returnTo: state.returnTo }
+      : undefined,
+  });
 }
 
 export function buildInstructorReportHref(
@@ -271,6 +391,13 @@ export function buildCbcLearnerProgressHref(
     'cohort_subject',
     state?.cohortSubject ?? state?.cohortSubjectId ?? null,
   );
+  setPositiveParam(params, 'term', state?.term ?? null);
+  setPositiveParam(params, 'academic_year', state?.academicYear ?? state?.academicYearId ?? null);
+  setPositiveParam(params, 'strand', state?.strand ?? null);
+  setPositiveParam(params, 'sub_strand', state?.subStrand ?? null);
+  setPositiveParam(params, 'outcome', state?.outcome ?? null);
+  setPositiveParam(params, 'evidence', state?.evidence ?? null);
+  setStringParam(params, 'authority_mode', state?.authorityMode ?? null);
   setStringParam(params, 'returnTo', state?.returnTo ?? null);
   const query = params.toString();
   return query ? `/cbc/progress/learner/${studentId}?${query}` : `/cbc/progress/learner/${studentId}`;
@@ -287,6 +414,9 @@ export function buildCbcCohortProgressHref(
     'cohort_subject_id',
     state?.cohortSubject ?? state?.cohortSubjectId ?? null,
   );
+  setPositiveParam(params, 'term', state?.term ?? null);
+  setPositiveParam(params, 'academic_year', state?.academicYear ?? state?.academicYearId ?? null);
+  setStringParam(params, 'authority_mode', state?.authorityMode ?? null);
   setPositiveParam(
     params,
     'instructor_id',
@@ -319,6 +449,21 @@ export function resolveReportBackHref(options: {
     return options.returnTo;
   }
   return withQuery(options.fallbackHref, options.fallbackState);
+}
+
+export function getReportBackLabel(destination: string | null | undefined): string {
+  const safeDestination = parseAppDestination(destination);
+  if (!safeDestination) return 'Back to Reports';
+  const path = safeDestination.split(/[?#]/, 1)[0];
+  if (/^\/assignments(?:\/|$)|\/assignments\//.test(path)) return 'Back to Assignment';
+  if (/^\/assessments(?:\/|$)|\/assessments\//.test(path)) return 'Back to Assessment';
+  if (/^\/sessions\/\d+/.test(path)) return 'Back to Session Attendance';
+  if (/^\/cbc\/(?:teaching|evidence)/.test(path)) return 'Back to CBC Workflow';
+  if (/^\/reports\/learners\//.test(path) || /^\/learners\//.test(path)) return 'Back to Learner Report';
+  if (/^\/reports\/subjects\//.test(path)) return 'Back to Subject Report';
+  if (/^\/reports\/cohorts\//.test(path)) return 'Back to Class Report';
+  if (/^\/reports\/cohort-subjects/.test(path)) return 'Back to Class Subjects';
+  return 'Back to Reports';
 }
 
 export function buildInstructorCohortSubjectDetailHref(
