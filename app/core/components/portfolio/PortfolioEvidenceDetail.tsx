@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ExternalLink, Paperclip, X } from 'lucide-react';
+import { ExternalLink, FileBarChart, Paperclip, X } from 'lucide-react';
 
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -7,6 +7,7 @@ import { Card } from '@/app/components/ui/Card';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { EntityLoadingState } from '@/app/components/ui/loading';
 import { buildPortfolioSourceRecordHref } from '@/app/core/components/portfolio/portfolioSourceNavigation';
+import { buildCanonicalLearnerSubjectReportHref } from '@/app/core/components/reports/reportNavigation';
 import { resolveLearnerError } from '@/app/core/errors';
 import type { PortfolioArtifact, PortfolioEvidence, PortfolioLearnerWorkPayload } from '@/app/core/types/portfolio';
 
@@ -130,6 +131,8 @@ export function PortfolioEvidenceDetail({
   error,
   errorStatus,
   currentPortfolioHref,
+  learnerId,
+  termId,
   onClose,
 }: {
   evidence: PortfolioEvidence | null;
@@ -137,6 +140,8 @@ export function PortfolioEvidenceDetail({
   error: string | null;
   errorStatus: number | null;
   currentPortfolioHref: string | null;
+  learnerId: number;
+  termId: number | null;
   onClose: () => void;
 }) {
   if (loading) {
@@ -172,6 +177,21 @@ export function PortfolioEvidenceDetail({
     sourceHref: sourceRoute?.href,
     portfolioHref: currentPortfolioHref,
   });
+  const cohortSubjectId = evidence.learning_area?.cohort_subject_id ?? null;
+  const learnerSubjectHref = cohortSubjectId
+    ? buildCanonicalLearnerSubjectReportHref(
+        learnerId,
+        cohortSubjectId,
+        'curriculum-progress',
+        {
+          term: termId,
+          outcome: evidence.learning_outcome?.id ?? null,
+          evidence: evidence.evidence_record_id,
+          returnTo: currentPortfolioHref,
+          originKind: 'intent',
+        },
+      )
+    : null;
 
   return (
     <Card className="space-y-5 md:sticky md:top-4">
@@ -256,6 +276,15 @@ export function PortfolioEvidenceDetail({
           <Button variant="secondary" size="sm">
             <ExternalLink className="h-4 w-4" />
             {sourceRoute?.label ?? 'Open source record'}
+          </Button>
+        </Link>
+      ) : null}
+
+      {learnerSubjectHref ? (
+        <Link href={learnerSubjectHref}>
+          <Button variant="secondary" size="sm">
+            <FileBarChart className="h-4 w-4" />
+            Open term learner-subject report
           </Button>
         </Link>
       ) : null}

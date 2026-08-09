@@ -11,6 +11,7 @@ const identitySource = readFileSync(join(root, 'app/core/components/learners/Lea
 const learnerDetailSource = readFileSync(join(root, 'app/core/components/learners/LearnerDetailPage.tsx'), 'utf8');
 const canonicalPortfolioRoute = join(root, 'app/(dashboard)/learners/[id]/portfolio/page.tsx');
 const conflictingPortfolioRoute = join(root, 'app/(dashboard)/learners/[learnerId]/portfolio/page.tsx');
+const canonicalReportingPortfolioRoute = join(root, 'app/(dashboard)/reports/learners/[learnerId]/portfolio/page.tsx');
 const routeSource = readFileSync(canonicalPortfolioRoute, 'utf8');
 
 const learnerReportRoutes = [
@@ -76,15 +77,15 @@ function findDynamicSlugConflicts(directory: string, routeSegments: string[] = [
 describe('Learner Portfolio route and UI contract', () => {
   it('resolves through the canonical learner branch', () => {
     expect(existsSync(canonicalPortfolioRoute)).toBe(true);
+    expect(existsSync(canonicalReportingPortfolioRoute)).toBe(true);
     expect(existsSync(conflictingPortfolioRoute)).toBe(false);
     expect(routeSource).toContain('LearnerPortfolioPage');
-    expect(pageSource).toContain('useParams<{ id: string }>()');
-    expect(pageSource).toContain('Number(params.id)');
-    expect(pageSource).not.toContain('params.learnerId');
+    expect(pageSource).toContain('useParams<{ id?: string; learnerId?: string }>()');
+    expect(pageSource).toContain('Number(params.id ?? params.learnerId)');
   });
 
   it('keeps direct portfolio navigation on the stable public URL', () => {
-    expect(pageSource).toContain('/learners/${learnerId}/portfolio');
+    expect(pageSource).toContain('router.push(query ? `${pathname}?${query}` : pathname)');
     expect(pageSource).toContain('Learner Portfolio');
   });
 
@@ -144,7 +145,7 @@ describe('Learner Portfolio route and UI contract', () => {
   it('reconciles unscoped portfolio URLs to the backend-resolved current context', () => {
     expect(pageSource).toContain("if (searchParams.get('academic_year') || searchParams.get('term'))");
     expect(pageSource).toContain('portfolio.filters.applied');
-    expect(pageSource).toContain('router.replace(query ? `/learners/${learnerId}/portfolio?${query}`');
+    expect(pageSource).toContain('router.replace(query ? `${pathname}?${query}` : pathname');
   });
 
   it('uses the shared learner identity silhouette on Portfolio and learner profile', () => {

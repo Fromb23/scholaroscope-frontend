@@ -137,13 +137,18 @@ export function LearnerAssignmentReportPage() {
   const pathname = usePathname();
   const learnerId = Number(params.learnerId);
   const cohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject'));
-  const highlightAssignment = parsePositiveNumber(searchParams.get('highlightAssignment'));
+  const termId = parsePositiveNumber(searchParams.get('term') ?? searchParams.get('term_id'));
+  const academicYearId = parsePositiveNumber(searchParams.get('academic_year') ?? searchParams.get('academic_year_id'));
+  const highlightAssignment = parsePositiveNumber(
+    searchParams.get('assignment') ?? searchParams.get('highlightAssignment'),
+  );
+  const authorityMode = searchParams.get('authority_mode') === 'supervision' ? 'supervision' : 'teaching';
   const returnTo = isSafeNextPath(searchParams.get('returnTo'))
     ? searchParams.get('returnTo')!
     : '/reports';
   const { report, loading, error, errorStatus, refetch } = useLearnerAssignmentReport(
     Number.isInteger(learnerId) && learnerId > 0 ? learnerId : null,
-    { cohortSubjectId },
+    { cohortSubjectId, termId, academicYearId, assignmentId: highlightAssignment, authorityMode },
   );
 
   const subjectOptions = useMemo(() => [

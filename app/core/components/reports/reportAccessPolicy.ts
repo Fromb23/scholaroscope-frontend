@@ -1,4 +1,4 @@
-import type { ActiveOrg, User, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { ActiveOrg, OperatingContext, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import {
   isSelfManagedTeachingAdmin,
   isSupervisionOnlyAdmin,
@@ -11,9 +11,14 @@ export function resolveReportSurface(params: {
   user?: User | null;
   activeOrg?: ActiveOrg | null;
   capabilities?: WorkspaceCapabilities | null;
+  operatingContext?: OperatingContext | null;
 }): ReportSurface {
   if (!params.user || params.user.is_superadmin) {
     return 'none';
+  }
+
+  if (params.operatingContext === 'MY_TEACHING') {
+    return shouldUseInstructorReportSurface(params) ? 'instructor' : 'none';
   }
 
   if (isSelfManagedTeachingAdmin(params)) {
@@ -35,10 +40,21 @@ export function canRenderInstitutionReportOverview(params: {
   user?: User | null;
   activeOrg?: ActiveOrg | null;
   capabilities?: WorkspaceCapabilities | null;
+  operatingContext?: OperatingContext | null;
 }): boolean {
   const { user, activeOrg, capabilities } = params;
   if (!user || user.is_superadmin) {
     return false;
+  }
+  if (params.operatingContext === 'MY_TEACHING') {
+    return false;
+  }
+  if (params.operatingContext === 'WORKSPACE_MANAGEMENT') {
+    return Boolean(
+      activeOrg
+      && capabilities?.can_view_reports
+      && !isSelfManagedTeachingAdmin(params)
+    );
   }
   return isSupervisionOnlyAdmin({
     orgType: activeOrg?.org_type,
@@ -77,6 +93,10 @@ export function shouldUseInstructorReportSurface(params: {
   user?: User | null;
   activeOrg?: ActiveOrg | null;
   capabilities?: WorkspaceCapabilities | null;
+  operatingContext?: OperatingContext | null;
 }): boolean {
+  if (params.operatingContext === 'WORKSPACE_MANAGEMENT') {
+    return false;
+  }
   return isTeachingActorView(params);
 }

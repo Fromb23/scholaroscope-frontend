@@ -27,10 +27,10 @@ import {
   ReportMetricCard,
 } from '@/app/core/components/reports/ReportSummaryPrimitives';
 import {
-  buildLearnerSubjectReportHref,
+  buildCanonicalLearnerSubjectReportHref,
+  buildLearnerPortfolioReportHref,
   parsePositiveReportParam,
 } from '@/app/core/components/reports/reportNavigation';
-import { buildLearnerPortfolioHref } from '@/app/core/components/learners/learnerProfileNavigation';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import { useLearnerTermProgressReport } from '@/app/core/hooks/useReporting';
@@ -254,13 +254,18 @@ function LearningAreaCard({
   returnTo: string;
 }) {
   const nextSteps = area.teacher_review.recommended_next_steps ?? [];
-  const subjectHref = buildLearnerSubjectReportHref(learnerId, area.cohort_subject_id, { returnTo });
-  const portfolioHref = buildLearnerPortfolioHref(learnerId, {
+  const subjectHref = buildCanonicalLearnerSubjectReportHref(
+    learnerId,
+    area.cohort_subject_id,
+    'overview',
+    { term: termId, returnTo, originKind: 'hierarchy' },
+  );
+  const portfolioHref = buildLearnerPortfolioReportHref(learnerId, {
     term: termId,
     cohortSubject: area.cohort_subject_id,
     returnTo,
   });
-  const buildOutcomeHref = (outcomeId: number) => buildLearnerPortfolioHref(learnerId, {
+  const buildOutcomeHref = (outcomeId: number) => buildLearnerPortfolioReportHref(learnerId, {
     term: termId,
     cohortSubject: area.cohort_subject_id,
     outcome: outcomeId,
