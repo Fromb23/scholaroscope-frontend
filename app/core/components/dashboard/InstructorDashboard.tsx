@@ -479,11 +479,22 @@ function TeachingWorkspaceCard({
 }
 
 
-export function InstructorDashboard() {
+export function InstructorDashboard({
+    embeddedInManagement = false,
+}: {
+    embeddedInManagement?: boolean;
+}) {
     const router = useRouter();
     const { user, activeOrg, activeOperatingContext, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const isTeachingDashboardActor = instructorAccess.isTeachingActor;
+    const managementEmbedAllowed = embeddedInManagement
+        && activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+        && instructorAccess.isSelfManagedTeachingAdmin
+        && capabilities.can_teach;
+    const teachingRouteAllowed = activeOperatingContext === 'MY_TEACHING'
+        && capabilities.can_teach
+        && isTeachingDashboardActor;
 
     const {
         metrics, alerts, sessions, assessments, teachingCohorts,
@@ -607,13 +618,24 @@ export function InstructorDashboard() {
     useAssistantPageContext(assistantContext);
 
     useEffect(() => {
-        if (activeOperatingContext === 'MY_TEACHING' && !isTeachingDashboardActor) {
-            router.push('/dashboard');
+        if (activeOperatingContext !== null && !teachingRouteAllowed && !managementEmbedAllowed) {
+            router.replace('/dashboard');
         }
-    }, [activeOperatingContext, isTeachingDashboardActor, router]);
+    }, [activeOperatingContext, managementEmbedAllowed, router, teachingRouteAllowed]);
 
-    if (!user || activeOperatingContext === null) return null;
-    if (activeOperatingContext !== 'MY_TEACHING' || !capabilities.can_teach || !isTeachingDashboardActor) return null;
+    if (!user || activeOperatingContext === null) {
+        return <LoadingMessage title="Checking teaching dashboard access..." />;
+    }
+    if (!teachingRouteAllowed && !managementEmbedAllowed) {
+        return (
+            <Card className="mx-auto max-w-2xl">
+                <h1 className="text-lg font-semibold theme-text">Teaching dashboard access required</h1>
+                <p className="mt-2 text-sm theme-muted">
+                    Enter My Teaching to open this dashboard with your assigned classes.
+                </p>
+            </Card>
+        );
+    }
     if (dashboardLoading) {
         return (
             <div className="max-w-[1800px] mx-auto space-y-6">

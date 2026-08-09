@@ -247,5 +247,10 @@ describe('Instructor progress session workflow rows', () => {
     expect(progressPageSource).toContain('planningReviewScope={planningReviewScope}');
     expect(progressPageSource).toContain('review_start_date');
     expect(progressPageSource).toContain('review_end_date');
+    expect(progressPageSource).toContain('Clear inherited scope');
+    expect(progressPageSource).toContain('buildSchemeDetailHref(scheme.id, progressReturnTo)');
+    expect(progressPageSource).toContain('buildRelatedLessonsHref({');
+    expect(progressPageSource).toContain('cohortSubjectId: scheme.cohort_subject_id');
+    expect(progressPageSource).toContain('termId: scheme.term?.id ?? activeScope.termId');
   });
 });

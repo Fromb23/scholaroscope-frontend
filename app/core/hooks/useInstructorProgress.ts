@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
-import type { PaginatedResponse } from '@/app/core/api/sessions';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import { sessionAPI } from '@/app/core/api/sessions';
 import { schemesAPI } from '@/app/core/api/schemes';
@@ -25,6 +24,14 @@ export interface AttendanceStats {
     absent: number;
     late: number;
     rate: number;
+}
+
+export interface InstructorProgressScope {
+    termId?: number;
+    subjectId?: number;
+    cohortId?: number;
+    startDate?: string;
+    endDate?: string;
 }
 
 type TeachingAssignmentIdentity = Pick<
@@ -76,7 +83,10 @@ export function getTeachingAssignmentKey(assignment: TeachingAssignmentIdentity)
 
 // ── Hook ──────────────────────────────────────────────────────────────────
 
-export function useInstructorProgress(instructorId: number) {
+export function useInstructorProgress(
+    instructorId: number,
+    scope: InstructorProgressScope = {},
+) {
     const [instructor, setInstructor] = useState<InstructorProfile | null>(null);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [schemes, setSchemes] = useState<InstructorSchemeDrilldownItem[]>([]);
@@ -93,16 +103,21 @@ export function useInstructorProgress(instructorId: number) {
             const instructorData = await instructorsAPI.getById(instructorId);
             setInstructor(instructorData);
 
-            const sessionsData = await sessionAPI.getSupervised({
+            const allSessions = await sessionAPI.getSupervisedComplete({
                 authority_mode: 'supervision',
                 instructor_id: instructorId,
+                term: scope.termId,
+                cohort_subject__subject: scope.subjectId,
+                cohort_subject__cohort: scope.cohortId,
+                session_date__gte: scope.startDate,
+                session_date__lte: scope.endDate,
             });
-            const allSessions = Array.isArray(sessionsData)
-                ? sessionsData
-                : (sessionsData as PaginatedResponse<Session>)?.results ?? [];
             setSessions(allSessions);
 
-            const schemesData = await schemesAPI.getInstructorSchemes(instructorId);
+            const schemesData = await schemesAPI.getInstructorSchemes(instructorId, {
+                term_id: scope.termId,
+                subject_id: scope.subjectId,
+            });
             setSchemes(schemesData.results);
         } catch {
             if (showLoadingState) {
@@ -113,7 +128,7 @@ export function useInstructorProgress(instructorId: number) {
                 setLoading(false);
             }
         }
-    }, [instructorId]);
+    }, [instructorId, scope.cohortId, scope.endDate, scope.startDate, scope.subjectId, scope.termId]);
 
     useEffect(() => {
         void load();

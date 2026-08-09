@@ -29,6 +29,9 @@ export function buildCbcPath(
         cohort?: number | string | null;
         subject?: number | string | null;
         cohortSubjectId?: number | string | null;
+        cbcCohortSubjectId?: number | string | null;
+        instructorId?: number | string | null;
+        authorityMode?: 'teaching' | 'supervision' | null;
         returnTo?: string | null;
     },
 ): string {
@@ -42,6 +45,15 @@ export function buildCbcPath(
     }
     if (params?.cohortSubjectId) {
         searchParams.set('cohort_subject_id', String(params.cohortSubjectId));
+    }
+    if (params?.cbcCohortSubjectId) {
+        searchParams.set('cbc_cohort_subject_id', String(params.cbcCohortSubjectId));
+    }
+    if (params?.instructorId) {
+        searchParams.set('instructor_id', String(params.instructorId));
+    }
+    if (params?.authorityMode) {
+        searchParams.set('authority_mode', params.authorityMode);
     }
 
     const safeReturnTo = sanitizeInternalReturnTo(params?.returnTo);
@@ -87,6 +99,9 @@ export function getCbcBackLabel(returnTo: string | null | undefined, fallbackLab
     }
     if (safeReturnTo.startsWith('/cbc/progress')) {
         return 'Back to CBC Progress';
+    }
+    if (safeReturnTo.startsWith('/admin/instructors/')) {
+        return 'Back to Instructor Progress';
     }
 
     return fallbackLabel;

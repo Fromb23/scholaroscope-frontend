@@ -22,6 +22,7 @@ export function useCBCCohortProgressPage(cohortId: number) {
     const hasReportAccess = hasPermission(capabilities, 'reports.view');
     const querySubjectId = parsePositiveNumber(searchParams.get('subject'));
     const queryCohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject_id'));
+    const queryCbcCohortSubjectId = parsePositiveNumber(searchParams.get('cbc_cohort_subject_id'));
     const queryInstructorId = parsePositiveNumber(searchParams.get('instructor_id'));
     const instructorContextEnabled = activeOperatingContext === 'WORKSPACE_MANAGEMENT'
         && hasReportAccess
@@ -30,6 +31,7 @@ export function useCBCCohortProgressPage(cohortId: number) {
     const hasScopedContext = searchParams.has('subject')
         || searchParams.has('cohort')
         || searchParams.has('cohort_subject_id')
+        || searchParams.has('cbc_cohort_subject_id')
         || searchParams.has('instructor_id');
     const { cohort, loading: cohortLoading } = useCohort(cohortId);
     const { subjects: allSubjects = [] } = useSubjects(cohort?.curriculum ?? undefined);
@@ -109,21 +111,19 @@ export function useCBCCohortProgressPage(cohortId: number) {
                     isCBCTeachingAssignment(assignment)
                     && assignment.cohort_id === cohortId
                 ));
-                const matchingAssignments = queryCohortSubjectId === null
-                    ? scopedAssignments
-                    : scopedAssignments.filter((assignment) => {
-                        const assignmentCohortSubjectId =
-                            assignment.cohort_subject_id
-                            ?? assignment.cbc_cohort_subject_id
-                            ?? assignment.teaching_link_id
-                            ?? null;
-                        return assignmentCohortSubjectId === queryCohortSubjectId;
-                    });
+                const matchingAssignments = scopedAssignments.filter((assignment) => (
+                    (queryCohortSubjectId === null
+                        || assignment.cohort_subject_id === queryCohortSubjectId)
+                    && (queryCbcCohortSubjectId === null
+                        || assignment.cbc_cohort_subject_id === queryCbcCohortSubjectId)
+                ));
 
                 setInstructorScopedSubjectIds(new Set(
                     matchingAssignments
-                        .map((assignment) => assignment.subject_id)
-                        .filter((subjectId) => Number.isFinite(subjectId))
+                        .map((assignment) => assignment.topic_subject_id)
+                        .filter((subjectId): subjectId is number => (
+                            typeof subjectId === 'number' && Number.isFinite(subjectId)
+                        ))
                 ));
                 setInstructorScopeLoading(false);
             })
@@ -136,7 +136,13 @@ export function useCBCCohortProgressPage(cohortId: number) {
         return () => {
             cancelled = true;
         };
-    }, [cohortId, instructorContextEnabled, queryCohortSubjectId, queryInstructorId]);
+    }, [
+        cohortId,
+        instructorContextEnabled,
+        queryCbcCohortSubjectId,
+        queryCohortSubjectId,
+        queryInstructorId,
+    ]);
 
     const subjects = useMemo(() => {
         if (instructorContextEnabled && instructorScopedSubjectIds === null) {
@@ -197,6 +203,12 @@ export function useCBCCohortProgressPage(cohortId: number) {
     const { data: summary, isLoading, error, refetch } = useCBCProgressSummary({
         cohort_id: cohortId,
         subject_id: instructorScopeLoading ? null : scopedSelectedSubjectId,
+        cohort_subject_id: queryCohortSubjectId,
+        cbc_cohort_subject_id: queryCbcCohortSubjectId,
+        instructor_id: queryInstructorId,
+        authority_mode: activeOperatingContext === 'WORKSPACE_MANAGEMENT'
+            ? 'supervision'
+            : 'teaching',
     });
 
     const totalOutcomeRecords = useMemo(() => {

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
     useStrandsByCurriculum,
-    useStrandDetailsBySubjectProfiles,
 } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import { useCohorts, useSubjects } from '@/app/core/hooks/useAcademic';
@@ -50,7 +49,9 @@ export function useCBCProgressPage() {
     const {
         selectedCurriculumId,
         setSelectedCohort,
+        setSelectedSubject,
         selectedCohortId,
+        selectedSubjectId,
         isAdmin,
         curriculumLoading,
     } = useCBCContext();
@@ -80,34 +81,26 @@ export function useCBCProgressPage() {
         subjectOptions: instructorSubjectOptions,
         selectedSubjectId: selectedVisibleSubjectId,
         selectedSelection: resolvedInstructorSubjectSelection,
-        selectedProfileIds,
         hasVisibleProfiles,
         isLoading: instructorContextLoading,
         error: instructorContextError,
         refetch: refetchInstructorContext,
     } = instructorContext;
+    const effectiveCohortIdForContext = isAdmin ? selectedCohortId : effectiveCohortId;
+    const effectiveCohortForContext = isAdmin
+        ? cohorts.find(cohort => cohort.id === selectedCohortId) ?? null
+        : effectiveCohort;
+    const effectiveSubjectId = isAdmin ? selectedSubjectId : selectedVisibleSubjectId;
 
     const {
-        data: adminStrands = [],
-        isLoading: adminStrandsLoading,
-        error: adminStrandsError,
-        refetch: refetchAdminStrands,
-    } = useStrandsByCurriculum(isAdmin ? selectedCurriculumId : null);
-
-    const {
-        data: instructorStrands = [],
-        isLoading: instructorStrandsLoading,
-        error: instructorStrandsError,
-        refetch: refetchInstructorStrands,
-    } = useStrandDetailsBySubjectProfiles({
-        curriculumId: selectedCurriculumId,
-        subjectProfileIds: selectedProfileIds,
+        data: strandSource = [],
+        isLoading: strandsLoading,
+        error: strandsError,
+        refetch: refetchStrands,
+    } = useStrandsByCurriculum(selectedCurriculumId, {
+        authority_mode: isAdmin ? 'supervision' : 'teaching',
+        cohort: effectiveCohortIdForContext ?? undefined,
     });
-
-    const strandSource = useMemo(
-        () => (isAdmin ? adminStrands : instructorStrands),
-        [adminStrands, instructorStrands, isAdmin]
-    );
 
     const subjectsForCurriculum = useMemo(() => {
         if (!selectedCurriculumId) return [];
@@ -145,22 +138,22 @@ export function useCBCProgressPage() {
             ));
         }
 
-        if (selectedVisibleSubjectId === null) {
+        if (effectiveSubjectId === null) {
             return withContent;
         }
 
-        return withContent.filter(strand => strand.subject_org_id === selectedVisibleSubjectId);
+        return withContent.filter(strand => strand.subject_org_id === effectiveSubjectId);
     }, [
         isAdmin,
         resolvedInstructorSubjectSelection,
-        selectedVisibleSubjectId,
+        effectiveSubjectId,
         strandSource,
     ]);
 
     const resolvedSubject = useMemo(
-        () => subjectsForCurriculum.find(subject => subject.id === selectedVisibleSubjectId)
+        () => subjectsForCurriculum.find(subject => subject.id === effectiveSubjectId)
             ?? (subjectsForCurriculum.length === 1 ? subjectsForCurriculum[0] : null),
-        [selectedVisibleSubjectId, subjectsForCurriculum]
+        [effectiveSubjectId, subjectsForCurriculum]
     );
 
     const stats = useMemo(
@@ -186,34 +179,30 @@ export function useCBCProgressPage() {
     );
 
     const isLoading = isAdmin
-        ? curriculumLoading || cohortsLoading || subjectsLoading || adminStrandsLoading
-        : curriculumLoading || instructorContextLoading || instructorStrandsLoading;
-    const error = isAdmin ? adminStrandsError : (instructorContextError ?? instructorStrandsError);
+        ? curriculumLoading || cohortsLoading || subjectsLoading || strandsLoading
+        : curriculumLoading || instructorContextLoading || strandsLoading;
+    const error = isAdmin ? strandsError : (instructorContextError ?? strandsError);
 
     const refetch = () => {
-        if (isAdmin) {
-            refetchAdminStrands();
-            return;
-        }
-
-        refetchInstructorContext();
-        refetchInstructorStrands();
+        if (!isAdmin) refetchInstructorContext();
+        refetchStrands();
     };
 
     const handleCohortChange = (cohortId: number | null) => {
         setSelectedCohort(cohortId);
+        setSelectedSubject(null);
         setSelectedSubjectFilterId(null);
     };
 
     return {
         selectedCurriculumId,
-        selectedSubjectFilterId,
-        setSelectedSubjectFilterId,
+        selectedSubjectFilterId: effectiveSubjectId,
+        setSelectedSubjectFilterId: isAdmin ? setSelectedSubject : setSelectedSubjectFilterId,
         isAdmin,
         cohorts,
         assignedCohorts,
-        effectiveCohortId,
-        effectiveCohort,
+        effectiveCohortId: effectiveCohortIdForContext,
+        effectiveCohort: effectiveCohortForContext,
         instructorSubjectSelections,
         subjectsForCurriculum,
         resolvedSubject,

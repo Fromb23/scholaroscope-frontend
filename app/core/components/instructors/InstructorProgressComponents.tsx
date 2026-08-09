@@ -60,17 +60,20 @@ function buildLessonPlanDetailHref(lessonPlanId: number, returnTo?: string) {
 
 function buildCbcProgressHref(assignment: TeachingAssignment, instructorId: number, returnTo?: string) {
     const params = new URLSearchParams({
-        subject: String(assignment.subject_id),
+        subject: String(assignment.topic_subject_id),
         instructor_id: String(instructorId),
+        authority_mode: 'supervision',
     });
 
-    const cohortSubjectId =
-        assignment.cohort_subject_id
-        ?? assignment.cbc_cohort_subject_id
-        ?? assignment.teaching_link_id
-        ?? null;
+    const cohortSubjectId = assignment.cohort_subject_id ?? null;
     if (typeof cohortSubjectId === 'number' && Number.isFinite(cohortSubjectId)) {
         params.set('cohort_subject_id', String(cohortSubjectId));
+    }
+    if (
+        typeof assignment.cbc_cohort_subject_id === 'number'
+        && Number.isFinite(assignment.cbc_cohort_subject_id)
+    ) {
+        params.set('cbc_cohort_subject_id', String(assignment.cbc_cohort_subject_id));
     }
 
     if (isSafeNextPath(returnTo)) {

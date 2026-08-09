@@ -547,6 +547,11 @@ export function SchemeDetailPage() {
         returnTo: currentReturnTo,
       }).toString()}`
     : null;
+  const backLabel = safeReturnTo?.startsWith('/admin/instructors/')
+    ? 'Back to Instructor Progress'
+    : safeReturnTo
+      ? 'Back'
+      : 'Back to Schemes';
 
   return (
     <div className="space-y-6 pb-24 lg:pb-12">
@@ -554,7 +559,7 @@ export function SchemeDetailPage() {
         <Link href={safeReturnTo ?? '/schemes'}>
           <Button type="button" variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4" />
-            {safeReturnTo ? 'Back' : 'Back to Schemes'}
+            {backLabel}
           </Button>
         </Link>
       </div>

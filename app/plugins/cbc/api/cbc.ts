@@ -51,7 +51,20 @@ import {
   SessionLearner,
   CbcAssessmentReportResult,
   CbcAssessmentReportResultFilters,
+  CbcResultCohortOverview,
+  CbcResultLearnerSummary,
 } from '@/app/plugins/cbc/types/cbc';
+
+export interface CbcCatalogueScopeParams extends Record<
+  string,
+  number | string | null | undefined
+> {
+  curriculum?: number;
+  subject?: number;
+  subject_profile?: number;
+  cohort?: number;
+  authority_mode?: 'teaching' | 'supervision';
+}
 
 
 // ============================================================================
@@ -59,7 +72,7 @@ import {
 // ============================================================================
 
 export const strandAPI = {
-  getAll: async (params?: { curriculum?: number; subject?: number; subject_profile?: number }) => {
+  getAll: async (params?: CbcCatalogueScopeParams) => {
     const response = await apiClient.get<Strand[]>('/cbc/strands/', { params });
     return response.data;
   },
@@ -69,9 +82,12 @@ export const strandAPI = {
     return response.data;
   },
 
-  getByCurriculum: async (curriculumId: number) => {
+  getByCurriculum: async (
+    curriculumId: number,
+    scope?: Omit<CbcCatalogueScopeParams, 'curriculum'>,
+  ) => {
     const response = await apiClient.get<StrandDetail[]>('/cbc/strands/by_curriculum/', {
-      params: { curriculum_id: curriculumId },
+      params: { curriculum_id: curriculumId, ...scope },
     });
     return response.data;
   },
@@ -365,7 +381,14 @@ export const outcomeProgressAPI = {
     );
     return response.data;
   },
-  cbcProgressSummary: async (params: { cohort_id: number; subject_id: number }) => {
+  cbcProgressSummary: async (params: {
+    cohort_id: number;
+    subject_id: number;
+    cohort_subject_id?: number;
+    cbc_cohort_subject_id?: number;
+    instructor_id?: number;
+    authority_mode: 'teaching' | 'supervision';
+  }) => {
     const response = await apiClient.get<CBCProgressSummary>(
       '/cbc/outcome-progress/cbc_progress_summary/',
       { params },
@@ -546,9 +569,46 @@ export const cbcAPI = {
     return response.data;
   },
 
-  getAssessmentReportResult: async (id: number): Promise<CbcAssessmentReportResult> => {
+  getAssessmentReportResult: async (
+    id: number,
+    authorityMode: 'teaching' | 'supervision',
+  ): Promise<CbcAssessmentReportResult> => {
     const response = await apiClient.get<CbcAssessmentReportResult>(
       `/cbc/assessment-report-results/${id}/`,
+      { params: { authority_mode: authorityMode } },
+    );
+    return response.data;
+  },
+
+  getResultCohortOverview: async (
+    filters?: CbcAssessmentReportResultFilters,
+  ): Promise<CbcResultCohortOverview[]> => {
+    const response = await apiClient.get<CbcResultCohortOverview[]>(
+      '/cbc/assessment-report-results/cohort-overview/',
+      { params: filters },
+    );
+    return response.data;
+  },
+
+  getResultCohortLearners: async (
+    cohortId: number,
+    filters?: CbcAssessmentReportResultFilters,
+  ): Promise<PaginatedResponse<CbcResultLearnerSummary>> => {
+    const response = await apiClient.get<PaginatedResponse<CbcResultLearnerSummary>>(
+      '/cbc/assessment-report-results/cohort-learners/',
+      { params: { ...filters, cohort: cohortId } },
+    );
+    return response.data;
+  },
+
+  getLearnerAssessmentReportResults: async (
+    cohortId: number,
+    learnerId: number,
+    filters?: CbcAssessmentReportResultFilters,
+  ): Promise<CbcAssessmentReportResult[]> => {
+    const response = await apiClient.get<CbcAssessmentReportResult[]>(
+      '/cbc/assessment-report-results/learner-results/',
+      { params: { ...filters, cohort: cohortId, student: learnerId } },
     );
     return response.data;
   },

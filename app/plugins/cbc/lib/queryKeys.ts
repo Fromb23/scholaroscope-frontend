@@ -3,6 +3,7 @@
 // Import from here — never hardcode strings in hooks.
 
 import type { CbcAssessmentReportResultFilters } from '@/app/plugins/cbc/types/cbc';
+import type { CbcCatalogueScopeParams } from '@/app/plugins/cbc/api/cbc';
 import type { CbcReportPolicyFilters } from '@/app/plugins/cbc/types/reportPolicy';
 
 export const cbcKeys = {
@@ -19,10 +20,11 @@ export const cbcKeys = {
     // Structural
     strands: {
         all: ['cbc', 'strands'] as const,
-        list: (params?: { curriculum?: number; subject?: number; subject_profile?: number }) =>
+        list: (params?: CbcCatalogueScopeParams) =>
             ['cbc', 'strands', 'list', params] as const,
         detail: (id: number) => ['cbc', 'strands', id] as const,
-        byCurriculum: (id: number) => ['cbc', 'strands', 'by-curriculum', id] as const,
+        byCurriculum: (id: number, scope?: Omit<CbcCatalogueScopeParams, 'curriculum'>) =>
+            ['cbc', 'strands', 'by-curriculum', id, scope] as const,
         byProfiles: (curriculumId: number, profileIds: number[]) =>
             ['cbc', 'strands', 'by-profiles', curriculumId, profileIds] as const,
         detailByProfiles: (curriculumId: number, profileIds: number[]) =>
@@ -75,8 +77,14 @@ export const cbcKeys = {
             ['cbc', 'outcome-progress', 'student-summary', studentId] as const,
         cohortSummary: (cohortId: number) =>
             ['cbc', 'outcome-progress', 'cohort-summary', cohortId] as const,
-        cbcSummary: (cohortId: number, subjectId: number) =>
-            ['cbc', 'outcome-progress', 'cbc-summary', cohortId, subjectId] as const,
+        cbcSummary: (params: {
+            cohort_id: number | null;
+            subject_id: number | null;
+            cohort_subject_id?: number | null;
+            cbc_cohort_subject_id?: number | null;
+            instructor_id?: number | null;
+            authority_mode: 'teaching' | 'supervision';
+        }) => ['cbc', 'outcome-progress', 'cbc-summary', params] as const,
         distribution: (outcomeId: number, cohortId: number) =>
             ['cbc', 'outcome-progress', 'distribution', outcomeId, cohortId] as const,
         strandDistribution: (strandId: number, cohortId: number, subjectId?: number | null) =>
@@ -98,7 +106,17 @@ export const cbcKeys = {
         all: ['cbc', 'assessment-report-results'] as const,
         list: (filters?: CbcAssessmentReportResultFilters) =>
             ['cbc', 'assessment-report-results', 'list', filters] as const,
-        detail: (id: number) => ['cbc', 'assessment-report-results', id] as const,
+        detail: (id: number, authorityMode: 'teaching' | 'supervision') =>
+            ['cbc', 'assessment-report-results', id, authorityMode] as const,
+        cohortOverview: (filters?: CbcAssessmentReportResultFilters) =>
+            ['cbc', 'assessment-report-results', 'cohort-overview', filters] as const,
+        cohortLearners: (cohortId: number, filters?: CbcAssessmentReportResultFilters) =>
+            ['cbc', 'assessment-report-results', 'cohort-learners', cohortId, filters] as const,
+        learnerResults: (
+            cohortId: number,
+            learnerId: number,
+            filters?: CbcAssessmentReportResultFilters,
+        ) => ['cbc', 'assessment-report-results', 'learner-results', cohortId, learnerId, filters] as const,
     },
 
     reportPolicies: {

@@ -346,7 +346,7 @@ export function buildCBCInstructorAssignmentSelections(
     assignments: Array<Pick<
         CBCTeachingAssignment,
         'cohort_subject_id' | 'cohort_id' | 'cohort_name' | 'subject_id' |
-        'subject_name' | 'subject_code' | 'subject_profile_id' | 'level' | 'academic_year'
+        'topic_subject_id' | 'subject_name' | 'subject_code' | 'subject_profile_id' | 'level' | 'academic_year'
     >>,
     visibleProfiles: CBCVisibleProfile[],
     curriculumId: number | null,
@@ -380,7 +380,7 @@ export function buildCBCInstructorAssignmentSelections(
                 description: '',
                 created_at: '',
             },
-            subject_ids: [assignment.subject_id],
+            subject_ids: [assignment.topic_subject_id ?? assignment.subject_id],
             subject_profile_ids: matchingProfiles.map(profile => profile.subject_profile_id),
             subject_name: resolvedProfile?.subject_name ?? assignment.subject_name,
             level: resolvedProfile?.level ?? assignment.level,

@@ -13,7 +13,6 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { useCBCCurriculum } from '@/app/plugins/cbc/hooks/useCBCCurriculum';
-import { isTeachingActorView } from '@/app/core/lib/workspaces';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -24,10 +23,10 @@ interface PersistedFilterState {
     selectedCohortId: number | null;
 }
 
-function loadFromStorage(): PersistedFilterState {
+function loadFromStorage(storageKey: string): PersistedFilterState {
     if (typeof window === 'undefined') return { selectedSubjectId: null, selectedCohortId: null };
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(storageKey);
         if (!raw) return { selectedSubjectId: null, selectedCohortId: null };
         const parsed = JSON.parse(raw) as Partial<PersistedFilterState>;
         return {
@@ -39,9 +38,9 @@ function loadFromStorage(): PersistedFilterState {
     }
 }
 
-function saveToStorage(state: PersistedFilterState) {
+function saveToStorage(storageKey: string, state: PersistedFilterState) {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        localStorage.setItem(storageKey, JSON.stringify(state));
     } catch { }
 }
 
@@ -85,20 +84,19 @@ export function CBCProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeOperatingContext, activeOrg, capabilities, loading: authLoading } = useAuth();
+    const { activeOperatingContext, capabilities, loading: authLoading } = useAuth();
     const { cbcCurriculumId, loading: curriculumLoading, isInstalled } = useCBCCurriculum();
-    const teachingActorView = isTeachingActorView({
-        activeOrg,
-        capabilities,
-        user,
-    });
-    const isInstitutionAdminView = activeOperatingContext === 'WORKSPACE_MANAGEMENT' && !teachingActorView;
+    const teachingActorView = activeOperatingContext === 'MY_TEACHING'
+        && Boolean(capabilities.can_teach);
+    const isInstitutionAdminView = activeOperatingContext === 'WORKSPACE_MANAGEMENT';
     const isAdmin = isInstitutionAdminView;
     const teachingLoading = authLoading;
+    const contextStorageKey = `${STORAGE_KEY}:${activeOperatingContext ?? 'unresolved'}`;
 
     const [filterState, setFilterState] = useState<PersistedFilterState>(() => buildFilterState(null, null));
     const [hydrated, setHydrated] = useState(false);
     const hasInitializedRef = useRef(false);
+    const previousOperatingContextRef = useRef(activeOperatingContext);
     const urlFilterState = useMemo(() => buildFilterState(
         parseParam(searchParams.get('subject')),
         parseParam(searchParams.get('cohort'))
@@ -118,14 +116,32 @@ export function CBCProvider({ children }: { children: ReactNode }) {
 
         const saved = hasExplicitScopedContext
             ? buildFilterState(null, null)
-            : loadFromStorage();
+            : loadFromStorage(contextStorageKey);
         setFilterState(buildFilterState(
             urlFilterState.selectedSubjectId ?? saved.selectedSubjectId,
             urlFilterState.selectedCohortId ?? saved.selectedCohortId
         ));
         hasInitializedRef.current = true;
         setHydrated(true);
-    }, [hasExplicitScopedContext, urlFilterState]);
+    }, [contextStorageKey, hasExplicitScopedContext, urlFilterState]);
+
+    useEffect(() => {
+        if (!hydrated || previousOperatingContextRef.current === activeOperatingContext) return;
+        previousOperatingContextRef.current = activeOperatingContext;
+        const saved = hasExplicitScopedContext
+            ? buildFilterState(null, null)
+            : loadFromStorage(contextStorageKey);
+        setFilterState(buildFilterState(
+            urlFilterState.selectedSubjectId ?? saved.selectedSubjectId,
+            urlFilterState.selectedCohortId ?? saved.selectedCohortId,
+        ));
+    }, [
+        activeOperatingContext,
+        contextStorageKey,
+        hasExplicitScopedContext,
+        hydrated,
+        urlFilterState,
+    ]);
 
     useEffect(() => {
         if (!hydrated || !isCBCRoute) return;
@@ -165,8 +181,16 @@ export function CBCProvider({ children }: { children: ReactNode }) {
         if (!hydrated || hasExplicitScopedContext) return;
         if (teachingLoading && (selectedSubjectId === null || selectedCohortId === null)) return;
 
-        saveToStorage(filterState);
-    }, [filterState, hasExplicitScopedContext, hydrated, selectedCohortId, selectedSubjectId, teachingLoading]);
+        saveToStorage(contextStorageKey, filterState);
+    }, [
+        contextStorageKey,
+        filterState,
+        hasExplicitScopedContext,
+        hydrated,
+        selectedCohortId,
+        selectedSubjectId,
+        teachingLoading,
+    ]);
 
     const syncUrl = useCallback((nextSubjectId: number | null, nextCohortId: number | null) => {
         if (!hydrated || !isCBCRoute) return;
