@@ -57,6 +57,29 @@ const authContext = read('app/context/AuthContext.tsx');
 if (!authContext.includes('capabilities.authorization?.operating_contexts')) {
   failures.push('AuthContext must consume the backend-issued operating-context capability.');
 }
+
+const computePage = read('app/core/components/reports/ComputePage.tsx');
+const computeHook = read('app/core/hooks/reports/useComputePage.ts');
+const reportAccessPolicy = read('app/core/components/reports/reportAccessPolicy.ts');
+const routeAccess = read('app/utils/routeAccess.ts');
+if (!reportAccessPolicy.includes("permissions.includes('reports.compute')")) {
+  failures.push('report compute controls must require the effective reports.compute permission.');
+}
+if (!routeAccess.includes("requiredPermissions: ['reports.compute']")) {
+  failures.push('the report compute route must require reports.compute.');
+}
+if (/reports\.manage_policy[^\n]*(?:compute|computation)|reports\.view[^\n]*(?:compute|computation)/.test(reportAccessPolicy)) {
+  failures.push('report policy/view permission must not be treated as compute authority.');
+}
+if (!computeHook.includes('waitForPersistedTerminalJob') || !computeHook.includes('TERMINAL_JOB_STATUSES.has(latest.status)')) {
+  failures.push('terminal report progress must be confirmed from the persisted job snapshot.');
+}
+if (computePage.includes('cbc_result') || !computePage.includes('result_payload?.counts')) {
+  failures.push('report compute totals must use the normalized top-level contract, not CBC-nested counters.');
+}
+if (/published reports|reports (?:were|have been) published/i.test(computePage)) {
+  failures.push('final preparation must not be presented as publication.');
+}
 if (/role\.(?:name|slug)|membership\.role/.test(authContext)) {
   failures.push('AuthContext must not reconstruct operating contexts from legacy roles or role names.');
 }

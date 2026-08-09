@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  canComputeWorkspaceReports,
   canManageInstitutionReportPolicy,
   canRenderInstitutionReportOverview,
   resolveReportSurface,
@@ -100,6 +101,40 @@ const institutionReportPolicyCapabilities = {
 } satisfies WorkspaceCapabilities;
 
 describe('report access policy', () => {
+  it('requires reports.compute and workspace-wide compute availability', () => {
+    const computeCapabilities = {
+      ...institutionReportPolicyCapabilities,
+      authorization: {
+        enforced: true,
+        permission_keys: ['reports.view', 'reports.compute'],
+        roles: [],
+        admin_slots: null,
+        migration_state: null,
+      },
+    } satisfies WorkspaceCapabilities;
+    expect(canComputeWorkspaceReports({ user, capabilities: computeCapabilities })).toBe(true);
+    expect(canComputeWorkspaceReports({
+      user,
+      capabilities: {
+        ...computeCapabilities,
+        authorization: {
+          ...computeCapabilities.authorization,
+          permission_keys: ['reports.view', 'reports.manage_policy'],
+        },
+      },
+    })).toBe(false);
+    expect(canComputeWorkspaceReports({
+      user,
+      capabilities: {
+        ...computeCapabilities,
+        report_configuration: {
+          ...computeCapabilities.report_configuration,
+          report_computation_class_scoped_only: true,
+        },
+      },
+    })).toBe(false);
+  });
+
   it('does not treat platform superadmins as report-surface members', () => {
     expect(resolveReportSurface({
       user: { ...user, is_superadmin: true },      activeOrg: institution,

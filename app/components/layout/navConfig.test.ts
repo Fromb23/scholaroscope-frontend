@@ -121,6 +121,15 @@ function capabilitiesWithKeys(
       admin_slots: null,
       migration_state: null,
     },
+    report_configuration: {
+      report_policy_available: keys.includes('reports.manage_policy'),
+      report_policy_mode: 'INSTITUTION_GOVERNANCE',
+      report_computation_available: keys.includes('reports.compute'),
+      report_computation_class_scoped_only: false,
+      subject_profile_authoring_allowed: false,
+      reporting_governance_routes_allowed: true,
+      allowed_policy_scopes: [],
+    },
     ...overrides,
   } as WorkspaceCapabilities;
 }
@@ -572,9 +581,28 @@ describe('admin navigation config', () => {
     const hrefs = allNavHrefs(nav);
 
     expect(hrefs).toContain('/reports');
+    expect(hrefs).not.toContain('/reports/compute');
     expect(hrefs).not.toContain('/learners');
     expect(hrefs).not.toContain('/admin/instructors');
     expect(hrefs).not.toContain('/academic/subjects');
+  });
+
+  it('shows compute navigation only with workspace reports.compute authority', () => {
+    const computeNav = getAdminNav(
+      pluginContext,
+      'INSTITUTION',
+      null,
+      capabilitiesWithKeys(['reports.view', 'reports.compute']),
+    );
+    const policyNav = getAdminNav(
+      pluginContext,
+      'INSTITUTION',
+      null,
+      capabilitiesWithKeys(['reports.view', 'reports.manage_policy']),
+    );
+
+    expect(allNavHrefs(computeNav)).toContain('/reports/compute');
+    expect(allNavHrefs(policyNav)).not.toContain('/reports/compute');
   });
 
   it('does not expose unrelated management navigation for a staff-only manager', () => {

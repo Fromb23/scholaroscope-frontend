@@ -40,3 +40,26 @@ The URL is the source of truth for shareable report state. `academic_year`, `ter
 
 Operational features express intent. Canonical report objects establish identity. Projections answer questions. Attendance, assessments, assignments, grading, CBC, portfolio, and export domain services own facts. `ReportingScope` owns visibility. The URL preserves report state. `returnTo` preserves origin.
 
+## Term compute and reconciliation contract
+
+Applicable curriculum engines are discovered from the backend registry. Each engine owns applicability, prerequisite validation, expected-scope discovery, mode-aware computation, obsolete-live-projection reconciliation, and completeness verification. The central orchestrator does not assume CBC, so generic-only, CBC-only, mixed, and future registered-engine terms run exactly the engines that apply.
+
+- `INCREMENTAL` processes missing, dirty, and stale scopes and remains idempotent.
+- `FULL_REBUILD` recomputes every expected live projection even when it appears current, reconciles obsolete rows, rebuilds summaries, and verifies completeness.
+- `FINAL_RECONCILIATION` captures one evidence cutoff, gives it to every applicable engine, reconciles live projections, rebuilds summaries after engine work, and verifies every required family.
+
+One atomic organization-and-term lock excludes all three modes. A worker crash is diagnosable through job age; after the configured stale threshold, a new request may atomically fail and replace the stale job. Different terms and workspaces remain independent.
+
+CBC live rows that lose authoritative scope are retained but invalidated as stale. Generic mutable projections without a publication snapshot role are deleted when orphaned. Both policies are bounded to the organization and term. Neither path deletes source evidence or mutates published official snapshots.
+
+Final preparation produces `READY_FOR_REVIEW`, `READY_FOR_PUBLICATION`, `BLOCKED`, or `FAILED` according to verified engine results and review prerequisites. It never publishes implicitly. Review and publication are separate user actions and permissions.
+
+## Durable jobs and UI authority
+
+Terminal job status, normalized result, counts, completion time, and released lock are committed before a terminal progress frame can be observed. SSE is an acceleration channel; the persisted job API is authoritative. After a terminal frame or stream loss, the client polls through any transient active snapshot, resumes from the job ID after reload, and stops only at a persisted terminal state or a bounded timeout.
+
+Every result exposes top-level `counts`, per-engine results, blockers, evidence cutoff, readiness, and a truthful next action. Counts come from persisted job items and are never inferred from CBC-specific nested payloads.
+
+Starting computation, preparing final projections, viewing compute jobs, routes, navigation, and controls require effective workspace-scoped `reports.compute`. `reports.view`, `reports.manage_policy`, `reports.review`, and `reports.publish` remain distinct.
+
+Operational states are presented honestly: queued, queued too long, running, blocked, failed, stale, and completed. “Prepare Final Reports” means reconcile and verify live projections; only an explicit publication action may claim that reports were published.

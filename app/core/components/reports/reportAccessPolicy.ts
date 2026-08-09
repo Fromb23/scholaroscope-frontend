@@ -89,6 +89,21 @@ export function canManageInstitutionReportPolicy(params: {
   );
 }
 
+export function canComputeWorkspaceReports(params: {
+  user?: User | null;
+  capabilities?: WorkspaceCapabilities | null;
+}): boolean {
+  const { user, capabilities } = params;
+  if (!user || user.is_superadmin) return false;
+  const permissions = capabilities?.authorization?.permission_keys ?? [];
+  const reportConfiguration = capabilities?.report_configuration;
+  return Boolean(
+    permissions.includes('reports.compute')
+    && reportConfiguration?.report_computation_available
+    && !reportConfiguration.report_computation_class_scoped_only
+  );
+}
+
 export function shouldUseInstructorReportSurface(params: {
   user?: User | null;
   activeOrg?: ActiveOrg | null;

@@ -1235,6 +1235,10 @@ export interface ReportReadinessRecommendation {
 
 export interface ReportComputeEngineResult {
   engine: string;
+  status?: 'COMPLETED' | 'BLOCKED' | 'FAILED' | string;
+  counts?: ReportComputeCounts;
+  blockers?: ReportComputeBlocker[];
+  verification?: Record<string, unknown>;
   computed_count: number;
   skipped_count?: number;
   created_count?: number;
@@ -1248,6 +1252,32 @@ export interface ReportComputeEngineResult {
 }
 
 export type ReportComputeMode = 'INCREMENTAL' | 'FINAL_RECONCILIATION' | 'FULL_REBUILD';
+
+export interface ReportComputeCounts {
+  discovered: number;
+  processed: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  invalidated: number;
+  deleted: number;
+  blocked: number;
+  failed: number;
+}
+
+export interface ReportComputeBlocker {
+  engine: string;
+  scope: string | Record<string, unknown>;
+  reason: string;
+  count?: number;
+  [key: string]: unknown;
+}
+
+export interface ReportComputeNextAction {
+  type: string;
+  href?: string;
+  label?: string;
+}
 
 export interface ReportComputeResult {
   detail: string;
@@ -1292,13 +1322,19 @@ export interface ReportComputeJobItemCounts {
   created_count: number;
   updated_count: number;
   unchanged_count: number;
+  invalidated_count: number;
+  deleted_count: number;
+  blocked_count: number;
   failed_count: number;
 }
 
 export interface ReportComputeJob {
   job_id: string;
-  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'BLOCKED' | string;
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'BLOCKED' | 'CANCELLED' | string;
   mode?: ReportComputeMode;
+  workspace_id?: number;
+  organization_id?: number;
+  term_id?: number;
   stage: string;
   label?: string;
   progress_percent: number;
@@ -1308,6 +1344,15 @@ export interface ReportComputeJob {
   result_payload?: {
     mode?: ReportComputeMode;
     detail?: string;
+    workspace_id?: number;
+    term_id?: number;
+    evidence_cutoff?: string | null;
+    readiness_status?: string;
+    counts?: ReportComputeCounts;
+    engines?: Record<string, ReportComputeEngineResult>;
+    engine_results?: ReportComputeEngineResult[];
+    blockers?: ReportComputeBlocker[];
+    next_action?: ReportComputeNextAction;
     report_set?: TermReportSetReadiness;
     computed_count?: number;
     created_count?: number;
@@ -1327,6 +1372,16 @@ export interface ReportComputeJob {
   events_url?: string;
   latest_event?: ReportComputeProgressEvent;
   readiness?: ReportComputeReadiness;
+  operational_state?: {
+    status: 'QUEUED_NORMALLY' | 'QUEUED_TOO_LONG' | 'REPORTING_QUEUE_UNCONSUMED' | 'WORKER_OFFLINE' | 'RUNNING' | 'JOB_STALE' | string;
+    age_seconds?: number;
+    idle_seconds?: number;
+    recoverable?: boolean;
+    queue?: Record<string, unknown>;
+  };
+  created_at?: string | null;
+  updated_at?: string | null;
+  completed_at?: string | null;
 }
 
 export interface ReportFilters {

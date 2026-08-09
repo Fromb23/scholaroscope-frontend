@@ -84,7 +84,14 @@ const kernelRouteRules: RouteAccessRule[] = [
     },
     { pattern: /^\/reports\/grade-policies(\/.*)?$/, requiredAnyPermission: ['reports.manage_policy'] },
     { pattern: /^\/reports\/policies(\/.*)?$/, requiredAnyPermission: ['reports.manage_policy'] },
-    { pattern: /^\/reports\/compute(\/.*)?$/, requiredAnyPermission: ['reports.compute', 'reports.manage_policy'] },
+    {
+        pattern: /^\/reports\/compute(\/.*)?$/,
+        requiredPermissions: ['reports.compute'],
+        isAllowed: ({ capabilities }) => Boolean(
+            capabilities?.report_configuration?.report_computation_available
+            && !capabilities.report_configuration.report_computation_class_scoped_only
+        ),
+    },
     { pattern: /^\/reports\/(students|cohorts|subjects|assessments)(\/.*)?$/, requiredAnyPermission: ['reports.view'] },
     { pattern: /^\/reports/, requiredAnyPermission: ['reports.view'] },
     {

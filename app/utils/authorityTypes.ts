@@ -26,4 +26,13 @@ export interface WorkspaceCapabilities {
         admin_slots?: unknown;
         migration_state?: unknown;
     };
+    report_configuration?: {
+        report_policy_available: boolean;
+        report_policy_mode: string | null;
+        report_computation_available: boolean;
+        report_computation_class_scoped_only: boolean;
+        subject_profile_authoring_allowed: boolean;
+        reporting_governance_routes_allowed: boolean;
+        allowed_policy_scopes: string[];
+    } | null;
 }
