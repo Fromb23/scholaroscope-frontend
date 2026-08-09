@@ -31,7 +31,11 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve };
 }
 
-function authState(organizationId: number, canViewReports: boolean) {
+function authState(
+  organizationId: number,
+  canViewReports: boolean,
+  operatingContexts: Array<'WORKSPACE_MANAGEMENT' | 'MY_TEACHING'> = [],
+) {
   const organization = {
     id: organizationId,
     name: `Workspace ${organizationId}`,
@@ -56,6 +60,12 @@ function authState(organizationId: number, canViewReports: boolean) {
     capabilities: {
       ...DEFAULT_WORKSPACE_CAPABILITIES,
       can_view_reports: canViewReports,
+      authorization: {
+        enforced: true,
+        permission_keys: canViewReports ? ['reports.view'] : [],
+        roles: [],
+        operating_contexts: operatingContexts,
+      },
     },
     memberships: [{
       role: 'INSTRUCTOR' as const,
@@ -173,6 +183,38 @@ describe('AuthContext workspace authority races', () => {
       canViewReports: true,
       generation: generationAfterSwitch,
     });
+  });
+
+  it.each([
+    ['delegated report manager', ['WORKSPACE_MANAGEMENT'], ['WORKSPACE_MANAGEMENT']],
+    ['assigned teacher', ['MY_TEACHING'], ['MY_TEACHING']],
+    [
+      'manager-teacher',
+      ['WORKSPACE_MANAGEMENT', 'MY_TEACHING'],
+      ['WORKSPACE_MANAGEMENT', 'MY_TEACHING'],
+    ],
+    ['legacy instructor with flat reports.view only', [], []],
+  ] as const)('uses only server-issued operating contexts for %s', async (_label, issued, expected) => {
+    vi.spyOn(authAPI, 'refresh').mockResolvedValue(authState(1, true, [...issued]));
+    const observeAuth = vi.fn<(value: ReturnType<typeof useAuth>) => void>();
+    function Probe() {
+      const auth = useAuth();
+      useEffect(() => observeAuth(auth), [auth]);
+      return createElement('auth-state');
+    }
+
+    await act(async () => {
+      renderer = create(
+        createElement(
+          QueryClientProvider,
+          { client: new QueryClient() },
+          createElement(AuthProvider, null, createElement(Probe)),
+        ),
+      );
+      await Promise.resolve();
+    });
+
+    expect(observeAuth.mock.calls.at(-1)![0].availableOperatingContexts).toEqual(expected);
   });
 
   it('keeps the committed workspace unchanged when switching fails', async () => {

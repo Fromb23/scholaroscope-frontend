@@ -32,7 +32,7 @@ import {
 import { useCurrentTerm, useLearnerSubjectOptions, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
-import { useAdminAttendanceScopeReport } from '@/app/core/hooks/useReporting';
+import { useAdminAttendanceScopeReport, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import { isScopedInstructorAttendanceReport } from '@/app/utils/routeAccess';
 
@@ -51,6 +51,7 @@ function focusReportPanel(panelId: string) {
 }
 
 export function AttendanceReportPage() {
+  const authorityMode = useReportAuthorityMode();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -140,6 +141,7 @@ export function AttendanceReportPage() {
 
   const { handleExport, exporting } = useReportExport((format) => (
     adminReportsAPI.exportAttendanceScope(format, {
+      authorityMode,
       termId: selectedTermId,
       studentId: selectedStudentId,
       cohortId: selectedCohortId,

@@ -33,7 +33,7 @@ import {
 } from '@/app/core/components/reports/reportNavigation';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
-import { useLearnerTermProgressReport } from '@/app/core/hooks/useReporting';
+import { useLearnerTermProgressReport, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useStudent } from '@/app/core/hooks/useStudents';
 import type {
@@ -393,6 +393,7 @@ function EvidenceMetrics({ report }: { report: LearnerTermProgressReportPayload 
 }
 
 export function LearnerOverviewReportPage() {
+  const authorityMode = useReportAuthorityMode();
   const params = useParams<{ learnerId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -438,6 +439,7 @@ export function LearnerOverviewReportPage() {
       throw new Error('Choose a learner and term before downloading the report.');
     }
     return learnerReportingAPI.exportLearnerTermProgressReport(learnerId, {
+      authorityMode,
       termId: effectiveTermId,
       format: 'pdf',
     });

@@ -143,27 +143,6 @@ function writeStoredOperatingContext(context: OperatingContext | null) {
   }
 }
 
-function hasAnyPermission(capabilities: WorkspaceCapabilities, keys: string[]): boolean {
-  const permissionKeys = capabilities.authorization?.permission_keys ?? [];
-  return keys.some((key) => permissionKeys.includes(key));
-}
-
-function hasWorkspaceAdministratorProjection(capabilities: WorkspaceCapabilities): boolean {
-  return Boolean(
-    capabilities.authorization?.roles?.some((role) => role.is_workspace_admin === true)
-  );
-}
-
-function hasTeacherResponsibilityProjection(capabilities: WorkspaceCapabilities): boolean {
-  return Boolean(
-    capabilities.authorization?.roles?.some((role) => {
-      const slug = (role.slug ?? '').trim().toLowerCase();
-      const name = (role.name ?? '').trim().toLowerCase();
-      return slug === 'teacher' || name === 'teacher';
-    })
-  );
-}
-
 function isSelfManagedTeachingOwnerProjection(capabilities: WorkspaceCapabilities): boolean {
   return Boolean(
     capabilities.can_teach
@@ -176,51 +155,14 @@ function isSelfManagedTeachingOwnerProjection(capabilities: WorkspaceCapabilitie
 }
 
 function deriveOperatingContexts(capabilities: WorkspaceCapabilities): OperatingContext[] {
-  const contexts: OperatingContext[] = [];
-  const canManage = Boolean(
-    hasWorkspaceAdministratorProjection(capabilities)
-    || capabilities.can_manage_staff
-    || capabilities.can_manage_roles
-    || capabilities.can_manage_academic_setup
-    || capabilities.can_manage_learners
-    || capabilities.can_manage_cohorts
-    || capabilities.can_manage_subjects
-    || capabilities.can_manage_assessments
-    || capabilities.can_manage_plugins
-    || capabilities.can_manage_announcements
-    || hasAnyPermission(capabilities, [
-      'workspace.settings.manage',
-      'workspace.members.manage',
-      'workspace.members.restrict',
-      'workspace.members.remove',
-      'workspace.roles.manage',
-      'workspace.roles.assign',
-      'workspace.admins.assign',
-      'academic.terms.manage',
-      'academic.curricula.manage',
-      'academic.cohorts.manage',
-      'academic.subjects.manage',
-      'learners.manage',
-      'reports.manage_policy',
-      'plugins.manage_workspace_configuration',
-      'announcements.manage',
-      'revenue.policy.manage',
-      'revenue.cycles.manage',
-      'revenue.calculations.run',
-      'revenue.statements.review',
-      'revenue.cycles.approve',
-    ])
+  const serverContexts = capabilities.authorization?.operating_contexts;
+  if (!Array.isArray(serverContexts)) return [];
+  return serverContexts.filter(
+    (context, index): context is OperatingContext => (
+      (context === 'WORKSPACE_MANAGEMENT' || context === 'MY_TEACHING')
+      && serverContexts.indexOf(context) === index
+    ),
   );
-  if (canManage) contexts.push('WORKSPACE_MANAGEMENT');
-  const canUseMyTeaching = Boolean(
-    capabilities.can_teach
-    && (
-      hasTeacherResponsibilityProjection(capabilities)
-      || isSelfManagedTeachingOwnerProjection(capabilities)
-    )
-  );
-  if (canUseMyTeaching) contexts.push('MY_TEACHING');
-  return contexts;
 }
 
 function buildAccessNotices(...noticeGroups: Array<AccessNotice[] | undefined>): AccessNotice[] {

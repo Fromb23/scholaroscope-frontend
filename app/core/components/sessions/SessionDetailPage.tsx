@@ -84,7 +84,11 @@ import {
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { buildSessionLearnerAttendanceReportHref } from '@/app/core/lib/learnerIntentRoutes';
-import { isSafeNextPath } from '@/app/core/auth/navigation';
+import {
+    getOperationalDetailBackLabel,
+    resolveOperationalDetailBack,
+} from '@/app/core/lib/operationalDetailNavigation';
+import { reportAuthorityModeForOperatingContext } from '@/app/core/components/reports/reportIntent';
 
 function SessionDetailSkeleton() {
     return (
@@ -348,7 +352,15 @@ export function SessionDetailPage() {
         || capabilities.can_manage_assessments
     );
     const returnTo = searchParams.get('returnTo');
-    const backHref = isSafeNextPath(returnTo) ? returnTo : '/sessions';
+    const requestedAuthorityMode = searchParams.get('authority_mode');
+    const authorityMode = requestedAuthorityMode === 'teaching' || requestedAuthorityMode === 'supervision'
+        ? requestedAuthorityMode
+        : reportAuthorityModeForOperatingContext(activeOperatingContext);
+    const backHref = resolveOperationalDetailBack({
+        returnTo,
+        structuralFallback: '/sessions',
+    });
+    const backLabel = getOperationalDetailBackLabel(backHref);
     const sessionReturnTo = useMemo(() => {
         const query = searchParams.toString();
         return query ? `${pathname}?${query}` : pathname;
@@ -394,6 +406,7 @@ export function SessionDetailPage() {
         confirmTaughtOutcomes,
     } = useSessionDetail(hasValidSessionId ? sessionId : null, {
         includeOperationalData: isStaffAcademicViewer,
+        authorityMode,
     });
     const issuePreparedAssignmentMutation = useIssuePreparedAssignment();
     const {
@@ -403,7 +416,7 @@ export function SessionDetailPage() {
         enabled: isStaffAcademicViewer && Boolean(session?.lesson_plan_id),
     });
 
-    const { activeCohorts } = useSessionCohorts(sessionId, isStaffAcademicViewer);
+    const { activeCohorts } = useSessionCohorts(sessionId, isStaffAcademicViewer, authorityMode);
     const isCbcSession = session ? ['CBE', 'CBC'].includes(session.curriculum_type) : false;
 
     const isHistorical = session ? !session.is_current_year : false;
@@ -625,6 +638,7 @@ export function SessionDetailPage() {
             }
             return adminReportsAPI.exportAttendanceScope(format, {
                 sessionId: session.id,
+                authorityMode,
             });
         },
         'final attendance sheet',
@@ -1883,7 +1897,7 @@ export function SessionDetailPage() {
                     <Link href={backHref}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back
+                            {backLabel}
                         </Button>
                     </Link>
                     <h1 className="mt-3 text-2xl font-semibold text-gray-900">{session.title}</h1>
@@ -2185,7 +2199,7 @@ export function SessionDetailPage() {
                 <Link href={backHref}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        {teachingSurface ? 'Back to My Lessons' : 'Back'}
+                        {backLabel}
                     </Button>
                 </Link>
 

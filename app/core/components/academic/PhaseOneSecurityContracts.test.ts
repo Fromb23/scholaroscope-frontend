@@ -114,7 +114,9 @@ describe('Phase 1 academic security frontend contracts', () => {
     expect(learnerSession).not.toContain('attendance_count');
     expect(sessionHook).toContain('includeOperationalData');
     expect(sessionDetail).toContain('includeOperationalData: isStaffAcademicViewer');
-    expect(sessionDetail).toContain('useSessionCohorts(sessionId, isStaffAcademicViewer)');
+    expect(sessionDetail).toContain(
+      'useSessionCohorts(sessionId, isStaffAcademicViewer, authorityMode)',
+    );
     expect(sessionDetail).toContain("label=\"Your attendance\"");
   });
 

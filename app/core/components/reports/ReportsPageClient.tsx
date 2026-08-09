@@ -27,7 +27,7 @@ import {
   REPORT_HIERARCHY_STEPS,
 } from '@/app/core/components/reports/reportHierarchy';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
-import { useDashboardOverview } from '@/app/core/hooks/useReporting';
+import { useDashboardOverview, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
 import type { ReportExportFormat } from '@/app/core/types/reporting';
 
@@ -42,6 +42,7 @@ const REPORT_CARD_ACCENTS: Record<string, string> = {
 };
 
 export function ReportsPageClient() {
+  const authorityMode = useReportAuthorityMode();
   const { overview, loading, error } = useDashboardOverview();
   const hierarchy = getAdminReportLandingSections();
   const pageError = useMemo<AppError | null>(() => {
@@ -57,7 +58,7 @@ export function ReportsPageClient() {
   }, [error]);
 
   const { handleExport, exporting } = useReportExport(
-    (format) => adminReportsAPI.exportOverview(format),
+    (format) => adminReportsAPI.exportOverview(format, undefined, authorityMode),
     'reporting overview',
   );
   const organizationSummary = `${overview?.organization.name ?? '—'}${

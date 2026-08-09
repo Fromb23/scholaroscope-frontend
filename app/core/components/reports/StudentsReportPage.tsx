@@ -40,7 +40,7 @@ import {
 } from '@/app/core/components/reports/reportNavigation';
 import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
-import { useStudentReportCard } from '@/app/core/hooks/useReporting';
+import { useStudentReportCard, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import {
   formatPercent,
@@ -87,6 +87,7 @@ export function StudentsReportPage({
 }: {
   studentIdFromRoute?: number | null;
 } = {}) {
+  const authorityMode = useReportAuthorityMode();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -179,6 +180,7 @@ export function StudentsReportPage({
       selectedStudentId,
       format,
       selectedTermId,
+      authorityMode,
     );
   }, 'learner report');
 

@@ -12,6 +12,7 @@ import {
   sessionCohortAPI,
   SessionQueryParams,
   AttendanceQueryParams,
+  SessionReadAuthorityMode,
 } from '@/app/core/api/sessions';
 import { cohortAPI, cohortSubjectAPI } from '@/app/core/api/academic';
 import {
@@ -214,7 +215,10 @@ export const useTodaySessions = () => {
 
 export const useSessionDetail = (
   sessionId: number | null,
-  options?: { includeOperationalData?: boolean },
+  options?: {
+    includeOperationalData?: boolean;
+    authorityMode?: SessionReadAuthorityMode;
+  },
 ) => {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -226,6 +230,7 @@ export const useSessionDetail = (
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const includeOperationalData = options?.includeOperationalData ?? true;
+  const authorityMode = options?.authorityMode;
 
   const fetchClosureState = useCallback(async (): Promise<SessionClosureState | null> => {
     if (!sessionId || !includeOperationalData) {
@@ -234,7 +239,7 @@ export const useSessionDetail = (
     }
 
     try {
-      const data = await sessionAPI.getClosureState(sessionId);
+      const data = await sessionAPI.getClosureState(sessionId, authorityMode);
       setClosureState(data);
       return data;
     } catch (err) {
@@ -243,7 +248,7 @@ export const useSessionDetail = (
       setClosureState(null);
       throw new Error(message);
     }
-  }, [includeOperationalData, sessionId]);
+  }, [authorityMode, includeOperationalData, sessionId]);
 
   const fetchSession = useCallback(async (
     freshClosureState?: SessionClosureState | null,
@@ -253,14 +258,15 @@ export const useSessionDetail = (
     try {
       setLoading(true);
 
-      const sessionData = await sessionAPI.getById(sessionId);
+      const sessionData = await sessionAPI.getById(sessionId, authorityMode);
       const [attendanceData, closureData] = includeOperationalData
         ? await Promise.all([
           sessionAPI.getAttendanceRecords(sessionId, {
             page_size: 1000,
+            authority_mode: authorityMode,
           }),
           freshClosureState === undefined
-            ? sessionAPI.getClosureState(sessionId)
+            ? sessionAPI.getClosureState(sessionId, authorityMode)
             : Promise.resolve(freshClosureState),
         ])
         : [sessionData.attendance_records, null] as const;
@@ -310,7 +316,7 @@ export const useSessionDetail = (
     } finally {
       setLoading(false);
     }
-  }, [includeOperationalData, sessionId]);
+  }, [authorityMode, includeOperationalData, sessionId]);
 
   useEffect(() => { fetchSession(); }, [fetchSession]);
 
@@ -645,7 +651,11 @@ export const useCohortAttendanceSummary = (
 
 // ── useSessionCohorts ─────────────────────────────────────────────────────
 
-export const useSessionCohorts = (sessionId: number | null, enabled = true) => {
+export const useSessionCohorts = (
+  sessionId: number | null,
+  enabled = true,
+  authorityMode?: SessionReadAuthorityMode,
+) => {
   const [linkedCohorts, setLinkedCohorts] = useState<SessionCohort[]>([]);
   const [activeCohorts, setActiveCohorts] = useState<SessionCohort[]>([]);
   const [historicalCohorts, setHistoricalCohorts] = useState<SessionCohort[]>([]);
@@ -665,7 +675,7 @@ export const useSessionCohorts = (sessionId: number | null, enabled = true) => {
     }
     try {
       setLoading(true);
-      const data = await sessionCohortAPI.getLinkedCohorts(sessionId);
+      const data = await sessionCohortAPI.getLinkedCohorts(sessionId, authorityMode);
       const fallbackCohorts = data.cohorts ?? [];
       const activeItems = data.active_cohorts ?? fallbackCohorts.filter((cohort) => cohort.is_active !== false);
       const historicalItems = data.historical_cohorts ?? fallbackCohorts.filter((cohort) => cohort.is_active === false);
@@ -683,7 +693,7 @@ export const useSessionCohorts = (sessionId: number | null, enabled = true) => {
     } finally {
       setLoading(false);
     }
-  }, [enabled, sessionId]);
+  }, [authorityMode, enabled, sessionId]);
 
   useEffect(() => { fetchLinkedCohorts(); }, [fetchLinkedCohorts]);
 

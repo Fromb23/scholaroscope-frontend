@@ -135,7 +135,7 @@ export interface SessionQueryParams {
   session_date?: string;
   session_date__gte?: string;
   session_date__lte?: string;
-  authority_mode?: 'teaching';
+  authority_mode?: SessionReadAuthorityMode;
 }
 
 export interface SupervisedSessionQueryParams extends Omit<SessionQueryParams, 'authority_mode'> {
@@ -157,7 +157,10 @@ export interface AttendanceQueryParams {
   page?: number;
   page_size?: number;
   search?: string;
+  authority_mode?: SessionReadAuthorityMode;
 }
+
+export type SessionReadAuthorityMode = 'teaching' | 'supervision';
 
 export type SessionAttendanceQueryParams = Omit<AttendanceQueryParams, 'session'>;
 
@@ -227,8 +230,13 @@ export const sessionAPI = {
     options,
   ),
 
-  getById: async (id: number): Promise<SessionDetailResponse> => {
-    const res = await apiClient.get<SessionDetailResponse>(`/sessions/${id}/`);
+  getById: async (
+    id: number,
+    authorityMode?: SessionReadAuthorityMode,
+  ): Promise<SessionDetailResponse> => {
+    const res = await apiClient.get<SessionDetailResponse>(`/sessions/${id}/`, {
+      params: authorityMode ? { authority_mode: authorityMode } : undefined,
+    });
     return res.data;
   },
 
@@ -301,13 +309,17 @@ export const sessionAPI = {
     await apiClient.delete(`/sessions/${id}/`);
   },
 
-  getAttendanceSummary: async (id: number): Promise<AttendanceSummary> => {
-    const res = await apiClient.get<AttendanceSummary>(`/sessions/${id}/attendance_summary/`);
+  getAttendanceSummary: async (id: number, authorityMode?: SessionReadAuthorityMode): Promise<AttendanceSummary> => {
+    const res = await apiClient.get<AttendanceSummary>(`/sessions/${id}/attendance_summary/`, {
+      params: authorityMode ? { authority_mode: authorityMode } : undefined,
+    });
     return res.data;
   },
 
-  getClosureState: async (id: number): Promise<SessionClosureState> => {
-    const res = await apiClient.get<SessionClosureState>(`/sessions/${id}/closure-state/`);
+  getClosureState: async (id: number, authorityMode?: SessionReadAuthorityMode): Promise<SessionClosureState> => {
+    const res = await apiClient.get<SessionClosureState>(`/sessions/${id}/closure-state/`, {
+      params: authorityMode ? { authority_mode: authorityMode } : undefined,
+    });
     return res.data;
   },
 
@@ -473,8 +485,13 @@ export const cohortSubjectAPI = {
 // ── Session Cohort API ────────────────────────────────────────────────────
 
 export const sessionCohortAPI = {
-  getLinkedCohorts: async (sessionId: number): Promise<SessionCohortsResponse> => {
-    const res = await apiClient.get<SessionCohortsResponse>(`/sessions/${sessionId}/cohorts/`);
+  getLinkedCohorts: async (
+    sessionId: number,
+    authorityMode?: SessionReadAuthorityMode,
+  ): Promise<SessionCohortsResponse> => {
+    const res = await apiClient.get<SessionCohortsResponse>(`/sessions/${sessionId}/cohorts/`, {
+      params: authorityMode ? { authority_mode: authorityMode } : undefined,
+    });
     return res.data;
   },
 

@@ -30,7 +30,7 @@ import {
 } from '@/app/core/components/reports/ReportSummaryPrimitives';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import { ClassSubjectAssignmentParticipation } from '@/app/core/components/reports/ClassSubjectAssignmentParticipation';
-import { useClassSubjectReport, useInstructorCohortSubjects } from '@/app/core/hooks/useReporting';
+import { useClassSubjectReport, useInstructorCohortSubjects, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useAuth } from '@/app/context/AuthContext';
@@ -407,6 +407,7 @@ export function ClassSubjectReportPage({
   cohortIdOverride?: number | null;
   fallbackReturnTo?: string;
 } = {}) {
+  const authorityMode = useReportAuthorityMode();
   const params = useParams<{ id: string }>();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -460,6 +461,7 @@ export function ClassSubjectReportPage({
     }
 
     return learnerReportingAPI.exportClassSubjectReport(cohortId, {
+      authorityMode,
       format,
       cohortSubjectId,
       termId: selectedTermId,

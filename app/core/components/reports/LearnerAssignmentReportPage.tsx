@@ -145,10 +145,9 @@ export function LearnerAssignmentReportPage() {
   const highlightAssignment = parsePositiveNumber(
     searchParams.get('assignment') ?? searchParams.get('highlightAssignment'),
   );
-  const authorityMode = searchParams.get('authority_mode') === 'supervision' ? 'supervision' : 'teaching';
   const { report, loading, error, errorStatus, refetch } = useLearnerAssignmentReport(
     Number.isInteger(learnerId) && learnerId > 0 ? learnerId : null,
-    { cohortSubjectId, termId, academicYearId, assignmentId: highlightAssignment, authorityMode },
+    { cohortSubjectId, termId, academicYearId, assignmentId: highlightAssignment },
   );
   const returnTo = resolveOperationalDetailBack({
     returnTo: searchParams.get('returnTo'),

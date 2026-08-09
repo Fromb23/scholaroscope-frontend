@@ -46,8 +46,21 @@ describe('SessionDetailPage attendance learner links', () => {
   it('rejects unsafe returnTo values on the session detail back link', () => {
     const component = source();
 
-    expect(component).toContain('isSafeNextPath(returnTo) ? returnTo : \'/sessions\'');
+    expect(component).toContain('resolveOperationalDetailBack({');
+    expect(component).toContain("structuralFallback: '/sessions'");
+    expect(component).toContain('getOperationalDetailBackLabel(backHref)');
     expect(component).not.toContain('returnTo?.startsWith(\'/\') ? returnTo : \'/sessions\'');
+    expect(component).not.toContain('router.back()');
+  });
+
+  it('reloads report-origin session reads with the explicit authority mode', () => {
+    const component = source();
+
+    expect(component).toContain("searchParams.get('authority_mode')");
+    expect(component).toContain("requestedAuthorityMode === 'teaching' || requestedAuthorityMode === 'supervision'");
+    expect(component).toContain('authorityMode,');
+    expect(component).toContain('useSessionCohorts(sessionId, isStaffAcademicViewer, authorityMode)');
+    expect(component).toContain('{backLabel}');
   });
 
   it('renders contextual source-record failure states for Portfolio navigation', () => {

@@ -78,4 +78,25 @@ describe('session API complete pagination', () => {
 
     await expect(sessionAPI.getAllComplete()).rejects.toThrow('complete result set');
   });
+
+  it('propagates supervision authority to session-detail reads', async () => {
+    get.mockResolvedValue({ data: {} });
+
+    await sessionAPI.getById(42, 'supervision');
+    await sessionAPI.getClosureState(42, 'supervision');
+    await sessionAPI.getAttendanceRecords(42, {
+      page_size: 1000,
+      authority_mode: 'supervision',
+    });
+
+    expect(get).toHaveBeenNthCalledWith(1, '/sessions/42/', {
+      params: { authority_mode: 'supervision' },
+    });
+    expect(get).toHaveBeenNthCalledWith(2, '/sessions/42/closure-state/', {
+      params: { authority_mode: 'supervision' },
+    });
+    expect(get).toHaveBeenNthCalledWith(3, '/sessions/42/attendance-records/', {
+      params: { page_size: 1000, authority_mode: 'supervision' },
+    });
+  });
 });

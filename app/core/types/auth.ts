@@ -111,11 +111,13 @@ export interface WorkspaceCapabilities {
   authorization?: {
     enforced: boolean;
     permission_keys: string[];
+    operating_contexts?: OperatingContext[];
     roles: Array<{
       id: number | null;
       name: string;
       slug?: string;
       role_kind?: string;
+      responsibility_type?: 'NONE' | 'TEACHING' | string;
       is_workspace_admin?: boolean;
       assignment_id?: number;
       legacy_role?: string;

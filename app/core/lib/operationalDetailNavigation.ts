@@ -19,6 +19,25 @@ export function buildAssignmentDetailHref(
   return withReturnTo(`/academic/cohorts/${cohortId}/assignments/${assignmentId}`, returnTo);
 }
 
+export type OperationalAuthorityMode = 'teaching' | 'supervision';
+
+export function buildSessionDetailHref(
+  sessionId: number,
+  options: {
+    authorityMode: OperationalAuthorityMode;
+    section?: 'attendance';
+    returnTo?: string | null;
+  },
+): string {
+  const params = new URLSearchParams({
+    authority_mode: options.authorityMode,
+  });
+  if (options.section) params.set('section', options.section);
+  const safeReturnTo = parseAppDestination(options.returnTo);
+  if (safeReturnTo) params.set('returnTo', safeReturnTo);
+  return `/sessions/${sessionId}?${params.toString()}`;
+}
+
 export function resolveOperationalDetailBack(options: {
   returnTo?: string | null;
   hierarchicalParent?: string | null;
@@ -35,6 +54,7 @@ export function getOperationalDetailBackLabel(destination: string): string {
   const safe = parseAppDestination(destination);
   if (!safe) return 'Back';
   if (/^\/reports\/(?:instructor\/)?cohort-subjects\/\d+/.test(safe)) {
+    if (safe.includes('projection=attendance')) return 'Back to Attendance';
     if (safe.includes('projection=assessments-results')) return 'Back to Assessments & Results';
     if (safe.includes('projection=assignments')) return 'Back to Assignments';
     return 'Back to Class Subject Report';
@@ -46,7 +66,9 @@ export function getOperationalDetailBackLabel(destination: string): string {
     return 'Back to Assignments';
   }
   if (/^\/lesson-plans\//.test(safe)) return 'Back to Lesson Preparation';
+  if (/^\/dashboard\/instructor(?:[/?#]|$)/.test(safe)) return 'Back to My Lessons';
   if (/^\/sessions\//.test(safe)) return 'Back to Lesson';
+  if (/^\/sessions(?:[/?#]|$)/.test(safe)) return 'Back to Sessions';
   if (/^\/assessments(?:[/?#]|$)/.test(safe)) return 'Back to Assessments';
   return 'Back';
 }

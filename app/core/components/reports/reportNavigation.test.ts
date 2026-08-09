@@ -15,6 +15,7 @@ import {
   buildLearnerReportHref,
   buildLearnerSubjectReportHref,
   buildReportReturnTo,
+  buildSessionReportHref,
   buildExactReportReturnTo,
   buildSubjectReportHref,
   parsePositiveReportParam,
@@ -216,6 +217,21 @@ describe('report navigation helpers', () => {
     ).toBe(
       '/reports/instructor/cohort-subjects/3?projection=assignments&term=1&q=revision&page=2&returnTo=%2Freports%2Finstructor',
     );
+  });
+
+  it('builds an attendance session destination with explicit authority and return state', () => {
+    const origin = '/reports/instructor/cohort-subjects/3?projection=attendance&term=1&page=2';
+    const href = buildSessionReportHref(42, {
+      projection: 'attendance',
+      authorityMode: 'teaching',
+      returnTo: origin,
+    });
+    const url = new URL(href, 'https://scholaroscope.local');
+
+    expect(url.pathname).toBe('/sessions/42');
+    expect(url.searchParams.get('section')).toBe('attendance');
+    expect(url.searchParams.get('authority_mode')).toBe('teaching');
+    expect(url.searchParams.get('returnTo')).toBe(origin);
   });
 
   it('prefers returnTo when resolving back navigation', () => {
