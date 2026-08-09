@@ -3,21 +3,12 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-  ArrowLeft,
-  ClipboardList,
-  FileBarChart,
-  RefreshCw,
-  ShieldAlert,
-} from 'lucide-react';
+import { ArrowLeft, ClipboardList, FileBarChart, RefreshCw, ShieldAlert } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import {
-  BackgroundRefreshBadge,
-  ReportPreparingState,
-} from '@/app/components/ui/loading';
+import { BackgroundRefreshBadge, ReportPreparingState } from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
 import {
@@ -36,6 +27,7 @@ import {
 } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
+import { useAuth } from '@/app/context/AuthContext';
 import type { TeacherPerformanceAssignedSubject } from '@/app/core/types/reporting';
 import {
   buildReflectionSubjectKey,
@@ -70,6 +62,7 @@ export function TeacherPerformanceReportPage({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { activeOperatingContext, user } = useAuth();
   const selectedTermId = parsePositiveNumber(searchParams.get('term'));
   const selectedCohortSubjectId = parsePositiveNumber(
     searchParams.get('cohortSubject') ?? searchParams.get('cohort_subject_id'),
@@ -86,7 +79,7 @@ export function TeacherPerformanceReportPage({
     { enabled: mode === 'self' },
   );
   const adminReportQuery = useAdminInstructorTeacherReport(
-    mode === 'admin' ? instructorId ?? null : null,
+    mode === 'admin' ? (instructorId ?? null) : null,
     {
       termId: selectedTermId,
       cohortSubjectId: selectedCohortSubjectId,
@@ -98,10 +91,11 @@ export function TeacherPerformanceReportPage({
   const report = activeQuery.report;
   const loading = activeQuery.loading;
   const error = activeQuery.error;
+  const isCurrentInstructor = mode === 'self' && (!report || report.instructor.id === user?.id);
+  const isMyTeachingSelfReport = activeOperatingContext === 'MY_TEACHING' && isCurrentInstructor;
 
-  const [selectedReflectionSubject, setSelectedReflectionSubject] = useState(
-    ALL_REFLECTION_SUBJECTS,
-  );
+  const [selectedReflectionSubject, setSelectedReflectionSubject] =
+    useState(ALL_REFLECTION_SUBJECTS);
   const [visibleReflectionCount, setVisibleReflectionCount] = useState(
     INITIAL_REFLECTION_BATCH_SIZE,
   );
@@ -109,35 +103,33 @@ export function TeacherPerformanceReportPage({
     () => new Set(),
   );
 
-  const updateQuery = useCallback((updates: {
-    term?: number | null;
-    cohortSubjectId?: number | null;
-  }) => {
-    const nextParams = new URLSearchParams(searchParams.toString());
+  const updateQuery = useCallback(
+    (updates: { term?: number | null; cohortSubjectId?: number | null }) => {
+      const nextParams = new URLSearchParams(searchParams.toString());
 
-    if (updates.term !== undefined) {
-      if (updates.term) {
-        nextParams.set('term', String(updates.term));
-      } else {
-        nextParams.delete('term');
+      if (updates.term !== undefined) {
+        if (updates.term) {
+          nextParams.set('term', String(updates.term));
+        } else {
+          nextParams.delete('term');
+        }
       }
-    }
 
-    if (updates.cohortSubjectId !== undefined) {
-      if (updates.cohortSubjectId) {
-        nextParams.set('cohortSubject', String(updates.cohortSubjectId));
-        nextParams.delete('cohort_subject_id');
-      } else {
-        nextParams.delete('cohortSubject');
-        nextParams.delete('cohort_subject_id');
+      if (updates.cohortSubjectId !== undefined) {
+        if (updates.cohortSubjectId) {
+          nextParams.set('cohortSubject', String(updates.cohortSubjectId));
+          nextParams.delete('cohort_subject_id');
+        } else {
+          nextParams.delete('cohortSubject');
+          nextParams.delete('cohort_subject_id');
+        }
       }
-    }
 
-    const nextUrl = nextParams.toString()
-      ? `${pathname}?${nextParams.toString()}`
-      : pathname;
-    router.replace(nextUrl, { scroll: false });
-  }, [pathname, router, searchParams]);
+      const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
+      router.replace(nextUrl, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   const subjectOptions = useMemo(() => {
     if (mode === 'self') {
@@ -153,18 +145,22 @@ export function TeacherPerformanceReportPage({
     }));
   }, [mode, report?.assigned_subjects, selfCohortSubjectsQuery.cohortSubjects]);
 
-  const reflectionSubjectOptions = useMemo(() => ([
-    { value: ALL_REFLECTION_SUBJECTS, label: 'All subjects' },
-    ...(report?.assigned_subjects ?? []).map((item) => ({
-      value: String(item.cohort_subject_id),
-      label: `${item.cohort_name} · ${item.subject_name}`,
-    })),
-  ]), [report?.assigned_subjects]);
+  const reflectionSubjectOptions = useMemo(
+    () => [
+      { value: ALL_REFLECTION_SUBJECTS, label: 'All subjects' },
+      ...(report?.assigned_subjects ?? []).map((item) => ({
+        value: String(item.cohort_subject_id),
+        label: `${item.cohort_name} · ${item.subject_name}`,
+      })),
+    ],
+    [report?.assigned_subjects],
+  );
 
   const assignedReflectionSubjectsById = useMemo(
-    () => new Map(
-      (report?.assigned_subjects ?? []).map((item) => [String(item.cohort_subject_id), item]),
-    ),
+    () =>
+      new Map(
+        (report?.assigned_subjects ?? []).map((item) => [String(item.cohort_subject_id), item]),
+      ),
     [report?.assigned_subjects],
   );
 
@@ -185,9 +181,10 @@ export function TeacherPerformanceReportPage({
   );
 
   const filteredReflections = useMemo(() => {
-    const selectedCohortSubjectId = selectedReflectionSubject === ALL_REFLECTION_SUBJECTS
-      ? null
-      : Number(selectedReflectionSubject);
+    const selectedCohortSubjectId =
+      selectedReflectionSubject === ALL_REFLECTION_SUBJECTS
+        ? null
+        : Number(selectedReflectionSubject);
     const matchingReflections = reflectionItems.filter((item) => {
       if (selectedCohortSubjectId == null) {
         return true;
@@ -237,11 +234,7 @@ export function TeacherPerformanceReportPage({
 
     return mode === 'self'
       ? learnerReportingAPI.exportInstructorTeacherReport(format, params)
-      : learnerReportingAPI.exportAdminInstructorTeacherReport(
-          instructorId ?? 0,
-          format,
-          params,
-        );
+      : learnerReportingAPI.exportAdminInstructorTeacherReport(instructorId ?? 0, format, params);
   }, 'teacher report');
 
   const toggleReflectionExpanded = useCallback((reflectionKey: string) => {
@@ -317,9 +310,12 @@ export function TeacherPerformanceReportPage({
             </Button>
           </Link>
           <div className="mt-3">
-            <h1 className="text-2xl font-semibold theme-text">Teacher Report</h1>
+            <h1 className="text-2xl font-semibold theme-text">
+              {isMyTeachingSelfReport ? 'My Teaching Report' : 'Instructor Report'}
+            </h1>
             <p className="mt-1 text-sm theme-muted">
-              Visibility into delivery, coverage, evidence, learner response, and reflection discipline.
+              Visibility into delivery, coverage, evidence, learner response, and reflection
+              discipline.
             </p>
           </div>
         </div>
@@ -340,37 +336,65 @@ export function TeacherPerformanceReportPage({
       ) : null}
 
       <Card>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold theme-text">
-                {report?.instructor.name || 'Teacher report'}
-              </h2>
-              {report ? (
-                <Badge variant={toneToBadgeVariant(teacherStatusTone(report.headline.overall_visibility_status))}>
-                  {friendlyTeacherStatusLabel(report.headline.overall_visibility_status)}
-                </Badge>
-              ) : null}
+        <div
+          className={`grid gap-4 ${isMyTeachingSelfReport ? 'lg:grid-cols-2' : 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]'}`}
+        >
+          {!isMyTeachingSelfReport ? (
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold theme-text">
+                  {report?.instructor.name || 'Teacher report'}
+                </h2>
+                {report ? (
+                  <Badge
+                    variant={toneToBadgeVariant(
+                      teacherStatusTone(report.headline.overall_visibility_status),
+                    )}
+                  >
+                    {friendlyTeacherStatusLabel(report.headline.overall_visibility_status)}
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="mt-2 text-sm theme-muted">
+                {report?.instructor.email || 'No teacher email available yet.'}
+              </p>
+              <p className="mt-1 text-sm theme-subtle">
+                {report?.organization.name || 'Organization not available'}
+              </p>
             </div>
-            <p className="mt-2 text-sm theme-muted">{report?.instructor.email || 'No teacher email available yet.'}</p>
-            <p className="mt-1 text-sm theme-subtle">{report?.organization.name || 'Organization not available'}</p>
-          </div>
+          ) : null}
 
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Reporting Period</p>
-            <p className="mt-2 text-sm font-medium theme-text">{report?.period.label || 'All visible records'}</p>
+            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">
+              Reporting Period
+            </p>
+            <p className="mt-2 text-sm font-medium theme-text">
+              {report?.period.label || 'All visible records'}
+            </p>
             <p className="mt-1 text-sm theme-muted">
               Generated {report ? formatReportDate(report.generated_at) : 'No date yet'}
             </p>
+            {isMyTeachingSelfReport && report ? (
+              <Badge
+                className="mt-2"
+                variant={toneToBadgeVariant(
+                  teacherStatusTone(report.headline.overall_visibility_status),
+                )}
+              >
+                {friendlyTeacherStatusLabel(report.headline.overall_visibility_status)}
+              </Badge>
+            ) : null}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <Select
               label="Term"
               value={selectedTermId ? String(selectedTermId) : ''}
-              onChange={(event) => updateQuery({
-                term: event.target.value ? Number(event.target.value) : null,
-              })}
+              onChange={(event) =>
+                updateQuery({
+                  term: event.target.value ? Number(event.target.value) : null,
+                })
+              }
               options={[
                 { value: '', label: termsLoading ? 'Loading terms...' : 'All visible terms' },
                 ...terms.map((term) => ({
@@ -382,13 +406,12 @@ export function TeacherPerformanceReportPage({
             <Select
               label="Assigned Subject"
               value={selectedCohortSubjectId ? String(selectedCohortSubjectId) : ''}
-              onChange={(event) => updateQuery({
-                cohortSubjectId: event.target.value ? Number(event.target.value) : null,
-              })}
-              options={[
-                { value: '', label: 'All assigned subjects' },
-                ...subjectOptions,
-              ]}
+              onChange={(event) =>
+                updateQuery({
+                  cohortSubjectId: event.target.value ? Number(event.target.value) : null,
+                })
+              }
+              options={[{ value: '', label: 'All assigned subjects' }, ...subjectOptions]}
             />
           </div>
         </div>
@@ -413,7 +436,9 @@ export function TeacherPerformanceReportPage({
           <Card>
             <div className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5 theme-subtle" />
-              <h2 className="text-lg font-semibold theme-text">What This Means</h2>
+              <h2 className="text-lg font-semibold theme-text">
+                {isMyTeachingSelfReport ? 'My Teaching Performance' : 'What This Means'}
+              </h2>
             </div>
             <p className="mt-4 text-sm theme-muted">{report.summary}</p>
           </Card>
@@ -448,28 +473,40 @@ export function TeacherPerformanceReportPage({
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="theme-muted">Completed sessions</span>
-                  <span className="font-medium theme-text">{report.reflection_summary.completed_sessions}</span>
+                  <span className="font-medium theme-text">
+                    {report.reflection_summary.completed_sessions}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="theme-muted">Missing reflections</span>
-                  <span className="font-medium theme-text">{report.reflection_summary.missing_reflection_count}</span>
+                  <span className="font-medium theme-text">
+                    {report.reflection_summary.missing_reflection_count}
+                  </span>
                 </div>
                 {report.reflection_summary.repeated_themes.length > 0 ? (
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Repeated Themes</p>
+                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">
+                      Repeated Themes
+                    </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {report.reflection_summary.repeated_themes.map((item) => (
-                        <Badge key={item} variant="default">{item}</Badge>
+                        <Badge key={item} variant="default">
+                          {item}
+                        </Badge>
                       ))}
                     </div>
                   </div>
                 ) : null}
                 {report.reflection_summary.repeated_gaps.length > 0 ? (
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Repeated Gaps</p>
+                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">
+                      Repeated Gaps
+                    </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {report.reflection_summary.repeated_gaps.map((item) => (
-                        <Badge key={item} variant="warning">{item}</Badge>
+                        <Badge key={item} variant="warning">
+                          {item}
+                        </Badge>
                       ))}
                     </div>
                   </div>
@@ -482,11 +519,16 @@ export function TeacherPerformanceReportPage({
             <Card>
               <h2 className="text-lg font-semibold theme-text">Strengths</h2>
               {report.strengths.length === 0 ? (
-                <p className="mt-4 text-sm theme-muted">No strong visibility signals are available yet.</p>
+                <p className="mt-4 text-sm theme-muted">
+                  No strong visibility signals are available yet.
+                </p>
               ) : (
                 <ul className="mt-4 space-y-3">
                   {report.strengths.map((item) => (
-                    <li key={`${item.label}-${item.metric}`} className="rounded-lg border theme-border theme-surface-muted px-4 py-3">
+                    <li
+                      key={`${item.label}-${item.metric}`}
+                      className="rounded-lg border theme-border theme-surface-muted px-4 py-3"
+                    >
                       <p className="text-sm font-medium theme-text">{item.label}</p>
                       <p className="mt-1 text-sm theme-muted">{item.metric}</p>
                       <p className="mt-1 text-sm theme-subtle">{item.note}</p>
@@ -502,11 +544,16 @@ export function TeacherPerformanceReportPage({
                 <h2 className="text-lg font-semibold theme-text">Areas Needing Attention</h2>
               </div>
               {report.gaps.length === 0 ? (
-                <p className="mt-4 text-sm theme-muted">No follow-up areas are currently flagged.</p>
+                <p className="mt-4 text-sm theme-muted">
+                  No follow-up areas are currently flagged.
+                </p>
               ) : (
                 <ul className="mt-4 space-y-3">
                   {report.gaps.map((item) => (
-                    <li key={`${item.label}-${item.metric}`} className="rounded-lg border theme-border theme-surface-muted px-4 py-3">
+                    <li
+                      key={`${item.label}-${item.metric}`}
+                      className="rounded-lg border theme-border theme-surface-muted px-4 py-3"
+                    >
                       <p className="text-sm font-medium theme-text">{item.label}</p>
                       <p className="mt-1 text-sm theme-muted">{item.metric}</p>
                       <p className="mt-1 text-sm theme-subtle">{item.note}</p>
@@ -538,7 +585,9 @@ export function TeacherPerformanceReportPage({
           <Card>
             <div className="flex items-center gap-2">
               <FileBarChart className="h-5 w-5 theme-subtle" />
-              <h2 className="text-lg font-semibold theme-text">Assigned Subject Summary</h2>
+              <h2 className="text-lg font-semibold theme-text">
+                {isMyTeachingSelfReport ? 'My Assigned Subjects' : 'Assigned Subject Summary'}
+              </h2>
             </div>
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -559,11 +608,17 @@ export function TeacherPerformanceReportPage({
                       <td className="px-3 py-3 theme-text">{item.cohort_name}</td>
                       <td className="px-3 py-3">
                         <div className="font-medium theme-text">{item.subject_name}</div>
-                        <div className="text-xs theme-subtle">{item.curriculum_type || 'Curriculum not set'}</div>
+                        <div className="text-xs theme-subtle">
+                          {item.curriculum_type || 'Curriculum not set'}
+                        </div>
                       </td>
                       <td className="px-3 py-3 text-right theme-muted">{item.learners_total}</td>
-                      <td className="px-3 py-3 text-right theme-muted">{item.sessions_completed}</td>
-                      <td className="px-3 py-3 text-right theme-muted">{formatReportPercent(item.coverage_percentage)}</td>
+                      <td className="px-3 py-3 text-right theme-muted">
+                        {item.sessions_completed}
+                      </td>
+                      <td className="px-3 py-3 text-right theme-muted">
+                        {formatReportPercent(item.coverage_percentage)}
+                      </td>
                       <td className="px-3 py-3 text-right theme-muted">{item.evidence_count}</td>
                       <td className="px-3 py-3">
                         <Badge variant={toneToBadgeVariant(teacherStatusTone(item.risk_level))}>
@@ -585,7 +640,8 @@ export function TeacherPerformanceReportPage({
                     <h2 className="text-lg font-semibold theme-text">Latest Reflections</h2>
                     {reflectionItems.length > 0 ? (
                       <p className="mt-1 text-sm theme-muted">
-                        Showing {visibleReflections.length} of {filteredReflections.length} reflections
+                        Showing {visibleReflections.length} of {filteredReflections.length}{' '}
+                        reflections
                       </p>
                     ) : null}
                   </div>
@@ -593,9 +649,9 @@ export function TeacherPerformanceReportPage({
                     <Select
                       label="Filter reflections by subject"
                       value={selectedReflectionSubject}
-                      onChange={(event) => setSelectedReflectionSubject(
-                        event.target.value || ALL_REFLECTION_SUBJECTS,
-                      )}
+                      onChange={(event) =>
+                        setSelectedReflectionSubject(event.target.value || ALL_REFLECTION_SUBJECTS)
+                      }
                       options={reflectionSubjectOptions}
                     />
                   </div>
@@ -604,7 +660,9 @@ export function TeacherPerformanceReportPage({
                 {reflectionItems.length === 0 ? (
                   <p className="text-sm theme-muted">No reflections recorded yet.</p>
                 ) : filteredReflections.length === 0 ? (
-                  <p className="text-sm theme-muted">No reflections recorded for this subject yet.</p>
+                  <p className="text-sm theme-muted">
+                    No reflections recorded for this subject yet.
+                  </p>
                 ) : (
                   <>
                     <div className="space-y-3">
@@ -628,10 +686,13 @@ export function TeacherPerformanceReportPage({
                             </p>
                             <p
                               className={`mt-3 text-sm theme-muted ${
-                                isExpanded || !item.canExpand ? 'whitespace-pre-line break-words' : ''
+                                isExpanded || !item.canExpand
+                                  ? 'whitespace-pre-line break-words'
+                                  : ''
                               }`}
                             >
-                              {reflectionText || 'No reflection text is available in this report payload.'}
+                              {reflectionText ||
+                                'No reflection text is available in this report payload.'}
                             </p>
                             {item.hasPayloadWarning ? (
                               <p className="mt-2 text-xs font-medium text-amber-700">
@@ -660,9 +721,11 @@ export function TeacherPerformanceReportPage({
                         variant="secondary"
                         size="sm"
                         className="self-start"
-                        onClick={() => setVisibleReflectionCount(
-                          (current) => current + REFLECTION_BATCH_INCREMENT,
-                        )}
+                        onClick={() =>
+                          setVisibleReflectionCount(
+                            (current) => current + REFLECTION_BATCH_INCREMENT,
+                          )
+                        }
                       >
                         Show more reflections
                       </Button>

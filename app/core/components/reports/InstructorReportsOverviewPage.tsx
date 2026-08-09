@@ -1,13 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import {
-  BookOpen,
-  ClipboardList,
-  FileBarChart,
-  Calendar,
-  Users,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { BookOpen, ClipboardList, FileBarChart, Calendar, Users, ChevronDown } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -41,13 +37,19 @@ function InstructorReportsOverviewSkeleton() {
         <Skeleton className="h-8 w-8" rounded="full" />
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => <CardSkeleton key={index} lines={3} />)}
+        {Array.from({ length: 4 }).map((_, index) => (
+          <CardSkeleton key={index} lines={3} />
+        ))}
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => <SkeletonStatCard key={index} />)}
+        {Array.from({ length: 4 }).map((_, index) => (
+          <SkeletonStatCard key={index} />
+        ))}
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, index) => <CardSkeleton key={index} lines={4} />)}
+        {Array.from({ length: 4 }).map((_, index) => (
+          <CardSkeleton key={index} lines={4} />
+        ))}
       </div>
     </div>
   );
@@ -55,16 +57,37 @@ function InstructorReportsOverviewSkeleton() {
 
 export function InstructorReportsOverviewPage() {
   const { overview, loading, error } = useInstructorOverview();
+  const searchParams = useSearchParams();
+  const assignmentFilterSignature = `${searchParams.get('term') ?? ''}:${searchParams.get('cohort_subject') ?? ''}`;
+  const [openCohortSubjectId, setOpenCohortSubjectId] = useState<number | null>(null);
 
-  const averageAttendance = average(overview?.assigned_cohort_subjects.map((item) => item.average_attendance) ?? []);
+  useEffect(() => {
+    setOpenCohortSubjectId(null);
+  }, [assignmentFilterSignature]);
+
+  useEffect(() => {
+    if (
+      openCohortSubjectId !== null &&
+      !overview?.assigned_cohort_subjects.some((item) => item.id === openCohortSubjectId)
+    ) {
+      setOpenCohortSubjectId(null);
+    }
+  }, [openCohortSubjectId, overview?.assigned_cohort_subjects]);
+
+  const averageAttendance = average(
+    overview?.assigned_cohort_subjects.map((item) => item.average_attendance) ?? [],
+  );
   const totalSessions = (overview?.assigned_cohort_subjects ?? []).reduce(
     (sum, item) => sum + (item.session_count ?? 0),
     0,
   );
-  const reportingCounts = (overview?.assigned_cohort_subjects ?? []).reduce<Record<string, number>>((acc, item) => {
-    acc[item.reporting_source] = (acc[item.reporting_source] ?? 0) + 1;
-    return acc;
-  }, {});
+  const reportingCounts = (overview?.assigned_cohort_subjects ?? []).reduce<Record<string, number>>(
+    (acc, item) => {
+      acc[item.reporting_source] = (acc[item.reporting_source] ?? 0) + 1;
+      return acc;
+    },
+    {},
+  );
 
   if (loading) return <InstructorReportsOverviewSkeleton />;
   if (error) return <ErrorBanner message={error} onDismiss={() => {}} />;
@@ -86,14 +109,16 @@ export function InstructorReportsOverviewPage() {
     },
     {
       title: 'Class Subject Reports',
-      description: 'Choose a cohort subject, then open its class report with support lists and interventions.',
+      description:
+        'Choose a cohort subject, then open its class report with support lists and interventions.',
       href: '/reports/instructor/cohort-subjects',
       actionLabel: 'Choose Class',
       icon: BookOpen,
     },
     {
       title: 'Teacher Report',
-      description: 'View teaching visibility, coverage, evidence, and reflection discipline in one report.',
+      description:
+        'View teaching visibility, coverage, evidence, and reflection discipline in one report.',
       href: '/reports/instructor/teacher-report',
       actionLabel: 'Open Teacher Report',
       icon: ClipboardList,
@@ -106,7 +131,8 @@ export function InstructorReportsOverviewPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">My Reports</h1>
           <p className="mt-1 text-gray-500">
-            Open summary-first reports for learners, classes, subjects, and your own teaching visibility.
+            Open summary-first reports for learners, classes, subjects, and your own teaching
+            visibility.
           </p>
         </div>
         <FileBarChart className="h-7 w-7 text-green-600" />
@@ -128,7 +154,9 @@ export function InstructorReportsOverviewPage() {
               </div>
               <div className="mt-4">
                 <Link href={item.href}>
-                  <Button variant="secondary" size="sm">{item.actionLabel}</Button>
+                  <Button variant="secondary" size="sm">
+                    {item.actionLabel}
+                  </Button>
                 </Link>
               </div>
             </Card>
@@ -137,26 +165,64 @@ export function InstructorReportsOverviewPage() {
       </div>
 
       <StatStrip mdColumns={2} xlColumns={4}>
-        <StatsCard title="Assigned Cohort Subjects" value={overview?.total_assigned_cohort_subjects ?? 0} icon={BookOpen} color="blue" />
-        <StatsCard title="Visible Learners" value={overview?.total_visible_learners ?? 0} icon={Users} color="green" />
-        <StatsCard title="Average Attendance" value={formatPercent(averageAttendance)} icon={Calendar} color="indigo" />
+        <StatsCard
+          title="Assigned Cohort Subjects"
+          value={overview?.total_assigned_cohort_subjects ?? 0}
+          icon={BookOpen}
+          color="blue"
+        />
+        <StatsCard
+          title="Visible Learners"
+          value={overview?.total_visible_learners ?? 0}
+          icon={Users}
+          color="green"
+        />
+        <StatsCard
+          title="Average Attendance"
+          value={formatPercent(averageAttendance)}
+          icon={Calendar}
+          color="indigo"
+        />
         <StatsCard title="Total Sessions" value={totalSessions} icon={Calendar} color="purple" />
       </StatStrip>
 
       <StatStrip mdColumns={2} xlColumns={4}>
-        <StatsCard title="Generic Subjects" value={reportingCounts.generic ?? 0} icon={BookOpen} color="blue" />
-        <StatsCard title="CBC Subjects" value={reportingCounts.cbc ?? 0} icon={BookOpen} color="green" />
-        <StatsCard title="Pending" value={reportingCounts.cambridge_pending ?? 0} icon={BookOpen} color="yellow" />
-        <StatsCard title="Unsupported" value={reportingCounts.unsupported ?? 0} icon={BookOpen} color="orange" />
+        <StatsCard
+          title="Generic Subjects"
+          value={reportingCounts.generic ?? 0}
+          icon={BookOpen}
+          color="blue"
+        />
+        <StatsCard
+          title="CBC Subjects"
+          value={reportingCounts.cbc ?? 0}
+          icon={BookOpen}
+          color="green"
+        />
+        <StatsCard
+          title="Pending"
+          value={reportingCounts.cambridge_pending ?? 0}
+          icon={BookOpen}
+          color="yellow"
+        />
+        <StatsCard
+          title="Unsupported"
+          value={reportingCounts.unsupported ?? 0}
+          icon={BookOpen}
+          color="orange"
+        />
       </StatStrip>
 
       {!overview || overview.assigned_cohort_subjects.length === 0 ? (
         <Card>
           <div className="py-16 text-center">
             <BookOpen className="mx-auto h-12 w-12 text-gray-300" />
-            <p className="mt-3 text-sm font-medium text-gray-900">No reportable classes are available yet</p>
+            <p className="mt-3 text-sm font-medium text-gray-900">
+              No reportable classes are available yet
+            </p>
             <p className="mt-1 text-xs text-gray-500">
-              Your classes are not assigned yet. Once your administrator assigns classes or subjects, progress tools will appear here.
+              Your classes are not assigned yet. Once your administrator assigns classes or
+              subjects, progress tools will appear here.
             </p>
           </div>
         </Card>
@@ -165,42 +231,83 @@ export function InstructorReportsOverviewPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-900">Assigned Cohort Subjects</h2>
             <Link href="/reports/instructor/cohort-subjects">
-              <Button variant="secondary" size="sm">View All</Button>
+              <Button variant="secondary" size="sm">
+                View All
+              </Button>
             </Link>
           </div>
 
-          <div className="grid gap-4">
-            {overview.assigned_cohort_subjects.map((item) => (
-              <CurriculumSubjectReportCard
-                key={item.id}
-                heading={`${item.cohort_name} — ${item.subject_name}`}
-                subheading={`${item.subject_code} · ${item.academic_year}`}
-                reportingSource={item.reporting_source}
-                performanceSource={item.performance_source}
-                curriculumType={item.curriculum_type}
-                status={item.status}
-                note={item.note}
-                learnerCount={item.active_learner_count}
-                averageAttendance={item.average_attendance}
-                coverage={item.coverage}
-                assessmentCompletion={item.assessment_completion}
-                genericPerformance={toGenericPerformance(item.generic_performance ?? item.generic_summary)}
-                cbcPerformance={toCbcPerformance(item.cbc_performance ?? item.cbc_summary)}
-                averageGrade={item.average_grade}
-                averageGradeNote={item.average_grade_note}
-                actions={(
-                  <Link href={`/reports/instructor/cohort-subjects/${item.id}`}>
-                    <Button variant="ghost" size="sm">Open</Button>
-                  </Link>
-                )}
-                footer={(
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="default">Sessions {formatNumber(item.session_count, 0)}</Badge>
-                    <Badge variant="blue">Completed {formatNumber(item.completed_session_count, 0)}</Badge>
-                  </div>
-                )}
-              />
-            ))}
+          <div className="space-y-3">
+            {overview.assigned_cohort_subjects.map((item) => {
+              const open = openCohortSubjectId === item.id;
+              const panelId = `assigned-cohort-subject-panel-${item.id}`;
+              return (
+                <div
+                  key={item.id}
+                  className="overflow-hidden rounded-xl border theme-border theme-surface"
+                >
+                  <button
+                    type="button"
+                    className="theme-focus-ring flex w-full items-center justify-between gap-4 px-4 py-4 text-left"
+                    aria-expanded={open}
+                    aria-controls={panelId}
+                    onClick={() => setOpenCohortSubjectId(open ? null : item.id)}
+                  >
+                    <span>
+                      <span className="block font-medium theme-text">
+                        {item.cohort_name} — {item.subject_name}
+                      </span>
+                      <span className="mt-1 block text-sm theme-subtle">
+                        {item.subject_code} · {item.academic_year}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      className={`h-5 w-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  {open ? (
+                    <div id={panelId} role="region" className="border-t theme-border p-3">
+                      <CurriculumSubjectReportCard
+                        heading={`${item.cohort_name} — ${item.subject_name}`}
+                        subheading={`${item.subject_code} · ${item.academic_year}`}
+                        reportingSource={item.reporting_source}
+                        performanceSource={item.performance_source}
+                        curriculumType={item.curriculum_type}
+                        status={item.status}
+                        note={item.note}
+                        learnerCount={item.active_learner_count}
+                        averageAttendance={item.average_attendance}
+                        coverage={item.coverage}
+                        assessmentCompletion={item.assessment_completion}
+                        genericPerformance={toGenericPerformance(
+                          item.generic_performance ?? item.generic_summary,
+                        )}
+                        cbcPerformance={toCbcPerformance(item.cbc_performance ?? item.cbc_summary)}
+                        averageGrade={item.average_grade}
+                        averageGradeNote={item.average_grade_note}
+                        actions={
+                          <Link href={`/reports/instructor/cohort-subjects/${item.id}`}>
+                            <Button variant="secondary" size="sm">
+                              Open report
+                            </Button>
+                          </Link>
+                        }
+                        footer={
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="default">
+                              Sessions {formatNumber(item.session_count, 0)}
+                            </Badge>
+                            <Badge variant="blue">
+                              Completed {formatNumber(item.completed_session_count, 0)}
+                            </Badge>
+                          </div>
+                        }
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

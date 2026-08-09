@@ -2,15 +2,17 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const detailSource = () => readFileSync(
-  join(process.cwd(), 'app/core/components/assessments/AssessmentDetailPage.tsx'),
-  'utf8',
-);
+const detailSource = () =>
+  readFileSync(
+    join(process.cwd(), 'app/core/components/assessments/AssessmentDetailPage.tsx'),
+    'utf8',
+  );
 
-const stageCardSource = () => readFileSync(
-  join(process.cwd(), 'app/core/components/assessments/AssessmentStageActionCard.tsx'),
-  'utf8',
-);
+const stageCardSource = () =>
+  readFileSync(
+    join(process.cwd(), 'app/core/components/assessments/AssessmentStageActionCard.tsx'),
+    'utf8',
+  );
 
 describe('AssessmentDetailPage stage-oriented actions', () => {
   it('renders assessment progress and one primary stage action', () => {
@@ -40,6 +42,17 @@ describe('AssessmentDetailPage stage-oriented actions', () => {
     expect(source).toContain('Scores open');
     expect(source).toContain('Results finalized');
     expect(source).not.toContain('>Draft<');
+  });
+
+  it('adapts the existing Back action from safe returnTo and canonical fallbacks', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/assessments/AssessmentDetailHeader.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('resolveOperationalDetailBack');
+    expect(source).toContain('getOperationalDetailBackLabel');
+    expect(source).toContain("searchParams.get('returnTo')");
+    expect(source.match(/<ArrowLeft/g)).toHaveLength(1);
   });
 
   it('keeps ask-admin assessment flows behind backend workspace governance', () => {

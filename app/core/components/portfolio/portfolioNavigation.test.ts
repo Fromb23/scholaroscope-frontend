@@ -90,6 +90,7 @@ describe('Portfolio navigation from learner and report surfaces', () => {
     expect(detailSource).not.toContain('href={evidence.source_route.href}');
     expect(portfolioSource).toContain('buildPortfolioQuery(filters, selectedEvidenceId, returnTo)');
     expect(portfolioSource).toContain('currentPortfolioHref={currentPortfolioHref}');
-    expect(assignmentSource).toContain('/^\\/learners\\/\\d+\\/portfolio');
+    expect(assignmentSource).toContain('isSafeNextPath(candidate)');
+    expect(assignmentSource).toContain('resolveOperationalDetailBack');
   });
 });

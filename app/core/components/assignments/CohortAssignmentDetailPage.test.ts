@@ -2,20 +2,21 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const source = () => readFileSync(
-  join(process.cwd(), 'app/core/components/assignments/CohortAssignmentDetailPage.tsx'),
-  'utf8',
-);
+const source = () =>
+  readFileSync(
+    join(process.cwd(), 'app/core/components/assignments/CohortAssignmentDetailPage.tsx'),
+    'utf8',
+  );
 
 describe('CohortAssignmentDetailPage behavioral workflow', () => {
-    it('restores review selection from URL state and falls back to pending submissions', () => {
-        const pageSource = source();
+  it('restores review selection from URL state and falls back to pending submissions', () => {
+    const pageSource = source();
 
-        expect(pageSource).toContain('const selectedReviewSubmission = useMemo');
-        expect(pageSource).toContain("parseWorkflow(searchParams.get('workflow'))");
-        expect(pageSource).toContain("unitParam?.startsWith('student:')");
-        expect(pageSource).toContain('pendingReviewSubmissions[0]');
-    });
+    expect(pageSource).toContain('const selectedReviewSubmission = useMemo');
+    expect(pageSource).toContain("parseWorkflow(searchParams.get('workflow'))");
+    expect(pageSource).toContain("unitParam?.startsWith('student:')");
+    expect(pageSource).toContain('pendingReviewSubmissions[0]');
+  });
 
   it('opens review intentionally through the lifecycle action', () => {
     const pageSource = source();
@@ -39,8 +40,12 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     const pageSource = source();
 
     expect(pageSource).toContain("assignment.status !== 'ARCHIVED'");
-    expect(pageSource).toContain("canChangeActiveAssignment && activeWorkflow === 'review'");
-    expect(pageSource).toContain("canChangeActiveAssignment && activeWorkflow === 'record'");
+    expect(pageSource).toMatch(
+      /canChangeActiveAssignment\s*&&\s*activeWorkflow === 'review'/,
+    );
+    expect(pageSource).toMatch(
+      /canChangeActiveAssignment\s*&&\s*activeWorkflow === 'record'/,
+    );
   });
 
   it('passes lesson-origin metadata when deleting a draft assignment', () => {
@@ -75,13 +80,20 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     expect(pageSource).toContain('buildLearnerAssignmentReportHref');
     expect(pageSource).not.toContain('buildLearnerAssessmentReportHref');
     expect(pageSource).toContain('cohortSubjectId: assignment.cohort_subject');
-    expect(pageSource).not.toContain('cohortSubjectId: isInstitutionAdminView ? null : assignment.cohort_subject');
+    expect(pageSource).not.toContain(
+      'cohortSubjectId: isInstitutionAdminView ? null : assignment.cohort_subject',
+    );
     expect(pageSource).toContain('highlightAssignment: assignment.id');
     expect(pageSource).toContain('returnTo: currentReturnTo');
-    expect(pageSource).toContain('renderLearnerReportLink(recipient.student, recipient.student_name');
-    expect(pageSource).toContain('renderLearnerReportLink(submission.student, submission.student_name');
+    expect(pageSource).toMatch(
+      /renderLearnerReportLink\(\s*recipient\.student,\s*recipient\.student_name/,
+    );
+    expect(pageSource).toMatch(
+      /renderLearnerReportLink\(\s*submission\.student,\s*submission\.student_name/,
+    );
     expect(pageSource).toContain('renderLearnerReportLink(');
-    expect(pageSource).toContain('/^\\/learners\\/\\d+\\/portfolio');
+    expect(pageSource).toContain('resolveOperationalDetailBack');
+    expect(pageSource).toContain('getOperationalDetailBackLabel');
   });
 
   it('exposes sequential and bulk pending review actions', () => {

@@ -25,7 +25,7 @@ function lineNumber(source, index) {
 }
 
 function hasCanonicalDestinationParser(source) {
-  return /\b(?:parseAppDestination|sanitizeAppDestination|isSafeNextPath|sanitizeInternalReturnTo|resolveReportBackHref|getLearnerCreateReturnTo|getLearnerProfileBackTarget)\s*\(/.test(source);
+  return /\b(?:parseAppDestination|sanitizeAppDestination|isSafeNextPath|sanitizeInternalReturnTo|resolveReportBackHref|resolveOperationalDetailBack|getLearnerCreateReturnTo|getLearnerProfileBackTarget)\s*\(/.test(source);
 }
 
 for (const file of walk(scanRoot)) {
