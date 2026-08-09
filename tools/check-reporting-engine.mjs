@@ -41,10 +41,24 @@ for (const suffix of ['overview/', 'learners/', 'performance/', 'teaching-activi
     failures.push(`neutral cohort-subject API facade is missing ${suffix}.`);
   }
 }
+if (/authorityMode\s*[:=][^\n]*\?\?\s*['"]teaching['"]|authorityMode\s*=\s*['"]teaching['"]/.test(api)) {
+  failures.push('dual-context reporting facades must not silently default authority mode to teaching.');
+}
+if (!api.includes('authority_mode: authorityMode') || !api.includes('authority_mode: params.authorityMode')) {
+  failures.push('reporting facades must explicitly serialize their caller-provided authority mode.');
+}
 
 const client = read('app/core/api/client.ts');
-if (!client.includes('reportingAuthorityMode') || !client.includes('scholaroscope_operating_context')) {
-  failures.push('reporting requests must carry authority mode from the active operating context contract.');
+if (client.includes('reportingAuthorityMode') || client.includes('scholaroscope_operating_context')) {
+  failures.push('the shared API client must not guess reporting authority from browser storage.');
+}
+
+const authContext = read('app/context/AuthContext.tsx');
+if (!authContext.includes('capabilities.authorization?.operating_contexts')) {
+  failures.push('AuthContext must consume the backend-issued operating-context capability.');
+}
+if (/role\.(?:name|slug)|membership\.role/.test(authContext)) {
+  failures.push('AuthContext must not reconstruct operating contexts from legacy roles or role names.');
 }
 
 function walk(dir) {
@@ -68,4 +82,3 @@ if (failures.length) {
   process.exit(1);
 }
 console.log('Reporting engine check passed.');
-

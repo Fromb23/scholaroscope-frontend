@@ -6,6 +6,7 @@ import {
   type ReportIntent,
   type ReportProjection,
 } from '@/app/core/components/reports/reportIntent';
+import { buildSessionDetailHref } from '@/app/core/lib/operationalDetailNavigation';
 
 export interface ReportNavigationState {
   projection?: ReportProjection | null;
@@ -410,14 +411,15 @@ export function buildCbcCohortProgressHref(
   return query ? `/cbc/progress/cohort/${cohortId}?${query}` : `/cbc/progress/cohort/${cohortId}`;
 }
 
-export function buildSessionReportHref(sessionId: number, state?: ReportNavigationState): string {
-  const returnTo = parseAppDestination(state?.returnTo);
-  const params = new URLSearchParams();
-  if (returnTo) {
-    params.set('returnTo', returnTo);
-  }
-  const query = params.toString();
-  return query ? `/sessions/${sessionId}?${query}` : `/sessions/${sessionId}`;
+export function buildSessionReportHref(
+  sessionId: number,
+  state: ReportNavigationState & { authorityMode: 'teaching' | 'supervision' },
+): string {
+  return buildSessionDetailHref(sessionId, {
+    authorityMode: state.authorityMode,
+    section: state.projection === 'attendance' ? 'attendance' : undefined,
+    returnTo: state.returnTo,
+  });
 }
 
 export function resolveReportBackHref(options: {

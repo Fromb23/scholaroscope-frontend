@@ -36,7 +36,7 @@ import {
 import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
-import { useClassSummary } from '@/app/core/hooks/useReporting';
+import { useClassSummary, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
 import type { ReportAssignedInstructor } from '@/app/core/types/reporting';
 
@@ -75,6 +75,7 @@ export function CohortsReportPage({
 }: {
   cohortIdFromRoute?: number | null;
 } = {}) {
+  const authorityMode = useReportAuthorityMode();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -144,6 +145,7 @@ export function CohortsReportPage({
       selectedCohortId,
       format,
       selectedTermId,
+      authorityMode,
     );
   }, 'cohort report');
 

@@ -24,6 +24,7 @@ import {
   useAdminInstructorTeacherReport,
   useInstructorCohortSubjects,
   useInstructorTeacherReport,
+  useReportAuthorityMode,
 } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
@@ -63,6 +64,7 @@ export function TeacherPerformanceReportPage({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { activeOperatingContext, user } = useAuth();
+  const authorityMode = useReportAuthorityMode();
   const selectedTermId = parsePositiveNumber(searchParams.get('term'));
   const selectedCohortSubjectId = parsePositiveNumber(
     searchParams.get('cohortSubject') ?? searchParams.get('cohort_subject_id'),
@@ -227,7 +229,8 @@ export function TeacherPerformanceReportPage({
   }, [report?.reflection_summary.latest_reflections, selectedReflectionSubject]);
 
   const { handleExport, exporting } = useReportExport((format) => {
-    const params = {
+  const params = {
+    authorityMode,
       termId: selectedTermId,
       cohortSubjectId: selectedCohortSubjectId,
     };

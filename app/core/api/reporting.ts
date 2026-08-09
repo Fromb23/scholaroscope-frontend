@@ -45,6 +45,7 @@ import {
 } from '@/app/core/types/reporting';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+export type ReportAuthorityMode = 'teaching' | 'supervision';
 
 function absoluteApiUrl(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
@@ -335,9 +336,9 @@ async function fetchReportDownload(
 // Attendance Summary API
 // ============================================================================
 export const attendanceSummaryAPI = {
-  getAll: async (params?: ReportFilters) => {
+  getAll: async (params: ReportFilters | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<AttendanceSummary[]>('/reporting/attendance-summaries/', {
-      params,
+      params: { ...(params ?? {}), authority_mode: authorityMode },
     });
     return response.data;
   },
@@ -379,8 +380,8 @@ export const attendanceSummaryAPI = {
 // Grade Summary API
 // ============================================================================
 export const gradeSummaryAPI = {
-  getAll: async (params?: ReportFilters) => {
-    const response = await apiClient.get<GradeSummary[]>('/reporting/grade-summaries/', { params });
+  getAll: async (params: ReportFilters | undefined, authorityMode: ReportAuthorityMode) => {
+    const response = await apiClient.get<GradeSummary[]>('/reporting/grade-summaries/', { params: { ...(params ?? {}), authority_mode: authorityMode } });
     return response.data;
   },
 
@@ -425,9 +426,9 @@ export const gradeSummaryAPI = {
 // Cohort Summary API
 // ============================================================================
 export const cohortSummaryAPI = {
-  getAll: async (params?: ReportFilters) => {
+  getAll: async (params: ReportFilters | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<CohortSummary[]>('/reporting/cohort-summaries/', {
-      params,
+      params: { ...(params ?? {}), authority_mode: authorityMode },
     });
     return response.data;
   },
@@ -444,9 +445,9 @@ export const cohortSummaryAPI = {
 // Subject Summary API
 // ============================================================================
 export const subjectSummaryAPI = {
-  getAll: async (params?: ReportFilters) => {
+  getAll: async (params: ReportFilters | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<SubjectSummary[]>('/reporting/subject-summaries/', {
-      params,
+      params: { ...(params ?? {}), authority_mode: authorityMode },
     });
     return response.data;
   },
@@ -464,10 +465,10 @@ export const subjectSummaryAPI = {
 // Assessment Type Summary API
 // ============================================================================
 export const assessmentTypeSummaryAPI = {
-  getAll: async (params?: ReportFilters) => {
+  getAll: async (params: ReportFilters | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<AssessmentTypeSummary[]>(
       '/reporting/assessment-type-summaries/',
-      { params },
+      { params: { ...(params ?? {}), authority_mode: authorityMode } },
     );
     return response.data;
   },
@@ -505,26 +506,27 @@ export const reportingAPI = {
 // Reports API (Comprehensive Reports)
 // ============================================================================
 export const adminReportsAPI = {
-  getOverview: async (termId?: number | null) => {
+  getOverview: async (termId: number | null | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<DashboardOverview>('/reports/admin/overview/', {
-      params: termId ? { term_id: termId } : undefined,
+      params: { term_id: termId ?? undefined, authority_mode: authorityMode },
     });
     return response.data;
   },
 
-  exportOverview: async (format: ReportExportFormat, termId?: number | null) =>
+  exportOverview: async (format: ReportExportFormat, termId: number | null | undefined, authorityMode: ReportAuthorityMode) =>
     fetchReportDownload(
       '/reports/admin/overview/',
       {
         format,
         term_id: termId ?? undefined,
+        authority_mode: authorityMode,
       },
       `admin-reporting-overview.${format}`,
     ),
 
-  getCohortSummary: async (cohortId: number, termId?: number | null) => {
+  getCohortSummary: async (cohortId: number, termId: number | null | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<ClassSummary>(`/reports/admin/cohorts/${cohortId}/`, {
-      params: termId ? { term_id: termId } : undefined,
+      params: { term_id: termId ?? undefined, authority_mode: authorityMode },
     });
     return response.data;
   },
@@ -532,20 +534,22 @@ export const adminReportsAPI = {
   exportCohortSummary: async (
     cohortId: number,
     format: ReportExportFormat,
-    termId?: number | null,
+    termId: number | null | undefined,
+    authorityMode: ReportAuthorityMode,
   ) =>
     fetchReportDownload(
       `/reports/admin/cohorts/${cohortId}/`,
       {
         format,
         term_id: termId ?? undefined,
+        authority_mode: authorityMode,
       },
       `cohort-report-${cohortId}.${format}`,
     ),
 
-  getSubjectOverview: async (subjectId: number, termId?: number | null) => {
+  getSubjectOverview: async (subjectId: number, termId: number | null | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<SubjectAnalysis>(`/reports/admin/subjects/${subjectId}/`, {
-      params: termId ? { term_id: termId } : undefined,
+      params: { term_id: termId ?? undefined, authority_mode: authorityMode },
     });
     return response.data;
   },
@@ -553,22 +557,24 @@ export const adminReportsAPI = {
   exportSubjectOverview: async (
     subjectId: number,
     format: ReportExportFormat,
-    termId?: number | null,
+    termId: number | null | undefined,
+    authorityMode: ReportAuthorityMode,
   ) =>
     fetchReportDownload(
       `/reports/admin/subjects/${subjectId}/`,
       {
         format,
         term_id: termId ?? undefined,
+        authority_mode: authorityMode,
       },
       `subject-report-${subjectId}.${format}`,
     ),
 
-  getStudentReportCard: async (studentId: number, termId?: number | null) => {
+  getStudentReportCard: async (studentId: number, termId: number | null | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<StudentReportCard>(
       `/reports/admin/students/${studentId}/report-card/`,
       {
-        params: termId ? { term_id: termId } : undefined,
+        params: { term_id: termId ?? undefined, authority_mode: authorityMode },
       },
     );
     return response.data;
@@ -577,18 +583,21 @@ export const adminReportsAPI = {
   exportStudentReportCard: async (
     studentId: number,
     format: ReportExportFormat,
-    termId?: number | null,
+    termId: number | null | undefined,
+    authorityMode: ReportAuthorityMode,
   ) =>
     fetchReportDownload(
       `/reports/admin/students/${studentId}/report-card/`,
       {
         format,
         term_id: termId ?? undefined,
+        authority_mode: authorityMode,
       },
       `student-report-${studentId}.${format}`,
     ),
 
-  getAttendanceScope: async (params?: {
+  getAttendanceScope: async (params: {
+    authorityMode: ReportAuthorityMode;
     termId?: number | null;
     studentId?: number | null;
     cohortId?: number | null;
@@ -604,6 +613,7 @@ export const adminReportsAPI = {
         subject_id: params?.subjectId ?? undefined,
         cohort_subject_id: params?.cohortSubjectId ?? undefined,
         session_id: params?.sessionId ?? undefined,
+        authority_mode: params.authorityMode,
       },
     });
     return response.data;
@@ -611,7 +621,8 @@ export const adminReportsAPI = {
 
   exportAttendanceScope: async (
     format: ReportExportFormat,
-    params?: {
+    params: {
+      authorityMode: ReportAuthorityMode;
       termId?: number | null;
       studentId?: number | null;
       cohortId?: number | null;
@@ -630,20 +641,21 @@ export const adminReportsAPI = {
         subject_id: params?.subjectId ?? undefined,
         cohort_subject_id: params?.cohortSubjectId ?? undefined,
         session_id: params?.sessionId ?? undefined,
+        authority_mode: params.authorityMode,
       },
       `attendance-report.${format}`,
     ),
 };
 
 export const instructorReportsAPI = {
-  getOverview: async (authorityMode: 'teaching' | 'supervision' = 'teaching') => {
+  getOverview: async (authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<InstructorOverview>('/reports/instructor/overview/', {
       params: { authority_mode: authorityMode },
     });
     return response.data;
   },
 
-  getCohortSubjects: async (authorityMode: 'teaching' | 'supervision' = 'teaching') => {
+  getCohortSubjects: async (authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<InstructorCohortSubjectOverview[]>(
       '/reports/instructor/cohort-subjects/',
       { params: { authority_mode: authorityMode } },
@@ -653,8 +665,8 @@ export const instructorReportsAPI = {
 
   getCohortSubjectLearners: async (
     cohortSubjectId: number,
-    termId?: number | null,
-    authorityMode: 'teaching' | 'supervision' = 'teaching',
+    termId: number | null | undefined,
+    authorityMode: ReportAuthorityMode,
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectLearnersReport>(
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/learners/`,
@@ -667,8 +679,8 @@ export const instructorReportsAPI = {
 
   getCohortSubjectPerformance: async (
     cohortSubjectId: number,
-    termId?: number | null,
-    authorityMode: 'teaching' | 'supervision' = 'teaching',
+    termId: number | null | undefined,
+    authorityMode: ReportAuthorityMode,
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectPerformanceReport>(
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/performance/`,
@@ -681,8 +693,8 @@ export const instructorReportsAPI = {
 
   getCohortSubjectTeachingActivity: async (
     cohortSubjectId: number,
-    termId?: number | null,
-    authorityMode: 'teaching' | 'supervision' = 'teaching',
+    termId: number | null | undefined,
+    authorityMode: ReportAuthorityMode,
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectTeachingActivityReport>(
       `/reports/instructor/cohort-subjects/${cohortSubjectId}/teaching-activity/`,
@@ -697,14 +709,14 @@ export const instructorReportsAPI = {
 export const cohortSubjectReportsAPI = {
   getOverview: async (
     cohortSubjectId: number,
-    params?: { termId?: number | null; authorityMode?: 'teaching' | 'supervision' },
+    params: { termId?: number | null; authorityMode: ReportAuthorityMode },
   ) => {
     const response = await apiClient.get<ClassSubjectReportPayload>(
       `/reporting/cohort-subjects/${cohortSubjectId}/overview/`,
       {
         params: {
           term_id: params?.termId ?? undefined,
-          authority_mode: params?.authorityMode ?? 'teaching',
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -713,14 +725,14 @@ export const cohortSubjectReportsAPI = {
 
   getLearners: async (
     cohortSubjectId: number,
-    params?: { termId?: number | null; authorityMode?: 'teaching' | 'supervision' },
+    params: { termId?: number | null; authorityMode: ReportAuthorityMode },
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectLearnersReport>(
       `/reporting/cohort-subjects/${cohortSubjectId}/learners/`,
       {
         params: {
           term_id: params?.termId ?? undefined,
-          authority_mode: params?.authorityMode ?? 'teaching',
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -729,14 +741,14 @@ export const cohortSubjectReportsAPI = {
 
   getPerformance: async (
     cohortSubjectId: number,
-    params?: { termId?: number | null; authorityMode?: 'teaching' | 'supervision' },
+    params: { termId?: number | null; authorityMode: ReportAuthorityMode },
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectPerformanceReport>(
       `/reporting/cohort-subjects/${cohortSubjectId}/performance/`,
       {
         params: {
           term_id: params?.termId ?? undefined,
-          authority_mode: params?.authorityMode ?? 'teaching',
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -745,14 +757,14 @@ export const cohortSubjectReportsAPI = {
 
   getTeachingActivity: async (
     cohortSubjectId: number,
-    params?: { termId?: number | null; authorityMode?: 'teaching' | 'supervision' },
+    params: { termId?: number | null; authorityMode: ReportAuthorityMode },
   ) => {
     const response = await apiClient.get<InstructorCohortSubjectTeachingActivityReport>(
       `/reporting/cohort-subjects/${cohortSubjectId}/teaching-activity/`,
       {
         params: {
           term_id: params?.termId ?? undefined,
-          authority_mode: params?.authorityMode ?? 'teaching',
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -761,9 +773,10 @@ export const cohortSubjectReportsAPI = {
 };
 
 export const learnerReportingAPI = {
-  getLearnerAvailableScopes: async (learnerId: number) => {
+  getLearnerAvailableScopes: async (learnerId: number, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<LearnerAvailableReportScopesPayload>(
       `/reporting/learners/${learnerId}/available-scopes/`,
+      { params: { authority_mode: authorityMode } },
     );
     return response.data;
   },
@@ -774,6 +787,7 @@ export const learnerReportingAPI = {
       cohortSubjectId?: number | null;
       subjectId?: number | null;
       cohortId?: number | null;
+      authorityMode: ReportAuthorityMode;
     },
   ) => {
     const response = await apiClient.get<LearnerSubjectReportPayload>(
@@ -783,6 +797,7 @@ export const learnerReportingAPI = {
           cohort_subject_id: params.cohortSubjectId ?? undefined,
           subject_id: params.subjectId ?? undefined,
           cohort_id: params.cohortId ?? undefined,
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -791,7 +806,7 @@ export const learnerReportingAPI = {
 
   getLearnerAssessmentReport: async (
     learnerId: number,
-    params: LearnerAssessmentReportQueryParams,
+    params: LearnerAssessmentReportQueryParams & { authorityMode: ReportAuthorityMode },
   ) => {
     const response = await apiClient.get<LearnerAssessmentReportPayload>(
       `/reporting/learners/${learnerId}/assessment-report/`,
@@ -804,6 +819,7 @@ export const learnerReportingAPI = {
           subject_id: params.subjectId ?? undefined,
           cohort_id: params.cohortId ?? undefined,
           academic_year_id: params.academicYearId ?? undefined,
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -812,7 +828,7 @@ export const learnerReportingAPI = {
 
   getLearnerAssignmentReport: async (
     learnerId: number,
-    params: LearnerAssignmentReportQueryParams,
+    params: LearnerAssignmentReportQueryParams & { authorityMode: ReportAuthorityMode },
   ) => {
     const response = await apiClient.get<LearnerAssignmentReportPayload>(
       `/reporting/learners/${learnerId}/assignment-report/`,
@@ -822,7 +838,7 @@ export const learnerReportingAPI = {
           term_id: params.termId ?? undefined,
           academic_year_id: params.academicYearId ?? undefined,
           assignment_id: params.assignmentId ?? undefined,
-          authority_mode: params.authorityMode ?? 'teaching',
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -836,6 +852,7 @@ export const learnerReportingAPI = {
       cohortSubjectId?: number | null;
       subjectId?: number | null;
       cohortId?: number | null;
+      authorityMode: ReportAuthorityMode;
     },
   ) =>
     fetchReportDownload(
@@ -845,29 +862,31 @@ export const learnerReportingAPI = {
         cohort_subject_id: params.cohortSubjectId ?? undefined,
         subject_id: params.subjectId ?? undefined,
         cohort_id: params.cohortId ?? undefined,
+        authority_mode: params.authorityMode,
       },
       `learner-subject-report-${learnerId}.${params.format}`,
     ),
 
-  getLearnerOverviewReport: async (learnerId: number) => {
+  getLearnerOverviewReport: async (learnerId: number, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<LearnerOverviewReportPayload>(
       `/reporting/learners/${learnerId}/overview-report/`,
+      { params: { authority_mode: authorityMode } },
     );
     return response.data;
   },
 
-  exportLearnerOverviewReport: async (learnerId: number, format: ReportExportFormat) =>
+  exportLearnerOverviewReport: async (learnerId: number, format: ReportExportFormat, authorityMode: ReportAuthorityMode) =>
     fetchReportDownload(
       `/reporting/learners/${learnerId}/overview-report/export/`,
-      { format },
+      { format, authority_mode: authorityMode },
       `learner-overview-report-${learnerId}.${format}`,
     ),
 
-  getLearnerTermProgressReport: async (learnerId: number, termId: number) => {
+  getLearnerTermProgressReport: async (learnerId: number, termId: number, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<LearnerTermProgressReportPayload>(
       `/reporting/learners/${learnerId}/term-progress-report/`,
       {
-        params: { term_id: termId },
+        params: { term_id: termId, authority_mode: authorityMode },
       },
     );
     return response.data;
@@ -878,6 +897,7 @@ export const learnerReportingAPI = {
     params: {
       termId: number;
       format: 'pdf';
+      authorityMode: ReportAuthorityMode;
     },
   ) =>
     fetchReportDownload(
@@ -885,6 +905,7 @@ export const learnerReportingAPI = {
       {
         term_id: params.termId,
         format: params.format,
+        authority_mode: params.authorityMode,
       },
       `learner-term-progress-report-${learnerId}.${params.format}`,
     ),
@@ -895,7 +916,7 @@ export const learnerReportingAPI = {
       cohortSubjectId?: number | null;
       subjectId?: number | null;
       termId?: number | null;
-      authorityMode?: 'teaching' | 'supervision';
+      authorityMode: ReportAuthorityMode;
     },
   ) => {
     const response = await apiClient.get<ClassSubjectReportPayload>(
@@ -905,7 +926,7 @@ export const learnerReportingAPI = {
           cohort_subject_id: params.cohortSubjectId ?? undefined,
           subject_id: params.subjectId ?? undefined,
           term_id: params.termId ?? undefined,
-          authority_mode: params.authorityMode ?? 'teaching',
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -914,7 +935,7 @@ export const learnerReportingAPI = {
 
   getCohortSubjectReportTerms: async (
     cohortSubjectId: number,
-    authorityMode: 'teaching' | 'supervision' = 'teaching',
+    authorityMode: ReportAuthorityMode,
     termId?: number | null,
   ): Promise<CohortSubjectReportTermsResponse> => {
     const response = await apiClient.get<CohortSubjectReportTermsResponse>(
@@ -931,6 +952,7 @@ export const learnerReportingAPI = {
       cohortSubjectId?: number | null;
       subjectId?: number | null;
       termId?: number | null;
+      authorityMode: ReportAuthorityMode;
     },
   ) =>
     fetchReportDownload(
@@ -940,11 +962,13 @@ export const learnerReportingAPI = {
         cohort_subject_id: params.cohortSubjectId ?? undefined,
         subject_id: params.subjectId ?? undefined,
         term_id: params.termId ?? undefined,
+        authority_mode: params.authorityMode,
       },
       `class-subject-report-${cohortId}.${params.format}`,
     ),
 
-  getInstructorTeacherReport: async (params?: {
+  getInstructorTeacherReport: async (params: {
+    authorityMode: ReportAuthorityMode;
     termId?: number | null;
     cohortSubjectId?: number | null;
     startDate?: string | null;
@@ -958,6 +982,7 @@ export const learnerReportingAPI = {
           cohort_subject_id: params?.cohortSubjectId ?? undefined,
           start_date: params?.startDate ?? undefined,
           end_date: params?.endDate ?? undefined,
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -966,7 +991,8 @@ export const learnerReportingAPI = {
 
   exportInstructorTeacherReport: async (
     format: ReportExportFormat,
-    params?: {
+    params: {
+      authorityMode: ReportAuthorityMode;
       termId?: number | null;
       cohortSubjectId?: number | null;
       startDate?: string | null;
@@ -981,13 +1007,15 @@ export const learnerReportingAPI = {
         cohort_subject_id: params?.cohortSubjectId ?? undefined,
         start_date: params?.startDate ?? undefined,
         end_date: params?.endDate ?? undefined,
+        authority_mode: params.authorityMode,
       },
       `teacher-performance-report.${format}`,
     ),
 
   getAdminInstructorTeacherReport: async (
     instructorId: number,
-    params?: {
+    params: {
+      authorityMode: ReportAuthorityMode;
       termId?: number | null;
       cohortSubjectId?: number | null;
       startDate?: string | null;
@@ -1002,6 +1030,7 @@ export const learnerReportingAPI = {
           cohort_subject_id: params?.cohortSubjectId ?? undefined,
           start_date: params?.startDate ?? undefined,
           end_date: params?.endDate ?? undefined,
+          authority_mode: params.authorityMode,
         },
       },
     );
@@ -1011,7 +1040,8 @@ export const learnerReportingAPI = {
   exportAdminInstructorTeacherReport: async (
     instructorId: number,
     format: ReportExportFormat,
-    params?: {
+    params: {
+      authorityMode: ReportAuthorityMode;
       termId?: number | null;
       cohortSubjectId?: number | null;
       startDate?: string | null;
@@ -1026,6 +1056,7 @@ export const learnerReportingAPI = {
         cohort_subject_id: params?.cohortSubjectId ?? undefined,
         start_date: params?.startDate ?? undefined,
         end_date: params?.endDate ?? undefined,
+        authority_mode: params.authorityMode,
       },
       `teacher-performance-report-${instructorId}.${format}`,
     ),
@@ -1234,29 +1265,29 @@ export const reportsAPI = {
   exportInstructorTeacherReport: learnerReportingAPI.exportInstructorTeacherReport,
   getAdminInstructorTeacherReport: learnerReportingAPI.getAdminInstructorTeacherReport,
   exportAdminInstructorTeacherReport: learnerReportingAPI.exportAdminInstructorTeacherReport,
-  getDashboardOverview: async () => {
-    return adminReportsAPI.getOverview();
+  getDashboardOverview: async (authorityMode: ReportAuthorityMode) => {
+    return adminReportsAPI.getOverview(undefined, authorityMode);
   },
 
-  getStudentReportCard: async (studentId: number, termId: number) => {
-    return adminReportsAPI.getStudentReportCard(studentId, termId);
+  getStudentReportCard: async (studentId: number, termId: number, authorityMode: ReportAuthorityMode) => {
+    return adminReportsAPI.getStudentReportCard(studentId, termId, authorityMode);
   },
 
-  getClassSummary: async (termId: number, cohortId: number) => {
-    return adminReportsAPI.getCohortSummary(cohortId, termId);
+  getClassSummary: async (termId: number, cohortId: number, authorityMode: ReportAuthorityMode) => {
+    return adminReportsAPI.getCohortSummary(cohortId, termId, authorityMode);
   },
 
-  getSubjectAnalysis: async (termId: number, subjectId?: number): Promise<SubjectAnalysis> => {
+  getSubjectAnalysis: async (termId: number, subjectId: number | undefined, authorityMode: ReportAuthorityMode): Promise<SubjectAnalysis> => {
     if (!subjectId) {
       throw new Error('Select a subject to view the subject report.');
     }
-    return adminReportsAPI.getSubjectOverview(subjectId, termId);
+    return adminReportsAPI.getSubjectOverview(subjectId, termId, authorityMode);
   },
 
-  getLongitudinalStudent: async (studentId: number) => {
+  getLongitudinalStudent: async (studentId: number, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<LongitudinalStudentData>(
       '/reporting/reports/longitudinal_student/',
-      { params: { student_id: studentId } },
+      { params: { student_id: studentId, authority_mode: authorityMode } },
     );
     return response.data;
   },

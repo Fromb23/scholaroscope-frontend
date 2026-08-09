@@ -95,19 +95,6 @@ function isAuthEndpoint(url?: string): boolean {
   );
 }
 
-function reportingAuthorityMode(url?: string): 'teaching' | 'supervision' | null {
-  if (
-    typeof window === 'undefined'
-    || !url
-    || (!url.startsWith('/reports/') && !url.startsWith('/reporting/'))
-  ) {
-    return null;
-  }
-  return window.localStorage.getItem('scholaroscope_operating_context') === 'WORKSPACE_MANAGEMENT'
-    ? 'supervision'
-    : 'teaching';
-}
-
 function syncMembershipVersion(serverVersion?: string): void {
   if (typeof window === 'undefined' || !serverVersion) {
     return;
@@ -191,15 +178,6 @@ apiClient.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-  }
-  const authorityMode = reportingAuthorityMode(config.url);
-  if (authorityMode) {
-    if (config.params instanceof URLSearchParams) {
-      if (!config.params.has('authority_mode')) config.params.set('authority_mode', authorityMode);
-    } else {
-      const params = (config.params ?? {}) as Record<string, unknown>;
-      config.params = { ...params, authority_mode: params.authority_mode ?? authorityMode };
-    }
   }
   return config;
 });

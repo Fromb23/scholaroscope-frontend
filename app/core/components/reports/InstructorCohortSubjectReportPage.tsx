@@ -55,7 +55,10 @@ import {
 } from '@/app/core/hooks/reports/useCanonicalCohortSubjectReport';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
 import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
-import { buildAssessmentDetailHref } from '@/app/core/lib/operationalDetailNavigation';
+import {
+  buildAssessmentDetailHref,
+  buildSessionDetailHref,
+} from '@/app/core/lib/operationalDetailNavigation';
 
 const PROJECTIONS: Array<{ id: ReportProjection; label: string; icon: typeof FileBarChart }> = [
   { id: 'overview', label: 'Overview', icon: FileBarChart },
@@ -205,6 +208,7 @@ export default function CanonicalCohortSubjectReportPage() {
     (updates: { projection?: ReportProjection; term?: number | null }, replace = false) => {
       let next = new URLSearchParams(searchParams.toString());
       next.delete('tab');
+      next.set('authority_mode', authorityMode);
       if (updates.term !== undefined) {
         next = applyReportStateChange(next, 'term', updates.term ?? null);
       }
@@ -214,18 +218,20 @@ export default function CanonicalCohortSubjectReportPage() {
       if (replace) router.replace(destination, { scroll: false });
       else router.push(destination, { scroll: false });
     },
-    [cohortSubjectId, pathname, router, searchParams],
+    [authorityMode, cohortSubjectId, pathname, router, searchParams],
   );
 
   useEffect(() => {
     if (termsLoading || termsError) return;
     const needsProjection = !searchParams.get('projection') || searchParams.has('tab');
     const needsTerm = effectiveTermId !== selectedTermId;
-    if (needsProjection || needsTerm) {
+    const needsAuthorityMode = searchParams.get('authority_mode') !== authorityMode;
+    if (needsProjection || needsTerm || needsAuthorityMode) {
       updateState({ projection, term: effectiveTermId }, true);
     }
   }, [
     effectiveTermId,
+    authorityMode,
     projection,
     searchParams,
     selectedTermId,
@@ -285,7 +291,9 @@ export default function CanonicalCohortSubjectReportPage() {
           curriculumType: performance.curriculum_type,
         }
       : null;
-  const currentReturnTo = buildExactReportReturnTo(pathname, searchParams.toString());
+  const exactReportParams = new URLSearchParams(searchParams.toString());
+  exactReportParams.set('authority_mode', authorityMode);
+  const currentReturnTo = buildExactReportReturnTo(pathname, exactReportParams);
   const structuralFallback =
     authorityMode === 'teaching'
       ? '/reports/instructor'
@@ -584,12 +592,23 @@ export default function CanonicalCohortSubjectReportPage() {
                     <TableHead>Session</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(activity.session_items ?? []).map((session) => (
+                  {(activity.session_items ?? []).map((session) => {
+                    const sessionHref = buildSessionDetailHref(session.id, {
+                      authorityMode,
+                      section: 'attendance',
+                      returnTo: currentReturnTo,
+                    });
+                    return (
                     <TableRow key={session.id}>
-                      <TableCell>{session.title}</TableCell>
+                      <TableCell>
+                        <Link className="font-medium text-primary hover:underline" href={sessionHref}>
+                          {session.title}
+                        </Link>
+                      </TableCell>
                       <TableCell>
                         {session.session_date
                           ? new Date(session.session_date).toLocaleDateString()
@@ -598,8 +617,14 @@ export default function CanonicalCohortSubjectReportPage() {
                       <TableCell>
                         <Badge variant="default">{session.status}</Badge>
                       </TableCell>
+                      <TableCell>
+                        <Link href={sessionHref}>
+                          <Button size="sm" variant="secondary">View attendance</Button>
+                        </Link>
+                      </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </Card>

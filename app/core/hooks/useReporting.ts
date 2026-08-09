@@ -43,6 +43,13 @@ import {
   ReportFilters,
 } from '@/app/core/types/reporting';
 import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
+import { useAuth } from '@/app/context/AuthContext';
+import { reportAuthorityModeForOperatingContext } from '@/app/core/components/reports/reportIntent';
+
+export function useReportAuthorityMode() {
+  const { activeOperatingContext } = useAuth();
+  return reportAuthorityModeForOperatingContext(activeOperatingContext);
+}
 
 function unwrap<T>(data: T[] | { results?: T[] }): T[] {
   return Array.isArray(data) ? data : (data?.results ?? []);
@@ -71,6 +78,7 @@ function buildReportFilters(
 // ── useDashboardOverview ──────────────────────────────────────────────────
 
 export const useDashboardOverview = () => {
+  const authorityMode = useReportAuthorityMode();
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,14 +86,14 @@ export const useDashboardOverview = () => {
   const fetchOverview = useCallback(async () => {
     try {
       setLoading(true);
-      setOverview(await adminReportsAPI.getOverview());
+      setOverview(await adminReportsAPI.getOverview(undefined, authorityMode));
       setError(null);
     } catch (err) {
       setError(resolveErrorMessage(err as ApiError, 'Could not load reporting overview.'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authorityMode]);
 
   useEffect(() => {
     fetchOverview();
@@ -102,6 +110,7 @@ export const useAttendanceSummaries = ({
   subject,
   cohort_subject: cohortSubject,
 }: ReportFilters = {}) => {
+  const authorityMode = useReportAuthorityMode();
   const [summaries, setSummaries] = useState<AttendanceSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,14 +123,14 @@ export const useAttendanceSummaries = ({
     }
     try {
       setLoading(true);
-      setSummaries(unwrap(await attendanceSummaryAPI.getAll(filters)));
+      setSummaries(unwrap(await attendanceSummaryAPI.getAll(filters, authorityMode)));
       setError(null);
     } catch (err) {
       setError(resolveErrorMessage(err as ApiError, 'Failed to fetch attendance summaries'));
     } finally {
       setLoading(false);
     }
-  }, [cohort, cohortSubject, student, subject, term]);
+  }, [authorityMode, cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => {
     fetchSummaries();
@@ -144,6 +153,7 @@ export const useGradeSummaries = ({
   subject,
   cohort_subject: cohortSubject,
 }: ReportFilters = {}) => {
+  const authorityMode = useReportAuthorityMode();
   const [summaries, setSummaries] = useState<GradeSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,14 +166,14 @@ export const useGradeSummaries = ({
     }
     try {
       setLoading(true);
-      setSummaries(unwrap(await gradeSummaryAPI.getAll(filters)));
+      setSummaries(unwrap(await gradeSummaryAPI.getAll(filters, authorityMode)));
       setError(null);
     } catch (err) {
       setError(resolveErrorMessage(err as ApiError, 'Failed to fetch grade summaries'));
     } finally {
       setLoading(false);
     }
-  }, [cohort, cohortSubject, student, subject, term]);
+  }, [authorityMode, cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => {
     fetchSummaries();
@@ -186,6 +196,7 @@ export const useCohortSummaries = ({
   subject,
   cohort_subject: cohortSubject,
 }: ReportFilters = {}) => {
+  const authorityMode = useReportAuthorityMode();
   const [summaries, setSummaries] = useState<CohortSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +208,7 @@ export const useCohortSummaries = ({
         unwrap(
           await cohortSummaryAPI.getAll(
             buildReportFilters(student, term, cohort, subject, cohortSubject),
+            authorityMode,
           ),
         ),
       );
@@ -206,7 +218,7 @@ export const useCohortSummaries = ({
     } finally {
       setLoading(false);
     }
-  }, [cohort, cohortSubject, student, subject, term]);
+  }, [authorityMode, cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => {
     fetchSummaries();
@@ -229,6 +241,7 @@ export const useSubjectSummaries = ({
   subject,
   cohort_subject: cohortSubject,
 }: ReportFilters = {}) => {
+  const authorityMode = useReportAuthorityMode();
   const [summaries, setSummaries] = useState<SubjectSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -240,6 +253,7 @@ export const useSubjectSummaries = ({
         unwrap(
           await subjectSummaryAPI.getAll(
             buildReportFilters(student, term, cohort, subject, cohortSubject),
+            authorityMode,
           ),
         ),
       );
@@ -249,7 +263,7 @@ export const useSubjectSummaries = ({
     } finally {
       setLoading(false);
     }
-  }, [cohort, cohortSubject, student, subject, term]);
+  }, [authorityMode, cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => {
     fetchSummaries();
@@ -269,6 +283,7 @@ export const useAssessmentTypeSummaries = (
   { student, term, cohort, subject, cohort_subject: cohortSubject }: ReportFilters = {},
   options: { enabled?: boolean } = {},
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options.enabled ?? true;
   const [summaries, setSummaries] = useState<AssessmentTypeSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -288,6 +303,7 @@ export const useAssessmentTypeSummaries = (
         unwrap(
           await assessmentTypeSummaryAPI.getAll(
             buildReportFilters(student, term, cohort, subject, cohortSubject),
+            authorityMode,
           ),
         ),
       );
@@ -297,7 +313,7 @@ export const useAssessmentTypeSummaries = (
     } finally {
       setLoading(false);
     }
-  }, [cohort, cohortSubject, enabled, student, subject, term]);
+  }, [authorityMode, cohort, cohortSubject, enabled, student, subject, term]);
 
   useEffect(() => {
     fetchSummaries();
@@ -318,6 +334,7 @@ export const useStudentReportCard = (
   termId: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [reportCard, setReportCard] = useState<StudentReportCard | null>(null);
   const [loading, setLoading] = useState(false);
@@ -331,7 +348,7 @@ export const useStudentReportCard = (
     }
     try {
       setLoading(true);
-      setReportCard(await adminReportsAPI.getStudentReportCard(studentId, termId));
+      setReportCard(await adminReportsAPI.getStudentReportCard(studentId, termId, authorityMode));
       setError(null);
     } catch (err) {
       setReportCard(null);
@@ -339,7 +356,7 @@ export const useStudentReportCard = (
     } finally {
       setLoading(false);
     }
-  }, [enabled, studentId, termId]);
+  }, [authorityMode, enabled, studentId, termId]);
 
   useEffect(() => {
     fetchReportCard();
@@ -354,6 +371,7 @@ export const useClassSummary = (
   cohortId: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [summary, setSummary] = useState<ClassSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -367,7 +385,7 @@ export const useClassSummary = (
     }
     try {
       setLoading(true);
-      setSummary(await adminReportsAPI.getCohortSummary(cohortId, termId));
+      setSummary(await adminReportsAPI.getCohortSummary(cohortId, termId, authorityMode));
       setError(null);
     } catch (err) {
       setSummary(null);
@@ -375,7 +393,7 @@ export const useClassSummary = (
     } finally {
       setLoading(false);
     }
-  }, [cohortId, enabled, termId]);
+  }, [authorityMode, cohortId, enabled, termId]);
 
   useEffect(() => {
     fetchSummary();
@@ -390,6 +408,7 @@ export const useSubjectAnalysis = (
   subjectId: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [analysis, setAnalysis] = useState<SubjectAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -403,7 +422,7 @@ export const useSubjectAnalysis = (
     }
     try {
       setLoading(true);
-      setAnalysis(await adminReportsAPI.getSubjectOverview(subjectId, termId));
+      setAnalysis(await adminReportsAPI.getSubjectOverview(subjectId, termId, authorityMode));
       setError(null);
     } catch (err) {
       setAnalysis(null);
@@ -411,7 +430,7 @@ export const useSubjectAnalysis = (
     } finally {
       setLoading(false);
     }
-  }, [enabled, subjectId, termId]);
+  }, [authorityMode, enabled, subjectId, termId]);
 
   useEffect(() => {
     fetchAnalysis();
@@ -428,6 +447,7 @@ export const useAdminAttendanceScopeReport = (params?: {
   sessionId?: number | null;
   enabled?: boolean;
 }) => {
+  const authorityMode = useReportAuthorityMode();
   const [report, setReport] = useState<AttendanceScopeReportPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -442,6 +462,7 @@ export const useAdminAttendanceScopeReport = (params?: {
     try {
       setLoading(true);
       const nextReport = await adminReportsAPI.getAttendanceScope({
+        authorityMode,
         termId: params?.termId,
         studentId: params?.studentId,
         cohortId: params?.cohortId,
@@ -458,6 +479,7 @@ export const useAdminAttendanceScopeReport = (params?: {
       setLoading(false);
     }
   }, [
+    authorityMode,
     params?.cohortId,
     params?.cohortSubjectId,
     params?.enabled,
@@ -477,6 +499,7 @@ export const useAdminAttendanceScopeReport = (params?: {
 // ── Instructor reporting ──────────────────────────────────────────────────
 
 export const useInstructorOverview = () => {
+  const authorityMode = useReportAuthorityMode();
   const [overview, setOverview] = useState<InstructorOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -485,7 +508,7 @@ export const useInstructorOverview = () => {
   const fetchOverview = useCallback(async () => {
     try {
       setLoading(true);
-      setOverview(await instructorReportsAPI.getOverview());
+      setOverview(await instructorReportsAPI.getOverview(authorityMode));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -496,7 +519,7 @@ export const useInstructorOverview = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authorityMode]);
 
   useEffect(() => {
     fetchOverview();
@@ -505,6 +528,7 @@ export const useInstructorOverview = () => {
 };
 
 export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [cohortSubjects, setCohortSubjects] = useState<InstructorCohortSubjectOverview[]>([]);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -521,7 +545,7 @@ export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => 
     }
     try {
       setLoading(true);
-      setCohortSubjects(await instructorReportsAPI.getCohortSubjects());
+      setCohortSubjects(await instructorReportsAPI.getCohortSubjects(authorityMode));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -532,7 +556,7 @@ export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => 
     } finally {
       setLoading(false);
     }
-  }, [enabled]);
+  }, [authorityMode, enabled]);
 
   useEffect(() => {
     fetchCohortSubjects();
@@ -545,6 +569,7 @@ export const useInstructorCohortSubjectLearners = (
   termId?: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<InstructorCohortSubjectLearnersReport | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -565,7 +590,7 @@ export const useInstructorCohortSubjectLearners = (
     }
     try {
       setLoading(true);
-      setReport(await instructorReportsAPI.getCohortSubjectLearners(cohortSubjectId, termId));
+      setReport(await instructorReportsAPI.getCohortSubjectLearners(cohortSubjectId, termId, authorityMode));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -576,7 +601,7 @@ export const useInstructorCohortSubjectLearners = (
     } finally {
       setLoading(false);
     }
-  }, [cohortSubjectId, enabled, termId]);
+  }, [authorityMode, cohortSubjectId, enabled, termId]);
 
   useEffect(() => {
     fetchReport();
@@ -589,6 +614,7 @@ export const useInstructorCohortSubjectPerformance = (
   termId?: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<InstructorCohortSubjectPerformanceReport | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -609,7 +635,7 @@ export const useInstructorCohortSubjectPerformance = (
     }
     try {
       setLoading(true);
-      setReport(await instructorReportsAPI.getCohortSubjectPerformance(cohortSubjectId, termId));
+      setReport(await instructorReportsAPI.getCohortSubjectPerformance(cohortSubjectId, termId, authorityMode));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -620,7 +646,7 @@ export const useInstructorCohortSubjectPerformance = (
     } finally {
       setLoading(false);
     }
-  }, [cohortSubjectId, enabled, termId]);
+  }, [authorityMode, cohortSubjectId, enabled, termId]);
 
   useEffect(() => {
     fetchReport();
@@ -633,6 +659,7 @@ export const useInstructorCohortSubjectTeachingActivity = (
   termId?: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<InstructorCohortSubjectTeachingActivityReport | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -654,7 +681,7 @@ export const useInstructorCohortSubjectTeachingActivity = (
     try {
       setLoading(true);
       setReport(
-        await instructorReportsAPI.getCohortSubjectTeachingActivity(cohortSubjectId, termId),
+        await instructorReportsAPI.getCohortSubjectTeachingActivity(cohortSubjectId, termId, authorityMode),
       );
       setError(null);
       setErrorStatus(null);
@@ -666,7 +693,7 @@ export const useInstructorCohortSubjectTeachingActivity = (
     } finally {
       setLoading(false);
     }
-  }, [cohortSubjectId, enabled, termId]);
+  }, [authorityMode, cohortSubjectId, enabled, termId]);
 
   useEffect(() => {
     fetchReport();
@@ -677,6 +704,7 @@ export const useInstructorCohortSubjectTeachingActivity = (
 // ── useLongitudinalStudent ────────────────────────────────────────────────
 
 export const useLongitudinalStudent = (studentId: number | null) => {
+  const authorityMode = useReportAuthorityMode();
   const [data, setData] = useState<LongitudinalStudentData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -688,14 +716,14 @@ export const useLongitudinalStudent = (studentId: number | null) => {
     }
     try {
       setLoading(true);
-      setData(await reportsAPI.getLongitudinalStudent(studentId));
+      setData(await reportsAPI.getLongitudinalStudent(studentId, authorityMode));
       setError(null);
     } catch (err) {
       setError(resolveErrorMessage(err as ApiError, 'Failed to fetch longitudinal data'));
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, [authorityMode, studentId]);
 
   useEffect(() => {
     fetchData();
@@ -710,6 +738,7 @@ export const useLearnerSubjectReport = (
   cohortSubjectId: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<LearnerSubjectReportPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -730,7 +759,7 @@ export const useLearnerSubjectReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getLearnerSubjectReport(learnerId, { cohortSubjectId }));
+      setReport(await learnerReportingAPI.getLearnerSubjectReport(learnerId, { cohortSubjectId, authorityMode }));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -741,7 +770,7 @@ export const useLearnerSubjectReport = (
     } finally {
       setLoading(false);
     }
-  }, [cohortSubjectId, enabled, learnerId]);
+  }, [authorityMode, cohortSubjectId, enabled, learnerId]);
 
   useEffect(() => {
     fetchReport();
@@ -754,6 +783,7 @@ export const useLearnerAssessmentReport = (
   params: LearnerAssessmentReportQueryParams,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<LearnerAssessmentReportPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -793,6 +823,7 @@ export const useLearnerAssessmentReport = (
           subjectId,
           cohortId,
           academicYearId,
+          authorityMode,
         }),
       );
       setError(null);
@@ -807,6 +838,7 @@ export const useLearnerAssessmentReport = (
     }
   }, [
     academicYearId,
+    authorityMode,
     assessmentId,
     assessmentType,
     cohortId,
@@ -825,15 +857,16 @@ export const useLearnerAssessmentReport = (
 
 export const useLearnerAssignmentReport = (
   learnerId: number | null,
-  params: LearnerAssignmentReportQueryParams,
+  params: Omit<LearnerAssignmentReportQueryParams, 'authorityMode'>,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<LearnerAssignmentReportPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  const { cohortSubjectId, termId, academicYearId, assignmentId, authorityMode } = params;
+  const { cohortSubjectId, termId, academicYearId, assignmentId } = params;
 
   const fetchReport = useCallback(async () => {
     if (!learnerId) {
@@ -880,6 +913,7 @@ export const useLearnerAvailableReportScopes = (
   learnerId: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [scopes, setScopes] = useState<LearnerAvailableReportScopesPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -900,7 +934,7 @@ export const useLearnerAvailableReportScopes = (
     }
     try {
       setLoading(true);
-      setScopes(await learnerReportingAPI.getLearnerAvailableScopes(learnerId));
+      setScopes(await learnerReportingAPI.getLearnerAvailableScopes(learnerId, authorityMode));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -911,7 +945,7 @@ export const useLearnerAvailableReportScopes = (
     } finally {
       setLoading(false);
     }
-  }, [enabled, learnerId]);
+  }, [authorityMode, enabled, learnerId]);
 
   useEffect(() => {
     fetchScopes();
@@ -923,6 +957,7 @@ export const useLearnerOverviewReport = (
   learnerId: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<LearnerOverviewReportPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -943,7 +978,7 @@ export const useLearnerOverviewReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getLearnerOverviewReport(learnerId));
+      setReport(await learnerReportingAPI.getLearnerOverviewReport(learnerId, authorityMode));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -954,7 +989,7 @@ export const useLearnerOverviewReport = (
     } finally {
       setLoading(false);
     }
-  }, [enabled, learnerId]);
+  }, [authorityMode, enabled, learnerId]);
 
   useEffect(() => {
     fetchReport();
@@ -967,6 +1002,7 @@ export const useLearnerTermProgressReport = (
   termId: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<LearnerTermProgressReportPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -987,7 +1023,7 @@ export const useLearnerTermProgressReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getLearnerTermProgressReport(learnerId, termId));
+      setReport(await learnerReportingAPI.getLearnerTermProgressReport(learnerId, termId, authorityMode));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -998,7 +1034,7 @@ export const useLearnerTermProgressReport = (
     } finally {
       setLoading(false);
     }
-  }, [enabled, learnerId, termId]);
+  }, [authorityMode, enabled, learnerId, termId]);
 
   useEffect(() => {
     fetchReport();
@@ -1014,6 +1050,7 @@ export const useClassSubjectReport = (
     termId?: number | null;
   },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<ClassSubjectReportPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -1038,6 +1075,7 @@ export const useClassSubjectReport = (
         await learnerReportingAPI.getClassSubjectReport(cohortId, {
           cohortSubjectId,
           termId: options?.termId ?? undefined,
+          authorityMode,
         }),
       );
       setError(null);
@@ -1050,7 +1088,7 @@ export const useClassSubjectReport = (
     } finally {
       setLoading(false);
     }
-  }, [cohortId, cohortSubjectId, enabled, options?.termId]);
+  }, [authorityMode, cohortId, cohortSubjectId, enabled, options?.termId]);
 
   useEffect(() => {
     fetchReport();
@@ -1066,6 +1104,8 @@ export const useCohortSubjectReportTerms = (
     termId?: number | null;
   },
 ) => {
+  const contextAuthorityMode = useReportAuthorityMode();
+  const authorityMode = options?.authorityMode ?? contextAuthorityMode;
   const enabled = options?.enabled ?? true;
   const [termsResponse, setTermsResponse] = useState<CohortSubjectReportTermsResponse | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled && cohortSubjectId));
@@ -1086,7 +1126,7 @@ export const useCohortSubjectReportTerms = (
       setTermsResponse(
         await learnerReportingAPI.getCohortSubjectReportTerms(
           cohortSubjectId,
-          options?.authorityMode ?? 'teaching',
+          authorityMode,
           options?.termId,
         ),
       );
@@ -1100,7 +1140,7 @@ export const useCohortSubjectReportTerms = (
     } finally {
       setLoading(false);
     }
-  }, [cohortSubjectId, enabled, options?.authorityMode, options?.termId]);
+  }, [authorityMode, cohortSubjectId, enabled, options?.termId]);
 
   useEffect(() => {
     fetchTerms();
@@ -1124,6 +1164,7 @@ export const useInstructorTeacherReport = (
   },
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<TeacherPerformanceReportPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -1139,6 +1180,7 @@ export const useInstructorTeacherReport = (
       setLoading(true);
       setReport(
         await learnerReportingAPI.getInstructorTeacherReport({
+          authorityMode,
           termId: params?.termId ?? undefined,
           cohortSubjectId: params?.cohortSubjectId ?? undefined,
         }),
@@ -1153,7 +1195,7 @@ export const useInstructorTeacherReport = (
     } finally {
       setLoading(false);
     }
-  }, [enabled, params?.cohortSubjectId, params?.termId]);
+  }, [authorityMode, enabled, params?.cohortSubjectId, params?.termId]);
 
   useEffect(() => {
     fetchReport();
@@ -1169,6 +1211,7 @@ export const useAdminInstructorTeacherReport = (
   },
   options?: { enabled?: boolean },
 ) => {
+  const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<TeacherPerformanceReportPayload | null>(null);
   const [loading, setLoading] = useState(Boolean(enabled));
@@ -1191,6 +1234,7 @@ export const useAdminInstructorTeacherReport = (
       setLoading(true);
       setReport(
         await learnerReportingAPI.getAdminInstructorTeacherReport(instructorId, {
+          authorityMode,
           termId: params?.termId ?? undefined,
           cohortSubjectId: params?.cohortSubjectId ?? undefined,
         }),
@@ -1205,7 +1249,7 @@ export const useAdminInstructorTeacherReport = (
     } finally {
       setLoading(false);
     }
-  }, [enabled, instructorId, params?.cohortSubjectId, params?.termId]);
+  }, [authorityMode, enabled, instructorId, params?.cohortSubjectId, params?.termId]);
 
   useEffect(() => {
     fetchReport();

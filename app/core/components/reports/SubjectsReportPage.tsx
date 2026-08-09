@@ -35,7 +35,7 @@ import {
 } from '@/app/core/components/reports/reportNavigation';
 import { useCurrentTerm, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
-import { useSubjectAnalysis } from '@/app/core/hooks/useReporting';
+import { useSubjectAnalysis, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
 import type { ReportAssignedInstructor } from '@/app/core/types/reporting';
 
@@ -74,6 +74,7 @@ export function SubjectsReportPage({
 }: {
   subjectIdFromRoute?: number | null;
 } = {}) {
+  const authorityMode = useReportAuthorityMode();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -143,6 +144,7 @@ export function SubjectsReportPage({
       selectedSubjectId,
       format,
       selectedTermId,
+      authorityMode,
     );
   }, 'subject report');
 

@@ -26,6 +26,7 @@ import { learnerReportingAPI } from '@/app/core/api/reporting';
 import {
   useLearnerAvailableReportScopes,
   useLearnerSubjectReport,
+  useReportAuthorityMode,
 } from '@/app/core/hooks/useReporting';
 import { useLearnerSubjectIntelligence } from '@/app/core/hooks/useAcademicIntelligence';
 import { useStudent } from '@/app/core/hooks/useStudents';
@@ -286,6 +287,7 @@ function OutcomeSummaryList({
 }
 
 export function LearnerSubjectReportPage() {
+  const authorityMode = useReportAuthorityMode();
   const params = useParams<{ learnerId: string }>();
   const pathname = usePathname();
   const router = useRouter();
@@ -376,6 +378,7 @@ export function LearnerSubjectReportPage() {
     }
 
     return learnerReportingAPI.exportLearnerSubjectReport(learnerId, {
+      authorityMode,
       format,
       cohortSubjectId: selectedCohortSubjectId,
     });

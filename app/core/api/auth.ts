@@ -90,6 +90,7 @@ export const DEFAULT_WORKSPACE_CAPABILITIES: WorkspaceCapabilities = {
   authorization: {
     enforced: false,
     permission_keys: [],
+    operating_contexts: [],
     roles: [],
     admin_slots: null,
     migration_state: null,
