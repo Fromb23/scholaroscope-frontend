@@ -27,11 +27,12 @@ import {
   useLearnerAvailableReportScopes,
 } from '@/app/core/hooks/useReporting';
 import { buildLearnerAssessmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
+import { buildReportReturnTo } from '@/app/core/components/reports/reportNavigation';
+import { LearnerAssessmentRowsTable } from '@/app/core/components/reports/LearnerAssessmentRowsTable';
 import { formatDate, formatPercent } from '@/app/core/components/reports/LearnerSubjectReportPresentation';
 import type {
   LearnerAssessmentAcademicYearTrendPoint,
   LearnerAssessmentReportPayload,
-  LearnerAssessmentReportRow,
   LearnerAssessmentSubjectBreakdownPoint,
   LearnerAssessmentTermTrendPoint,
   LearnerAvailableReportScope,
@@ -70,22 +71,6 @@ const learnerAssessmentReportError = (message: string): AppError => ({
   severity: 'warning',
   actionLabel: 'Try again',
 });
-
-function scoreValue(row: LearnerAssessmentReportRow): string {
-  if (row.score != null && row.total_marks != null) {
-    return `${row.score}/${row.total_marks}`;
-  }
-  if (row.rubric_level_label || row.rubric_level_code) {
-    return [row.rubric_level_label, row.rubric_level_code].filter(Boolean).join(' ');
-  }
-  return '-';
-}
-
-function statusVariant(status: string): 'success' | 'warning' | 'default' {
-  if (status === 'FINALIZED' || status === 'GRADED') return 'success';
-  if (status === 'ACTIVE' || status === 'PENDING_REVIEW') return 'warning';
-  return 'default';
-}
 
 function SummaryCard({ title, value, helper, icon: Icon }: {
   title: string;
@@ -157,6 +142,7 @@ function AccessState({ learnerId, scopes, returnTo, assessmentId, assessmentType
 
 function FilterControls({
   report,
+  subjectScopes,
   assessmentType,
   cohortSubjectId,
   termId,
@@ -164,6 +150,7 @@ function FilterControls({
   onChange,
 }: {
   report: LearnerAssessmentReportPayload | null;
+  subjectScopes: LearnerAvailableReportScope[];
   assessmentType: string | null;
   cohortSubjectId: number | null;
   termId: number | null;
@@ -178,7 +165,13 @@ function FilterControls({
         <Select
           label="Academic Year"
           value={academicYearId?.toString() ?? ''}
-          onChange={(event) => onChange({ academic_year: event.target.value ? Number(event.target.value) : null })}
+          onChange={(event) => onChange({
+            academic_year: event.target.value ? Number(event.target.value) : null,
+            term: null,
+            cohort_subject: null,
+            subject: null,
+            cohort: null,
+          })}
           options={[
             { value: '', label: 'All years' },
             ...(filters?.academic_years ?? []).map((year) => ({
@@ -190,7 +183,12 @@ function FilterControls({
         <Select
           label="Term"
           value={termId?.toString() ?? ''}
-          onChange={(event) => onChange({ term: event.target.value ? Number(event.target.value) : null })}
+          onChange={(event) => onChange({
+            term: event.target.value ? Number(event.target.value) : null,
+            cohort_subject: null,
+            subject: null,
+            cohort: null,
+          })}
           options={[
             { value: '', label: 'All terms' },
             ...(filters?.terms ?? []).map((term) => ({
@@ -205,7 +203,7 @@ function FilterControls({
           onChange={(event) => onChange({ cohort_subject: event.target.value ? Number(event.target.value) : null })}
           options={[
             { value: '', label: 'All visible subjects' },
-            ...(filters?.subjects ?? []).map((subject) => ({
+            ...subjectScopes.map((subject) => ({
               value: String(subject.cohort_subject_id),
               label: `${subject.subject_code} - ${subject.subject_name} (${subject.cohort_name})`,
             })),
@@ -257,69 +255,6 @@ function ViewModeTabs({
         );
       })}
     </div>
-  );
-}
-
-function AssessmentRowsTable({ rows }: { rows: LearnerAssessmentReportRow[] }) {
-  if (rows.length === 0) {
-    return (
-      <Card>
-        <p className="text-sm theme-muted">No assessment scores match the selected context.</p>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="overflow-hidden p-0">
-      <div className="overflow-x-auto">
-        <table className="min-w-[960px] w-full divide-y theme-border text-sm">
-          <thead className="theme-surface-muted">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium theme-muted">Assessment</th>
-              <th className="px-4 py-3 text-left font-medium theme-muted">Date</th>
-              <th className="px-4 py-3 text-left font-medium theme-muted">Term</th>
-              <th className="px-4 py-3 text-left font-medium theme-muted">Subject</th>
-              <th className="px-4 py-3 text-left font-medium theme-muted">Score</th>
-              <th className="px-4 py-3 text-left font-medium theme-muted">Percentage</th>
-              <th className="px-4 py-3 text-left font-medium theme-muted">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y theme-border">
-            {rows.map((row) => (
-              <tr key={`${row.assessment_id}-${row.cohort_subject_id}`}>
-                <td className="px-4 py-3">
-                  <div className="font-medium theme-text">{row.assessment_name}</div>
-                  <div className="mt-1 text-xs theme-subtle">{row.assessment_type_display}</div>
-                </td>
-                <td className="px-4 py-3 theme-muted">{formatDate(row.assessment_date)}</td>
-                <td className="px-4 py-3 theme-muted">
-                  {row.term_name ?? '-'}
-                  {row.academic_year_name ? (
-                    <span className="block text-xs theme-subtle">{row.academic_year_name}</span>
-                  ) : null}
-                </td>
-                <td className="px-4 py-3 theme-muted">
-                  {row.subject_code} - {row.subject_name}
-                  <span className="block text-xs theme-subtle">{row.cohort_name}</span>
-                </td>
-                <td className="px-4 py-3 theme-text">{scoreValue(row)}</td>
-                <td className="px-4 py-3 theme-text">{metricValue(row.percentage)}</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant={statusVariant(row.assessment_status)}>
-                      {row.assessment_status.replace(/_/g, ' ')}
-                    </Badge>
-                    <Badge variant={statusVariant(row.score_status)}>
-                      {row.score_status_display}
-                    </Badge>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
   );
 }
 
@@ -449,6 +384,7 @@ export function LearnerAssessmentReportPage() {
   const assessmentType = searchParams.get('assessment_type') || null;
   const viewMode = parseViewMode(searchParams.get('view'));
   const requestedReturnTo = searchParams.get('returnTo');
+  const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
   const returnTo = isSafeNextPath(requestedReturnTo)
     ? requestedReturnTo
     : `/learners/${Number.isFinite(learnerId) ? learnerId : ''}`;
@@ -460,6 +396,7 @@ export function LearnerAssessmentReportPage() {
     error: scopesError,
   } = useLearnerAvailableReportScopes(
     Number.isFinite(learnerId) && learnerId > 0 ? learnerId : null,
+    { termId },
   );
   const allowedSubjectScopes = useMemo(
     () => scopes?.subject_scopes ?? [],
@@ -623,6 +560,7 @@ export function LearnerAssessmentReportPage() {
 
           <FilterControls
             report={report}
+            subjectScopes={allowedSubjectScopes}
             assessmentType={assessmentType}
             cohortSubjectId={cohortSubjectId}
             termId={termId}
@@ -664,7 +602,7 @@ export function LearnerAssessmentReportPage() {
           </div>
 
           {viewMode === 'summary' ? (
-            <AssessmentRowsTable rows={report.assessment_rows} />
+            <LearnerAssessmentRowsTable rows={report.assessment_rows} returnTo={currentReturnTo} />
           ) : null}
 
           {viewMode === 'terms' ? (

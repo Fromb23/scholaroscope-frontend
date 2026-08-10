@@ -27,4 +27,16 @@ describe('CohortsReportPage exports', () => {
     expect(source).toContain('Choose a term above before opening a class report.');
     expect(source).not.toContain('router.replace(buildAcademicSetupRedirectHref');
   });
+
+  it('keeps subject reports closed initially and requests detail for only the selected panel', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/CohortsReportPage.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain("searchParams.get('expanded_subject')");
+    expect(source).toContain('expandedCohortSubjectId: expandedSubjectId');
+    expect(source).toContain('if (!item.detail_loaded)');
+    expect(source).toContain('<ControlledReportAccordion');
+  });
 });

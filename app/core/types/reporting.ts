@@ -779,6 +779,7 @@ export interface SubjectSummary {
 }
 
 export interface CurriculumAwareCohortSubjectSummary {
+  detail_loaded?: boolean;
   cohort_subject: ReportCohortSubjectRef;
   assigned_instructor: ReportAssignedInstructor | null;
   assigned_instructors?: ReportAssignedInstructor[];
@@ -819,6 +820,7 @@ export interface ClassSummary {
 }
 
 export interface SubjectCohortOverview {
+  detail_loaded?: boolean;
   cohort_subject: ReportCohortSubjectRef;
   cohort: ReportCohortInfo;
   active_learner_count: number;
@@ -917,6 +919,7 @@ export interface LongitudinalStudentData {
 }
 
 export interface InstructorCohortSubjectOverview {
+  detail_loaded?: boolean;
   id: number;
   cohort_id: number;
   cohort_name: string;
@@ -1595,6 +1598,8 @@ export interface LearnerReportMetricItem {
 
 export interface LearnerAvailableReportScope {
   cohort_subject_id: number;
+  subject_id: number;
+  cohort_id: number;
   subject_name: string;
   subject_code: string;
   cohort_name: string;
@@ -1602,6 +1607,15 @@ export interface LearnerAvailableReportScope {
 }
 
 export interface LearnerAvailableReportScopesPayload {
+  scope: {
+    workspace_id: number;
+    learner_id: number;
+    term_id: number | null;
+    subject_id: number | null;
+    cohort_id: number | null;
+    cohort_subject_id: number | null;
+    authority_mode: 'teaching' | 'supervision';
+  };
   learner: {
     id: number;
     name: string;

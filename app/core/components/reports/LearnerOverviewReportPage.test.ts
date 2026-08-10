@@ -43,4 +43,15 @@ describe('LearnerOverviewReportPage', () => {
     expect(typeSource).toContain('LearnerTermProgressOutcomeReadiness');
     expect(typeSource).toContain('semantic_state?: LearnerTermProgressResultStatus');
   });
+
+  it('starts curriculum progress at all subjects and renders one selected detail', () => {
+    const pageSource = read('app/core/components/reports/LearnerOverviewReportPage.tsx');
+    const scopeSource = read('app/core/components/reports/LearnerLearningAreaScope.tsx');
+
+    expect(pageSource).toContain("searchParams.get('cohort_subject')");
+    expect(scopeSource).toContain('All subjects / workspace overview');
+    expect(pageSource).toContain('selectedDetail={selectedLearningArea ? (');
+    expect(pageSource).toContain('handleLearningAreaChange');
+    expect(pageSource).toContain("next.delete('cohort_subject')");
+  });
 });

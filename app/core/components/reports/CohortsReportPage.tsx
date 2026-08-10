@@ -21,6 +21,7 @@ import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
+import { ControlledReportAccordion } from '@/app/core/components/reports/ControlledReportAccordion';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import {
   buildAttendanceReportHref,
@@ -83,6 +84,7 @@ export function CohortsReportPage({
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
   const selectedCohortId = cohortIdFromRoute
     ?? parsePositiveReportParam(searchParams.get('cohort'));
+  const expandedSubjectId = parsePositiveReportParam(searchParams.get('expanded_subject'));
   const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
@@ -96,6 +98,7 @@ export function CohortsReportPage({
   const reportEnabled = Boolean(selectedCohortId) && Boolean(selectedTermId || currentTerm?.id);
   const { summary, loading, error } = useClassSummary(selectedTermId, selectedCohortId, {
     enabled: reportEnabled,
+    expandedCohortSubjectId: expandedSubjectId,
   });
 
   const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
@@ -127,6 +130,13 @@ export function CohortsReportPage({
     }
     updateQuery({ term: summary.term.id });
   }, [selectedTermId, summary?.term?.id, updateQuery]);
+
+  useEffect(() => {
+    if (!expandedSubjectId || !summary) return;
+    if (!summary.cohort_subjects.some((item) => item.cohort_subject.id === expandedSubjectId)) {
+      updateQuery({ expanded_subject: null });
+    }
+  }, [expandedSubjectId, summary, updateQuery]);
 
   const handleCohortChange = useCallback((value: string) => {
     if (!value) {
@@ -186,7 +196,10 @@ export function CohortsReportPage({
             <Select
               label="Term"
               value={selectedTermId ? String(selectedTermId) : ''}
-              onChange={(event) => updateQuery({ term: event.target.value ? Number(event.target.value) : null })}
+              onChange={(event) => updateQuery({
+                term: event.target.value ? Number(event.target.value) : null,
+                expanded_subject: null,
+              })}
               disabled={termsLoading}
               options={[
                 { value: '', label: currentTermLoading ? 'Loading active term...' : 'Choose term' },
@@ -293,15 +306,34 @@ export function CohortsReportPage({
                 </div>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {summary.cohort_subjects.map((item) => {
+              <ControlledReportAccordion
+                ariaLabel="Class subjects"
+                expandedKey={expandedSubjectId ? String(expandedSubjectId) : null}
+                onExpandedKeyChange={(key) => updateQuery({
+                  expanded_subject: key ? Number(key) : null,
+                })}
+                items={summary.cohort_subjects.map((item) => ({
+                  key: String(item.cohort_subject.id),
+                  value: item,
+                  heading: item.cohort_subject.subject_name,
+                  summary: (
+                    <span className="flex flex-wrap gap-2 sm:justify-end">
+                      <Badge variant="default">{item.reporting_source.toUpperCase()}</Badge>
+                      <Badge variant="purple">{item.active_learner_count} learners</Badge>
+                      <Badge variant="indigo">{formatPercent(item.average_attendance)} attendance</Badge>
+                    </span>
+                  ),
+                }))}
+                renderBody={(item) => {
+                  if (!item.detail_loaded) {
+                    return <LoadingSpinner message="Loading selected subject report..." />;
+                  }
                   const assignedInstructors = item.assigned_instructors ?? (
                     item.assigned_instructor ? [item.assigned_instructor] : []
                   );
 
                   return (
                     <CurriculumSubjectReportCard
-                      key={item.cohort_subject.id}
                       heading={item.cohort_subject.subject_name}
                       subheading={(
                         <div className="flex flex-wrap items-center gap-2">
@@ -408,8 +440,8 @@ export function CohortsReportPage({
                       )}
                     />
                   );
-                })}
-              </div>
+                }}
+              />
             )}
           </div>
         ) : (

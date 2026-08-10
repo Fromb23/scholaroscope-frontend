@@ -369,7 +369,7 @@ export const useStudentReportCard = (
 export const useClassSummary = (
   termId: number | null,
   cohortId: number | null,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; expandedCohortSubjectId?: number | null },
 ) => {
   const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
@@ -385,7 +385,12 @@ export const useClassSummary = (
     }
     try {
       setLoading(true);
-      setSummary(await adminReportsAPI.getCohortSummary(cohortId, termId, authorityMode));
+      setSummary(await adminReportsAPI.getCohortSummary(
+        cohortId,
+        termId,
+        authorityMode,
+        options?.expandedCohortSubjectId,
+      ));
       setError(null);
     } catch (err) {
       setSummary(null);
@@ -393,7 +398,7 @@ export const useClassSummary = (
     } finally {
       setLoading(false);
     }
-  }, [authorityMode, cohortId, enabled, termId]);
+  }, [authorityMode, cohortId, enabled, options?.expandedCohortSubjectId, termId]);
 
   useEffect(() => {
     fetchSummary();
@@ -406,7 +411,7 @@ export const useClassSummary = (
 export const useSubjectAnalysis = (
   termId: number | null,
   subjectId: number | null,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; expandedCohortSubjectId?: number | null },
 ) => {
   const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
@@ -422,7 +427,12 @@ export const useSubjectAnalysis = (
     }
     try {
       setLoading(true);
-      setAnalysis(await adminReportsAPI.getSubjectOverview(subjectId, termId, authorityMode));
+      setAnalysis(await adminReportsAPI.getSubjectOverview(
+        subjectId,
+        termId,
+        authorityMode,
+        options?.expandedCohortSubjectId,
+      ));
       setError(null);
     } catch (err) {
       setAnalysis(null);
@@ -430,7 +440,7 @@ export const useSubjectAnalysis = (
     } finally {
       setLoading(false);
     }
-  }, [authorityMode, enabled, subjectId, termId]);
+  }, [authorityMode, enabled, options?.expandedCohortSubjectId, subjectId, termId]);
 
   useEffect(() => {
     fetchAnalysis();
@@ -527,7 +537,9 @@ export const useInstructorOverview = () => {
   return { overview, loading, error, errorStatus, refetch: fetchOverview };
 };
 
-export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => {
+export const useInstructorCohortSubjects = (
+  options?: { enabled?: boolean; expandedCohortSubjectId?: number | null },
+) => {
   const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
   const [cohortSubjects, setCohortSubjects] = useState<InstructorCohortSubjectOverview[]>([]);
@@ -545,7 +557,10 @@ export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => 
     }
     try {
       setLoading(true);
-      setCohortSubjects(await instructorReportsAPI.getCohortSubjects(authorityMode));
+      setCohortSubjects(await instructorReportsAPI.getCohortSubjects(
+        authorityMode,
+        options?.expandedCohortSubjectId,
+      ));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -556,7 +571,7 @@ export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => 
     } finally {
       setLoading(false);
     }
-  }, [authorityMode, enabled]);
+  }, [authorityMode, enabled, options?.expandedCohortSubjectId]);
 
   useEffect(() => {
     fetchCohortSubjects();
@@ -911,7 +926,7 @@ export const useLearnerAssignmentReport = (
 
 export const useLearnerAvailableReportScopes = (
   learnerId: number | null,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; termId?: number | null },
 ) => {
   const authorityMode = useReportAuthorityMode();
   const enabled = options?.enabled ?? true;
@@ -934,7 +949,11 @@ export const useLearnerAvailableReportScopes = (
     }
     try {
       setLoading(true);
-      setScopes(await learnerReportingAPI.getLearnerAvailableScopes(learnerId, authorityMode));
+      setScopes(await learnerReportingAPI.getLearnerAvailableScopes(
+        learnerId,
+        authorityMode,
+        options?.termId,
+      ));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -945,7 +964,7 @@ export const useLearnerAvailableReportScopes = (
     } finally {
       setLoading(false);
     }
-  }, [authorityMode, enabled, learnerId]);
+  }, [authorityMode, enabled, learnerId, options?.termId]);
 
   useEffect(() => {
     fetchScopes();

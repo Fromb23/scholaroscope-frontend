@@ -59,6 +59,7 @@ import type { Session } from '@/app/core/types/session';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { parseAppDestination } from '@/app/core/auth/navigation';
 import { shouldShowInstructorIdentity } from '@/app/core/components/sessions/sessionDetailVisibility';
+import { SessionSupervisionHierarchy } from '@/app/core/components/sessions/SessionSupervisionHierarchy';
 
 const SESSION_TYPES = [
     { value: '', label: 'All Types' },
@@ -506,6 +507,9 @@ function SessionWorkspaceView() {
     const createNewWorkBlockedReason = (!selectedTermAcceptsNewWork ? 'This academic term is read-only for new session work.' : null)
         ?? todayMode?.action_eligibility?.create_new_work.reason
         ?? (todayMode?.allows_new_teaching === false ? todayMode.message : null);
+    const hierarchyMode = showInstitutionSupervision
+        && viewMode === 'admin_supervision'
+        && !cleanupFilterActive;
     const { sessions, loading, error, refetch } = useSessions({
         term: selectedTerm,
         cohort_subject: selectedCohortSubjectId ?? undefined,
@@ -515,9 +519,9 @@ function SessionWorkspaceView() {
         enabled: true,
         instructorId: shouldFilterToMyTeaching ? user?.id : selectedInstructorId,
     } : undefined, {
-        enabled: !termsLoading && selectedTerm !== undefined,
+        enabled: !hierarchyMode && !termsLoading && selectedTerm !== undefined,
     });
-    const { sessions: todaySessions } = useTodaySessions();
+    const { sessions: todaySessions } = useTodaySessions({ enabled: !hierarchyMode });
     const { cohorts } = useCohorts();
     const canPlanLesson = useMemo(
         () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
@@ -585,6 +589,8 @@ function SessionWorkspaceView() {
 
     const handleTermChange = (value: string) => {
         const params = new URLSearchParams(searchParams.toString());
+        params.delete('supervision_subject');
+        params.delete('supervision_cohort');
         if (value) {
             params.set('term', value);
         } else {
@@ -1484,18 +1490,20 @@ function SessionWorkspaceView() {
                                 })),
                             ]}
                         />
-                        <Select
-                            label="Class"
-                            value={selectedCohortId?.toString() || ''}
-                            onChange={(event) => setSelectedCohortId(event.target.value ? Number(event.target.value) : undefined)}
-                            options={[
-                                { value: '', label: 'All classes' },
-                                ...cohorts.map((cohort) => ({
-                                    value: String(cohort.id),
-                                    label: `${cohort.name} - ${cohort.level}`,
-                                })),
-                            ]}
-                        />
+                        {!hierarchyMode ? (
+                            <Select
+                                label="Class"
+                                value={selectedCohortId?.toString() || ''}
+                                onChange={(event) => setSelectedCohortId(event.target.value ? Number(event.target.value) : undefined)}
+                                options={[
+                                    { value: '', label: 'All classes' },
+                                    ...cohorts.map((cohort) => ({
+                                        value: String(cohort.id),
+                                        label: `${cohort.name} - ${cohort.level}`,
+                                    })),
+                                ]}
+                            />
+                        ) : null}
                         {showInstitutionSupervision && viewMode === 'admin_supervision' ? (
                             <Select
                                 label="Instructor"
@@ -1534,7 +1542,16 @@ function SessionWorkspaceView() {
                 </div>
             </Card>
 
-            {error ? (
+            {hierarchyMode && selectedTerm && activeOrg ? (
+                <SessionSupervisionHierarchy
+                    key={`${activeOrg.id}:${selectedTerm}`}
+                    workspaceId={activeOrg.id}
+                    termId={selectedTerm}
+                    authorityMode="supervision"
+                    instructorId={selectedInstructorId}
+                    sessionType={selectedType}
+                />
+            ) : error ? (
                 <ErrorState message={error} onRetry={refetch} />
             ) : loading ? (
                 <div className="space-y-4" aria-label="Loading sessions">
@@ -1605,7 +1622,7 @@ function SessionWorkspaceView() {
                 </div>
             )}
 
-            {visibleSessions.length > 0 ? (
+            {!hierarchyMode && visibleSessions.length > 0 ? (
                 <p className="text-sm theme-muted">
                     Showing <span className="font-medium">{visibleSessions.length}</span> session
                     {visibleSessions.length !== 1 ? 's' : ''}{' '}

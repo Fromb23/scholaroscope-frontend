@@ -1,7 +1,7 @@
 // app/core/guards/AuthGuard.tsx
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
@@ -19,10 +19,17 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const redirectedToRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!loading && !user) {
-            router.replace(buildLoginPath(getCurrentPath()));
+            const destination = buildLoginPath(getCurrentPath());
+            if (redirectedToRef.current !== destination) {
+                redirectedToRef.current = destination;
+                router.replace(destination);
+            }
+        } else if (user) {
+            redirectedToRef.current = null;
         }
     }, [loading, router, user]);
 

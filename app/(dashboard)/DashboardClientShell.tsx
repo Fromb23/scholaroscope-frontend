@@ -14,7 +14,6 @@ import {
   isAcademicSetupOperationalAdminPath,
 } from '@/app/core/lib/academicSetup';
 import {
-  getUnauthorizedRouteFallback,
   routeAllowedForContext,
 } from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
@@ -44,12 +43,28 @@ import {
 import { AlertTriangle } from 'lucide-react';
 import type { AccessNotice } from '@/app/core/types/auth';
 import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
-import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
+import { buildLoginPath } from '@/app/core/auth/navigation';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { OfflineRetryState } from '@/app/offline/OfflineRetryState';
 import { WorkspaceGenerationBoundary } from '@/app/core/runtime/workspaceGeneration';
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
+
+function AccessTerminalState({ title, description }: { title: string; description: string }) {
+  return (
+    <main className="theme-app-bg flex min-h-dvh items-center justify-center p-6">
+      <div role="alert" className="theme-card max-w-xl rounded-lg border p-6 shadow-sm">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--color-warning)]" />
+          <div className="space-y-2">
+            <h1 className="text-lg font-semibold theme-text">{title}</h1>
+            <p className="text-sm theme-text-muted">{description}</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
 
 function DashboardContent({
   children,
@@ -168,8 +183,33 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const search = searchParams.toString();
+  const currentPath = search ? `${pathname}?${search}` : pathname;
   const isLegacyWorkspaceCreationRedirectRoute = pathname === '/workspaces/new';
   const previousOrganizationIdRef = useRef<number | null | undefined>(undefined);
+  const lastRedirectRef = useRef<string | null>(null);
+
+  const workspaceUnavailable = (
+    !loading
+    && Boolean(user)
+    && !user?.is_superadmin
+    && !isLegacyWorkspaceCreationRedirectRoute
+    && (!activeOrg || availableOperatingContexts.length === 0)
+  );
+  const routeDenied = (
+    !loading
+    && Boolean(user)
+    && !user?.is_superadmin
+    && Boolean(activeOrg)
+    && availableOperatingContexts.length > 0
+    && !pluginRegistry.isRoutePluginLoading
+    && !pluginRegistry.error
+    && !routeAllowedForContext(currentPath, {
+      operatingContext: activeOperatingContext,
+      capabilities,
+      orgType: activeOrg?.org_type ?? null,
+    })
+  );
 
   useEffect(() => {
     document.documentElement.classList.add('dashboard-shell-lock');
@@ -200,14 +240,18 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
     if (loading) return;
-    const currentPath = getCurrentPath();
     if (!user) {
       if (offline) {
         return;
       }
-      router.replace(buildLoginPath(currentPath));
+      const destination = buildLoginPath(currentPath);
+      if (lastRedirectRef.current !== destination) {
+        lastRedirectRef.current = destination;
+        router.replace(destination);
+      }
       return;
     }
+    lastRedirectRef.current = null;
     if (user.is_superadmin) {
       redirectToPlatformConsole('/login');
       return;
@@ -218,7 +262,6 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     }
 
     if (!activeOrg || availableOperatingContexts.length === 0) {
-      router.replace(buildLoginPath(currentPath, { reason: 'no_access' }));
       return;
     }
 
@@ -226,15 +269,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    const search = searchParams.toString();
-    const routePath = search ? `${pathname}?${search}` : pathname;
-
-    if (!routeAllowedForContext(routePath, {
-      operatingContext: activeOperatingContext,
-      capabilities,
-      orgType: activeOrg?.org_type ?? null,
-    })) {
-      router.replace(getUnauthorizedRouteFallback(activeOperatingContext, pathname));
+    if (routeDenied) {
       return;
     }
 
@@ -264,6 +299,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     activeOperatingContext,
     availableOperatingContexts.length,
     capabilities,
+    currentPath,
     isLegacyWorkspaceCreationRedirectRoute,
     loading,
     loggingOut,
@@ -272,7 +308,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     pluginRegistry.error,
     pluginRegistry.isRoutePluginLoading,
     router,
-    searchParams,
+    routeDenied,
     user,
   ]);
 
@@ -297,6 +333,15 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
 
   if (!loading && !user && offline) {
     return <OfflineRetryState />;
+  }
+
+  if (workspaceUnavailable) {
+    return (
+      <AccessTerminalState
+        title="Workspace access unavailable"
+        description="Your session is valid, but no active workspace and operating context could be resolved. Select an available workspace or ask a workspace administrator to restore your access."
+      />
+    );
   }
 
   if (
@@ -326,6 +371,15 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
 
   if (pluginRegistry.isRoutePluginLoading) {
     return <PluginRouteLoadingState pluginIds={pluginRegistry.pendingRoutePluginIds} />;
+  }
+
+  if (routeDenied) {
+    return (
+      <AccessTerminalState
+        title="Report access denied"
+        description="You are signed in, but your effective authority in this workspace does not permit this page. Change operating context or ask a workspace administrator for the required permission."
+      />
+    );
   }
 
   if (isLegacyWorkspaceCreationRedirectRoute) {

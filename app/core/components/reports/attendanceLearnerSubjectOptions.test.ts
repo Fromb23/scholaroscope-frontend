@@ -6,10 +6,11 @@ describe('attendance learner subject options', () => {
   it('uses learner subject options when a learner is selected and clears invalid filters', () => {
     const source = readFileSync(join(process.cwd(), 'app/core/components/reports/AttendanceReportPage.tsx'), 'utf8');
 
-    expect(source).toContain('useLearnerSubjectOptions(selectedStudentId');
+    expect(source).toContain('useLearnerAvailableReportScopes(selectedStudentId');
+    expect(source).toContain('termId: selectedTermId');
     expect(source).toContain('learnerScopedSubjectSelectOptions');
     expect(source).toContain('cohortSubject:');
-    expect(source).toContain("updateQuery({ subject: null, cohortSubject: null })");
+    expect(source).toContain("updateQuery({ subject: null, cohortSubject: null, cohort_subject: null })");
   });
 
   it('declares the learner subject options API endpoint', () => {

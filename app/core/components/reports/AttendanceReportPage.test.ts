@@ -24,5 +24,8 @@ describe('AttendanceReportPage exports', () => {
     expect(source).toContain('isScopedInstructorAttendanceReport');
     expect(source).toContain('allowInstructorScopedAccess={scopedInstructorAccess}');
     expect(source).toContain('Learner attendance report');
+    expect(source).toContain("searchParams.get('cohort_subject')");
+    expect(source).toContain('useLearnerAvailableReportScopes(selectedStudentId');
+    expect(source).toContain('termId: selectedTermId');
   });
 });

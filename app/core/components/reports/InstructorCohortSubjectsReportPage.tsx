@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useCallback, useEffect } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Users } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -11,6 +13,12 @@ import { CardSkeleton, Skeleton, SkeletonStatCard } from '@/app/components/ui/lo
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { useInstructorCohortSubjects } from '@/app/core/hooks/useReporting';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
+import { ControlledReportAccordion } from '@/app/core/components/reports/ControlledReportAccordion';
+import {
+  buildCohortSubjectReportHref,
+  buildReportReturnTo,
+  parsePositiveReportParam,
+} from '@/app/core/components/reports/reportNavigation';
 import {
   formatNumber,
   formatPercent,
@@ -45,7 +53,27 @@ function CohortSubjectsReportSkeleton() {
 }
 
 export default function InstructorCohortSubjectsReportPage() {
-  const { cohortSubjects, loading, error } = useInstructorCohortSubjects();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const expandedId = parsePositiveReportParam(searchParams.get('expanded_cohort_subject'));
+  const { cohortSubjects, loading, error } = useInstructorCohortSubjects({
+    expandedCohortSubjectId: expandedId,
+  });
+  const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
+
+  const setExpandedId = useCallback((id: number | null) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (id) next.set('expanded_cohort_subject', String(id));
+    else next.delete('expanded_cohort_subject');
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (!expandedId || loading) return;
+    if (!cohortSubjects.some((item) => item.id === expandedId)) setExpandedId(null);
+  }, [cohortSubjects, expandedId, loading, setExpandedId]);
 
   const averageAttendance = average(cohortSubjects.map((item) => item.average_attendance));
   const reportingCounts = cohortSubjects.reduce<Record<string, number>>((acc, item) => {
@@ -86,10 +114,24 @@ export default function InstructorCohortSubjectsReportPage() {
           </div>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {cohortSubjects.map((item) => (
-            <CurriculumSubjectReportCard
-              key={item.id}
+        <ControlledReportAccordion
+          ariaLabel="My assigned class subjects"
+          expandedKey={expandedId ? String(expandedId) : null}
+          onExpandedKeyChange={(key) => setExpandedId(key ? Number(key) : null)}
+          items={cohortSubjects.map((item) => ({
+            key: String(item.id),
+            value: item,
+            heading: `${item.cohort_name} — ${item.subject_name}`,
+            summary: (
+              <span className="flex flex-wrap gap-2 sm:justify-end">
+                <Badge variant="default">{item.reporting_source.toUpperCase()}</Badge>
+                <Badge variant="blue">{item.active_learner_count} learners</Badge>
+                <Badge variant="indigo">{formatPercent(item.average_attendance)} attendance</Badge>
+              </span>
+            ),
+          }))}
+          renderBody={(item) => (
+            item.detail_loaded ? <CurriculumSubjectReportCard
               heading={`${item.cohort_name} — ${item.subject_name}`}
               subheading={`${item.subject_code} · ${item.academic_year}`}
               reportingSource={item.reporting_source}
@@ -106,7 +148,13 @@ export default function InstructorCohortSubjectsReportPage() {
               averageGrade={item.average_grade}
               averageGradeNote={item.average_grade_note}
               actions={(
-                <Link href={`/reports/instructor/cohort-subjects/${item.id}`}>
+                <Link href={buildCohortSubjectReportHref(item.id, {
+                  authorityMode: 'teaching',
+                  projection: 'overview',
+                  cohort: item.cohort_id,
+                  subject: item.subject_id,
+                  returnTo: currentReturnTo,
+                })}>
                   <Button variant="secondary" size="sm">Open report</Button>
                 </Link>
               )}
@@ -115,9 +163,9 @@ export default function InstructorCohortSubjectsReportPage() {
                   <Badge variant="default">Sessions {formatNumber(item.session_count, 0)}</Badge>
                 </div>
               )}
-            />
-          ))}
-        </div>
+            /> : <CardSkeleton lines={4} />
+          )}
+        />
       )}
     </div>
   );

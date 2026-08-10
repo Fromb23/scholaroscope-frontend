@@ -136,4 +136,17 @@ describe('route access', () => {
     })).toBe(false);
     expect(canAccess('/reports', 'WORKSPACE_MANAGEMENT', { authorization: { permission_keys: [] } } as WorkspaceCapabilities)).toBe(false);
   });
+
+  it('allows an effective workspace report viewer to open a cohort report without broadening access', () => {
+    expect(canAccess(
+      '/reports/cohorts/42?term=7',
+      'WORKSPACE_MANAGEMENT',
+      capabilities(['reports.view']),
+    )).toBe(true);
+    expect(canAccess(
+      '/reports/cohorts/42?term=7',
+      'WORKSPACE_MANAGEMENT',
+      capabilities(['academic.cohorts.view']),
+    )).toBe(false);
+  });
 });

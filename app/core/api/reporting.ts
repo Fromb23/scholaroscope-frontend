@@ -524,9 +524,18 @@ export const adminReportsAPI = {
       `admin-reporting-overview.${format}`,
     ),
 
-  getCohortSummary: async (cohortId: number, termId: number | null | undefined, authorityMode: ReportAuthorityMode) => {
+  getCohortSummary: async (
+    cohortId: number,
+    termId: number | null | undefined,
+    authorityMode: ReportAuthorityMode,
+    expandedCohortSubjectId?: number | null,
+  ) => {
     const response = await apiClient.get<ClassSummary>(`/reports/admin/cohorts/${cohortId}/`, {
-      params: { term_id: termId ?? undefined, authority_mode: authorityMode },
+      params: {
+        term_id: termId ?? undefined,
+        authority_mode: authorityMode,
+        expanded_cohort_subject_id: expandedCohortSubjectId ?? undefined,
+      },
     });
     return response.data;
   },
@@ -547,9 +556,18 @@ export const adminReportsAPI = {
       `cohort-report-${cohortId}.${format}`,
     ),
 
-  getSubjectOverview: async (subjectId: number, termId: number | null | undefined, authorityMode: ReportAuthorityMode) => {
+  getSubjectOverview: async (
+    subjectId: number,
+    termId: number | null | undefined,
+    authorityMode: ReportAuthorityMode,
+    expandedCohortSubjectId?: number | null,
+  ) => {
     const response = await apiClient.get<SubjectAnalysis>(`/reports/admin/subjects/${subjectId}/`, {
-      params: { term_id: termId ?? undefined, authority_mode: authorityMode },
+      params: {
+        term_id: termId ?? undefined,
+        authority_mode: authorityMode,
+        expanded_cohort_subject_id: expandedCohortSubjectId ?? undefined,
+      },
     });
     return response.data;
   },
@@ -655,10 +673,18 @@ export const instructorReportsAPI = {
     return response.data;
   },
 
-  getCohortSubjects: async (authorityMode: ReportAuthorityMode) => {
+  getCohortSubjects: async (
+    authorityMode: ReportAuthorityMode,
+    expandedCohortSubjectId?: number | null,
+  ) => {
     const response = await apiClient.get<InstructorCohortSubjectOverview[]>(
       '/reports/instructor/cohort-subjects/',
-      { params: { authority_mode: authorityMode } },
+      {
+        params: {
+          authority_mode: authorityMode,
+          expanded_cohort_subject_id: expandedCohortSubjectId ?? undefined,
+        },
+      },
     );
     return response.data;
   },
@@ -773,10 +799,14 @@ export const cohortSubjectReportsAPI = {
 };
 
 export const learnerReportingAPI = {
-  getLearnerAvailableScopes: async (learnerId: number, authorityMode: ReportAuthorityMode) => {
+  getLearnerAvailableScopes: async (
+    learnerId: number,
+    authorityMode: ReportAuthorityMode,
+    termId?: number | null,
+  ) => {
     const response = await apiClient.get<LearnerAvailableReportScopesPayload>(
       `/reporting/learners/${learnerId}/available-scopes/`,
-      { params: { authority_mode: authorityMode } },
+      { params: { authority_mode: authorityMode, term_id: termId ?? undefined } },
     );
     return response.data;
   },

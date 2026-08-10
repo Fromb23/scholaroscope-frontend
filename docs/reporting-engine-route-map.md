@@ -33,3 +33,14 @@ This catalogue is the compatibility migration map. Compatibility entries must pr
 | `/cbc/assessment-results...` | cohort subject/learner subject | assessments-results | CBC compatibility entry; official/freshness semantics remain CBC-owned |
 
 Operational CBC Browse, Teaching, and Evidence routes are not report objects. They enter a canonical report using explicit intent and retain their exact operational URL as origin.
+
+## Discovery and drill-down presentation
+
+- Lesson Supervision is `Subject -> Cohort -> Sessions`. The page loads only lightweight subjects initially, cohort summaries after one subject opens, and bounded sessions after one cohort opens. `supervision_subject` and `supervision_cohort` are the URL restoration keys; a term change clears both.
+- Cohort subjects, teacher My Class Subjects, and repeated cohort offerings on a subject report are controlled accordions. Their ordinary initial URL has no expanded panel. At most one `expanded_subject` or `expanded_cohort_subject` is valid, and only that item requests/renders its detailed projection. Hidden report bodies are unmounted.
+- Learner Attendance, Assessments & Results, Assignments, and Curriculum Progress begin from the authorized aggregate scope. Workspace management uses an explicit `authority_mode=supervision`; teaching uses `authority_mode=teaching`. Subject options come from the reporting scope API, are term/workspace/learner bounded, and narrow server-side. Existing cohort-subject and CBC pages remain the canonical detailed surfaces.
+- Assessment rows link to `/assessments/{assessmentId}`. Assignment rows link to `/academic/cohorts/{cohortId}/assignments/{assignmentId}`. Both carry the exact safe learner-report origin.
+
+## Return locations
+
+`buildReportReturnTo` is the ordinary report origin constructor. It preserves semantic query state, removes an existing `returnTo` and `origin`, and produces one encoded internal destination. Operational detail helpers validate through the shared application-destination parser. Absolute, protocol-relative, encoded-external, malformed, credential-bearing, and excessively nested destinations are rejected. Every Back control prefers a valid `returnTo`, then uses a route-specific structural fallback; it never depends only on browser history.

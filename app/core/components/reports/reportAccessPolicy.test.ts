@@ -101,6 +101,27 @@ const institutionReportPolicyCapabilities = {
 } satisfies WorkspaceCapabilities;
 
 describe('report access policy', () => {
+  it('uses effective reports.view authority for a workspace manager even during convenience-flag hydration', () => {
+    const permissionBackedCapabilities = {
+      ...institutionCapabilities,
+      can_view_reports: false,
+      authorization: {
+        enforced: true,
+        permission_keys: ['reports.view'],
+        roles: [],
+        admin_slots: null,
+        migration_state: null,
+      },
+    } satisfies WorkspaceCapabilities;
+
+    expect(canRenderInstitutionReportOverview({
+      user,
+      activeOrg: institution,
+      capabilities: permissionBackedCapabilities,
+      operatingContext: 'WORKSPACE_MANAGEMENT',
+    })).toBe(true);
+  });
+
   it('requires reports.compute and workspace-wide compute availability', () => {
     const computeCapabilities = {
       ...institutionReportPolicyCapabilities,
