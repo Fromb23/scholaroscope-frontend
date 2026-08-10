@@ -30,7 +30,7 @@ export interface ComputeResult {
 type ComputeActionStatus = 'idle' | 'loading' | 'blocked' | 'success' | 'error';
 export type ComputeTransportState = 'idle' | 'connecting' | 'live' | 'disconnected' | 'polling' | 'restored';
 
-const TERMINAL_JOB_STATUSES = new Set(['COMPLETED', 'FAILED', 'BLOCKED', 'CANCELLED']);
+const TERMINAL_JOB_STATUSES = new Set(['SUCCEEDED', 'FAILED', 'BLOCKED']);
 
 function sleep(milliseconds: number) {
     return new Promise((resolve) => {
@@ -117,7 +117,7 @@ export function activeJobFromConflict(error: ReturnType<typeof resolveReportErro
 
 function progressFromJob(job: ReportComputeJob): ReportComputeProgressEvent {
     return job.latest_event ?? {
-        event: TERMINAL_JOB_STATUSES.has(job.status) ? (job.status === 'COMPLETED' ? 'complete' : 'error') : 'progress',
+        event: TERMINAL_JOB_STATUSES.has(job.status) ? (job.status === 'SUCCEEDED' ? 'complete' : 'error') : 'progress',
         stage: job.stage,
         label: job.label,
         progress_percent: job.progress_percent,
@@ -278,7 +278,7 @@ export function useComputePage({ enabled = true }: { enabled?: boolean } = {}) {
     }, []);
 
     const applyTerminalJob = useCallback((finalJob: ReportComputeJob) => {
-        if (finalJob.status === 'COMPLETED') {
+        if (finalJob.status === 'SUCCEEDED') {
             setComputeActionStatus('success');
             setComputeActionError(null);
         } else if (finalJob.status === 'BLOCKED') {
@@ -288,13 +288,11 @@ export function useComputePage({ enabled = true }: { enabled?: boolean } = {}) {
                 computeJobErrorMessage(finalJob)
                 ?? 'Report preparation is blocked. Review the persisted blockers.',
             );
-        } else if (finalJob.status === 'FAILED' || finalJob.status === 'CANCELLED') {
+        } else if (finalJob.status === 'FAILED') {
             setComputeActionStatus('error');
             setComputeActionError(
                 computeJobErrorMessage(finalJob)
-                ?? (finalJob.status === 'CANCELLED'
-                    ? 'Report computation was cancelled.'
-                    : 'Report computation failed.'),
+                ?? 'Report computation failed.',
             );
         }
     }, []);
@@ -322,8 +320,10 @@ export function useComputePage({ enabled = true }: { enabled?: boolean } = {}) {
                 if (finalJob && TERMINAL_JOB_STATUSES.has(finalJob.status)) {
                     applyTerminalJob(finalJob);
                 } else if (!controller.signal.aborted) {
-                    setComputeActionStatus('error');
-                    setComputeActionError('The persisted compute job did not reach a terminal state before monitoring timed out.');
+                    setComputeActionStatus('idle');
+                    setComputeActionError(
+                        'Live monitoring stopped. The server job is still authoritative; reopen this job to continue monitoring.',
+                    );
                 }
             } catch (error) {
                 if (controller.signal.aborted) return;
@@ -463,13 +463,20 @@ export function useComputePage({ enabled = true }: { enabled?: boolean } = {}) {
             }
 
             if (!finalJob) {
-                throw new Error('Report computation did not finish in time.');
+                setComputeActionStatus('idle');
+                setComputeActionError(
+                    'Live monitoring stopped. The report job continues on the server.',
+                );
+                return;
             }
 
             if (TERMINAL_JOB_STATUSES.has(finalJob.status)) {
                 applyTerminalJob(finalJob);
             } else {
-                throw new Error('The persisted report compute job did not reach a terminal state in time.');
+                setComputeActionStatus('idle');
+                setComputeActionError(
+                    'Live monitoring stopped. The report job continues on the server.',
+                );
             }
         } catch (error) {
             const resolved = resolveReportError(error, {
@@ -524,6 +531,40 @@ export function useComputePage({ enabled = true }: { enabled?: boolean } = {}) {
                 current === 'polling' || current === 'disconnected' ? current : 'idle'
             ));
             await fetchReadiness(termId, { showPageError: false });
+        }
+    };
+
+    const handleRetryFailedItems = async () => {
+        if (!job || job.status !== 'FAILED') return;
+        setComputing(true);
+        setComputeActionStatus('loading');
+        setComputeActionError(null);
+        const controller = new AbortController();
+        streamAbortRef.current?.abort();
+        streamAbortRef.current = controller;
+        try {
+            const retried = await reportsAPI.retryFailedComputeItems(job.job_id);
+            setJob(retried);
+            setProgressEvent(progressFromJob(retried));
+            setTransportState('polling');
+            setStreamFallback(true);
+            const terminal = await pollComputeJob(retried.job_id, controller.signal, true);
+            if (terminal && TERMINAL_JOB_STATUSES.has(terminal.status)) {
+                applyTerminalJob(terminal);
+            } else if (!controller.signal.aborted) {
+                setComputeActionStatus('idle');
+                setComputeActionError('Live monitoring stopped. The retry continues on the server.');
+            }
+        } catch (error) {
+            const resolved = resolveReportError(error, {
+                action: 'compute',
+                entityLabel: 'failed report items',
+                role: 'ADMIN',
+            });
+            setComputeActionStatus('error');
+            setComputeActionError(resolved.message);
+        } finally {
+            if (!controller.signal.aborted) setComputing(false);
         }
     };
 
@@ -588,6 +629,7 @@ export function useComputePage({ enabled = true }: { enabled?: boolean } = {}) {
         setComputeSheetOpen,
         handleTermChange,
         handleComputeReports,
+        handleRetryFailedItems,
         refetchReadiness: selectedTerm ? () => fetchReadiness(selectedTerm) : undefined,
         refreshReadinessInBackground: selectedTerm ? () => fetchReadiness(selectedTerm, { showPageError: false }) : undefined,
     };

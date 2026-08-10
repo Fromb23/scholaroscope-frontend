@@ -24,6 +24,9 @@ import {
   useAdminInstructorTeacherReport,
   useInstructorCohortSubjects,
   useInstructorTeacherReport,
+  useHistoricalReportPeriods,
+  useHistoricalTeacherReport,
+  useHistoricalTeachingScopes,
   useReportAuthorityMode,
 } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
@@ -54,10 +57,12 @@ function stringValue(value: string | number): string {
 export function TeacherPerformanceReportPage({
   mode,
   instructorId,
+  participantId,
   returnTo,
 }: {
   mode: 'self' | 'admin';
   instructorId?: number | null;
+  participantId?: string | null;
   returnTo: string;
 }) {
   const router = useRouter();
@@ -71,6 +76,11 @@ export function TeacherPerformanceReportPage({
   );
 
   const { terms, loading: termsLoading } = useTerms();
+  const historicalPeriodsQuery = useHistoricalReportPeriods(participantId ?? null);
+  const historicalScopesQuery = useHistoricalTeachingScopes(
+    participantId ?? null,
+    selectedTermId,
+  );
   const selfCohortSubjectsQuery = useInstructorCohortSubjects({ enabled: mode === 'self' });
 
   const selfReportQuery = useInstructorTeacherReport(
@@ -81,18 +91,31 @@ export function TeacherPerformanceReportPage({
     { enabled: mode === 'self' },
   );
   const adminReportQuery = useAdminInstructorTeacherReport(
-    mode === 'admin' ? (instructorId ?? null) : null,
+    mode === 'admin' && !participantId ? (instructorId ?? null) : null,
     {
       termId: selectedTermId,
       cohortSubjectId: selectedCohortSubjectId,
     },
-    { enabled: mode === 'admin' && Boolean(instructorId) },
+    { enabled: mode === 'admin' && !participantId && Boolean(instructorId) },
+  );
+  const historicalReportQuery = useHistoricalTeacherReport(
+    participantId ?? null,
+    {
+      termId: selectedTermId,
+      cohortSubjectId: selectedCohortSubjectId,
+    },
   );
 
-  const activeQuery = mode === 'self' ? selfReportQuery : adminReportQuery;
+  const activeQuery = mode === 'self'
+    ? selfReportQuery
+    : participantId
+      ? historicalReportQuery
+      : adminReportQuery;
   const report = activeQuery.report;
   const loading = activeQuery.loading;
-  const error = activeQuery.error;
+  const error = activeQuery.error
+    ?? historicalPeriodsQuery.error
+    ?? historicalScopesQuery.error;
   const isCurrentInstructor = mode === 'self' && (!report || report.instructor.id === user?.id);
   const isMyTeachingSelfReport = activeOperatingContext === 'MY_TEACHING' && isCurrentInstructor;
 
@@ -141,11 +164,18 @@ export function TeacherPerformanceReportPage({
       }));
     }
 
+    if (participantId) {
+      return historicalScopesQuery.scopes.map((item) => ({
+        value: String(item.cohort_subject_id),
+        label: `${item.cohort_name} · ${item.subject_name}`,
+      }));
+    }
+
     return (report?.assigned_subjects ?? []).map((item) => ({
       value: String(item.cohort_subject_id),
       label: `${item.cohort_name} · ${item.subject_name}`,
     }));
-  }, [mode, report?.assigned_subjects, selfCohortSubjectsQuery.cohortSubjects]);
+  }, [historicalScopesQuery.scopes, mode, participantId, report?.assigned_subjects, selfCohortSubjectsQuery.cohortSubjects]);
 
   const reflectionSubjectOptions = useMemo(
     () => [
@@ -237,6 +267,11 @@ export function TeacherPerformanceReportPage({
 
     return mode === 'self'
       ? learnerReportingAPI.exportInstructorTeacherReport(format, params)
+      : participantId && selectedTermId
+        ? learnerReportingAPI.exportHistoricalTeacherReport(participantId, format, {
+            termId: selectedTermId,
+            cohortSubjectId: selectedCohortSubjectId,
+          })
       : learnerReportingAPI.exportAdminInstructorTeacherReport(instructorId ?? 0, format, params);
   }, 'teacher report');
 
@@ -338,6 +373,16 @@ export function TeacherPerformanceReportPage({
         />
       ) : null}
 
+      {report?.evidence_status === 'NONE' ? (
+        <Card>
+          <p className="text-sm font-medium theme-text">No reportable evidence</p>
+          <p className="mt-1 text-sm theme-muted">
+            The teaching assignment is part of workspace history, but no sessions,
+            assignments, assessments, or reflections were recorded in this period.
+          </p>
+        </Card>
+      ) : null}
+
       <Card>
         <div
           className={`grid gap-4 ${isMyTeachingSelfReport ? 'lg:grid-cols-2' : 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]'}`}
@@ -399,10 +444,17 @@ export function TeacherPerformanceReportPage({
                 })
               }
               options={[
-                { value: '', label: termsLoading ? 'Loading terms...' : 'All visible terms' },
-                ...terms.map((term) => ({
+                {
+                  value: '',
+                  label: participantId
+                    ? historicalPeriodsQuery.loading ? 'Loading periods...' : 'Select a historical period'
+                    : termsLoading ? 'Loading terms...' : 'All visible terms',
+                },
+                ...(participantId ? historicalPeriodsQuery.periods : terms).map((term) => ({
                   value: String(term.id),
-                  label: term.name,
+                  label: participantId && 'computation' in term && term.computation
+                    ? `${term.name} · ${term.computation.status.toLowerCase()}`
+                    : term.name,
                 })),
               ]}
             />

@@ -41,8 +41,12 @@ import {
   InstructorCohortSubjectPerformanceReport,
   InstructorCohortSubjectTeachingActivityReport,
   ReportFilters,
+  HistoricalReportParticipant,
+  HistoricalReportPeriod,
+  HistoricalTeachingScope,
 } from '@/app/core/types/reporting';
 import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
+import { resolveReportError } from '@/app/core/errors';
 import { useAuth } from '@/app/context/AuthContext';
 import { reportAuthorityModeForOperatingContext } from '@/app/core/components/reports/reportIntent';
 
@@ -1275,3 +1279,111 @@ export const useAdminInstructorTeacherReport = (
   }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
 };
+
+function historicalReportError(error: unknown, entityLabel: string): string {
+  const resolved = resolveReportError(error, {
+    action: 'load',
+    entityLabel,
+    role: 'ADMIN',
+  });
+  if (resolved.serverCode === 'authorization_resolution_failed') {
+    return 'Authorization could not be verified. Retry shortly; this is not a permission denial.';
+  }
+  if (resolved.serverCode === 'historical_assignment_not_found') {
+    return 'No teaching assignment overlaps the selected reporting period.';
+  }
+  if (resolved.serverCode === 'historical_participant_not_found') {
+    return 'This historical participant does not belong to the current workspace.';
+  }
+  if (resolved.serverCode === 'report_no_evidence') {
+    return 'No reportable evidence exists for this teacher and period.';
+  }
+  if (resolved.serverCode === 'report_not_computed') {
+    return 'This report has not been computed yet.';
+  }
+  if (resolved.serverCode === 'report_compute_failed') {
+    return 'Report computation is temporarily unavailable. Retry the compute job.';
+  }
+  return resolved.message;
+}
+
+export function useHistoricalReportParticipants() {
+  const [participants, setParticipants] = useState<HistoricalReportParticipant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setParticipants(await learnerReportingAPI.getHistoricalReportParticipants());
+      setError(null);
+    } catch (requestError) {
+      setParticipants([]);
+      setError(historicalReportError(requestError, 'historical instructors'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+  return { participants, loading, error, refetch: load };
+}
+
+export function useHistoricalReportPeriods(participantId: string | null) {
+  const [periods, setPeriods] = useState<HistoricalReportPeriod[]>([]);
+  const [loading, setLoading] = useState(Boolean(participantId));
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!participantId) { setPeriods([]); setLoading(false); return; }
+    let active = true;
+    setLoading(true);
+    void learnerReportingAPI.getHistoricalReportPeriods(participantId)
+      .then((value) => { if (active) { setPeriods(value); setError(null); } })
+      .catch((requestError) => { if (active) setError(historicalReportError(requestError, 'reporting periods')); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [participantId]);
+  return { periods, loading, error };
+}
+
+export function useHistoricalTeachingScopes(participantId: string | null, termId: number | null) {
+  const [scopes, setScopes] = useState<HistoricalTeachingScope[]>([]);
+  const [loading, setLoading] = useState(Boolean(participantId && termId));
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!participantId || !termId) { setScopes([]); setLoading(false); return; }
+    let active = true;
+    setLoading(true);
+    void learnerReportingAPI.getHistoricalTeachingScopes(participantId, termId)
+      .then((value) => { if (active) { setScopes(value); setError(null); } })
+      .catch((requestError) => { if (active) setError(historicalReportError(requestError, 'historical teaching scopes')); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [participantId, termId]);
+  return { scopes, loading, error };
+}
+
+export function useHistoricalTeacherReport(
+  participantId: string | null,
+  params: { termId: number | null; cohortSubjectId?: number | null },
+) {
+  const [report, setReport] = useState<TeacherPerformanceReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(participantId && params.termId));
+  const [error, setError] = useState<string | null>(null);
+  const fetchReport = useCallback(async () => {
+    if (!participantId || !params.termId) { setReport(null); setLoading(false); return; }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getHistoricalTeacherReport(participantId, {
+        termId: params.termId,
+        cohortSubjectId: params.cohortSubjectId,
+      }));
+      setError(null);
+    } catch (requestError) {
+      setReport(null);
+      setError(historicalReportError(requestError, 'historical teacher report'));
+    } finally {
+      setLoading(false);
+    }
+  }, [params.cohortSubjectId, params.termId, participantId]);
+  useEffect(() => { void fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus: null, refetch: fetchReport };
+}
