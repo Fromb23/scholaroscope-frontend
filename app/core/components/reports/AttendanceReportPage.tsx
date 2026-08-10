@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -29,10 +29,14 @@ import {
   parsePositiveReportParam,
   resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
-import { useCurrentTerm, useLearnerSubjectOptions, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurrentTerm, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
-import { useAdminAttendanceScopeReport, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
+import {
+  useAdminAttendanceScopeReport,
+  useLearnerAvailableReportScopes,
+  useReportAuthorityMode,
+} from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import { isScopedInstructorAttendanceReport } from '@/app/utils/routeAccess';
 
@@ -60,7 +64,9 @@ export function AttendanceReportPage() {
   const selectedStudentId = parsePositiveReportParam(searchParams.get('student'));
   const selectedCohortId = parsePositiveReportParam(searchParams.get('cohort'));
   const selectedSubjectId = parsePositiveReportParam(searchParams.get('subject'));
-  const selectedCohortSubjectId = parsePositiveReportParam(searchParams.get('cohortSubject'));
+  const selectedCohortSubjectId = parsePositiveReportParam(
+    searchParams.get('cohortSubject') ?? searchParams.get('cohort_subject'),
+  );
   const selectedSessionId = parsePositiveReportParam(searchParams.get('session'));
   const source = searchParams.get('source');
   const learnerQuery = searchParams.get('q') ?? '';
@@ -84,9 +90,16 @@ export function AttendanceReportPage() {
   const { cohorts, loading: cohortsLoading } = useCohorts();
   const { subjects, loading: subjectsLoading } = useSubjects();
   const {
-    subjectOptions: learnerSubjectOptions,
+    scopes: learnerReportScopes,
     loading: learnerSubjectOptionsLoading,
-  } = useLearnerSubjectOptions(selectedStudentId, { enabled: Boolean(selectedStudentId) });
+  } = useLearnerAvailableReportScopes(selectedStudentId, {
+    enabled: Boolean(selectedStudentId),
+    termId: selectedTermId,
+  });
+  const learnerSubjectOptions = useMemo(
+    () => learnerReportScopes?.subject_scopes ?? [],
+    [learnerReportScopes?.subject_scopes],
+  );
   const { students: learnerMatches, loading: learnerSearchLoading } = useStudents(
     {
       q: learnerQuery.trim(),
@@ -189,7 +202,7 @@ export function AttendanceReportPage() {
       || (!selectedCohortSubjectId && selectedSubjectId && option.subject_id === selectedSubjectId)
     ));
     if (!valid) {
-      updateQuery({ subject: null, cohortSubject: null });
+      updateQuery({ subject: null, cohortSubject: null, cohort_subject: null });
     }
   }, [
     learnerSubjectOptions,
@@ -242,7 +255,12 @@ export function AttendanceReportPage() {
             <Select
               label="Term"
               value={selectedTermId ? String(selectedTermId) : ''}
-              onChange={(event) => updateQuery({ term: event.target.value ? Number(event.target.value) : null })}
+              onChange={(event) => updateQuery({
+                term: event.target.value ? Number(event.target.value) : null,
+                subject: null,
+                cohortSubject: null,
+                cohort_subject: null,
+              })}
               disabled={termsLoading}
               options={[
                 { value: '', label: currentTermLoading ? 'Loading active term...' : 'Choose term' },
@@ -271,12 +289,13 @@ export function AttendanceReportPage() {
               onChange={(event) => {
                 const value = event.target.value;
                 if (!value) {
-                  updateQuery({ subject: null, cohortSubject: null });
+                  updateQuery({ subject: null, cohortSubject: null, cohort_subject: null });
                   return;
                 }
                 if (value.startsWith('cohortSubject:')) {
                   updateQuery({
                     cohortSubject: Number(value.replace('cohortSubject:', '')),
+                    cohort_subject: null,
                     subject: null,
                   });
                   return;
@@ -284,6 +303,7 @@ export function AttendanceReportPage() {
                 updateQuery({
                   subject: Number(value.replace('subject:', '')),
                   cohortSubject: null,
+                  cohort_subject: null,
                 });
               }}
               disabled={selectedStudentId ? learnerSubjectOptionsLoading : subjectsLoading}

@@ -7,6 +7,11 @@ import {
 
 export type ReportSurface = 'institution' | 'freelance' | 'instructor' | 'none';
 
+function hasReportViewAuthority(capabilities?: WorkspaceCapabilities | null): boolean {
+  const permissionKeys = capabilities?.authorization?.permission_keys ?? [];
+  return permissionKeys.includes('reports.view') || Boolean(capabilities?.can_view_reports);
+}
+
 export function resolveReportSurface(params: {
   user?: User | null;
   activeOrg?: ActiveOrg | null;
@@ -52,7 +57,7 @@ export function canRenderInstitutionReportOverview(params: {
   if (params.operatingContext === 'WORKSPACE_MANAGEMENT') {
     return Boolean(
       activeOrg
-      && capabilities?.can_view_reports
+      && hasReportViewAuthority(capabilities)
       && !isSelfManagedTeachingAdmin(params)
     );
   }

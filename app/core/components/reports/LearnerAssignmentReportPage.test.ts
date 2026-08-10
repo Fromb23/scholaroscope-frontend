@@ -42,4 +42,11 @@ describe('LearnerAssignmentReportPage', () => {
     expect(pageSource).not.toContain('if (errorStatus === 403 || errorStatus === 404)');
     expect(pageSource).not.toContain('title="Assignment report unavailable"');
   });
+
+  it('links assignment titles to the canonical assignment ID route with report return state', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('buildAssignmentDetailHref(row.cohort_id, row.assignment_id, returnTo)');
+    expect(pageSource).toContain('buildReportReturnTo(pathname, searchParams.toString())');
+  });
 });

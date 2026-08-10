@@ -28,8 +28,24 @@ decoding for security, resolves against the current application origin, verifies
 the resulting origin, and returns a normalized relative path/query/fragment.
 Invalid destinations fall back to a fixed local route.
 
+Report return trails are bounded. Ordinary drill-down construction removes a
+carried `returnTo` before capturing the current route, so repeated navigation
+cannot grow the query recursively. A small compatibility trail is accepted for
+the existing class-report chain; deeper nesting is rejected.
+
 Login `next`, report/assignment desire paths, learner flows, lesson plans,
 schemes, curriculum/catalogue flows, and CBC/Cambridge routes use this contract.
+
+## Protected deep links
+
+The dashboard guard distinguishes session loading, unauthenticated,
+authenticated-without-workspace, forbidden, and allowed states. Session loading
+is the only open-ended resolver phase. Once unauthenticated is known, one
+idempotent replacement to `/login?next=...` occurs. A valid session with no
+workspace renders a stable recovery state, and an authenticated permission
+denial renders a stable denial state; neither is rewritten through login or a
+dashboard fallback. Sign-in consumes the validated `next` value and restores
+the intended internal report URL.
 
 ## Verification
 

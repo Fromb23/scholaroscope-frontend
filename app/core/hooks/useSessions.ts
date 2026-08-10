@@ -13,6 +13,7 @@ import {
   SessionQueryParams,
   AttendanceQueryParams,
   SessionReadAuthorityMode,
+  SupervisionHierarchyQuery,
 } from '@/app/core/api/sessions';
 import { cohortAPI, cohortSubjectAPI } from '@/app/core/api/academic';
 import {
@@ -42,6 +43,9 @@ import {
 } from '@/app/core/types/session';
 import { CohortSubject } from '@/app/core/types/academic';
 import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
+
+export { sessionAPI };
+export type { SupervisionHierarchyQuery };
 
 
 // ── Helper — unwrap paginated or flat response ────────────────────────────
@@ -181,11 +185,18 @@ export const useSessions = (
 
 // ── useTodaySessions ──────────────────────────────────────────────────────
 
-export const useTodaySessions = () => {
+export const useTodaySessions = (options: { enabled?: boolean } = {}) => {
+  const enabled = options.enabled ?? true;
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const fetchTodaySessions = useCallback(async () => {
+    if (!enabled) {
+      setSessions([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     try {
       setLoading(true);
       const data = await sessionAPI.getToday();
@@ -196,7 +207,7 @@ export const useTodaySessions = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     fetchTodaySessions();

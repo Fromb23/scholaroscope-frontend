@@ -5,7 +5,6 @@ import { useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
-  BookOpenCheck,
   FileBarChart,
   GraduationCap,
   ShieldCheck,
@@ -40,34 +39,14 @@ import type {
   LearnerTermProgressLearningArea,
   LearnerTermProgressOutcome,
   LearnerTermProgressReportPayload,
-  LearnerTermProgressResultStatus,
 } from '@/app/core/types/reporting';
 import { sanitizeAppDestination } from '@/app/core/auth/navigation';
-
-type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'default';
-
-function labelize(value: string | null | undefined): string {
-  return String(value ?? '').replace(/_/g, ' ').replace(/-/g, ' ').trim() || 'Not available';
-}
-
-function sentenceLabel(value: string | null | undefined): string {
-  const text = labelize(value).toLowerCase();
-  return text ? text.charAt(0).toUpperCase() + text.slice(1) : 'Not available';
-}
-
-function statusBadgeVariant(status: LearnerTermProgressResultStatus | undefined): BadgeVariant {
-  const normalized = String(status ?? '').toUpperCase();
-  if (normalized === 'FINAL' || normalized === 'ASSESSED') return 'success';
-  if (normalized === 'PROVISIONAL' || normalized === 'READY_FOR_REVIEW') return 'warning';
-  if (normalized === 'STALE' || normalized === 'RECALCULATION_REQUIRED') return 'danger';
-  if (
-    normalized === 'NO_EVIDENCE'
-    || normalized === 'AWAITING_EVIDENCE'
-    || normalized === 'TAUGHT_NOT_OBSERVED'
-    || normalized === 'NOT_TAUGHT'
-  ) return 'info';
-  return 'default';
-}
+import { LearnerLearningAreaScope } from '@/app/core/components/reports/LearnerLearningAreaScope';
+import {
+  labelize,
+  sentenceLabel,
+  statusBadgeVariant,
+} from '@/app/core/components/reports/learnerProgressPresentation';
 
 function outcomeReadinessText(outcome: LearnerTermProgressOutcome): string {
   const state = String(outcome.semantic_state ?? outcome.status ?? '').toUpperCase();
@@ -399,6 +378,7 @@ export function LearnerOverviewReportPage() {
   const searchParams = useSearchParams();
   const learnerId = Number(params.learnerId);
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
+  const selectedCohortSubjectId = parsePositiveReportParam(searchParams.get('cohort_subject'));
   const returnTo = sanitizeAppDestination(
     searchParams.get('returnTo'),
     `/learners/${learnerId}`,
@@ -420,10 +400,26 @@ export function LearnerOverviewReportPage() {
   const reportSelfReturnTo = useMemo(() => {
     const next = new URLSearchParams();
     if (effectiveTermId) next.set('term', String(effectiveTermId));
+    if (selectedCohortSubjectId) next.set('cohort_subject', String(selectedCohortSubjectId));
     if (returnTo) next.set('returnTo', returnTo);
     const query = next.toString();
     return `/reports/learners/${learnerId}/overview${query ? `?${query}` : ''}`;
-  }, [effectiveTermId, learnerId, returnTo]);
+  }, [effectiveTermId, learnerId, returnTo, selectedCohortSubjectId]);
+
+  const selectedLearningArea = useMemo(() => (
+    selectedCohortSubjectId
+      ? report?.learning_areas.find(
+          (area) => area.cohort_subject_id === selectedCohortSubjectId,
+        ) ?? null
+      : null
+  ), [report?.learning_areas, selectedCohortSubjectId]);
+
+  useEffect(() => {
+    if (!report || !selectedCohortSubjectId || selectedLearningArea) return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('cohort_subject');
+    router.replace(`?${next.toString()}`, { scroll: false });
+  }, [report, router, searchParams, selectedCohortSubjectId, selectedLearningArea]);
 
   useEffect(() => {
     if (selectedTermId || currentTermLoading || !currentTerm?.id) {
@@ -457,7 +453,15 @@ export function LearnerOverviewReportPage() {
     } else {
       next.delete('term');
     }
+    next.delete('cohort_subject');
     router.push(`?${next.toString()}`);
+  };
+
+  const handleLearningAreaChange = (value: string) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (value) next.set('cohort_subject', value);
+    else next.delete('cohort_subject');
+    router.replace(`?${next.toString()}`, { scroll: false });
   };
 
   const visibleError = reportError ?? learnerError ?? null;
@@ -633,21 +637,20 @@ export function LearnerOverviewReportPage() {
             </div>
           </Card>
 
-          <section aria-labelledby="learning-areas" className="space-y-4">
-            <div className="flex items-center gap-2">
-              <BookOpenCheck className="h-5 w-5 text-[color:var(--color-primary)]" />
-              <h2 id="learning-areas" className="text-xl font-semibold theme-text">Learning Areas</h2>
-            </div>
-            {report.learning_areas.map((area) => (
+          <LearnerLearningAreaScope
+            areas={report.learning_areas}
+            selectedCohortSubjectId={selectedCohortSubjectId}
+            onChange={handleLearningAreaChange}
+            selectedDetail={selectedLearningArea ? (
               <LearningAreaCard
-                key={area.cohort_subject_id}
-                area={area}
+                key={selectedLearningArea.cohort_subject_id}
+                area={selectedLearningArea}
                 learnerId={learnerId}
                 termId={effectiveTermId}
                 returnTo={reportSelfReturnTo}
               />
-            ))}
-          </section>
+            ) : null}
+          />
 
           <Card>
             <div className="flex items-center gap-2">

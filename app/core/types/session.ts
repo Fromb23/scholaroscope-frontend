@@ -917,3 +917,51 @@ export interface StudentAttendanceHistory {
 export interface CohortAttendanceSummary {
   [key: string]: unknown;
 }
+
+export interface SupervisionSubjectSummary {
+  key: string;
+  id: number;
+  source: 'kernel' | 'cambridge';
+  name: string;
+  code: string | null;
+  cohort_count: number;
+  session_count: number;
+}
+
+export interface SupervisionAttendanceSummary {
+  present: number;
+  expected: number;
+  percentage: number | null;
+}
+
+export interface SupervisionCohortSummary {
+  id: number;
+  name: string;
+  level: string | null;
+  session_count: number;
+  attendance_summary: SupervisionAttendanceSummary;
+}
+
+export interface SupervisionSessionSummary {
+  id: number;
+  title: string;
+  session_type: string;
+  session_type_display: string;
+  session_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  status: string;
+  venue: string;
+  created_by_id: number | null;
+  created_by_name: string | null;
+  attendance_summary: SupervisionAttendanceSummary;
+}
+
+export interface SupervisionSubjectsResponse {
+  subjects: SupervisionSubjectSummary[];
+}
+
+export interface SupervisionCohortsResponse {
+  subject: SupervisionSubjectSummary;
+  cohorts: SupervisionCohortSummary[];
+}

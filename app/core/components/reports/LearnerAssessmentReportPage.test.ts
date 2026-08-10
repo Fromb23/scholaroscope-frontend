@@ -22,13 +22,15 @@ describe('LearnerAssessmentReportPage state handling', () => {
     ]);
   });
 
-  it('keeps child filter params when academic year changes', () => {
+  it('clears incompatible child scope when academic year or term changes', () => {
     const pageSource = source();
 
     expect(pageSource).toContain('const nextParams = new URLSearchParams(searchParams.toString())');
-    expect(pageSource).toContain("onChange={(event) => onChange({ academic_year: event.target.value ? Number(event.target.value) : null })}");
-    expect(pageSource).not.toContain("nextParams.delete('term')");
-    expect(pageSource).not.toContain("nextParams.delete('cohort_subject')");
+    expect(pageSource).toContain('academic_year: event.target.value ? Number(event.target.value) : null');
+    expect(pageSource).toContain('cohort_subject: null');
+    expect(pageSource).toContain('subject: null');
+    expect(pageSource).toContain('cohort: null');
+    expect(pageSource).toContain('subjectScopes={allowedSubjectScopes}');
   });
 
   it('uses returnTo for the contextual back button', () => {
@@ -44,6 +46,19 @@ describe('LearnerAssessmentReportPage state handling', () => {
     expect(pageSource).toContain("nextParams.set('assessment', String(assessmentId))");
     expect(pageSource).toContain("nextParams.set('returnTo', returnTo)");
     expect(pageSource).toContain('router.replace');
+  });
+
+  it('links assessment names to the canonical assessment ID page with exact report state', () => {
+    const pageSource = source();
+    const tableSource = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/LearnerAssessmentRowsTable.tsx'),
+      'utf8',
+    );
+
+    expect(pageSource).toContain('<LearnerAssessmentRowsTable');
+    expect(tableSource).toContain('buildAssessmentDetailHref(row.assessment_id, returnTo)');
+    expect(tableSource).toContain('<Link');
+    expect(pageSource).toContain('buildReportReturnTo(pathname, searchParams.toString())');
   });
 
   it('keeps instructor visibility copy scoped to assigned subjects', () => {

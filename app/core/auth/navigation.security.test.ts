@@ -46,4 +46,12 @@ describe('canonical application destination parser', () => {
     expect(buildLoginPath('/%252F%252Fattacker.example')).toBe('/login');
     expect(buildLoginPath('/reports/123')).toBe('/login?next=%2Freports%2F123');
   });
+
+  it('allows a bounded report trail but rejects recursively growing return destinations', () => {
+    const oneOrigin = '/reports/subjects/8?returnTo=%2Freports%2Fcohorts%2F4%3Fterm%3D2';
+    const recursive = '/reports/subjects/8?returnTo=%2Freports%2Fcohorts%2F4%3FreturnTo%3D%252Freports%252Fstudents%253FreturnTo%253D%25252Freports';
+
+    expect(isSafeNextPath(oneOrigin)).toBe(true);
+    expect(isSafeNextPath(recursive)).toBe(false);
+  });
 });

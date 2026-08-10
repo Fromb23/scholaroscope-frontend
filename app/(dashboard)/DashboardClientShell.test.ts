@@ -11,7 +11,7 @@ describe('DashboardClientShell logout transition', () => {
     const source = read('app/(dashboard)/DashboardClientShell.tsx');
     const logoutEffectGuardIndex = source.indexOf('if (loggingOut) {');
     const organizationRefreshIndex = source.indexOf('router.refresh();');
-    const unauthRedirectIndex = source.indexOf('router.replace(buildLoginPath(currentPath))');
+    const unauthRedirectIndex = source.indexOf('router.replace(destination)');
     const logoutRenderIndex = source.indexOf('message="Signing out..."');
     const unauthCopyIndex = source.indexOf("'Redirecting to sign in...'");
 
@@ -47,11 +47,22 @@ describe('DashboardClientShell offline boot state', () => {
     const unauthStart = source.indexOf('if (!user) {');
     const offlineGuardIndex = source.indexOf('if (offline) {', unauthStart);
     const offlineReturnIndex = source.indexOf('return;', offlineGuardIndex);
-    const redirectIndex = source.indexOf('router.replace(buildLoginPath(currentPath))', unauthStart);
+    const redirectIndex = source.indexOf('router.replace(destination)', unauthStart);
 
     expect(offlineGuardIndex).toBeGreaterThan(unauthStart);
     expect(offlineReturnIndex).toBeGreaterThan(offlineGuardIndex);
     expect(offlineReturnIndex).toBeLessThan(redirectIndex);
+  });
+
+  it('redirects an unauthenticated deep link once and keeps terminal authenticated failures stable', () => {
+    const source = read('app/(dashboard)/DashboardClientShell.tsx');
+
+    expect(source).toContain('lastRedirectRef.current !== destination');
+    expect(source).toContain('lastRedirectRef.current = destination');
+    expect(source).toContain('title="Workspace access unavailable"');
+    expect(source).toContain('title="Report access denied"');
+    expect(source).not.toContain('getUnauthorizedRouteFallback');
+    expect(source).not.toContain("buildLoginPath(currentPath, { reason: 'no_access' })");
   });
 
   it('redirects locked downstream academic setup pages to the backend current setup action', () => {

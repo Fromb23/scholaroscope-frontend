@@ -12,9 +12,11 @@ import { EntityLoadingState, ReportPreparingState } from '@/app/components/ui/lo
 import { Select } from '@/app/components/ui/Select';
 import { useLearnerAssignmentReport } from '@/app/core/hooks/useReporting';
 import {
+  buildAssignmentDetailHref,
   getOperationalDetailBackLabel,
   resolveOperationalDetailBack,
 } from '@/app/core/lib/operationalDetailNavigation';
+import { buildReportReturnTo } from '@/app/core/components/reports/reportNavigation';
 import { formatDate } from '@/app/core/components/reports/LearnerSubjectReportPresentation';
 import type { AppError } from '@/app/core/errors';
 import type { LearnerAssignmentReportRow } from '@/app/core/types/reporting';
@@ -57,14 +59,25 @@ const learnerAssignmentReportError = (
   ...overrides,
 });
 
-function RowCard({ row, highlighted }: { row: LearnerAssignmentReportRow; highlighted: boolean }) {
+function RowCard({ row, highlighted, returnTo }: {
+  row: LearnerAssignmentReportRow;
+  highlighted: boolean;
+  returnTo: string;
+}) {
   return (
     <Card className={highlighted ? 'ring-2 ring-blue-500' : undefined}>
       <div className="space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-semibold theme-text">{row.assignment_title}</h2>
+              <h2 className="text-base font-semibold">
+                <Link
+                  href={buildAssignmentDetailHref(row.cohort_id, row.assignment_id, returnTo)}
+                  className="theme-link"
+                >
+                  {row.assignment_title}
+                </Link>
+              </h2>
               <Badge variant={row.delivery_mode === 'GROUP' ? 'purple' : 'blue'} size="sm">
                 {row.delivery_mode === 'GROUP' ? 'Group' : 'Individual'}
               </Badge>
@@ -145,6 +158,7 @@ export function LearnerAssignmentReportPage() {
   const highlightAssignment = parsePositiveNumber(
     searchParams.get('assignment') ?? searchParams.get('highlightAssignment'),
   );
+  const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
   const { report, loading, error, errorStatus, refetch } = useLearnerAssignmentReport(
     Number.isInteger(learnerId) && learnerId > 0 ? learnerId : null,
     { cohortSubjectId, termId, academicYearId, assignmentId: highlightAssignment },
@@ -262,6 +276,7 @@ export function LearnerAssignmentReportPage() {
               key={`${row.delivery_mode}:${row.assignment_id}:${row.submission_id ?? row.group_id ?? 'none'}`}
               row={row}
               highlighted={row.assignment_id === highlightAssignment}
+              returnTo={currentReturnTo}
             />
           ))}
         </div>

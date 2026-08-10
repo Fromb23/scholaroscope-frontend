@@ -32,6 +32,9 @@ import {
   SessionIssuePreparedAssignmentPayload,
   SessionIssuePreparedAssignmentResponse,
   SessionTeachingAssignmentOption,
+  SupervisionCohortsResponse,
+  SupervisionSessionSummary,
+  SupervisionSubjectsResponse,
 } from '../types/session';
 import { CohortSubject } from '../types/academic';
 
@@ -48,6 +51,26 @@ export interface PaginatedResponse<T> {
 
 interface ApiRequestOptions {
   signal?: AbortSignal;
+}
+
+export interface SupervisionHierarchyQuery {
+  workspaceId: number;
+  term: number;
+  authorityMode: SessionReadAuthorityMode;
+  instructorId?: number;
+  sessionType?: string;
+}
+
+function supervisionHierarchyParams(params: SupervisionHierarchyQuery) {
+  // workspaceId belongs in cache keys; tenant scope itself comes from the
+  // authenticated session and is intentionally never accepted by the API.
+  void params.workspaceId;
+  return {
+    term: params.term,
+    authority_mode: params.authorityMode,
+    instructor_id: params.instructorId,
+    session_type: params.sessionType,
+  };
 }
 
 function isPaginatedResponse<T>(data: T[] | PaginatedResponse<T>): data is PaginatedResponse<T> {
@@ -229,6 +252,56 @@ export const sessionAPI = {
     withOperationalScope(params),
     options,
   ),
+
+  getSupervisionSubjects: async (
+    params: SupervisionHierarchyQuery,
+    options: ApiRequestOptions = {},
+  ): Promise<SupervisionSubjectsResponse> => {
+    const response = await apiClient.get<SupervisionSubjectsResponse>(
+      '/sessions/supervision-subjects/',
+      { params: supervisionHierarchyParams(params), signal: options.signal },
+    );
+    return response.data;
+  },
+
+  getSupervisionCohorts: async (
+    params: SupervisionHierarchyQuery & {
+      subjectSource: 'kernel' | 'cambridge';
+      subjectId: number;
+    },
+    options: ApiRequestOptions = {},
+  ): Promise<SupervisionCohortsResponse> => {
+    const response = await apiClient.get<SupervisionCohortsResponse>(
+      '/sessions/supervision-cohorts/',
+      {
+        params: {
+          ...supervisionHierarchyParams(params),
+          subject_source: params.subjectSource,
+          subject_id: params.subjectId,
+        },
+        signal: options.signal,
+      },
+    );
+    return response.data;
+  },
+
+  getSupervisionSessions: async (
+    params: SupervisionHierarchyQuery & {
+      subjectSource: 'kernel' | 'cambridge';
+      subjectId: number;
+      cohortId: number;
+    },
+    options: ApiRequestOptions = {},
+  ): Promise<SupervisionSessionSummary[]> => getCompletePaginatedList<SupervisionSessionSummary>(
+      '/sessions/supervision-sessions/',
+      {
+          ...supervisionHierarchyParams(params),
+          subject_source: params.subjectSource,
+          subject_id: params.subjectId,
+          cohort_id: params.cohortId,
+      },
+      options,
+    ),
 
   getById: async (
     id: number,

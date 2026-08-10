@@ -293,6 +293,7 @@ export function LearnerSubjectReportPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const learnerId = Number(params.learnerId);
+  const termId = parsePositiveNumber(searchParams.get('term') ?? searchParams.get('term_id'));
   const requestedCohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject'));
   const returnTo = sanitizeAppDestination(
     searchParams.get('returnTo'),
@@ -306,6 +307,7 @@ export function LearnerSubjectReportPage() {
     error: scopesError,
   } = useLearnerAvailableReportScopes(
     Number.isFinite(learnerId) && learnerId > 0 ? learnerId : null,
+    { termId },
   );
 
   const allowedSubjectScopes = useMemo(

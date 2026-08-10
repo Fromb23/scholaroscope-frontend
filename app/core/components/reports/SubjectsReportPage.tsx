@@ -22,6 +22,7 @@ import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
+import { ControlledReportAccordion } from '@/app/core/components/reports/ControlledReportAccordion';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import {
   buildAttendanceReportHref,
@@ -82,6 +83,9 @@ export function SubjectsReportPage({
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
   const selectedSubjectId = subjectIdFromRoute
     ?? parsePositiveReportParam(searchParams.get('subject'));
+  const expandedCohortSubjectId = parsePositiveReportParam(
+    searchParams.get('expanded_cohort_subject'),
+  );
   const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
@@ -95,6 +99,7 @@ export function SubjectsReportPage({
   const reportEnabled = Boolean(selectedSubjectId) && Boolean(selectedTermId || currentTerm?.id);
   const { analysis, loading, error } = useSubjectAnalysis(selectedTermId, selectedSubjectId, {
     enabled: reportEnabled,
+    expandedCohortSubjectId,
   });
 
   const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
@@ -126,6 +131,15 @@ export function SubjectsReportPage({
     }
     updateQuery({ term: analysis.term.id });
   }, [analysis?.term?.id, selectedTermId, updateQuery]);
+
+  useEffect(() => {
+    if (!expandedCohortSubjectId || !analysis) return;
+    if (!analysis.cohort_subjects.some(
+      (item) => item.cohort_subject.id === expandedCohortSubjectId,
+    )) {
+      updateQuery({ expanded_cohort_subject: null });
+    }
+  }, [analysis, expandedCohortSubjectId, updateQuery]);
 
   const handleSubjectChange = useCallback((value: string) => {
     if (!value) {
@@ -185,7 +199,10 @@ export function SubjectsReportPage({
             <Select
               label="Term"
               value={selectedTermId ? String(selectedTermId) : ''}
-              onChange={(event) => updateQuery({ term: event.target.value ? Number(event.target.value) : null })}
+              onChange={(event) => updateQuery({
+                term: event.target.value ? Number(event.target.value) : null,
+                expanded_cohort_subject: null,
+              })}
               disabled={termsLoading}
               options={[
                 { value: '', label: currentTermLoading ? 'Loading active term...' : 'Choose term' },
@@ -292,15 +309,34 @@ export function SubjectsReportPage({
                 </div>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {analysis.cohort_subjects.map((item) => {
+              <ControlledReportAccordion
+                ariaLabel="Subject cohort offerings"
+                expandedKey={expandedCohortSubjectId ? String(expandedCohortSubjectId) : null}
+                onExpandedKeyChange={(key) => updateQuery({
+                  expanded_cohort_subject: key ? Number(key) : null,
+                })}
+                items={analysis.cohort_subjects.map((item) => ({
+                  key: String(item.cohort_subject.id),
+                  value: item,
+                  heading: item.cohort.name,
+                  summary: (
+                    <span className="flex flex-wrap gap-2 sm:justify-end">
+                      <Badge variant="default">{item.reporting_source.toUpperCase()}</Badge>
+                      <Badge variant="blue">{item.active_learner_count} learners</Badge>
+                      <Badge variant="indigo">{formatPercent(item.average_attendance)} attendance</Badge>
+                    </span>
+                  ),
+                }))}
+                renderBody={(item) => {
+                  if (!item.detail_loaded) {
+                    return <LoadingSpinner message="Loading selected cohort report..." />;
+                  }
                   const assignedInstructors = item.assigned_instructors ?? (
                     item.assigned_instructor ? [item.assigned_instructor] : []
                   );
 
                   return (
                     <CurriculumSubjectReportCard
-                      key={item.cohort_subject.id}
                       heading={item.cohort.name}
                       subheading={(
                         <div className="flex flex-wrap items-center gap-2">
@@ -398,8 +434,8 @@ export function SubjectsReportPage({
                       )}
                     />
                   );
-                })}
-              </div>
+                }}
+              />
             )}
           </div>
         ) : (

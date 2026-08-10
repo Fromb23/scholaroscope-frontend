@@ -44,15 +44,16 @@ beforeEach(() => {
 });
 
 describe('runtime workspace suspension boundaries', () => {
-  it('blocks protected children and sends the user to workspace recovery when active workspace is unavailable', () => {
+  it('blocks protected children and renders stable workspace recovery when active workspace is unavailable', () => {
     const html = renderToStaticMarkup(
       <TenantGuard>
         <p>Protected learner operations</p>
       </TenantGuard>,
     );
 
-    expect(mocks.replace).toHaveBeenCalledWith('/get-started?reason=suspended');
-    expect(html).toContain('Switching workspace...');
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(html).toContain('Workspace unavailable');
+    expect(html).toContain('/get-started?reason=suspended');
     expect(html).not.toContain('Protected learner operations');
   });
 });

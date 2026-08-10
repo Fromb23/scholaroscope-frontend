@@ -14,4 +14,17 @@ describe('SubjectsReportPage exports', () => {
     expect(source).not.toContain('exportError');
     expect(source).not.toContain('window.alert');
   });
+
+  it('keeps repeated cohort offerings collapsed and fetches only the selected detail', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/SubjectsReportPage.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain("searchParams.get('expanded_cohort_subject')");
+    expect(source).toContain('expandedCohortSubjectId,');
+    expect(source).toContain('<ControlledReportAccordion');
+    expect(source).toContain('if (!item.detail_loaded)');
+    expect(source).toContain('expanded_cohort_subject: null');
+  });
 });
