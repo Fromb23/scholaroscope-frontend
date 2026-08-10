@@ -30,12 +30,44 @@ export interface ComputeResult {
 type ComputeActionStatus = 'idle' | 'loading' | 'blocked' | 'success' | 'error';
 export type ComputeTransportState = 'idle' | 'connecting' | 'live' | 'disconnected' | 'polling' | 'restored';
 
-const TERMINAL_JOB_STATUSES = new Set(['COMPLETED', 'FAILED', 'BLOCKED']);
+const TERMINAL_JOB_STATUSES = new Set(['COMPLETED', 'FAILED', 'BLOCKED', 'CANCELLED']);
 
 function sleep(milliseconds: number) {
     return new Promise((resolve) => {
         window.setTimeout(resolve, milliseconds);
     });
+}
+
+export async function waitForPersistedTerminalJob({
+    jobId,
+    getJob,
+    onSnapshot,
+    signal,
+    immediate = false,
+    maxAttempts = 120,
+    delay = sleep,
+}: {
+    jobId: string;
+    getJob: (jobId: string) => Promise<ReportComputeJob>;
+    onSnapshot?: (job: ReportComputeJob) => void;
+    signal?: AbortSignal;
+    immediate?: boolean;
+    maxAttempts?: number;
+    delay?: (milliseconds: number) => Promise<unknown>;
+}): Promise<ReportComputeJob | null> {
+    let latest: ReportComputeJob | null = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        if (signal?.aborted) return latest;
+        if (!immediate || attempt > 0) {
+            await delay(attempt < 3 ? 1000 : 2000);
+        }
+        if (signal?.aborted) return latest;
+        latest = await getJob(jobId);
+        if (signal?.aborted) return latest;
+        onSnapshot?.(latest);
+        if (TERMINAL_JOB_STATUSES.has(latest.status)) return latest;
+    }
+    return latest;
 }
 
 function readinessAllowsCompute(readiness: ReportComputeReadiness | null): boolean {
@@ -71,6 +103,16 @@ function computeJobErrorMessage(job: ReportComputeJob | null): string | null {
         }
     }
     return job?.label ?? null;
+}
+
+export function activeJobFromConflict(error: ReturnType<typeof resolveReportError>): ReportComputeJob | null {
+    if (error.serverCode !== 'report_compute_conflict') return null;
+    const value = error.serverContext?.active_job;
+    if (!value || typeof value !== 'object') return null;
+    const candidate = value as Partial<ReportComputeJob>;
+    return typeof candidate.job_id === 'string' && typeof candidate.status === 'string'
+        ? candidate as ReportComputeJob
+        : null;
 }
 
 function progressFromJob(job: ReportComputeJob): ReportComputeProgressEvent {
@@ -114,11 +156,12 @@ function mergeProgressEvent(
     };
 }
 
-export function useComputePage() {
+export function useComputePage({ enabled = true }: { enabled?: boolean } = {}) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
     const initialTerm = Number(searchParams.get('term') ?? '');
+    const resumeJobId = searchParams.get('job');
     const [selectedTerm, setSelectedTerm] = useState<number | null>(
         Number.isFinite(initialTerm) && initialTerm > 0 ? initialTerm : null,
     );
@@ -136,6 +179,7 @@ export function useComputePage() {
     const [computeActionError, setComputeActionError] = useState<string | null>(null);
     const streamAbortRef = useRef<AbortController | null>(null);
     const lastSequenceRef = useRef<number | null>(null);
+    const resumedJobRef = useRef<string | null>(null);
 
     const { terms, loading: termsLoading } = useTerms();
     const selectedTermRecord = terms.find((term) => term.id === selectedTerm) ?? null;
@@ -168,12 +212,12 @@ export function useComputePage() {
     }, []);
 
     useEffect(() => {
-        if (!selectedTerm) {
+        if (!enabled || !selectedTerm) {
             setReadiness(null);
             return;
         }
         void fetchReadiness(selectedTerm);
-    }, [fetchReadiness, selectedTerm]);
+    }, [enabled, fetchReadiness, selectedTerm]);
 
     useEffect(() => () => {
         streamAbortRef.current?.abort();
@@ -193,6 +237,7 @@ export function useComputePage() {
 
     const handleTermChange = (value: string) => {
         const nextTerm = value ? Number(value) : null;
+        streamAbortRef.current?.abort();
         setSelectedTerm(nextTerm);
         setFieldErrors({});
         setGlobalError(null);
@@ -210,26 +255,100 @@ export function useComputePage() {
         } else {
             params.delete('term');
         }
+        params.delete('job');
         const query = params.toString();
         router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     };
 
-    const pollComputeJob = useCallback(async (jobId: string) => {
-        let latest: ReportComputeJob | null = null;
-        for (let attempt = 0; attempt < 120; attempt += 1) {
-            await sleep(attempt < 3 ? 1000 : 2000);
-            const fetched = await reportsAPI.getComputeJob(jobId);
-            latest = fetched;
-            setJob(latest);
-            setProgressEvent((current) => mergeProgressEvent(current, progressFromJob(fetched)));
-            if (TERMINAL_JOB_STATUSES.has(latest.status)) {
-                return latest;
-            }
-        }
-        return latest;
+    const pollComputeJob = useCallback(async (
+        jobId: string,
+        signal?: AbortSignal,
+        immediate = false,
+    ) => {
+        return waitForPersistedTerminalJob({
+            jobId,
+            getJob: reportsAPI.getComputeJob,
+            signal,
+            immediate,
+            onSnapshot: (fetched) => {
+                setJob(fetched);
+                setProgressEvent((current) => mergeProgressEvent(current, progressFromJob(fetched)));
+            },
+        });
     }, []);
 
+    const applyTerminalJob = useCallback((finalJob: ReportComputeJob) => {
+        if (finalJob.status === 'COMPLETED') {
+            setComputeActionStatus('success');
+            setComputeActionError(null);
+        } else if (finalJob.status === 'BLOCKED') {
+            if (finalJob.readiness) setReadiness(finalJob.readiness);
+            setComputeActionStatus('blocked');
+            setComputeActionError(
+                computeJobErrorMessage(finalJob)
+                ?? 'Report preparation is blocked. Review the persisted blockers.',
+            );
+        } else if (finalJob.status === 'FAILED' || finalJob.status === 'CANCELLED') {
+            setComputeActionStatus('error');
+            setComputeActionError(
+                computeJobErrorMessage(finalJob)
+                ?? (finalJob.status === 'CANCELLED'
+                    ? 'Report computation was cancelled.'
+                    : 'Report computation failed.'),
+            );
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!enabled || !resumeJobId || resumedJobRef.current === resumeJobId) return;
+        resumedJobRef.current = resumeJobId;
+        const controller = new AbortController();
+        streamAbortRef.current?.abort();
+        streamAbortRef.current = controller;
+        setComputeSheetOpen(true);
+        setComputing(true);
+        setComputeActionStatus('loading');
+        setTransportState('polling');
+        setStreamFallback(true);
+        void (async () => {
+            try {
+                const snapshot = await reportsAPI.getComputeJob(resumeJobId);
+                if (controller.signal.aborted) return;
+                setJob(snapshot);
+                setProgressEvent(progressFromJob(snapshot));
+                const finalJob = TERMINAL_JOB_STATUSES.has(snapshot.status)
+                    ? snapshot
+                    : await pollComputeJob(resumeJobId, controller.signal);
+                if (finalJob && TERMINAL_JOB_STATUSES.has(finalJob.status)) {
+                    applyTerminalJob(finalJob);
+                } else if (!controller.signal.aborted) {
+                    setComputeActionStatus('error');
+                    setComputeActionError('The persisted compute job did not reach a terminal state before monitoring timed out.');
+                }
+            } catch (error) {
+                if (controller.signal.aborted) return;
+                const resolved = resolveReportError(error, {
+                    action: 'load',
+                    entityLabel: 'report compute job',
+                    role: 'ADMIN',
+                });
+                setComputeActionStatus('error');
+                setComputeActionError(resolved.message ?? 'Could not resume the report compute job.');
+            } finally {
+                if (!controller.signal.aborted) {
+                    setComputing(false);
+                    setTransportState('idle');
+                }
+            }
+        })();
+        return () => controller.abort();
+    }, [applyTerminalJob, enabled, pollComputeJob, resumeJobId]);
+
     const handleComputeReports = async (mode: ReportComputeMode = 'FINAL_RECONCILIATION') => {
+        if (!enabled) {
+            setGlobalError('Workspace-scoped report computation permission is required.');
+            return;
+        }
         if (!requireSelectedTerm()) return;
         const termId = selectedTerm;
         if (!termId) return;
@@ -264,6 +383,11 @@ export function useComputePage() {
         lastSequenceRef.current = null;
         try {
             const createdJob = await reportsAPI.computeReports(termId, mode);
+            const jobParams = new URLSearchParams(searchParams.toString());
+            jobParams.set('term', String(termId));
+            jobParams.set('job', createdJob.job_id);
+            router.replace(`${pathname}?${jobParams.toString()}`, { scroll: false });
+            resumedJobRef.current = createdJob.job_id;
             setJob(createdJob);
             setProgressEvent((current) => mergeProgressEvent(current, progressFromJob(createdJob)));
 
@@ -282,7 +406,10 @@ export function useComputePage() {
             if (!createdJob.events_url) {
                 setStreamFallback(true);
                 setTransportState('polling');
-                finalJob = await pollComputeJob(createdJob.job_id);
+                const controller = new AbortController();
+                streamAbortRef.current?.abort();
+                streamAbortRef.current = controller;
+                finalJob = await pollComputeJob(createdJob.job_id, controller.signal, true);
             } else {
                 const controller = new AbortController();
                 streamAbortRef.current?.abort();
@@ -298,7 +425,6 @@ export function useComputePage() {
                             current
                                 ? {
                                     ...current,
-                                    status: event.status ?? current.status,
                                     stage: event.stage ?? current.stage,
                                     label: event.label ?? current.label,
                                     progress_percent: Math.max(
@@ -322,10 +448,9 @@ export function useComputePage() {
                             setTransportState(state);
                         },
                     });
-                    const fetchedFinalJob = await reportsAPI.getComputeJob(createdJob.job_id);
-                    finalJob = fetchedFinalJob;
-                    setJob(fetchedFinalJob);
-                    setProgressEvent((current) => mergeProgressEvent(current, progressFromJob(fetchedFinalJob)));
+                    // A terminal stream frame wakes the snapshot poller; only
+                    // the persisted job status is authoritative.
+                    finalJob = await pollComputeJob(createdJob.job_id, controller.signal, true);
                 } catch (streamError) {
                     if (controller.signal.aborted) return;
                     if (!(streamError instanceof ReportComputeStreamFallbackError)) {
@@ -333,7 +458,7 @@ export function useComputePage() {
                     }
                     setStreamFallback(true);
                     setTransportState('polling');
-                    finalJob = await pollComputeJob(createdJob.job_id);
+                    finalJob = await pollComputeJob(createdJob.job_id, controller.signal, true);
                 }
             }
 
@@ -341,18 +466,10 @@ export function useComputePage() {
                 throw new Error('Report computation did not finish in time.');
             }
 
-            if (finalJob.status === 'COMPLETED') {
-                setComputeActionStatus('success');
-            } else if (finalJob.status === 'BLOCKED') {
-                setReadiness(finalJob.readiness ?? readiness);
-                setComputeActionStatus('blocked');
-                setComputeActionError(
-                    computeJobErrorMessage(finalJob)
-                    ?? 'Reports are blocked because one or more curricula are missing required report policies.',
-                );
-            } else if (finalJob.status === 'FAILED') {
-                setComputeActionStatus('error');
-                setComputeActionError(computeJobErrorMessage(finalJob) ?? 'Report computation failed.');
+            if (TERMINAL_JOB_STATUSES.has(finalJob.status)) {
+                applyTerminalJob(finalJob);
+            } else {
+                throw new Error('The persisted report compute job did not reach a terminal state in time.');
             }
         } catch (error) {
             const resolved = resolveReportError(error, {
@@ -360,6 +477,37 @@ export function useComputePage() {
                 entityLabel: 'official reports',
                 role: 'ADMIN',
             });
+            const conflictJob = activeJobFromConflict(resolved);
+            if (conflictJob) {
+                const activeMode = String(
+                    resolved.serverContext?.active_mode ?? conflictJob.mode ?? 'report compute',
+                );
+                setJob(conflictJob);
+                setProgressEvent(progressFromJob(conflictJob));
+                setComputeActionStatus('blocked');
+                setComputeActionError(
+                    `Another ${activeMode.toLowerCase().replaceAll('_', ' ')} operation is active for this term (job ${conflictJob.job_id}). Monitoring that job instead.`,
+                );
+                const conflictParams = new URLSearchParams(searchParams.toString());
+                conflictParams.set('term', String(termId));
+                conflictParams.set('job', conflictJob.job_id);
+                router.replace(`${pathname}?${conflictParams.toString()}`, { scroll: false });
+                resumedJobRef.current = conflictJob.job_id;
+                const controller = new AbortController();
+                streamAbortRef.current?.abort();
+                streamAbortRef.current = controller;
+                setTransportState('polling');
+                setStreamFallback(true);
+                const finalJob = await pollComputeJob(
+                    conflictJob.job_id,
+                    controller.signal,
+                    true,
+                );
+                if (finalJob && TERMINAL_JOB_STATUSES.has(finalJob.status)) {
+                    applyTerminalJob(finalJob);
+                }
+                return;
+            }
             if (resolved.serverCode === 'report_compute_blocked' && termId) {
                 await fetchReadiness(termId, { showPageError: false });
             }

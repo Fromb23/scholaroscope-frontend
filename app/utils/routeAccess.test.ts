@@ -63,6 +63,30 @@ describe('route access', () => {
     expect(canAccess(route, 'WORKSPACE_MANAGEMENT', capabilities())).toBe(false);
   });
 
+  it('requires workspace-scoped reports.compute for the compute route', () => {
+    const computeCaps = capabilities(['reports.compute'], {
+      report_configuration: {
+        report_policy_available: false,
+        report_policy_mode: 'INSTITUTION_GOVERNANCE',
+        report_computation_available: true,
+        report_computation_class_scoped_only: false,
+        subject_profile_authoring_allowed: false,
+        reporting_governance_routes_allowed: true,
+        allowed_policy_scopes: [],
+      },
+    });
+    expect(canAccess('/reports/compute', 'WORKSPACE_MANAGEMENT', computeCaps)).toBe(true);
+    expect(canAccess('/reports/compute', 'WORKSPACE_MANAGEMENT', capabilities(['reports.manage_policy'], {
+      report_configuration: computeCaps.report_configuration,
+    }))).toBe(false);
+    expect(canAccess('/reports/compute', 'WORKSPACE_MANAGEMENT', capabilities(['reports.compute'], {
+      report_configuration: {
+        ...computeCaps.report_configuration!,
+        report_computation_class_scoped_only: true,
+      },
+    }))).toBe(false);
+  });
+
   it('keeps scoped teaching attendance report checks scoped', () => {
     const reportCaps = capabilities(['reports.view']);
     const scoped = '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11';

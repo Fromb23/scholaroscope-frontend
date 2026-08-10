@@ -110,8 +110,24 @@ describe('report compute form validation', () => {
     expect(apiSource).toContain('streamDelay(retryCount - 1)');
     expect(apiSource).not.toContain('console.log(token');
     expect(hookSource).toContain("setTransportState('polling')");
-    expect(hookSource).toContain('pollComputeJob(createdJob.job_id)');
+    expect(hookSource).toContain('pollComputeJob(createdJob.job_id, controller.signal, true)');
     expect(hookSource).toContain('lastSequenceRef.current');
+    expect(hookSource).toContain('persisted job status is authoritative');
+    expect(hookSource).toContain("const resumeJobId = searchParams.get('job')");
+  });
+
+  it('renders normalized totals, per-engine results, blockers, and review action honestly', () => {
+    const pageSource = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/ComputePage.tsx'),
+      'utf8',
+    );
+
+    expect(pageSource).toContain('job?.result_payload?.counts');
+    expect(pageSource).toContain('Engine results');
+    expect(pageSource).toContain('invalidated, {deletedCount} deleted');
+    expect(pageSource).toContain('Review Prepared Reports');
+    expect(pageSource).toContain('Publication remains a separate authorized action.');
+    expect(pageSource).not.toContain('Reports published successfully');
   });
 
   it('opens prepare term in a foreground sheet with recommendations', () => {

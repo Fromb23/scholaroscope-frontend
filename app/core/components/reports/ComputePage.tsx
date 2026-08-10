@@ -11,7 +11,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ActionProgress, ActionStateBanner, ResponsiveActionSheet } from '@/app/components/ui/actions';
 import { ReportPrepareTermSheet } from '@/app/core/components/reports/ReportPrepareTermSheet';
-import { canRenderInstitutionReportOverview } from '@/app/core/components/reports/reportAccessPolicy';
+import { canComputeWorkspaceReports } from '@/app/core/components/reports/reportAccessPolicy';
 import { getFormFieldErrorMessage, useFormValidationFeedback } from '@/app/core/forms';
 import { useComputePage, type ComputeTransportState } from '@/app/core/hooks/reports/useComputePage';
 import { useAuth } from '@/app/context/AuthContext';
@@ -99,7 +99,8 @@ function reportSetStatusLabel(reportSet: TermReportSetReadiness | null): string 
 }
 
 export function ComputePage() {
-    const { user, activeOrg, capabilities } = useAuth();
+    const { user, capabilities } = useAuth();
+    const canRunCompute = canComputeWorkspaceReports({ user, capabilities });
     const [prepareSheetOpen, setPrepareSheetOpen] = useState(false);
     const [prepareAutoRunKey, setPrepareAutoRunKey] = useState(0);
     const {
@@ -129,7 +130,7 @@ export function ComputePage() {
         handleTermChange,
         handleComputeReports,
         refreshReadinessInBackground,
-    } = useComputePage();
+    } = useComputePage({ enabled: canRunCompute });
     const {
         summaryRef,
         setFieldRef,
@@ -148,6 +149,18 @@ export function ComputePage() {
         }
     }, [fieldErrors, focusFirstError]);
 
+    if (!canRunCompute) {
+        return (
+            <Card>
+                <h1 className="text-xl font-semibold text-gray-900">Report computation unavailable</h1>
+                <p className="mt-2 text-sm text-gray-600">
+                    Workspace-scoped reports.compute permission is required to prepare, rebuild, or inspect report compute jobs.
+                    Report viewing and report policy management do not grant this authority.
+                </p>
+            </Card>
+        );
+    }
+
     const computeDisabled = Boolean(
         computing
         || selectedTermClosed
@@ -157,11 +170,7 @@ export function ComputePage() {
         || readiness?.engines.length === 0,
     );
     const reportsReady = Boolean(readiness && (readiness.can_compute ?? readiness.ready));
-    const canRunFullRebuild = canRenderInstitutionReportOverview({
-        user,
-        activeOrg,
-        capabilities,
-    });
+    const canRunFullRebuild = canRunCompute;
     const coveredCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'covered_count'), 0) ?? 0;
     const missingCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'missing_count'), 0) ?? 0;
     const exceptionCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'exception_count'), 0) ?? 0;
@@ -176,10 +185,14 @@ export function ComputePage() {
     const projectionFreshness = readiness?.background_updates ?? readiness?.projection_freshness ?? null;
     const reportSet = readiness?.report_set ?? null;
     const itemCounts = job?.item_counts;
-    const createdCount = progressEvent?.created_count ?? itemCounts?.created_count ?? job?.result_payload?.created_count ?? 0;
-    const updatedCount = progressEvent?.updated_count ?? itemCounts?.updated_count ?? job?.result_payload?.updated_count ?? 0;
-    const unchangedCount = progressEvent?.unchanged_count ?? itemCounts?.unchanged_count ?? job?.result_payload?.unchanged_count ?? 0;
-    const failedCount = progressEvent?.failed_count ?? itemCounts?.failed_count ?? job?.result_payload?.failed_count ?? 0;
+    const normalizedCounts = job?.result_payload?.counts;
+    const createdCount = normalizedCounts?.created ?? progressEvent?.created_count ?? itemCounts?.created_count ?? job?.result_payload?.created_count ?? 0;
+    const updatedCount = normalizedCounts?.updated ?? progressEvent?.updated_count ?? itemCounts?.updated_count ?? job?.result_payload?.updated_count ?? 0;
+    const unchangedCount = normalizedCounts?.unchanged ?? progressEvent?.unchanged_count ?? itemCounts?.unchanged_count ?? job?.result_payload?.unchanged_count ?? 0;
+    const invalidatedCount = normalizedCounts?.invalidated ?? itemCounts?.invalidated_count ?? 0;
+    const deletedCount = normalizedCounts?.deleted ?? itemCounts?.deleted_count ?? 0;
+    const blockedCount = normalizedCounts?.blocked ?? itemCounts?.blocked_count ?? 0;
+    const failedCount = normalizedCounts?.failed ?? progressEvent?.failed_count ?? itemCounts?.failed_count ?? job?.result_payload?.failed_count ?? 0;
     const totalWork = itemCounts?.total_scopes ?? progressEvent?.total_count ?? job?.total_count ?? null;
     const completedWork = itemCounts?.completed_scopes ?? progressEvent?.completed_count ?? job?.completed_count ?? null;
     const officialResults = progressEvent?.official_results
@@ -192,7 +205,7 @@ export function ComputePage() {
         ?? job?.result_payload?.summaries?.summary_count
         ?? 0;
     const completionMessage = computeMode === 'FINAL_RECONCILIATION'
-        ? String(job?.result_payload?.detail ?? 'Final reports prepared for review or publication.')
+        ? String(job?.result_payload?.detail ?? 'Final report projections were reconciled and are ready for review.')
         : `Reports computed successfully. ${officialResults} official result${officialResults === 1 ? '' : 's'} computed; ${summaryRows} summary row${summaryRows === 1 ? '' : 's'} refreshed.`;
 
     const openPrepareSheet = (autoRun = false) => {
@@ -448,6 +461,9 @@ export function ComputePage() {
                 createdCount={createdCount}
                 updatedCount={updatedCount}
                 unchangedCount={unchangedCount}
+                invalidatedCount={invalidatedCount}
+                deletedCount={deletedCount}
+                blockedCount={blockedCount}
                 failedCount={failedCount}
                 completedMessage={completionMessage}
                 blockedReason={computeDisabledReason ?? 'Reports are not ready. Resolve report setup before computing official reports.'}
@@ -541,6 +557,9 @@ function ComputeReportsSheet({
     createdCount,
     updatedCount,
     unchangedCount,
+    invalidatedCount,
+    deletedCount,
+    blockedCount,
     failedCount,
     completedMessage,
     blockedReason,
@@ -564,6 +583,9 @@ function ComputeReportsSheet({
     createdCount: number;
     updatedCount: number;
     unchangedCount: number;
+    invalidatedCount: number;
+    deletedCount: number;
+    blockedCount: number;
     failedCount: number;
     completedMessage: string;
     blockedReason: string;
@@ -587,13 +609,19 @@ function ComputeReportsSheet({
         : computeMode === 'INCREMENTAL'
             ? 'Incremental'
             : 'Final reconciliation';
+    const engineResults = Object.values(job?.result_payload?.engines ?? {});
+    const blockers = job?.result_payload?.blockers ?? [];
+    const nextAction = job?.result_payload?.next_action;
+    const queuedProblem = job?.operational_state?.status;
 
     return (
         <ResponsiveActionSheet
             open={open}
             onOpenChange={onOpenChange}
-            title="Prepare Final Reports"
-            description="Final reconciliation progress and results stay here until you close this action."
+            title={computeMode === 'FULL_REBUILD' ? 'Full Term Report Rebuild' : 'Prepare Final Reports'}
+            description={computeMode === 'FULL_REBUILD'
+                ? 'This expensive operation recomputes every applicable live projection family for the term and reconciles obsolete rows.'
+                : 'Final reconciliation prepares live projections for review. Publication remains a separate authorized action.'}
             size="lg"
             state={status}
             closeDisabled={computing}
@@ -659,6 +687,9 @@ function ComputeReportsSheet({
                                     {createdCount} created, {updatedCount} updated
                                 </p>
                                 <p className="text-xs text-gray-500">{unchangedCount} unchanged</p>
+                                <p className="text-xs text-gray-500">
+                                    {invalidatedCount} invalidated, {deletedCount} deleted
+                                </p>
                             </div>
                             <div className={`rounded-lg border px-3 py-2 ${failedCount > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
                                 <p className="text-xs uppercase tracking-wide text-gray-500">Failed batches</p>
@@ -671,6 +702,88 @@ function ComputeReportsSheet({
                                 title="Partial batch failure"
                                 message={`${failedCount} batch${failedCount === 1 ? '' : 'es'} failed and can be retried without restarting completed batches.`}
                             />
+                        ) : null}
+                        {blockedCount > 0 ? (
+                            <ActionStateBanner
+                                variant="blocked"
+                                title="Blocked scopes"
+                                message={`${blockedCount} scope${blockedCount === 1 ? '' : 's'} could not be reconciled.`}
+                            />
+                        ) : null}
+                        {queuedProblem === 'QUEUED_TOO_LONG'
+                        || queuedProblem === 'REPORTING_QUEUE_UNCONSUMED'
+                        || queuedProblem === 'WORKER_OFFLINE' ? (
+                            <ActionStateBanner
+                                variant="blocked"
+                                title="Compute job is still queued"
+                                message={queuedProblem === 'REPORTING_QUEUE_UNCONSUMED'
+                                    ? 'No active worker is consuming the reporting queue. Ask an operator to start the configured reporting worker.'
+                                    : queuedProblem === 'WORKER_OFFLINE'
+                                        ? 'No Celery worker responded. Ask an operator to restore background workers.'
+                                        : 'The reporting worker has not started this job within the expected queue window.'}
+                            />
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {job?.result_payload ? (
+                    <div className="space-y-3 rounded-lg border border-gray-200 p-4 text-sm">
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <div>
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Final status</p>
+                                <p className="font-medium text-gray-900">{job.status}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Term</p>
+                                <p className="font-medium text-gray-900">{String(job.result_payload.term_id ?? job.term_id ?? '—')}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Evidence cutoff</p>
+                                <p className="font-medium text-gray-900">{formatDateTime(job.result_payload.evidence_cutoff)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Completed</p>
+                                <p className="font-medium text-gray-900">{formatDateTime(job.completed_at)}</p>
+                            </div>
+                        </div>
+                        {engineResults.length ? (
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Engine results</p>
+                                <div className="mt-2 space-y-2">
+                                    {engineResults.map((engine) => (
+                                        <div key={engine.engine} className="rounded border border-gray-200 px-3 py-2">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="font-medium uppercase text-gray-900">{engine.engine}</span>
+                                                <Badge variant={engine.status === 'COMPLETED' ? 'green' : engine.status === 'FAILED' ? 'red' : 'orange'}>
+                                                    {engine.status ?? 'UNKNOWN'}
+                                                </Badge>
+                                            </div>
+                                            <p className="mt-1 text-xs text-gray-600">
+                                                {engine.counts?.processed ?? 0} processed; {engine.counts?.created ?? 0} created; {engine.counts?.updated ?? 0} updated; {engine.counts?.unchanged ?? 0} unchanged; {engine.counts?.invalidated ?? 0} invalidated; {engine.counts?.deleted ?? 0} deleted.
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+                        {blockers.length ? (
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Blockers</p>
+                                <ul className="mt-2 list-disc space-y-1 pl-5 text-red-700">
+                                    {blockers.map((blocker, index) => (
+                                        <li key={`${blocker.engine}-${blocker.reason}-${index}`}>
+                                            {blocker.engine}: {blocker.reason}{blocker.count ? ` (${blocker.count})` : ''}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : null}
+                        {nextAction?.href ? (
+                            <Link href={nextAction.href}>
+                                <Button type="button" size="sm" variant="secondary">
+                                    {nextAction.label ?? (nextAction.type === 'REVIEW_REPORTS' ? 'Review Prepared Reports' : 'Continue')}
+                                </Button>
+                            </Link>
                         ) : null}
                     </div>
                 ) : null}
