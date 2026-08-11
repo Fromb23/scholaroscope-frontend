@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { activeJobFromConflict, waitForPersistedTerminalJob } from './useComputePage';
 import type { AppError } from '@/app/core/errors';
@@ -10,7 +12,7 @@ function job(status: ReportComputeJob['status']): ReportComputeJob {
     status,
     mode: 'FINAL_RECONCILIATION',
     stage: status.toLowerCase(),
-    progress_percent: status === 'COMPLETED' ? 100 : 75,
+    progress_percent: status === 'SUCCEEDED' ? 100 : 75,
   };
 }
 
@@ -18,7 +20,7 @@ describe('persisted compute job monitoring', () => {
   it('continues polling after a temporary RUNNING snapshot and stops at durable completion', async () => {
     const getJob = vi.fn()
       .mockResolvedValueOnce(job('RUNNING'))
-      .mockResolvedValueOnce(job('COMPLETED'));
+      .mockResolvedValueOnce(job('SUCCEEDED'));
     const snapshots: string[] = [];
 
     const result = await waitForPersistedTerminalJob({
@@ -30,9 +32,20 @@ describe('persisted compute job monitoring', () => {
       onSnapshot: (snapshot) => snapshots.push(snapshot.status),
     });
 
-    expect(result?.status).toBe('COMPLETED');
-    expect(snapshots).toEqual(['RUNNING', 'COMPLETED']);
+    expect(result?.status).toBe('SUCCEEDED');
+    expect(snapshots).toEqual(['RUNNING', 'SUCCEEDED']);
     expect(getJob).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses the canonical terminal states without unsupported cancellation', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/hooks/reports/useComputePage.ts'),
+      'utf8',
+    );
+    expect(source).toContain("new Set(['SUCCEEDED', 'FAILED', 'BLOCKED'])");
+    expect(source).not.toContain("finalJob.status === 'CANCELLED'");
+    expect(source).toContain('Live monitoring stopped. The report job continues on the server.');
+    expect(source).toContain('retryFailedComputeItems');
   });
 
   it('stops updates when monitoring is aborted on unmount', async () => {

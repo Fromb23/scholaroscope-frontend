@@ -42,6 +42,9 @@ import {
   ReportExportFormat,
   ReportFilters,
   CbcTeacherReview,
+  HistoricalReportParticipant,
+  HistoricalReportPeriod,
+  HistoricalTeachingScope,
 } from '@/app/core/types/reporting';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
@@ -130,7 +133,7 @@ function isTerminalProgressEvent(event: ReportComputeProgressEvent): boolean {
   return (
     event.event === 'complete' ||
     event.event === 'error' ||
-    event.status === 'COMPLETED' ||
+    event.status === 'SUCCEEDED' ||
     event.status === 'FAILED' ||
     event.status === 'BLOCKED'
   );
@@ -1090,6 +1093,67 @@ export const learnerReportingAPI = {
       },
       `teacher-performance-report-${instructorId}.${format}`,
     ),
+
+  getHistoricalReportParticipants: async (): Promise<HistoricalReportParticipant[]> => {
+    const response = await apiClient.get<{ results: HistoricalReportParticipant[] }>(
+      '/reporting/admin/instructors/history/',
+      { params: { authority_mode: 'supervision' } },
+    );
+    return response.data.results;
+  },
+
+  getHistoricalReportPeriods: async (
+    participantId: string,
+  ): Promise<HistoricalReportPeriod[]> => {
+    const response = await apiClient.get<{ results: HistoricalReportPeriod[] }>(
+      `/reporting/admin/instructors/history/${participantId}/periods/`,
+      { params: { authority_mode: 'supervision' } },
+    );
+    return response.data.results;
+  },
+
+  getHistoricalTeachingScopes: async (
+    participantId: string,
+    termId: number,
+  ): Promise<HistoricalTeachingScope[]> => {
+    const response = await apiClient.get<{ results: HistoricalTeachingScope[] }>(
+      `/reporting/admin/instructors/history/${participantId}/scopes/`,
+      { params: { term_id: termId, authority_mode: 'supervision' } },
+    );
+    return response.data.results;
+  },
+
+  getHistoricalTeacherReport: async (
+    participantId: string,
+    params: { termId: number; cohortSubjectId?: number | null },
+  ) => {
+    const response = await apiClient.get<TeacherPerformanceReportPayload>(
+      `/reporting/admin/instructors/history/${participantId}/teacher-report/`,
+      {
+        params: {
+          term_id: params.termId,
+          cohort_subject_id: params.cohortSubjectId ?? undefined,
+          authority_mode: 'supervision',
+        },
+      },
+    );
+    return normalizeTeacherPerformanceReportPayload(response.data);
+  },
+
+  exportHistoricalTeacherReport: async (
+    participantId: string,
+    format: ReportExportFormat,
+    params: { termId: number; cohortSubjectId?: number | null },
+  ) => fetchReportDownload(
+    `/reporting/admin/instructors/history/${participantId}/teacher-report/`,
+    {
+      format,
+      term_id: params.termId,
+      cohort_subject_id: params.cohortSubjectId ?? undefined,
+      authority_mode: 'supervision',
+    },
+    `teacher-performance-report-${participantId}.${format}`,
+  ),
 };
 
 export const cbcReportingAPI = {
@@ -1148,24 +1212,26 @@ export const reportsAPI = {
     termId: number,
     mode: ReportComputeMode = 'FINAL_RECONCILIATION',
   ): Promise<ReportComputeJob> => {
-    if (mode === 'FINAL_RECONCILIATION') {
-      const response = await apiClient.post<ReportComputeJob>(
-        '/reporting/reports/compute/final-reconciliation/',
-        { term: termId },
-      );
-      return response.data;
-    }
-
+    const idempotencyKey = globalThis.crypto?.randomUUID?.()
+      ?? `${termId}-${mode}-${Date.now()}`;
     const response = await apiClient.post<ReportComputeJob>('/reporting/reports/compute/', {
       term: termId,
       mode,
-    });
+      idempotency_key: idempotencyKey,
+    }, { headers: { 'Idempotency-Key': idempotencyKey } });
     return response.data;
   },
 
   getComputeJob: async (jobId: string): Promise<ReportComputeJob> => {
     const response = await apiClient.get<ReportComputeJob>(
       `/reporting/reports/compute/jobs/${jobId}/`,
+    );
+    return response.data;
+  },
+
+  retryFailedComputeItems: async (jobId: string): Promise<ReportComputeJob> => {
+    const response = await apiClient.post<ReportComputeJob>(
+      `/reporting/reports/compute/jobs/${jobId}/retry-failed/`,
     );
     return response.data;
   },

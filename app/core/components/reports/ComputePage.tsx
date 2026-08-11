@@ -129,6 +129,7 @@ export function ComputePage() {
         setComputeSheetOpen,
         handleTermChange,
         handleComputeReports,
+        handleRetryFailedItems,
         refreshReadinessInBackground,
     } = useComputePage({ enabled: canRunCompute });
     const {
@@ -468,7 +469,7 @@ export function ComputePage() {
                 completedMessage={completionMessage}
                 blockedReason={computeDisabledReason ?? 'Reports are not ready. Resolve report setup before computing official reports.'}
                 managePoliciesHref={manageCbcPoliciesHref}
-                onRetry={handleComputeReports}
+                onRetry={job?.status === 'FAILED' ? handleRetryFailedItems : handleComputeReports}
             />
         </div>
     );
@@ -592,7 +593,7 @@ function ComputeReportsSheet({
     managePoliciesHref: string;
     onRetry: () => void;
 }) {
-    const progressStatus = job?.status ?? (computing ? 'QUEUED' : status === 'success' ? 'COMPLETED' : undefined);
+    const progressStatus = job?.status ?? (computing ? 'QUEUED' : status === 'success' ? 'SUCCEEDED' : undefined);
     const transportMessage = streamFallback || transportState === 'polling'
         ? 'Live updates disconnected. Checking progress periodically.'
         : transportState === 'restored'

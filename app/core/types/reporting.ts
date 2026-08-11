@@ -1333,7 +1333,7 @@ export interface ReportComputeJobItemCounts {
 
 export interface ReportComputeJob {
   job_id: string;
-  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'BLOCKED' | 'CANCELLED' | string;
+  status: 'QUEUED' | 'RUNNING' | 'RETRYING' | 'SUCCEEDED' | 'FAILED' | 'BLOCKED' | string;
   mode?: ReportComputeMode;
   workspace_id?: number;
   organization_id?: number;
@@ -1372,6 +1372,7 @@ export interface ReportComputeJob {
     [key: string]: unknown;
   };
   error_payload?: Record<string, unknown>;
+  generation?: number;
   events_url?: string;
   latest_event?: ReportComputeProgressEvent;
   readiness?: ReportComputeReadiness;
@@ -1385,6 +1386,42 @@ export interface ReportComputeJob {
   created_at?: string | null;
   updated_at?: string | null;
   completed_at?: string | null;
+}
+
+export interface HistoricalReportParticipant {
+  participant_id: string;
+  user_id: number | null;
+  display_name: string;
+  status: 'ACTIVE' | 'FORMER';
+}
+
+export interface HistoricalTeachingScope {
+  cohort_subject_id: number;
+  cohort_id: number;
+  cohort_name: string | null;
+  subject_id: number | null;
+  subject_name: string | null;
+  subject_code: string | null;
+  curriculum_name: string | null;
+  curriculum_type: string | null;
+  assigned_at?: string | null;
+  unassigned_at?: string | null;
+}
+
+export interface HistoricalReportPeriod {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  computation: {
+    job_id: string;
+    status: ReportComputeJob['status'];
+    error: Record<string, unknown> | null;
+  } | null;
+  publication: {
+    status: string;
+    active_generation: number | null;
+  } | null;
 }
 
 export interface ReportFilters {
@@ -2215,6 +2252,7 @@ export interface TeacherPerformanceAssignedSubject {
 
 export interface TeacherPerformanceReportPayload {
   report_type: 'teacher_performance';
+  evidence_status?: 'AVAILABLE' | 'NONE';
   generated_at: string;
   instructor: ReportAssignedInstructor;
   organization: ReportOrganization;

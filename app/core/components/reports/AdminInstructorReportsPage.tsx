@@ -7,24 +7,32 @@ import { ArrowLeft, Briefcase, Search } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { AppErrorBanner } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Select } from '@/app/components/ui/Select';
 import {
-  buildInstructorReportHref,
   buildReportReturnTo,
   parsePositiveReportParam,
   resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { useTerms } from '@/app/core/hooks/useAcademic';
-import { useInstructors } from '@/app/core/hooks/useInstructors';
+import { useHistoricalReportParticipants } from '@/app/core/hooks/useReporting';
 import {
   formatWorkTermOptionLabel,
   resolveExplicitWorkTermId,
   resolveWorkSelectedTermId,
 } from '@/app/core/components/academic/terms/termSelection';
+
+function buildHistoricalInstructorReportHref(
+  participantId: string,
+  options: { term: number | null; returnTo: string },
+): string {
+  const params = new URLSearchParams({ returnTo: options.returnTo });
+  if (options.term) params.set('term', String(options.term));
+  return `/reports/instructors/${participantId}?${params.toString()}`;
+}
 
 export function AdminInstructorReportsPage() {
   const router = useRouter();
@@ -44,7 +52,7 @@ export function AdminInstructorReportsPage() {
     requestedTermId,
     terms,
   }), [requestedTermId, terms]);
-  const { instructors, loading, error } = useInstructors();
+  const { participants, loading, error } = useHistoricalReportParticipants();
 
   const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -73,18 +81,17 @@ export function AdminInstructorReportsPage() {
 
   const visibleInstructors = useMemo(() => {
     if (!searchQuery) {
-      return instructors;
+      return participants;
     }
 
-    return instructors.filter((instructor) => {
+    return participants.filter((instructor) => {
       const haystack = [
-        instructor.full_name,
-        instructor.email,
-        instructor.role_display,
+        instructor.display_name,
+        instructor.status,
       ].join(' ').toLowerCase();
       return haystack.includes(searchQuery);
     });
-  }, [instructors, searchQuery]);
+  }, [participants, searchQuery]);
 
   const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
 
@@ -131,9 +138,8 @@ export function AdminInstructorReportsPage() {
         </Card>
 
         {error ? (
-          <AppErrorBanner
-            error={error}
-            onAction={() => undefined}
+          <ErrorBanner
+            message={error}
             onDismiss={() => undefined}
           />
         ) : null}
@@ -142,8 +148,8 @@ export function AdminInstructorReportsPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {visibleInstructors.map((instructor) => (
               <Link
-                key={instructor.id}
-                href={buildInstructorReportHref(instructor.id, {
+                key={instructor.participant_id}
+                href={buildHistoricalInstructorReportHref(instructor.participant_id, {
                   term: selectedTermId,
                   returnTo: currentReturnTo,
                 })}
@@ -158,13 +164,17 @@ export function AdminInstructorReportsPage() {
                         </div>
                         <div className="min-w-0">
                           <h2 className="truncate text-base font-semibold text-gray-900">
-                            {instructor.full_name}
+                            {instructor.display_name}
                           </h2>
-                          <p className="truncate text-sm text-gray-500">{instructor.email}</p>
+                          <p className="truncate text-sm text-gray-500">
+                            {instructor.status === 'FORMER' ? 'Former instructor' : 'Active instructor'}
+                          </p>
                         </div>
                       </div>
                     </div>
-                    <Badge variant="blue">Open</Badge>
+                    <Badge variant={instructor.status === 'FORMER' ? 'default' : 'blue'}>
+                      {instructor.status === 'FORMER' ? 'Former' : 'Active'}
+                    </Badge>
                   </div>
                 </Card>
               </Link>

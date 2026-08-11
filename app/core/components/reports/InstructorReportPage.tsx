@@ -12,7 +12,11 @@ import {
 export default function Page() {
   const params = useParams<{ instructorId: string }>();
   const searchParams = useSearchParams();
-  const instructorId = parsePositiveReportParam(params.instructorId ?? null);
+  const rawInstructorId = params.instructorId ?? '';
+  const instructorId = parsePositiveReportParam(rawInstructorId);
+  const participantId = /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(rawInstructorId)
+    ? rawInstructorId
+    : null;
   const termId = parsePositiveReportParam(searchParams.get('term'));
   const returnTo = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
@@ -22,10 +26,11 @@ export default function Page() {
 
   return (
     <AdminReportAccessGate>
-      {instructorId ? (
+      {instructorId || participantId ? (
         <TeacherPerformanceReportPage
           mode="admin"
           instructorId={instructorId}
+          participantId={participantId}
           returnTo={returnTo}
         />
       ) : (

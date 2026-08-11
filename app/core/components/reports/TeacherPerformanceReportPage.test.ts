@@ -22,4 +22,11 @@ describe('teacher report operating-context language', () => {
     expect(source).toContain('report?.instructor.email');
     expect(source).toContain('report?.organization.name');
   });
+
+  it('uses historical participant periods and scopes for management reports', () => {
+    expect(source).toContain('useHistoricalReportPeriods');
+    expect(source).toContain('useHistoricalTeachingScopes');
+    expect(source).toContain('useHistoricalTeacherReport');
+    expect(source).toContain('Select a historical period');
+  });
 });

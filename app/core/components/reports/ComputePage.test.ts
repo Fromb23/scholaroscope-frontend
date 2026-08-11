@@ -50,7 +50,7 @@ describe('report compute form validation', () => {
     expect(hookSource).toContain('computeReports(termId, mode)');
   });
 
-  it('calls the dedicated final reconciliation endpoint', () => {
+  it('submits every mode through the canonical compute command', () => {
     const apiSource = readFileSync(
       join(process.cwd(), 'app/core/api/reporting.ts'),
       'utf8',
@@ -61,8 +61,9 @@ describe('report compute form validation', () => {
     );
 
     expect(typesSource).toContain("export type ReportComputeMode = 'INCREMENTAL' | 'FINAL_RECONCILIATION' | 'FULL_REBUILD'");
-    expect(apiSource).toContain("mode === 'FINAL_RECONCILIATION'");
-    expect(apiSource).toContain("'/reporting/reports/compute/final-reconciliation/'");
+    expect(apiSource).toContain("'/reporting/reports/compute/'");
+    expect(apiSource).toContain('idempotency_key: idempotencyKey');
+    expect(apiSource).not.toContain("'/reporting/reports/compute/final-reconciliation/'");
   });
 
   it('keeps compute progress and terminal states in a foreground sheet', () => {
