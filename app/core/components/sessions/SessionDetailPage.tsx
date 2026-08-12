@@ -285,9 +285,17 @@ function scrollToSection(sectionId: string) {
     scrollDashboardSectionIntoView(sectionId);
 }
 
-function withReturnTo(href: string, returnTo: string) {
+function withReturnTo(
+    href: string,
+    returnTo: string,
+    options?: { authorityMode?: 'teaching' | 'supervision' | null },
+) {
     const separator = href.includes('?') ? '&' : '?';
-    return `${href}${separator}${new URLSearchParams({ returnTo }).toString()}`;
+    const params = new URLSearchParams({ returnTo });
+    if (options?.authorityMode) {
+        params.set('authority_mode', options.authorityMode);
+    }
+    return `${href}${separator}${params.toString()}`;
 }
 
 function isPortfolioReturnTarget(value: string): boolean {
@@ -1455,7 +1463,9 @@ export function SessionDetailPage() {
                 return {
                     label: 'View lesson preparation',
                     type: 'navigate' as const,
-                    href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo),
+                    href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo, {
+                        authorityMode: authorityMode === 'supervision' ? 'supervision' : null,
+                    }),
                 };
             }
             return undefined;
@@ -1527,7 +1537,9 @@ export function SessionDetailPage() {
             return {
                 label: 'View lesson preparation',
                 type: 'navigate' as const,
-                href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo),
+                href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo, {
+                    authorityMode: authorityMode === 'supervision' ? 'supervision' : null,
+                }),
             };
         }
 
@@ -1546,6 +1558,7 @@ export function SessionDetailPage() {
         revealAttendanceSection,
         revealReflectionSection,
         revealTaughtOutcomesSection,
+        authorityMode,
         session?.lesson_plan_id,
         sessionReturnTo,
     ]);
@@ -1628,7 +1641,9 @@ export function SessionDetailPage() {
                 ? [{
                     label: 'View lesson preparation',
                     type: 'navigate' as const,
-                    href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo),
+                    href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo, {
+                        authorityMode: authorityMode === 'supervision' ? 'supervision' : null,
+                    }),
                 }]
                 : []),
         ],
@@ -1665,6 +1680,7 @@ export function SessionDetailPage() {
         session,
         sessionReturnTo,
         sessionStatus,
+        authorityMode,
     ]);
 
     useAssistantPageContext(assistantContext);
@@ -1948,7 +1964,9 @@ export function SessionDetailPage() {
     }
 
     const lessonPlanHref = session.lesson_plan_id
-        ? withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo)
+        ? withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo, {
+            authorityMode: authorityMode === 'supervision' ? 'supervision' : null,
+        })
         : null;
     const lessonTaskReturnSection = currentWorkflowStep === 'post_lesson'
         ? 'post-lesson'

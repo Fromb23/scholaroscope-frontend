@@ -298,7 +298,10 @@ export function useLessonPlanCompliance(params: LessonPlanComplianceQueryParams 
     };
 }
 
-export const useLessonPlanDetail = (lessonPlanId: number | null) => {
+export const useLessonPlanDetail = (
+    lessonPlanId: number | null,
+    options?: { authorityMode?: 'teaching' | 'supervision' | null },
+) => {
     const [lessonPlan, setLessonPlan] = useState<LessonPlan | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -313,7 +316,9 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
 
         try {
             setLoading(true);
-            const data = await lessonPlanAPI.getById(lessonPlanId);
+            const data = await lessonPlanAPI.getById(lessonPlanId, {
+                authority_mode: options?.authorityMode ?? null,
+            });
             setLessonPlan(data);
             setError(null);
             setErrorStatus(null);
@@ -325,7 +330,7 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         } finally {
             setLoading(false);
         }
-    }, [lessonPlanId]);
+    }, [lessonPlanId, options?.authorityMode]);
 
     useEffect(() => {
         void fetchLessonPlan();

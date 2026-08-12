@@ -491,6 +491,10 @@ export default function CohortAssignmentDetailPage() {
         ]
       : [];
   const lifecycleState = lifecycleQuery.lifecycleState;
+  const lifecycleAllowedActions = useMemo(
+    () => new Set<AssignmentLifecycleAction>(lifecycleState?.allowed_actions ?? []),
+    [lifecycleState],
+  );
   const assignmentPrimaryAction =
     lifecycleState?.next_action && lifecycleState.next_action !== 'NONE'
       ? lifecycleState.next_action
@@ -1169,48 +1173,52 @@ export default function CohortAssignmentDetailPage() {
 
       <Card>
         <div className="flex flex-wrap gap-2">
-          <ContextualApprovalRequestButton
-            intent={{
-              actionKey: 'RESOURCE_REQUEST',
-              title: `Request add late learner to ${assignment.title}`,
-              targetType: 'assignment',
-              targetId: assignment.id,
-              returnTo: currentReturnTo,
-              requestKey: buildContextualRequestKey([
-                'assignment',
-                assignment.id,
-                'add-late-learner',
-              ]),
-              referenceData: {
-                contextual_action: 'add_late_learner',
-                assignment_id: assignment.id,
-                cohort_id: cohortId,
-                assignment_title: assignment.title,
-              },
-            }}
-          >
-            <Users className="h-4 w-4" />
-            Request add learner
-          </ContextualApprovalRequestButton>
-          <ContextualApprovalRequestButton
-            intent={{
-              actionKey: 'OTHER',
-              title: `Request reopen closed assignment ${assignment.title}`,
-              targetType: 'assignment',
-              targetId: assignment.id,
-              returnTo: currentReturnTo,
-              requestKey: buildContextualRequestKey(['assignment', assignment.id, 'reopen']),
-              referenceData: {
-                contextual_action: 'reopen_closed_assignment',
-                assignment_id: assignment.id,
-                cohort_id: cohortId,
-                assignment_title: assignment.title,
-              },
-            }}
-          >
-            <Clock className="h-4 w-4" />
-            Request reopen
-          </ContextualApprovalRequestButton>
+          {lifecycleAllowedActions.has('ADD_LEARNERS') ? (
+            <ContextualApprovalRequestButton
+              intent={{
+                actionKey: 'RESOURCE_REQUEST',
+                title: `Request add late learner to ${assignment.title}`,
+                targetType: 'assignment',
+                targetId: assignment.id,
+                returnTo: currentReturnTo,
+                requestKey: buildContextualRequestKey([
+                  'assignment',
+                  assignment.id,
+                  'add-late-learner',
+                ]),
+                referenceData: {
+                  contextual_action: 'add_late_learner',
+                  assignment_id: assignment.id,
+                  cohort_id: cohortId,
+                  assignment_title: assignment.title,
+                },
+              }}
+            >
+              <Users className="h-4 w-4" />
+              Request add learner
+            </ContextualApprovalRequestButton>
+          ) : null}
+          {lifecycleAllowedActions.has('REOPEN_LEARNER_WORK') || lifecycleAllowedActions.has('RESTORE_TO_REVIEW') ? (
+            <ContextualApprovalRequestButton
+              intent={{
+                actionKey: 'OTHER',
+                title: `Request reopen closed assignment ${assignment.title}`,
+                targetType: 'assignment',
+                targetId: assignment.id,
+                returnTo: currentReturnTo,
+                requestKey: buildContextualRequestKey(['assignment', assignment.id, 'reopen']),
+                referenceData: {
+                  contextual_action: 'reopen_closed_assignment',
+                  assignment_id: assignment.id,
+                  cohort_id: cohortId,
+                  assignment_title: assignment.title,
+                },
+              }}
+            >
+              <Clock className="h-4 w-4" />
+              Request reopen
+            </ContextualApprovalRequestButton>
+          ) : null}
           <ContextualApprovalRequestButton
             intent={{
               actionKey: 'RESOURCE_REQUEST',

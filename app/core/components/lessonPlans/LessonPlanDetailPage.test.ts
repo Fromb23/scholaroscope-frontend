@@ -21,6 +21,12 @@ describe('LessonPlanDetailPage scheme desire path', () => {
     expect(source).not.toContain('handleExportPdf');
   });
 
+  it('passes explicit route authority mode to lesson plan detail fetches', () => {
+    expect(source).toContain("const requestedAuthorityMode = searchParams.get('authority_mode')");
+    expect(source).toContain("requestedAuthorityMode === 'teaching' || requestedAuthorityMode === 'supervision'");
+    expect(source).toContain('useLessonPlanDetail(lessonPlanId, { authorityMode })');
+  });
+
   it('requires explicit review editing before scheduling a generated lesson', () => {
     expect(source).toContain('Review / edit lesson plan');
     expect(source).toContain('REVIEW_SECTION_FIELDS');

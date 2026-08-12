@@ -1094,10 +1094,19 @@ export const learnerReportingAPI = {
       `teacher-performance-report-${instructorId}.${format}`,
     ),
 
-  getHistoricalReportParticipants: async (): Promise<HistoricalReportParticipant[]> => {
+  getHistoricalReportParticipants: async (params?: {
+    q?: string | null;
+    termId?: number | null;
+  }): Promise<HistoricalReportParticipant[]> => {
     const response = await apiClient.get<{ results: HistoricalReportParticipant[] }>(
       '/reporting/admin/instructors/history/',
-      { params: { authority_mode: 'supervision' } },
+      {
+        params: {
+          authority_mode: 'supervision',
+          q: params?.q || undefined,
+          term: params?.termId ?? undefined,
+        },
+      },
     );
     return response.data.results;
   },

@@ -1307,14 +1307,22 @@ function historicalReportError(error: unknown, entityLabel: string): string {
   return resolved.message;
 }
 
-export function useHistoricalReportParticipants() {
+export function useHistoricalReportParticipants(params?: {
+  q?: string | null;
+  termId?: number | null;
+}) {
   const [participants, setParticipants] = useState<HistoricalReportParticipant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const q = params?.q?.trim() || null;
+  const termId = params?.termId ?? null;
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      setParticipants(await learnerReportingAPI.getHistoricalReportParticipants());
+      setParticipants(await learnerReportingAPI.getHistoricalReportParticipants({
+        q,
+        termId,
+      }));
       setError(null);
     } catch (requestError) {
       setParticipants([]);
@@ -1322,7 +1330,7 @@ export function useHistoricalReportParticipants() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [q, termId]);
   useEffect(() => { void load(); }, [load]);
   return { participants, loading, error, refetch: load };
 }

@@ -14,4 +14,11 @@ describe('AdminInstructorReportsPage lifecycle participants', () => {
     expect(pageSource).toContain("'Access restricted'");
     expect(pageSource).toContain("'Restricted'");
   });
+
+  it('passes search and selected term through the historical participant hook', () => {
+    expect(pageSource).toContain('useHistoricalReportParticipants({');
+    expect(pageSource).toContain('q: searchQuery');
+    expect(pageSource).toContain('termId: selectedTermId');
+    expect(pageSource).toContain('const visibleInstructors = participants;');
+  });
 });

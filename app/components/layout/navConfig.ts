@@ -241,6 +241,20 @@ export function resolveNavConfig({
   if (user.is_superadmin) return { primary: [] };
   activeOperatingContext = activeOperatingContext ?? null;
 
+  if (isSelfManagedTeachingWorkspace({ orgType, capabilities }) && capabilities?.can_teach) {
+    return filterNavigationConfigForRouteAuthority(
+      getWorkspaceManagementNav(
+        pluginNavigationContext,
+        orgType,
+        academicSetup,
+        capabilities,
+      ),
+      'WORKSPACE_MANAGEMENT',
+      capabilities,
+      orgType,
+    );
+  }
+
   let navConfig: NavigationConfig;
   switch (activeOperatingContext) {
     case 'WORKSPACE_MANAGEMENT':

@@ -63,6 +63,14 @@ describe('SessionDetailPage attendance learner links', () => {
     expect(component).toContain('{backLabel}');
   });
 
+  it('carries supervision authority to linked lesson preparation routes explicitly', () => {
+    const component = source();
+
+    expect(component).toContain("params.set('authority_mode', options.authorityMode)");
+    expect(component).toContain("authorityMode: authorityMode === 'supervision' ? 'supervision' : null");
+    expect(component).toContain('withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo, {');
+  });
+
   it('renders contextual source-record failure states for Portfolio navigation', () => {
     const component = source();
 

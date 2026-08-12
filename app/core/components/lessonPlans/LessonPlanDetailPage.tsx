@@ -238,6 +238,10 @@ export function LessonPlanDetailPage() {
     const searchParams = useSearchParams();
     const { activeOrg, activeOperatingContext, capabilities } = useAuth();
     const teachingSurface = activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach);
+    const requestedAuthorityMode = searchParams.get('authority_mode');
+    const authorityMode = requestedAuthorityMode === 'teaching' || requestedAuthorityMode === 'supervision'
+        ? requestedAuthorityMode
+        : null;
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
         return parseAppDestination(value);
@@ -264,7 +268,7 @@ export function LessonPlanDetailPage() {
         restore,
         scheduleLesson,
         exportPdf,
-    } = useLessonPlanDetail(lessonPlanId);
+    } = useLessonPlanDetail(lessonPlanId, { authorityMode });
     const { handleExport: handleLessonPlanExport, exporting } = useReportExport(
         () => exportPdf(),
         'lesson plan PDF',
