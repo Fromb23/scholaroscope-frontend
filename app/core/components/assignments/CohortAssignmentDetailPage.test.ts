@@ -63,6 +63,14 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     expect(pageSource).toContain('Evidence blocked');
   });
 
+  it('gates reopen and add-learner requests behind backend lifecycle allowed actions', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('const lifecycleAllowedActions = useMemo');
+    expect(pageSource).toContain("lifecycleAllowedActions.has('ADD_LEARNERS')");
+    expect(pageSource).toContain("lifecycleAllowedActions.has('REOPEN_LEARNER_WORK') || lifecycleAllowedActions.has('RESTORE_TO_REVIEW')");
+  });
+
   it('exposes assignment stage memory to assistant page context', () => {
     const pageSource = source();
 

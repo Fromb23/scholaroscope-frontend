@@ -405,6 +405,61 @@ describe('admin navigation config', () => {
     ]);
   });
 
+  it('keeps the self-managed owner combined shell stable across operating contexts', () => {
+    const capabilities = capabilitiesWithKeys(
+      [...managementPermissionKeys, 'lessons.prepare'],
+      {
+        can_teach: true,
+        can_manage_academic_setup: true,
+        can_manage_learners: true,
+        can_manage_cohorts: true,
+        can_manage_subjects: true,
+        can_manage_assessments: true,
+        can_view_reports: true,
+        can_manage_staff: false,
+        is_workspace_owner: true,
+        workspace_mode: 'FREELANCE_TEACHER',
+        workspace_behavior: 'FREELANCE_TEACHER',
+      },
+    );
+    const baseInput = {
+      user: testUser(),
+      orgType: 'PERSONAL' as const,
+      pluginNavigationContext: {
+        ...pluginContext,
+        orgType: 'PERSONAL' as const,
+        capabilities,
+      } as PluginNavigationContext,
+      academicSetup: {
+        complete: true,
+        current_step_label: null,
+        next_action: {
+          label: 'Open admin dashboard',
+          href: '/dashboard/admin',
+        },
+      },
+      capabilities,
+    };
+
+    const managementNav = resolveNavConfig({
+      ...baseInput,
+      activeOperatingContext: 'WORKSPACE_MANAGEMENT',
+    });
+    const teachingNav = resolveNavConfig({
+      ...baseInput,
+      activeOperatingContext: 'MY_TEACHING',
+    });
+
+    expect(teachingNav.primary.map((item) => item.name)).toEqual(
+      managementNav.primary.map((item) => item.name),
+    );
+    expect(allNavHrefs(teachingNav)).toContain('/lesson-plans');
+    expect(allNavHrefs(teachingNav)).toContain('/academic/years');
+    expect(allNavHrefs(teachingNav)).toContain('/academic/terms');
+    expect(allNavHrefs(teachingNav)).toContain('/academic/cohorts');
+    expect(allNavHrefs(teachingNav)).toContain('/admin/settings');
+  });
+
   it('keeps personal workspaces in guided setup until schemes are ready', () => {
     const nav = getAdminNav(pluginContext, 'PERSONAL', {
       complete: false,
@@ -687,7 +742,7 @@ describe('admin navigation config', () => {
       capabilities: soloGovernanceCapabilities,
     }, 'TEACHING');
 
-    expect(nav.secondary?.map((item) => item.name)).not.toContain('Submit Request');
+    expect(nav.secondary?.map((item) => item.name) ?? []).not.toContain('Submit Request');
   });
 
 });

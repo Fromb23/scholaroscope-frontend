@@ -4,6 +4,7 @@ import {
   adminReportsAPI,
   cohortSubjectReportsAPI,
   instructorReportsAPI,
+  learnerReportingAPI,
 } from '@/app/core/api/reporting';
 
 const { get } = vi.hoisted(() => ({ get: vi.fn() }));
@@ -38,6 +39,19 @@ describe('report authority propagation', () => {
     });
     expect(get).toHaveBeenNthCalledWith(2, '/reports/instructor/overview/', {
       params: { authority_mode: 'teaching' },
+    });
+  });
+
+  it('passes historical instructor search and selected term to the supervision endpoint', async () => {
+    get.mockResolvedValueOnce({ data: { results: [] } });
+
+    await learnerReportingAPI.getHistoricalReportParticipants({
+      q: 'duncan',
+      termId: 7,
+    });
+
+    expect(get).toHaveBeenCalledWith('/reporting/admin/instructors/history/', {
+      params: { authority_mode: 'supervision', q: 'duncan', term: 7 },
     });
   });
 });

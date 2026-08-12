@@ -50,8 +50,18 @@ export const lessonPlanAPI = {
         return response.data;
     },
 
-    getById: async (id: number): Promise<LessonPlan> => {
-        const response = await apiClient.get<LessonPlan>(`${LESSON_PLANS_BASE_PATH}/${id}/`);
+    getById: async (
+        id: number,
+        params?: { authority_mode?: 'teaching' | 'supervision' | null },
+    ): Promise<LessonPlan> => {
+        const response = await apiClient.get<LessonPlan>(
+            `${LESSON_PLANS_BASE_PATH}/${id}/`,
+            {
+                params: params?.authority_mode
+                    ? { authority_mode: params.authority_mode }
+                    : undefined,
+            }
+        );
         return response.data;
     },
 

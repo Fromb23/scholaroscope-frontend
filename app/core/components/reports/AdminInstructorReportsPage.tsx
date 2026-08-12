@@ -63,7 +63,10 @@ export function AdminInstructorReportsPage() {
     requestedTermId,
     terms,
   }), [requestedTermId, terms]);
-  const { participants, loading, error } = useHistoricalReportParticipants();
+  const { participants, loading, error } = useHistoricalReportParticipants({
+    q: searchQuery,
+    termId: selectedTermId,
+  });
 
   const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -90,20 +93,7 @@ export function AdminInstructorReportsPage() {
     updateQuery({ term: null });
   }, [requestedTermId, searchParams, terms, terms.length, termsLoading, updateQuery]);
 
-  const visibleInstructors = useMemo(() => {
-    if (!searchQuery) {
-      return participants;
-    }
-
-    return participants.filter((instructor) => {
-      const haystack = [
-        instructor.display_name,
-        instructor.email,
-        instructor.status,
-      ].join(' ').toLowerCase();
-      return haystack.includes(searchQuery);
-    });
-  }, [participants, searchQuery]);
+  const visibleInstructors = participants;
 
   const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
 
