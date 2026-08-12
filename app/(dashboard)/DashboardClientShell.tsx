@@ -43,7 +43,7 @@ import {
 import { AlertTriangle } from 'lucide-react';
 import type { AccessNotice } from '@/app/core/types/auth';
 import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
-import { buildLoginPath } from '@/app/core/auth/navigation';
+import { redirectToLogin } from '@/app/core/auth/navigation';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { OfflineRetryState } from '@/app/offline/OfflineRetryState';
 import { WorkspaceGenerationBoundary } from '@/app/core/runtime/workspaceGeneration';
@@ -187,7 +187,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
   const currentPath = search ? `${pathname}?${search}` : pathname;
   const isLegacyWorkspaceCreationRedirectRoute = pathname === '/workspaces/new';
   const previousOrganizationIdRef = useRef<number | null | undefined>(undefined);
-  const lastRedirectRef = useRef<string | null>(null);
+  const lastLoginRedirectPathRef = useRef<string | null>(null);
 
   const workspaceUnavailable = (
     !loading
@@ -244,14 +244,13 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       if (offline) {
         return;
       }
-      const destination = buildLoginPath(currentPath);
-      if (lastRedirectRef.current !== destination) {
-        lastRedirectRef.current = destination;
-        router.replace(destination);
+      if (lastLoginRedirectPathRef.current !== currentPath) {
+        lastLoginRedirectPathRef.current = currentPath;
+        redirectToLogin(currentPath);
       }
       return;
     }
-    lastRedirectRef.current = null;
+    lastLoginRedirectPathRef.current = null;
     if (user.is_superadmin) {
       redirectToPlatformConsole('/login');
       return;

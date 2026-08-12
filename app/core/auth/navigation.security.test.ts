@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildLoginPath,
   isSafeNextPath,
+  redirectToLogin,
   sanitizeAppDestination,
 } from './navigation';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('canonical application destination parser', () => {
   it.each([
@@ -45,6 +50,35 @@ describe('canonical application destination parser', () => {
     expect(buildLoginPath('//attacker.example')).toBe('/login');
     expect(buildLoginPath('/%252F%252Fattacker.example')).toBe('/login');
     expect(buildLoginPath('/reports/123')).toBe('/login?next=%2Freports%2F123');
+  });
+
+  it('preserves protected deep-link query state in the login next parameter', () => {
+    const loginPath = buildLoginPath('/schemes?cohort=14&cohort_subject=28&source=cohort_subject');
+    const parsed = new URL(loginPath, 'https://scholaroscope.test');
+
+    expect(parsed.pathname).toBe('/login');
+    expect(parsed.searchParams.get('next')).toBe(
+      '/schemes?cohort=14&cohort_subject=28&source=cohort_subject',
+    );
+  });
+
+  it('uses window.location.assign for canonical login redirects', () => {
+    const assign = vi.fn();
+    vi.stubGlobal('window', {
+      location: {
+        origin: 'https://scholaroscope.test',
+        pathname: '/schemes',
+        search: '?cohort=14&cohort_subject=28&source=cohort_subject',
+        hash: '',
+        assign,
+      },
+    });
+
+    redirectToLogin('/schemes?cohort=14&cohort_subject=28&source=cohort_subject');
+
+    expect(assign).toHaveBeenCalledWith(
+      '/login?next=%2Fschemes%3Fcohort%3D14%26cohort_subject%3D28%26source%3Dcohort_subject',
+    );
   });
 
   it('allows a bounded report trail but rejects recursively growing return destinations', () => {
