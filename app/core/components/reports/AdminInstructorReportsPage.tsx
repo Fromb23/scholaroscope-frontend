@@ -87,6 +87,7 @@ export function AdminInstructorReportsPage() {
     return participants.filter((instructor) => {
       const haystack = [
         instructor.display_name,
+        instructor.email,
         instructor.status,
       ].join(' ').toLowerCase();
       return haystack.includes(searchQuery);
@@ -167,13 +168,19 @@ export function AdminInstructorReportsPage() {
                             {instructor.display_name}
                           </h2>
                           <p className="truncate text-sm text-gray-500">
-                            {instructor.status === 'FORMER' ? 'Former instructor' : 'Active instructor'}
+                            {instructor.email || (
+                              instructor.status === 'FORMER'
+                                ? 'Former instructor'
+                                : instructor.status === 'RESTRICTED'
+                                  ? 'Access restricted'
+                                  : 'Active instructor'
+                            )}
                           </p>
                         </div>
                       </div>
                     </div>
-                    <Badge variant={instructor.status === 'FORMER' ? 'default' : 'blue'}>
-                      {instructor.status === 'FORMER' ? 'Former' : 'Active'}
+                    <Badge variant={instructor.status === 'FORMER' ? 'default' : instructor.status === 'RESTRICTED' ? 'warning' : 'blue'}>
+                      {instructor.status === 'FORMER' ? 'Former' : instructor.status === 'RESTRICTED' ? 'Restricted' : 'Active'}
                     </Badge>
                   </div>
                 </Card>

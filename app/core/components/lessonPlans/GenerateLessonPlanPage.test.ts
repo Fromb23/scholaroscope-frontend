@@ -83,4 +83,14 @@ describe('GenerateLessonPlanPage validation and error placement', () => {
     expect(pageSource).toContain('generated.result_payload.lesson_plan');
     expect(pageSource).not.toContain('generated.lesson_plan.id');
   });
+
+  it('distinguishes missing class setup, assignment, curriculum, and term states', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain("'No class subjects configured'");
+    expect(pageSource).toContain("'No teaching assignment'");
+    expect(pageSource).toContain('All assigned curricula are currently blocked for new work.');
+    expect(pageSource).toContain('title="No active term"');
+    expect(pageSource).toContain('isSelfManagedTeachingAdmin');
+  });
 });

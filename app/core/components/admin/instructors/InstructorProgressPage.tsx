@@ -125,6 +125,7 @@ export default function InstructorProgressPage() {
 
     const {
         instructor, sessions, loading, error,
+        sectionErrors,
         refetch, teachingAssignments, cbcTeachingAssignments,
         sessionStats, attendanceStats, schemes,
     } = useInstructorProgress(instructorId, activeScope);
@@ -338,6 +339,20 @@ export default function InstructorProgressPage() {
                 </div>
             )}
 
+            {isMembershipRestricted || isMembershipRemoved ? (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium">
+                            {isMembershipRestricted ? 'Workspace access is restricted' : 'Former workspace member'}
+                        </p>
+                        <p className="mt-1 text-sm">
+                            Teaching operations are disabled. Historical assignments, sessions, schemes, and reports remain available for supervision.
+                        </p>
+                    </div>
+                </div>
+            ) : null}
+
             {initialSubjectName && initialCohortName ? (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                     Manage teaching assignment for <span className="font-medium text-blue-900">{initialSubjectName}</span> in{' '}
@@ -375,7 +390,12 @@ export default function InstructorProgressPage() {
                         <Pencil className="h-3.5 w-3.5 md:mr-1" />
                         <span className="hidden md:inline">Edit</span>
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setCohortOpen(true)}>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setCohortOpen(true)}
+                        disabled={isMembershipRestricted || isMembershipRemoved}
+                    >
                         <BookOpen className="h-3.5 w-3.5 md:mr-1" />
                         <span className="hidden md:inline">Teaching</span>
                     </Button>
@@ -474,11 +494,17 @@ export default function InstructorProgressPage() {
                         <h2 className="text-lg font-semibold text-gray-900">Sessions</h2>
                         <Badge variant="info" size="sm">{sessions.length} total</Badge>
                     </div>
-                    <GroupedSessions
-                        sessions={sessions}
-                        returnTo={progressReturnTo}
-                        planningReviewScope={planningReviewScope}
-                    />
+                    {sectionErrors.sessions ? (
+                        <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            {sectionErrors.sessions}
+                        </p>
+                    ) : (
+                        <GroupedSessions
+                            sessions={sessions}
+                            returnTo={progressReturnTo}
+                            planningReviewScope={planningReviewScope}
+                        />
+                    )}
                 </div>
             </Card>
 
@@ -491,7 +517,11 @@ export default function InstructorProgressPage() {
                             <Badge variant="info" size="sm">{schemes.length} total</Badge>
                         </div>
                     </div>
-                    {schemes.length === 0 ? (
+                    {sectionErrors.schemes ? (
+                        <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            {sectionErrors.schemes}
+                        </p>
+                    ) : schemes.length === 0 ? (
                         <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
                             No schemes of work have been created by this teacher yet.
                         </p>
