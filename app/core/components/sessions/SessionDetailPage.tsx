@@ -1455,7 +1455,7 @@ export function SessionDetailPage() {
                 return {
                     label: 'View lesson preparation',
                     type: 'navigate' as const,
-                    href: `/lesson-plans/${session.lesson_plan_id}`,
+                    href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo),
                 };
             }
             return undefined;
@@ -1527,7 +1527,7 @@ export function SessionDetailPage() {
             return {
                 label: 'View lesson preparation',
                 type: 'navigate' as const,
-                href: `/lesson-plans/${session.lesson_plan_id}`,
+                href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo),
             };
         }
 
@@ -1547,6 +1547,7 @@ export function SessionDetailPage() {
         revealReflectionSection,
         revealTaughtOutcomesSection,
         session?.lesson_plan_id,
+        sessionReturnTo,
     ]);
     const assistantContext = useMemo(() => ({
         pageKey: 'session_detail',
@@ -1627,7 +1628,7 @@ export function SessionDetailPage() {
                 ? [{
                     label: 'View lesson preparation',
                     type: 'navigate' as const,
-                    href: `/lesson-plans/${session.lesson_plan_id}`,
+                    href: withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo),
                 }]
                 : []),
         ],
@@ -1662,6 +1663,7 @@ export function SessionDetailPage() {
         revealReflectionSection,
         revealTaughtOutcomesSection,
         session,
+        sessionReturnTo,
         sessionStatus,
     ]);
 
@@ -1946,7 +1948,7 @@ export function SessionDetailPage() {
     }
 
     const lessonPlanHref = session.lesson_plan_id
-        ? `/lesson-plans/${session.lesson_plan_id}`
+        ? withReturnTo(`/lesson-plans/${session.lesson_plan_id}`, sessionReturnTo)
         : null;
     const lessonTaskReturnSection = currentWorkflowStep === 'post_lesson'
         ? 'post-lesson'
@@ -2622,7 +2624,7 @@ export function SessionDetailPage() {
                             </div>
 
                             {!currentActionShowsLessonPreparation ? (
-                                <Link href={`/lesson-plans/${session.lesson_plan_id}`} className="w-full shrink-0 sm:w-auto">
+                                <Link href={lessonPlanHref ?? `/lesson-plans/${session.lesson_plan_id}`} className="w-full shrink-0 sm:w-auto">
                                     <Button variant="secondary" size="sm" className="w-full sm:w-auto">
                                         <BookOpen className="mr-1.5 h-4 w-4" />
                                         {teachingSurface ? 'View lesson preparation' : 'View lesson plan'}
@@ -2836,7 +2838,7 @@ export function SessionDetailPage() {
                             </div>
 
                             {hasLessonPlan ? (
-                                <Link href={`/lesson-plans/${session.lesson_plan_id}`}>
+                                <Link href={lessonPlanHref ?? `/lesson-plans/${session.lesson_plan_id}`}>
                                     <Button variant="secondary" size="sm">
                                         <BookOpen className="mr-1.5 h-4 w-4" />
                                         {teachingSurface ? 'View lesson preparation' : 'View lesson plan'}

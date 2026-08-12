@@ -9,7 +9,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { Select } from '@/app/components/ui/Select';
 import {
   buildReportReturnTo,
@@ -32,6 +32,17 @@ function buildHistoricalInstructorReportHref(
   const params = new URLSearchParams({ returnTo: options.returnTo });
   if (options.term) params.set('term', String(options.term));
   return `/reports/instructors/${participantId}?${params.toString()}`;
+}
+
+function historicalInstructorListError(message: string) {
+  return {
+    kind: 'server',
+    title: 'Unable to load historical instructors',
+    message,
+    retryable: true,
+    severity: 'error' as const,
+    channel: 'banner' as const,
+  };
 }
 
 export function AdminInstructorReportsPage() {
@@ -139,10 +150,7 @@ export function AdminInstructorReportsPage() {
         </Card>
 
         {error ? (
-          <ErrorBanner
-            message={error}
-            onDismiss={() => undefined}
-          />
+          <AppErrorBanner error={historicalInstructorListError(error)} />
         ) : null}
 
         {loading ? <LoadingSpinner message="Loading instructors..." /> : (

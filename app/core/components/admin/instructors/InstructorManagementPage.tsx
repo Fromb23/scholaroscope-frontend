@@ -310,19 +310,24 @@ export function InstructorManagementPage() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { user, activeOrg, capabilities } = useAuth();
-    const { instructors, loading, error, refetch, createInstructor } = useInstructors();
+    const { instructors, pagination, loading, error, refetch, createInstructor } = useInstructors();
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [viewMode, setViewMode] = useState<ViewMode>('table');
     const [createOpen, setCreateOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const serverFilters = useMemo(() => ({
+        q: search.trim() || undefined,
+        membership_status: statusFilter === 'all' ? undefined : statusFilter,
+    }), [search, statusFilter]);
 
     const filtered = useMemo(() => {
         return instructors.filter(i => {
             const matchSearch = !search ||
                 i.full_name.toLowerCase().includes(search.toLowerCase()) ||
                 i.email.toLowerCase().includes(search.toLowerCase()) ||
+                (i.phone ?? '').toLowerCase().includes(search.toLowerCase()) ||
                 (i.state_message ?? '').toLowerCase().includes(search.toLowerCase());
             const matchStatus = statusFilter === 'all'
                 || (statusFilter === 'active' && isEffectivelyActiveInCurrentOrg(i))
@@ -332,6 +337,9 @@ export function InstructorManagementPage() {
             return matchSearch && matchStatus;
         });
     }, [instructors, search, statusFilter]);
+    useEffect(() => {
+        void refetch(1, pagination.pageSize, serverFilters);
+    }, [pagination.pageSize, refetch, serverFilters]);
     const selectedCohortSubjectId = searchParams.get('cohort_subject_id');
     const selectedCohortName = searchParams.get('cohort_name');
     const selectedSubjectName = searchParams.get('subject_name');
@@ -499,7 +507,7 @@ export function InstructorManagementPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        {instructors.length} staff member{instructors.length !== 1 ? 's' : ''} with teaching access — click any row to view details and manage assignments
+                        {pagination.totalItems} staff member{pagination.totalItems !== 1 ? 's' : ''} with teaching access — click any row to view details and manage assignments
                     </p>
                 </div>
                 <Button variant="primary" onClick={() => { setCreateOpen(true); }} className="gap-2">
@@ -571,6 +579,10 @@ export function InstructorManagementPage() {
                     onSearch={setSearch}
                     onRowClick={row => navigateTo(row.id)}
                     onSort={() => { }}
+                    pagination={pagination}
+                    onPaginationChange={(page, pageSize) => {
+                        void refetch(page, pageSize, serverFilters);
+                    }}
                 />
             ) : filtered.length === 0 ? (
                 <div className="bg-white rounded-xl border border-gray-200 p-14 text-center">
