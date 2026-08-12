@@ -6,7 +6,7 @@
 // ============================================================================
 
 import { apiClient } from './client';
-import { unwrapPaginated } from './unwrap';
+import { normalizePaginated, unwrapPaginated, type PaginatedResponse } from './unwrap';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import {
     AvailableCohort,
@@ -21,6 +21,8 @@ import {
 } from '@/app/core/types/globalUsers';
 
 const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
+const STAFF_LIST_PAGE_SIZE = 100;
+export const STAFF_INSTRUCTORS_PAGE_SIZE = STAFF_LIST_PAGE_SIZE;
 
 
 
@@ -62,6 +64,26 @@ export const instructorsAPI = {
             params: { role: 'INSTRUCTOR' },
         });
         return unwrapPaginated(response.data);
+    },
+
+    getPage: async (params?: {
+        page?: number;
+        page_size?: number;
+        q?: string;
+        membership_status?: string;
+    }): Promise<PaginatedResponse<GlobalUser>> => {
+        const response = await apiClient.get<GlobalUser[] | PaginatedResponse<GlobalUser>>('/users/', {
+            params: {
+                role: 'INSTRUCTOR',
+                page: params?.page ?? 1,
+                page_size: params?.page_size ?? STAFF_LIST_PAGE_SIZE,
+                ...(params?.q ? { q: params.q } : {}),
+                ...(params?.membership_status && params.membership_status !== 'all'
+                    ? { membership_status: params.membership_status }
+                    : {}),
+            },
+        });
+        return normalizePaginated(response.data);
     },
 
     // GET /api/users/{id}/

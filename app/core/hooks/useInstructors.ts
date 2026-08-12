@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
+import { instructorsAPI, InstructorProfile, STAFF_INSTRUCTORS_PAGE_SIZE } from '@/app/core/api/instructors';
 import {
     GlobalUser,
     GlobalUserActionResponse,
@@ -8,6 +8,11 @@ import {
     UserUpdatePayload,
 } from '@/app/core/types/globalUsers';
 import { AppError, AppErrorException, resolveAppError } from '@/app/core/errors';
+
+type InstructorListFilters = {
+    q?: string;
+    membership_status?: string;
+};
 
 function resolveActionUser(
     response: GlobalUserActionResponse,
@@ -29,13 +34,24 @@ function resolveActionUser(
 
 export const useInstructors = (options?: { enabled?: boolean }) => {
     const [instructors, setInstructors] = useState<GlobalUser[]>([]);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        pageSize: STAFF_INSTRUCTORS_PAGE_SIZE,
+        totalItems: 0,
+        totalPages: 1,
+    });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<AppError | null>(null);
     const enabled = options?.enabled ?? true;
 
-    const fetchInstructors = useCallback(async () => {
+    const fetchInstructors = useCallback(async (
+        page = 1,
+        pageSize = STAFF_INSTRUCTORS_PAGE_SIZE,
+        filters?: InstructorListFilters,
+    ) => {
         if (!enabled) {
             setInstructors([]);
+            setPagination((current) => ({ ...current, totalItems: 0, totalPages: 1 }));
             setError(null);
             setLoading(false);
             return;
@@ -43,8 +59,18 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
 
         try {
             setLoading(true);
-            const data = await instructorsAPI.getAll();
-            setInstructors(data);
+            const data = await instructorsAPI.getPage({
+                page,
+                page_size: pageSize,
+                ...filters,
+            });
+            setInstructors(data.results);
+            setPagination({
+                currentPage: page,
+                pageSize,
+                totalItems: data.count,
+                totalPages: Math.max(1, Math.ceil(data.count / pageSize)),
+            });
             setError(null);
         } catch (err) {
             setError(resolveAppError(err, { domain: 'instructors', action: 'load', entityLabel: 'instructor accounts', role: 'ADMIN' }));
@@ -61,6 +87,11 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
         try {
             const created = await instructorsAPI.create(data);
             setInstructors(prev => [created, ...prev]);
+            setPagination((current) => ({
+                ...current,
+                totalItems: current.totalItems + 1,
+                totalPages: Math.max(1, Math.ceil((current.totalItems + 1) / current.pageSize)),
+            }));
             return created;
         } catch (err) {
             throw new AppErrorException(resolveAppError(err, { domain: 'instructors', action: 'create', entityLabel: 'instructor account', role: 'ADMIN' }));
@@ -115,7 +146,7 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
     };
 
     return {
-        instructors, loading, error, refetch: fetchInstructors,
+        instructors, pagination, loading, error, refetch: fetchInstructors,
         createInstructor, updateInstructor, deleteInstructor,
         toggleActive, resetPassword,
     };
