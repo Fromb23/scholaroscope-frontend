@@ -218,6 +218,8 @@ describe('Instructor progress session workflow rows', () => {
     expect(progressPageSource).not.toContain('getInstructorLessonPlans');
     expect(progressPageSource).toContain('<h2 className="text-lg font-semibold text-gray-900">Sessions</h2>');
     expect(progressPageSource).toContain('<h2 className="text-lg font-semibold text-gray-900">Schemes of Work</h2>');
+    expect(progressPageSource).toContain('Workspace access is restricted');
+    expect(progressPageSource).toContain('Historical assignments, sessions, schemes, and reports remain available');
   });
 
   it('uses the real Sessions card as the sessions hash target', () => {

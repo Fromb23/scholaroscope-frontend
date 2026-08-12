@@ -67,7 +67,12 @@ export function GenerateLessonPlanPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { curricula } = useCurricula();
-    const { assignments, isLoading: assignmentsLoading, error: assignmentsError } = useInstructorCohortAccess();
+    const {
+        assignments,
+        isSelfManagedTeachingAdmin,
+        isLoading: assignmentsLoading,
+        error: assignmentsError,
+    } = useInstructorCohortAccess();
     const {
         createLessonPlan,
         submitting: creatingLessonPlan,
@@ -481,11 +486,35 @@ export function GenerateLessonPlanPage() {
         );
     }
 
+    if (assignments.length === 0) {
+        return (
+            <CurriculumLifecycleAccessState
+                title={isSelfManagedTeachingAdmin ? 'No class subjects configured' : 'No teaching assignment'}
+                message={isSelfManagedTeachingAdmin
+                    ? 'Create a current class and add at least one class subject before preparing a lesson.'
+                    : 'You need an explicit class-subject teaching assignment before preparing a lesson.'}
+                backHref="/lesson-plans"
+                backLabel="Back to Lesson Plans"
+            />
+        );
+    }
+
     if (assignments.length > 0 && availableAssignmentOptions.length === 0) {
         return (
             <CurriculumLifecycleAccessState
                 title="Lesson planning is unavailable"
                 message="All assigned curricula are currently blocked for new work. Historical lesson plans remain readable."
+                backHref="/lesson-plans"
+                backLabel="Back to Lesson Plans"
+            />
+        );
+    }
+
+    if (assignments.every((assignment) => !assignment.current_term)) {
+        return (
+            <CurriculumLifecycleAccessState
+                title="No active term"
+                message="Open a current teaching term before preparing or generating a lesson plan."
                 backHref="/lesson-plans"
                 backLabel="Back to Lesson Plans"
             />

@@ -1392,7 +1392,9 @@ export interface HistoricalReportParticipant {
   participant_id: string;
   user_id: number | null;
   display_name: string;
-  status: 'ACTIVE' | 'FORMER';
+  email?: string | null;
+  membership_status?: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | null;
+  status: 'ACTIVE' | 'RESTRICTED' | 'FORMER';
 }
 
 export interface HistoricalTeachingScope {

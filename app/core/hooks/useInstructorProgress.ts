@@ -34,6 +34,11 @@ export interface InstructorProgressScope {
     endDate?: string;
 }
 
+export interface InstructorProgressSectionErrors {
+    sessions: string | null;
+    schemes: string | null;
+}
+
 type TeachingAssignmentIdentity = Pick<
     TeachingAssignment,
     | 'source'
@@ -92,6 +97,10 @@ export function useInstructorProgress(
     const [schemes, setSchemes] = useState<InstructorSchemeDrilldownItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [sectionErrors, setSectionErrors] = useState<InstructorProgressSectionErrors>({
+        sessions: null,
+        schemes: null,
+    });
 
     const load = useCallback(async (showLoadingState = true) => {
         if (showLoadingState) {
@@ -99,35 +108,56 @@ export function useInstructorProgress(
             setError(null);
         }
 
-        try {
-            const instructorData = await instructorsAPI.getById(instructorId);
-            setInstructor(instructorData);
-
-            const allSessions = await sessionAPI.getSupervisedComplete({
-                authority_mode: 'supervision',
-                instructor_id: instructorId,
-                term: scope.termId,
+        const profileRequest = instructorsAPI.getById(instructorId);
+        const sessionsRequest = sessionAPI.getSupervisedComplete({
+            authority_mode: 'supervision',
+            instructor_id: instructorId,
+            scope: scope.termId ? undefined : 'all',
+            term: scope.termId,
                 cohort_subject__subject: scope.subjectId,
                 cohort_subject__cohort: scope.cohortId,
                 session_date__gte: scope.startDate,
                 session_date__lte: scope.endDate,
             });
-            setSessions(allSessions);
-
-            const schemesData = await schemesAPI.getInstructorSchemes(instructorId, {
+        const schemesRequest = schemesAPI.getInstructorSchemes(instructorId, {
                 term_id: scope.termId,
                 subject_id: scope.subjectId,
             });
-            setSchemes(schemesData.results);
-        } catch {
-            if (showLoadingState) {
-                setError('Failed to load instructor data');
-            }
-        } finally {
-            if (showLoadingState) {
-                setLoading(false);
-            }
+
+        const [profileResult, sessionsResult, schemesResult] = await Promise.allSettled([
+            profileRequest,
+            sessionsRequest,
+            schemesRequest,
+        ]);
+
+        if (profileResult.status === 'fulfilled') {
+            setInstructor(profileResult.value);
+            setError(null);
+        } else if (showLoadingState) {
+            setInstructor(null);
+            setError('Failed to load staff profile');
         }
+
+        if (sessionsResult.status === 'fulfilled') {
+            setSessions(sessionsResult.value);
+        } else {
+            setSessions([]);
+        }
+        if (schemesResult.status === 'fulfilled') {
+            setSchemes(schemesResult.value.results);
+        } else {
+            setSchemes([]);
+        }
+        setSectionErrors({
+            sessions: sessionsResult.status === 'rejected'
+                ? 'Historical sessions are temporarily unavailable.'
+                : null,
+            schemes: schemesResult.status === 'rejected'
+                ? 'Historical schemes are temporarily unavailable.'
+                : null,
+        });
+
+        if (showLoadingState) setLoading(false);
     }, [instructorId, scope.cohortId, scope.endDate, scope.startDate, scope.subjectId, scope.termId]);
 
     useEffect(() => {
@@ -188,6 +218,7 @@ export function useInstructorProgress(
         schemes,
         loading,
         error,
+        sectionErrors,
         refetch: () => load(false),
         teachingAssignments,
         cbcTeachingAssignments,
