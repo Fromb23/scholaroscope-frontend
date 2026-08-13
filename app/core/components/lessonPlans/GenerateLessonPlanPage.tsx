@@ -96,7 +96,6 @@ export function GenerateLessonPlanPage() {
     const [submittingError, setSubmittingError] = useState<string | null>(null);
     const [generationStatus, setGenerationStatus] = useState<string | null>(null);
     const [asyncGenerating, setAsyncGenerating] = useState(false);
-    const [showRetryWithoutAi, setShowRetryWithoutAi] = useState(false);
     const [guidanceOpen, setGuidanceOpen] = useState(false);
     const [draftLessonPlan, setDraftLessonPlan] = useState<{
         id: number;
@@ -205,9 +204,7 @@ export function GenerateLessonPlanPage() {
         ? `/schemes/new?cohort_subject=${selectedCohortSubjectId}`
         : '/schemes/new';
     const activeErrorMessage = submittingError || createError || generateError || null;
-    const errorContainerRef = useScrollIntoViewOnMessage(
-        activeErrorMessage || (showRetryWithoutAi ? '__retry__' : null)
-    );
+    const errorContainerRef = useScrollIntoViewOnMessage(activeErrorMessage);
     const {
         summaryRef,
         setFieldRef,
@@ -227,10 +224,10 @@ export function GenerateLessonPlanPage() {
     const guidanceSteps = [
         {
             step: 'Step 1',
-            title: 'Choose the lesson context',
+            title: 'Choose class subject',
             detail: selectedCohortSubjectId && selectedTermId
                 ? 'Ready'
-                : 'Choose the lesson context first.',
+                : 'Choose the class subject first.',
             complete: Boolean(selectedCohortSubjectId && selectedTermId),
         },
         {
@@ -253,7 +250,7 @@ export function GenerateLessonPlanPage() {
             step: 'Step 4',
             title: 'Generate the draft',
             detail: !selectedCohortSubjectId
-                ? 'Choose the lesson context first.'
+                ? 'Choose the class subject first.'
                 : curriculumLoading || aiGenerationAvailability === null
                     ? 'Checking AI availability.'
                     : useAi && aiGenerationAvailable
@@ -276,7 +273,6 @@ export function GenerateLessonPlanPage() {
 
     useEffect(() => {
         setSubmittingError(null);
-        setShowRetryWithoutAi(false);
         clearCreateError();
         clearGenerateError();
     }, [clearCreateError, clearGenerateError, cohortSubjectId, selectedTermId]);
@@ -301,7 +297,6 @@ export function GenerateLessonPlanPage() {
         setFieldErrors({});
         clearCreateError();
         clearGenerateError();
-        setShowRetryWithoutAi(false);
     };
 
     const updateTitle = (value: string) => {
@@ -351,7 +346,6 @@ export function GenerateLessonPlanPage() {
     const submitGeneration = async (requestedUseAi: boolean) => {
         setSubmittingError(null);
         setGenerationStatus(null);
-        setShowRetryWithoutAi(false);
         clearCreateError();
         clearGenerateError();
 
@@ -450,10 +444,6 @@ export function GenerateLessonPlanPage() {
             const message = submitError instanceof Error
                 ? submitError.message
                 : 'We could not generate the lesson plan.';
-            const status = (submitError as Error & { status?: number }).status;
-            if (status === 503 && requestedUseAi) {
-                setShowRetryWithoutAi(true);
-            }
             if (message.includes('Generate a scheme of work for this class subject and term before preparing lesson plans.')) {
                 router.push(schemeGenerationHref);
                 return;
@@ -605,37 +595,11 @@ export function GenerateLessonPlanPage() {
                 className="space-y-3 outline-none"
                 aria-live="assertive"
             >
-                {activeErrorMessage && !showRetryWithoutAi ? (
+                {activeErrorMessage ? (
                     <ErrorBanner
                         message={activeErrorMessage}
                         onDismiss={clearVisibleErrors}
                     />
-                ) : null}
-
-                {showRetryWithoutAi ? (
-                    <div className="theme-warning-surface rounded-xl p-4 text-sm">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="space-y-1">
-                                <p className="font-medium theme-text">
-                                    AI-assisted drafting is unavailable for this lesson right now.
-                                </p>
-                                <p className="theme-muted">
-                                    You can generate the same lesson plan without AI. The draft will still use the outcomes and references you selected.
-                                </p>
-                            </div>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={() => {
-                                    setUseAi(false);
-                                    void submitGeneration(false);
-                                }}
-                                disabled={submitting}
-                            >
-                                Generate without AI
-                            </Button>
-                        </div>
-                    </div>
                 ) : null}
 
                 {showMissingReferenceWarning ? (
@@ -676,7 +640,7 @@ export function GenerateLessonPlanPage() {
                             </span>
                         </div>
 
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4">
                             <Select
                                 label="Class subject"
                                 value={cohortSubjectId}
@@ -687,28 +651,15 @@ export function GenerateLessonPlanPage() {
                                 ]}
                             />
 
-                            <div className="rounded-lg border theme-border theme-surface-elevated px-3 py-2">
-                                <p className="text-xs font-medium theme-subtle">Current teaching term</p>
-                                {academicContextLoading ? (
-                                    <p className="mt-1 text-sm theme-muted">Resolving from selected class subject…</p>
-                                ) : selectedContextTerm ? (
-                                    <div className="mt-1 space-y-1">
-                                        <p className="text-sm font-semibold theme-text">{selectedContextTerm.name}</p>
-                                        <p className="text-xs theme-muted">
-                                            {academicContext?.curriculum_name ?? academicContext?.curriculum?.name ?? 'Curriculum'}
-                                            {' • '}
-                                            {academicContext?.academic_year?.name ?? 'Current academic year'}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <p className="mt-1 text-sm text-amber-700">
-                                        {academicContextError instanceof Error
-                                            ? academicContextError.message
-                                            : academicContext?.message ?? 'Choose a class subject to resolve the current term.'}
-                                    </p>
-                                )}
-                            </div>
                         </div>
+
+                        {selectedCohortSubjectId && !academicContextLoading && !selectedTermId ? (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                {academicContextError instanceof Error
+                                    ? academicContextError.message
+                                    : academicContext?.message ?? 'No valid current teaching term is available for this class subject.'}
+                            </div>
+                        ) : null}
 
                         <Input
                             ref={setFieldRef('title')}

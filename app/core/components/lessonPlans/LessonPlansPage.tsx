@@ -25,6 +25,7 @@ import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
 import { getLessonGenerationBadge } from '@/app/core/lib/lessonPlanGeneration';
+import { resolveLessonPlanLifecycleActions } from '@/app/core/lib/lessonPlanLifecycleActions';
 import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
 import {
     canCreateWorkForTerm,
@@ -46,10 +47,7 @@ import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/admi
 import type { LessonPlan, LessonPlanStatus } from '@/app/core/types/lessonPlans';
 import {
     LESSON_PLAN_STATUS_OPTIONS,
-    canArchiveLessonPlan,
-    canMarkLessonPlanReviewed,
     canMarkLessonPlanUsed,
-    canRestoreLessonPlan,
 } from '@/app/core/types/lessonPlans';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -295,6 +293,11 @@ function LessonPlanActions({
     buttonClassName = '',
 }: LessonPlanActionsProps) {
     const isPending = (action: string) => pendingActionKey === actionKey(lessonPlan.id, action);
+    const lifecycleActions = resolveLessonPlanLifecycleActions({
+        status: lessonPlan.status,
+        canCreateTeachingRecords: canCreateTeachingRecord,
+        hasScheduledSession: Boolean(lessonPlan.session),
+    });
 
     return (
         <div className={`flex flex-wrap gap-2 ${className}`}>
@@ -308,7 +311,7 @@ function LessonPlanActions({
                 View
             </Button>
 
-            {canMarkLessonPlanReviewed(lessonPlan.status) ? (
+            {lifecycleActions.canReview ? (
                 <Button
                     type="button"
                     variant="secondary"
@@ -317,7 +320,7 @@ function LessonPlanActions({
                     disabled={isPending('reviewed')}
                     className={buttonClassName}
                 >
-                    Mark Reviewed
+                    Review lesson plan
                 </Button>
             ) : null}
 
@@ -333,7 +336,7 @@ function LessonPlanActions({
                 </Button>
             ) : null}
 
-            {canArchiveLessonPlan(lessonPlan.status) ? (
+            {lifecycleActions.canArchive ? (
                 <Button
                     type="button"
                     variant="ghost"
@@ -346,7 +349,7 @@ function LessonPlanActions({
                 </Button>
             ) : null}
 
-            {canRestoreLessonPlan(lessonPlan.status) ? (
+            {lifecycleActions.canRestore ? (
                 <Button
                     type="button"
                     variant="secondary"
@@ -775,14 +778,7 @@ export function LessonPlansPage() {
 
         try {
             if (action === 'reviewed') {
-                await markReviewed(lessonPlan.id, {
-                    introduction: lessonPlan.introduction ?? '',
-                    lesson_development: lessonPlan.lesson_development ?? '',
-                    learner_activities: lessonPlan.learner_activities ?? '',
-                    assessment_strategy: lessonPlan.assessment_strategy ?? '',
-                    differentiation: lessonPlan.differentiation ?? '',
-                    conclusion: lessonPlan.conclusion ?? '',
-                });
+                await markReviewed(lessonPlan.id);
                 setLessonPlanFeedback(lessonPlan.id, {
                     action,
                     message: 'Lesson plan reviewed.',

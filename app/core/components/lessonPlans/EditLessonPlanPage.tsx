@@ -7,6 +7,7 @@ import { Button } from '@/app/components/ui/Button';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { LessonPlanForm } from '@/app/core/components/lessonPlans/LessonPlanForm';
+import { resolveLessonPlanLifecycleActions } from '@/app/core/lib/lessonPlanLifecycleActions';
 import {
     useLessonPlanCurriculumContext,
     useLessonPlanDetail,
@@ -57,6 +58,30 @@ export default function Page() {
 
     if (lessonPlan.cohort_subject && curriculumLoading && !curriculumContext && !curriculumError) {
         return <LoadingSpinner message="Loading lesson plan references..." fullScreen={false} />;
+    }
+
+    const lifecycleActions = resolveLessonPlanLifecycleActions({
+        status: lessonPlan.status,
+        canCreateTeachingRecords: true,
+        hasScheduledSession: Boolean(lessonPlan.session),
+    });
+
+    if (!lifecycleActions.canEdit) {
+        return (
+            <div className="space-y-4">
+                <Link href={`/lesson-plans/${lessonPlan.id}`}>
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back
+                    </Button>
+                </Link>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    {lessonPlan.status === 'GENERATED'
+                        ? 'Review this generated lesson plan before editing it.'
+                        : 'This lesson plan cannot be edited in its current lifecycle state.'}
+                </div>
+            </div>
+        );
     }
 
     return (

@@ -58,13 +58,21 @@ describe('GenerateLessonPlanPage validation and error placement', () => {
     expect(pageSource).not.toContain('className="hidden md:flex"');
   });
 
-  it('keeps distinct AI retry and missing reference warnings separate', () => {
+  it('does not expose retry-without-AI UI because backend fallback is automatic', () => {
     const pageSource = source();
 
-    expect(pageSource).toContain('showRetryWithoutAi');
-    expect(pageSource).toContain('Generate without AI');
+    expect(pageSource).not.toContain('showRetryWithoutAi');
+    expect(pageSource).not.toContain('Generate without AI');
     expect(pageSource).toContain('showMissingReferenceWarning');
     expect(pageSource).toContain('referenceCoverage.missingOutcomes.length');
+  });
+
+  it('does not show resolved current term as ordinary teacher UI', () => {
+    const pageSource = source();
+
+    expect(pageSource).not.toContain('Current teaching term');
+    expect(pageSource).toContain('No valid current teaching term is available for this class subject.');
+    expect(pageSource).toContain('term: selectedTermId');
   });
 
   it('preserves scheme-first redirect behavior', () => {

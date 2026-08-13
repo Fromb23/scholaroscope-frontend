@@ -378,14 +378,7 @@ export interface MarkUsedPayload {
     reflection: string;
 }
 
-export interface ReviewLessonPlanPayload {
-    introduction: string;
-    lesson_development: string;
-    learner_activities: string;
-    assessment_strategy: string;
-    differentiation: string;
-    conclusion: string;
-}
+export type ReviewLessonPlanPayload = Record<string, never>;
 
 export const LESSON_PLAN_STATUS_OPTIONS: Array<{
     value: LessonPlanStatus;

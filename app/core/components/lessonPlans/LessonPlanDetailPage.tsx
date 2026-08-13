@@ -48,18 +48,15 @@ import {
 } from '@/app/core/hooks/useLessonPlans';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import {
-    canArchiveLessonPlan,
-    canMarkLessonPlanReviewed,
     canMarkLessonPlanUsed,
     canPrepareAssignmentDraft,
-    canScheduleLesson,
-    canRestoreLessonPlan,
     type ScheduleLessonFormData,
     SCHEDULE_LESSON_SESSION_TYPE_OPTIONS,
     type AvailableLessonPlanParticipatingCohortSubject,
     type LessonPlan,
     type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
+import { resolveLessonPlanLifecycleActions } from '@/app/core/lib/lessonPlanLifecycleActions';
 
 import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { useAuth } from '@/app/context/AuthContext';
@@ -70,17 +67,6 @@ import {
     shouldOpenLearnerTaskFromQuery,
     shouldShowLearnerTaskSection,
 } from '@/app/core/components/lessonPlans/lessonPlanDetailVisibility';
-import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
-import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
-
-const REVIEW_SECTION_FIELDS = [
-    ['introduction', 'Introduction'],
-    ['lesson_development', 'Lesson development'],
-    ['learner_activities', 'Learner activities'],
-    ['assessment_strategy', 'Assessment strategy'],
-    ['differentiation', 'Differentiation'],
-    ['conclusion', 'Conclusion'],
-] as const;
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     const rawId = params.id;
@@ -113,20 +99,6 @@ function formatTime(value: string | null): string {
     formatted.setHours(Number(hours), Number(minutes), 0, 0);
 
     return formatted.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-    });
-}
-
-function formatTimestamp(value: string | null): string {
-    if (!value) {
-        return 'Not recorded';
-    }
-
-    return new Date(value).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
     });
@@ -292,27 +264,15 @@ export function LessonPlanDetailPage() {
     const [markUsedError, setMarkUsedError] = useState<string | null>(null);
     const [reflection, setReflection] = useState('');
     const [reviewOpen, setReviewOpen] = useState(false);
-    const [reviewForm, setReviewForm] = useState<Record<(typeof REVIEW_SECTION_FIELDS)[number][0], string>>({
-        introduction: '',
-        lesson_development: '',
-        learner_activities: '',
-        assessment_strategy: '',
-        differentiation: '',
-        conclusion: '',
-    });
     const [reviewError, setReviewError] = useState<string | null>(null);
-    const [reviewFieldErrors, setReviewFieldErrors] = useState<Record<string, string>>({});
     const [scheduleOpen, setScheduleOpen] = useState(false);
     const [scheduleError, setScheduleError] = useState<string | null>(null);
     const [scheduleFieldErrors, setScheduleFieldErrors] = useState<Record<string, string>>({});
     const [transientNotice, setTransientNotice] = useState<string | null>(null);
     const learnerTaskSectionRef = useRef<HTMLDivElement | null>(null);
     const [learnerTaskOpen, setLearnerTaskOpen] = useState(false);
-    const [outcomesOpen, setOutcomesOpen] = useState(INITIAL_SECTION_STATE.outcomesOpen);
-    const [lessonContentOpen, setLessonContentOpen] = useState(INITIAL_SECTION_STATE.lessonContentOpen);
-    const [referencesOpen, setReferencesOpen] = useState(INITIAL_SECTION_STATE.referencesOpen);
+    const [planningSourcesOpen, setPlanningSourcesOpen] = useState(INITIAL_SECTION_STATE.outcomesOpen);
     const [metadataOpen, setMetadataOpen] = useState(INITIAL_SECTION_STATE.metadataOpen);
-    const [generationMetadataOpen, setGenerationMetadataOpen] = useState(INITIAL_SECTION_STATE.generationMetadataOpen);
     const [learnerTaskChoice, setLearnerTaskChoice] = useState<'none' | 'prepare' | 'existing'>('none');
     const [learnerTaskType, setLearnerTaskType] = useState<'class_exercise' | 'homework' | 'group_activity'>('class_exercise');
     const [learnerTaskTitle, setLearnerTaskTitle] = useState('');
@@ -485,6 +445,16 @@ export function LessonPlanDetailPage() {
     const canShowLearnerTaskAction = Boolean(
         canCreateTeachingRecords && lessonPlan && canPrepareAssignmentDraft(lessonPlan.status)
     );
+    const lifecycleActions = useMemo(
+        () => lessonPlan
+            ? resolveLessonPlanLifecycleActions({
+                status: lessonPlan.status,
+                canCreateTeachingRecords,
+                hasScheduledSession: Boolean(lessonPlan.session),
+            })
+            : null,
+        [canCreateTeachingRecords, lessonPlan],
+    );
     const showLearnerTaskSection = shouldShowLearnerTaskSection({
         status: lessonPlan?.status,
         canShowLearnerTaskAction,
@@ -633,16 +603,7 @@ export function LessonPlanDetailPage() {
 
     const handleOpenReview = useCallback(() => {
         if (!lessonPlan) return;
-        setReviewForm({
-            introduction: lessonPlan.introduction ?? '',
-            lesson_development: lessonPlan.lesson_development ?? '',
-            learner_activities: lessonPlan.learner_activities ?? '',
-            assessment_strategy: lessonPlan.assessment_strategy ?? '',
-            differentiation: lessonPlan.differentiation ?? '',
-            conclusion: lessonPlan.conclusion ?? '',
-        });
         setReviewError(null);
-        setReviewFieldErrors({});
         setReviewOpen(true);
     }, [lessonPlan]);
 
@@ -651,26 +612,12 @@ export function LessonPlanDetailPage() {
         if (!lessonPlan) return;
         setPendingActionKey(actionKey(lessonPlan.id, 'reviewed'));
         setReviewError(null);
-        setReviewFieldErrors({});
         try {
-            await markReviewed(reviewForm);
+            await markReviewed();
             await refetch();
             setReviewOpen(false);
             setActionSuccess('Lesson plan reviewed. Scheduling is now available.');
         } catch (err) {
-            const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
-            const fieldErrors: Record<string, string> = {};
-            if (data && typeof data === 'object') {
-                REVIEW_SECTION_FIELDS.forEach(([field]) => {
-                    const value = data[field];
-                    if (Array.isArray(value)) {
-                        fieldErrors[field] = String(value[0] ?? '');
-                    } else if (typeof value === 'string') {
-                        fieldErrors[field] = value;
-                    }
-                });
-            }
-            setReviewFieldErrors(fieldErrors);
             setReviewError(resolveErrorMessage(err, 'Lesson review could not be completed.'));
         } finally {
             setPendingActionKey(null);
@@ -867,10 +814,9 @@ export function LessonPlanDetailPage() {
             };
         });
     };
-    const canShowScheduleLessonAction = Boolean(
-        lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
-    );
-    const canShowOpenScheduledLessonAction = Boolean(lessonPlan?.session);
+    const canShowReviewAction = Boolean(lifecycleActions?.canReview);
+    const canShowScheduleLessonAction = Boolean(lifecycleActions?.canSchedule);
+    const canShowOpenScheduledLessonAction = Boolean(lifecycleActions?.canOpenScheduledLesson);
     const learnerTaskActionLabel = hasPreparedAssignment
         ? 'Review learner task'
         : 'Prepare learner task';
@@ -882,6 +828,14 @@ export function LessonPlanDetailPage() {
                     type: 'page_action' as const,
                     target: 'open_schedule_modal',
                     handler: handleOpenSchedule,
+                }]
+                : []),
+            ...(canShowReviewAction
+                ? [{
+                    label: 'Review lesson plan',
+                    type: 'page_action' as const,
+                    target: 'open_review_modal',
+                    handler: handleOpenReview,
                 }]
                 : []),
             ...(canShowOpenScheduledLessonAction
@@ -901,7 +855,14 @@ export function LessonPlanDetailPage() {
                 : []),
         ];
 
-        const nextSafeAction = canShowScheduleLessonAction
+        const nextSafeAction = canShowReviewAction
+            ? {
+                label: 'Review lesson plan',
+                type: 'page_action' as const,
+                target: 'open_review_modal',
+                handler: handleOpenReview,
+            }
+            : canShowScheduleLessonAction
             ? {
                 label: 'Schedule this lesson',
                 type: 'page_action' as const,
@@ -930,7 +891,8 @@ export function LessonPlanDetailPage() {
                 is_loading: loading,
                 status: lessonPlan?.status ?? null,
                 has_session: Boolean(lessonPlan?.session),
-                can_schedule: lessonPlan ? canScheduleLesson(lessonPlan.status) : false,
+                can_review: Boolean(lifecycleActions?.canReview),
+                can_schedule: Boolean(lifecycleActions?.canSchedule),
                 has_prepared_task: hasPreparedAssignment,
             },
             visibleActions,
@@ -943,9 +905,13 @@ export function LessonPlanDetailPage() {
     }, [
         canShowOpenScheduledLessonAction,
         canShowLearnerTaskAction,
+        canShowReviewAction,
         canShowScheduleLessonAction,
+        handleOpenReview,
         handleOpenSchedule,
         hasPreparedAssignment,
+        lifecycleActions?.canReview,
+        lifecycleActions?.canSchedule,
         teachingSurface,
         learnerTaskActionLabel,
         lessonPlan,
@@ -1004,6 +970,16 @@ export function LessonPlanDetailPage() {
         disabled?: boolean;
         variant: 'primary' | 'secondary';
     };
+    const reviewAction: NextActionButton | null = canShowReviewAction
+        ? {
+            key: 'review-lesson-plan',
+            label: 'Review lesson plan',
+            onClick: handleOpenReview,
+            disabled: pendingActionKey === actionKey(lessonPlan.id, 'reviewed'),
+            icon: <Edit className="mr-1.5 h-4 w-4" />,
+            variant: 'primary',
+        }
+        : null;
     const scheduleAction: NextActionButton | null = canShowScheduleLessonAction
         ? {
             key: 'schedule-lesson',
@@ -1032,10 +1008,13 @@ export function LessonPlanDetailPage() {
         }
         : null;
     const nextStepActions: NextActionButton[] = [
+        ...(reviewAction ? [reviewAction] : []),
         ...(scheduleAction ? [scheduleAction] : []),
         ...(learnerTaskAction ? [learnerTaskAction] : []),
     ];
-    const nextStepHeading = scheduleAction
+    const nextStepHeading = reviewAction
+        ? 'Next step: review this lesson'
+        : scheduleAction
         ? canShowScheduleLessonAction
             ? 'Next step: schedule this lesson'
             : 'Scheduled lesson is ready'
@@ -1044,7 +1023,9 @@ export function LessonPlanDetailPage() {
             : lessonPlan.status === 'USED'
                 ? 'Post-lesson follow-up'
                 : 'Lesson preparation is ready';
-    const nextStepDescription = scheduleAction
+    const nextStepDescription = reviewAction
+        ? 'Inspect the generated lesson plan and explicitly accept it. Editing is optional and becomes available after review.'
+        : scheduleAction
         ? canShowScheduleLessonAction
             ? learnerTaskAction
                 ? 'Choose when this lesson should happen. A learner task can be prepared separately whenever you need one.'
@@ -1066,11 +1047,10 @@ export function LessonPlanDetailPage() {
         : learnerTaskChoice === 'prepare'
             ? 'Draft in progress'
             : 'Not prepared';
-    const canEditLessonPlan = canCreateTeachingRecords && !['USED', 'ARCHIVED'].includes(lessonPlan.status);
+    const canEditLessonPlan = Boolean(lifecycleActions?.canEdit);
     const postLessonReflection = lessonPlan.status === 'USED'
         ? lessonPlan.reflection?.trim() ?? ''
         : '';
-    const fallbackReason = lessonPlan.ai_fallback_reason?.trim() || null;
     const generationBadge = getLessonGenerationBadge(lessonPlan);
     const generationBadgeClassName = generationBadge.tone === 'purple'
         ? 'bg-purple-50 text-purple-700'
@@ -1079,7 +1059,6 @@ export function LessonPlanDetailPage() {
             : generationBadge.tone === 'amber'
                 ? 'bg-amber-50 text-amber-700'
                 : 'bg-gray-100 text-gray-700';
-    const generationSummary = generationBadge.description;
     const structuredDraft = getStructuredLessonDraft(lessonPlan);
     const originatingSchemeId = getOriginatingSchemeId(lessonPlan);
     const originatingSchemeHref = originatingSchemeId
@@ -1136,19 +1115,12 @@ export function LessonPlanDetailPage() {
                                     disabled: exporting,
                                     icon: <Download className="h-4 w-4" />,
                                 },
-                                ...(canMarkLessonPlanReviewed(lessonPlan.status) ? [{
-                                    label: 'Review / edit lesson plan',
-                                    onSelect: () => {
-                                        handleOpenReview();
-                                    },
-                                    disabled: pendingActionKey === actionKey(lessonPlan.id, 'reviewed'),
-                                }] : []),
                                 ...(canCreateTeachingRecords && canMarkLessonPlanUsed(lessonPlan.status) ? [{
                                     label: 'Close lesson and record reflection',
                                     onSelect: handleOpenMarkUsed,
                                     disabled: pendingActionKey === actionKey(lessonPlan.id, 'used'),
                                 }] : []),
-                                ...(canArchiveLessonPlan(lessonPlan.status) ? [{
+                                ...(lifecycleActions?.canArchive ? [{
                                     label: 'Archive',
                                     onSelect: () => {
                                         void handleSimpleAction('archived');
@@ -1156,7 +1128,7 @@ export function LessonPlanDetailPage() {
                                     disabled: pendingActionKey === actionKey(lessonPlan.id, 'archived'),
                                     destructive: true,
                                 }] : []),
-                                ...(canRestoreLessonPlan(lessonPlan.status) ? [{
+                                ...(lifecycleActions?.canRestore ? [{
                                     label: 'Restore',
                                     onSelect: () => {
                                         void handleSimpleAction('restored');
@@ -1197,75 +1169,6 @@ export function LessonPlanDetailPage() {
             ) : null}
 
             <Card>
-                <div className="flex flex-wrap gap-2">
-                    {!canEditLessonPlan ? (
-                        <ContextualApprovalRequestButton
-                            intent={{
-                                actionKey: 'RESOURCE_REQUEST',
-                                title: `Request edit access for ${lessonPlan.title}`,
-                                targetType: 'lesson_plan',
-                                targetId: lessonPlan.id,
-                                returnTo: currentReturnTo,
-                                requestKey: buildContextualRequestKey(['lesson-plan', lessonPlan.id, 'edit-used']),
-                                referenceData: {
-                                    contextual_action: 'edit_used_lesson_plan',
-                                    lesson_plan_id: lessonPlan.id,
-                                    lesson_plan_title: lessonPlan.title,
-                                    status: lessonPlan.status,
-                                },
-                            }}
-                        >
-                            <Edit className="h-4 w-4" />
-                            Request edit
-                        </ContextualApprovalRequestButton>
-                    ) : null}
-                    {!canScheduleLesson(lessonPlan.status) || lessonPlan.session ? (
-                        <ContextualApprovalRequestButton
-                            intent={{
-                                actionKey: 'RESOURCE_REQUEST',
-                                title: `Request schedule exception for ${lessonPlan.title}`,
-                                targetType: 'lesson_plan',
-                                targetId: lessonPlan.id,
-                                returnTo: currentReturnTo,
-                                requestKey: buildContextualRequestKey(['lesson-plan', lessonPlan.id, 'schedule-exception']),
-                                referenceData: {
-                                    contextual_action: 'schedule_exception',
-                                    lesson_plan_id: lessonPlan.id,
-                                    lesson_plan_title: lessonPlan.title,
-                                    status: lessonPlan.status,
-                                    session_id: lessonPlan.session,
-                                },
-                            }}
-                        >
-                            <CalendarDays className="h-4 w-4" />
-                            Request schedule exception
-                        </ContextualApprovalRequestButton>
-                    ) : null}
-                    {!canArchiveLessonPlan(lessonPlan.status) ? (
-                        <ContextualApprovalRequestButton
-                            intent={{
-                                actionKey: 'RESOURCE_REQUEST',
-                                title: `Request archive or delete review for ${lessonPlan.title}`,
-                                targetType: 'lesson_plan',
-                                targetId: lessonPlan.id,
-                                returnTo: currentReturnTo,
-                                requestKey: buildContextualRequestKey(['lesson-plan', lessonPlan.id, 'archive-delete']),
-                                referenceData: {
-                                    contextual_action: 'delete_or_archive_reviewed_lesson_plan',
-                                    lesson_plan_id: lessonPlan.id,
-                                    lesson_plan_title: lessonPlan.title,
-                                    status: lessonPlan.status,
-                                },
-                            }}
-                        >
-                            <AlertTriangle className="h-4 w-4" />
-                            Request archive review
-                        </ContextualApprovalRequestButton>
-                    ) : null}
-                </div>
-            </Card>
-
-            <Card>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
                         <h2 className="text-lg font-semibold text-gray-900">{nextStepHeading}</h2>
@@ -1303,6 +1206,16 @@ export function LessonPlanDetailPage() {
                 </div>
             </Card>
 
+            <section className="space-y-3">
+                <div className="space-y-1">
+                    <h2 className="text-lg font-semibold text-gray-900">Lesson plan content</h2>
+                    <p className="text-sm text-gray-600">
+                        Objectives, prior knowledge, resources, lesson flow, activities, assessment, and differentiation.
+                    </p>
+                </div>
+                <LessonPlanSections lessonPlan={lessonPlan} />
+            </section>
+
             {showLearnerTaskSection ? (
             <div ref={learnerTaskSectionRef} id="learner-task" className="scroll-mt-24">
                 <Card className={highlightedAssignmentId && activePreparedAssignment?.id === highlightedAssignmentId ? 'border-blue-300 bg-blue-50/50' : undefined}>
@@ -1310,7 +1223,7 @@ export function LessonPlanDetailPage() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <h2 className="text-lg font-semibold text-gray-900">Learner task</h2>
+                                    <h2 className="text-base font-semibold text-gray-900">Optional follow-up</h2>
                                     <Badge
                                         variant={
                                             learnerTaskStatus === 'Issued'
@@ -1656,16 +1569,14 @@ export function LessonPlanDetailPage() {
             ) : null}
 
             <CollapsibleDetailSection
-                title={teachingSurface ? 'Chosen learning outcomes' : 'Chosen Learning Outcomes'}
-                summary={`${lessonPlan.planned_outcomes.length} outcome${lessonPlan.planned_outcomes.length === 1 ? '' : 's'} selected for this lesson.`}
-                open={outcomesOpen}
-                onToggle={() => setOutcomesOpen((current) => !current)}
+                title="Planning sources"
+                summary={`${lessonPlan.planned_outcomes.length} outcome${lessonPlan.planned_outcomes.length === 1 ? '' : 's'} and ${lessonPlan.selected_references.length} reference${lessonPlan.selected_references.length === 1 ? '' : 's'} attached.`}
+                open={planningSourcesOpen}
+                onToggle={() => setPlanningSourcesOpen((current) => !current)}
             >
-                <div className="space-y-4">
+                <div className="space-y-6">
                     <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-gray-900">
-                            {teachingSurface ? 'Chosen learning outcomes' : 'Chosen Learning Outcomes'}
-                        </h2>
+                        <h2 className="text-base font-semibold text-gray-900">Learning outcomes</h2>
                         <p className="text-sm text-gray-500">
                             These outcomes guide the objectives, lesson flow, and evidence recorded for this lesson.
                         </p>
@@ -1681,11 +1592,8 @@ export function LessonPlanDetailPage() {
                                     className="rounded-lg border border-gray-200 bg-gray-50 p-4"
                                 >
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
-                                            {outcome.code}
-                                        </span>
                                         <span className="text-xs text-gray-500">
-                                            {outcome.strand} · {outcome.sub_strand}
+                                            {[outcome.strand, outcome.sub_strand].filter(Boolean).join(' · ')}
                                         </span>
                                     </div>
                                     <p className="mt-2 text-sm text-gray-800">{outcome.text}</p>
@@ -1693,68 +1601,11 @@ export function LessonPlanDetailPage() {
                             ))}
                         </div>
                     )}
-                </div>
-            </CollapsibleDetailSection>
 
-            <CollapsibleDetailSection
-                title="Generation metadata"
-                summary={generationSummary}
-                open={generationMetadataOpen}
-                onToggle={() => setGenerationMetadataOpen((current) => !current)}
-            >
-                <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Created</p>
-                        <p className="mt-2 text-gray-900">{formatTimestamp(lessonPlan.created_at)}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Updated</p>
-                        <p className="mt-2 text-gray-900">{formatTimestamp(lessonPlan.updated_at)}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Generated</p>
-                        <p className="mt-2 text-gray-900">{formatTimestamp(lessonPlan.generated_at)}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewed</p>
-                        <p className="mt-2 text-gray-900">{formatTimestamp(lessonPlan.reviewed_at)}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Used</p>
-                        <p className="mt-2 text-gray-900">{formatTimestamp(lessonPlan.used_at)}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 md:col-span-2 xl:col-span-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Generation Metadata</p>
-                        <div className="mt-2 flex flex-wrap items-center gap-3 text-gray-900">
-                            <span>{generationSummary}</span>
-                            {lessonPlan.ai_provider ? <span>Provider: {lessonPlan.ai_provider}</span> : null}
-                            {lessonPlan.ai_model ? <span>Model: {lessonPlan.ai_model}</span> : null}
-                        </div>
-                        {fallbackReason && generationBadge.source === 'fallback' ? (
-                            <p className="mt-2 text-sm text-amber-800">
-                                Technical fallback detail is recorded for diagnostics.
-                            </p>
-                        ) : null}
+                    <div className="border-t border-gray-100 pt-5">
+                        <LessonPlanReferences lessonPlan={lessonPlan} />
                     </div>
                 </div>
-            </CollapsibleDetailSection>
-
-            <CollapsibleDetailSection
-                title="Lesson content"
-                summary="Objectives, prior knowledge, resources, lesson flow, activities, assessment, and differentiation."
-                open={lessonContentOpen}
-                onToggle={() => setLessonContentOpen((current) => !current)}
-            >
-                <LessonPlanSections lessonPlan={lessonPlan} />
-            </CollapsibleDetailSection>
-
-            <CollapsibleDetailSection
-                title="References"
-                summary="Reference materials attached to this lesson plan."
-                open={referencesOpen}
-                onToggle={() => setReferencesOpen((current) => !current)}
-            >
-                <LessonPlanReferences lessonPlan={lessonPlan} />
             </CollapsibleDetailSection>
 
             <Modal
@@ -1762,20 +1613,19 @@ export function LessonPlanDetailPage() {
                 onClose={() => {
                     setReviewOpen(false);
                     setReviewError(null);
-                    setReviewFieldErrors({});
                 }}
                 title="Review generated lesson plan"
                 size="lg"
             >
                 <form onSubmit={handleSubmitReview} className="space-y-4">
                     <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                        Scholaroscope-generated lesson plans are drafts. Reviewing the plan helps you understand and adapt the lesson to your learners and teaching context, and helps remove generic assumptions or bias from AI-generated content. Update each required teaching section before scheduling the lesson.
+                        Scholaroscope-generated lesson plans are system drafts. Inspect the preparation below, then explicitly accept it to make scheduling available.
                     </div>
 
                     <div className="rounded-xl border theme-border bg-gray-50 px-4 py-3 text-sm theme-muted">
-                        <p className="font-medium theme-text">System-controlled material</p>
+                        <p className="font-medium theme-text">Edits are optional</p>
                         <p className="mt-1">
-                            Title, selected outcomes, and reference materials stay outside the mandatory-change check. Edit them separately only if they need normal planning corrections.
+                            You can schedule immediately after review, or use Edit from the More menu after review if the preparation needs changes.
                         </p>
                     </div>
 
@@ -1784,7 +1634,7 @@ export function LessonPlanDetailPage() {
                             <div className="space-y-1">
                                 <p className="text-sm font-semibold theme-text">Structured lesson draft</p>
                                 <p className="text-sm theme-muted">
-                                    Review the generated phases, then edit the saved teaching sections below before completing review.
+                                    Review the generated phases before accepting this lesson preparation.
                                 </p>
                             </div>
                             <div className="space-y-4">
@@ -1851,29 +1701,9 @@ export function LessonPlanDetailPage() {
                                 </div>
                             </div>
                         </div>
-                    ) : null}
-
-                    <div className="grid gap-4">
-                        {REVIEW_SECTION_FIELDS.map(([field, label]) => (
-                            <div key={field} className="space-y-1">
-                                <label className="block text-sm font-medium theme-text">{label}</label>
-                                <textarea
-                                    value={reviewForm[field]}
-                                    onChange={(event) =>
-                                        setReviewForm((current) => ({
-                                            ...current,
-                                            [field]: event.target.value,
-                                        }))
-                                    }
-                                    rows={5}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                {reviewFieldErrors[field] ? (
-                                    <p className="text-sm text-red-600">{reviewFieldErrors[field]}</p>
-                                ) : null}
-                            </div>
-                        ))}
-                    </div>
+                    ) : (
+                        <LessonPlanSections lessonPlan={lessonPlan} />
+                    )}
 
                     {reviewError ? (
                         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -78,12 +78,6 @@ function getLessonPlanCreateMessage(error: ApiError, fallback: string): string {
 }
 
 function getLessonPlanGenerateMessage(error: ApiError, fallback: string): string {
-    const status = getStatusCode(error);
-
-    if (status === 503) {
-        return 'AI-assisted drafting is unavailable right now. You can retry without AI.';
-    }
-
     return getLessonPlanCreateMessage(error, fallback);
 }
 
@@ -204,7 +198,7 @@ export const useLessonPlans = (
         }
     };
 
-    const markReviewed = async (id: number, payload: ReviewLessonPlanPayload): Promise<LessonPlan> => {
+    const markReviewed = async (id: number, payload: ReviewLessonPlanPayload = {}): Promise<LessonPlan> => {
         try {
             const updated = await lessonPlanAPI.markReviewed(id, payload);
             setLessonPlans((prev) => replaceLessonPlan(prev, updated));
@@ -363,7 +357,7 @@ export const useLessonPlanDetail = (
         }
     };
 
-    const markReviewed = async (payload: ReviewLessonPlanPayload): Promise<LessonPlan> => {
+    const markReviewed = async (payload: ReviewLessonPlanPayload = {}): Promise<LessonPlan> => {
         if (!lessonPlanId) {
             throw new Error('This lesson plan could not be found.');
         }

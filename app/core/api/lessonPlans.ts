@@ -157,7 +157,7 @@ export const lessonPlanAPI = {
         return response.data;
     },
 
-    markReviewed: async (id: number, payload: ReviewLessonPlanPayload): Promise<LessonPlan> => {
+    markReviewed: async (id: number, payload: ReviewLessonPlanPayload = {}): Promise<LessonPlan> => {
         const response = await apiClient.post<LessonPlan>(`${LESSON_PLANS_BASE_PATH}/${id}/mark_reviewed/`, payload);
         return response.data;
     },

@@ -27,34 +27,38 @@ describe('LessonPlanDetailPage scheme desire path', () => {
     expect(source).toContain('useLessonPlanDetail(lessonPlanId, { authorityMode })');
   });
 
-  it('requires explicit review editing before scheduling a generated lesson', () => {
-    expect(source).toContain('Review / edit lesson plan');
-    expect(source).toContain('REVIEW_SECTION_FIELDS');
-    expect(source).toContain('Scholaroscope-generated lesson plans are drafts');
+  it('uses the shared lifecycle resolver for primary actions', () => {
+    expect(source).toContain('resolveLessonPlanLifecycleActions');
+    expect(source).toContain("label: 'Review lesson plan'");
+    expect(source).toContain("label: 'Schedule this lesson'");
+    expect(source).toContain("label: 'Open scheduled lesson'");
+    expect(source).toContain("const canEditLessonPlan = Boolean(lifecycleActions?.canEdit)");
+    expect(source).not.toContain('Review / edit lesson plan');
+  });
+
+  it('treats review as explicit acceptance rather than mandatory rewriting', () => {
+    expect(source).toContain('Scholaroscope-generated lesson plans are system drafts');
     expect(source).toContain('Structured lesson draft');
-    expect(source).toContain('System-controlled material');
+    expect(source).toContain('Edits are optional');
     expect(source).toContain('Complete review');
-    expect(source).toContain('await markReviewed(reviewForm)');
+    expect(source).toContain('await markReviewed()');
+    expect(source).not.toContain('REVIEW_SECTION_FIELDS');
+    expect(source).not.toContain('reviewForm');
   });
 
   it('uses generation source labels without exposing raw fallback errors to ordinary banners', () => {
     expect(source).toContain('getLessonGenerationBadge');
     expect(source).toContain('AI-assisted draft generated and validated');
     expect(source).toContain('Basic draft.');
-    expect(source).toContain('Technical fallback detail is recorded for diagnostics.');
+    expect(source).not.toContain('Generation metadata');
     expect(source).not.toContain('Fallback reason: {fallbackReason}');
   });
 
-  it('keeps all six required teaching sections in the review form', () => {
-    [
-      'Introduction',
-      'Lesson development',
-      'Learner activities',
-      'Assessment strategy',
-      'Differentiation',
-      'Conclusion',
-    ].forEach((label) => {
-      expect(source).toContain(label);
-    });
+  it('keeps lesson content prominent and exception requests out of normal lifecycle states', () => {
+    expect(source).toContain('Lesson plan content');
+    expect(source).toContain('Planning sources');
+    expect(source).toContain('Optional follow-up');
+    expect(source).not.toContain('Request schedule exception');
+    expect(source).not.toContain('Request edit');
   });
 });
