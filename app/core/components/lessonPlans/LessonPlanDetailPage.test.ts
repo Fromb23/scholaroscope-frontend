@@ -31,9 +31,18 @@ describe('LessonPlanDetailPage scheme desire path', () => {
     expect(source).toContain('Review / edit lesson plan');
     expect(source).toContain('REVIEW_SECTION_FIELDS');
     expect(source).toContain('Scholaroscope-generated lesson plans are drafts');
+    expect(source).toContain('Structured lesson draft');
     expect(source).toContain('System-controlled material');
     expect(source).toContain('Complete review');
     expect(source).toContain('await markReviewed(reviewForm)');
+  });
+
+  it('uses generation source labels without exposing raw fallback errors to ordinary banners', () => {
+    expect(source).toContain('getLessonGenerationBadge');
+    expect(source).toContain('AI-assisted draft generated and validated');
+    expect(source).toContain('Basic draft.');
+    expect(source).toContain('Technical fallback detail is recorded for diagnostics.');
+    expect(source).not.toContain('Fallback reason: {fallbackReason}');
   });
 
   it('keeps all six required teaching sections in the review form', () => {

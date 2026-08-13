@@ -1,5 +1,6 @@
 import { Card } from '@/app/components/ui/Card';
 import type { LessonPlan } from '@/app/core/types/lessonPlans';
+import { getStructuredLessonDraft } from '@/app/core/lib/lessonPlanGeneration';
 
 function renderText(value: string | null | undefined): string {
     return value?.trim() || 'Not recorded yet.';
@@ -109,6 +110,118 @@ function DocumentSection({ title, description, body }: DocumentSectionProps) {
     );
 }
 
+function BulletList({ values }: { values: string[] }) {
+    return values.length > 0 ? (
+        <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-gray-800">
+            {values.map((item, index) => (
+                <li key={`${item}-${index}`}>{item}</li>
+            ))}
+        </ul>
+    ) : (
+        <p className="text-sm text-gray-500">Not recorded yet.</p>
+    );
+}
+
+function StructuredLessonDraftSections({ lessonPlan }: { lessonPlan: LessonPlan }) {
+    const draft = getStructuredLessonDraft(lessonPlan);
+    if (!draft) {
+        return null;
+    }
+
+    return (
+        <Card className="overflow-hidden p-0">
+            <div className="divide-y divide-gray-100">
+                <DocumentSection
+                    title="Objectives"
+                    description="Grounded in selected learning outcomes"
+                    body={draft.objectives.map((objective) => objective.text)}
+                />
+                <DocumentSection
+                    title="Prior Knowledge"
+                    description="What learners already know"
+                    body={renderText(draft.prior_knowledge)}
+                />
+                <DocumentSection
+                    title="Learning Resources"
+                    description="Teacher-selected resources"
+                    body={draft.learning_resources}
+                />
+                {draft.phases.map((phase, index) => (
+                    <section key={`${phase.phase_type}-${index}`} className="space-y-4 p-6">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="space-y-1">
+                                <h2 className="text-base font-semibold text-gray-900">
+                                    {phase.phase_type.replaceAll('_', ' ')}
+                                </h2>
+                                <p className="text-sm text-gray-500">{phase.title || 'Lesson phase'}</p>
+                            </div>
+                            {phase.duration_minutes > 0 ? (
+                                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+                                    {phase.duration_minutes} min
+                                </span>
+                            ) : null}
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900">Teacher actions</h3>
+                                <BulletList values={phase.teacher_actions} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900">Learner actions</h3>
+                                <BulletList values={phase.learner_actions} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900">Resources</h3>
+                                <BulletList values={phase.resources} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900">Assessment / evidence</h3>
+                                <BulletList values={[...phase.assessment_checks, ...phase.evidence_expected]} />
+                            </div>
+                        </div>
+                    </section>
+                ))}
+                <section className="space-y-4 p-6">
+                    <div className="space-y-1">
+                        <h2 className="text-base font-semibold text-gray-900">Differentiation</h2>
+                        <p className="text-sm text-gray-500">Support and extension</p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900">Support</h3>
+                            <BulletList values={draft.differentiation.support} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900">Extension</h3>
+                            <BulletList values={draft.differentiation.extension} />
+                        </div>
+                    </div>
+                </section>
+                <section className="space-y-4 p-6">
+                    <div className="space-y-1">
+                        <h2 className="text-base font-semibold text-gray-900">Conclusion</h2>
+                        <p className="text-sm text-gray-500">Closure and exit evidence</p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-3">
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900">Teacher actions</h3>
+                            <BulletList values={draft.conclusion.teacher_actions} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900">Learner actions</h3>
+                            <BulletList values={draft.conclusion.learner_actions} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900">Exit evidence</h3>
+                            <BulletList values={draft.conclusion.exit_evidence} />
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </Card>
+    );
+}
+
 function LessonContextItem({
     label,
     value,
@@ -137,6 +250,8 @@ export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
         ? lessonPlan.selected_references.length
         : 0;
 
+    const structuredDraft = getStructuredLessonDraft(lessonPlan);
+
     const lessonContextItems = [
         { label: 'Class Subject', value: lessonPlan.cohort_subject_name || 'Not set' },
         { label: 'Subject', value: lessonPlan.subject_name || 'Not set' },
@@ -159,6 +274,9 @@ export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
 
     return (
         <div className="space-y-6">
+            {structuredDraft ? (
+                <StructuredLessonDraftSections lessonPlan={lessonPlan} />
+            ) : (
             <Card className="overflow-hidden p-0">
                 <div className="divide-y divide-gray-100">
                     <DocumentSection
@@ -208,6 +326,7 @@ export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
                     />
                 </div>
             </Card>
+            )}
 
             <Card>
                 <div className="space-y-4">

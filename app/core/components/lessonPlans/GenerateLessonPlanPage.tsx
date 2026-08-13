@@ -37,6 +37,7 @@ import {
     isReferencePageStarted,
     validateReferencePages,
 } from '@/app/core/lib/lessonPlanReferences';
+import { getLessonGenerationSource } from '@/app/core/lib/lessonPlanGeneration';
 import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
 import {
     LESSON_PLAN_FIELD_LABELS,
@@ -435,11 +436,7 @@ export function GenerateLessonPlanPage() {
             }
 
             const completedPlan = generated.result_payload.lesson_plan;
-            const generationMode = completedPlan.generated_by_ai
-                ? 'ai'
-                : completedPlan.ai_fallback_reason
-                    ? 'fallback'
-                    : 'rule-based';
+            const generationMode = getLessonGenerationSource(completedPlan);
 
             router.push(
                 `/lesson-plans/${completedPlan.id}?${new URLSearchParams({

@@ -159,6 +159,46 @@ export interface LessonPlanReferenceRecord {
     created_at: string;
 }
 
+export type LessonGenerationSource = 'ai' | 'ai_repaired' | 'fallback' | 'rule-based' | 'unknown';
+
+export interface LessonDraftObjective {
+    text: string;
+    source_outcome_ids: number[];
+}
+
+export interface LessonDraftPhase {
+    phase_type: 'INTRODUCTION' | 'DEVELOPMENT' | 'PRACTICE' | 'CONSOLIDATION' | 'CONCLUSION' | string;
+    title: string;
+    duration_minutes: number;
+    teacher_actions: string[];
+    learner_actions: string[];
+    resources: string[];
+    assessment_checks: string[];
+    evidence_expected: string[];
+}
+
+export interface LessonDraftDifferentiation {
+    support: string[];
+    extension: string[];
+}
+
+export interface LessonDraftConclusion {
+    teacher_actions: string[];
+    learner_actions: string[];
+    exit_evidence: string[];
+}
+
+export interface StructuredLessonDraft {
+    title: string;
+    objectives: LessonDraftObjective[];
+    prior_knowledge: string;
+    learning_resources: string[];
+    phases: LessonDraftPhase[];
+    differentiation: LessonDraftDifferentiation;
+    conclusion: LessonDraftConclusion;
+    selected_reference_entry_ids: number[];
+}
+
 export interface LessonPlan {
     id: number;
     organization: number | null;

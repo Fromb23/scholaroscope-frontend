@@ -24,6 +24,7 @@ import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
+import { getLessonGenerationBadge } from '@/app/core/lib/lessonPlanGeneration';
 import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
 import {
     canCreateWorkForTerm,
@@ -850,6 +851,7 @@ export function LessonPlansPage() {
     const renderLessonPlanCard = (lessonPlan: LessonPlan) => {
         const lessonSummary = getLessonSummary(lessonPlan);
         const feedback = rowActionFeedback[lessonPlan.id];
+        const generationBadge = getLessonGenerationBadge(lessonPlan);
 
         return (
             <Card key={lessonPlan.id} className="p-4 sm:p-5">
@@ -860,9 +862,20 @@ export function LessonPlansPage() {
                                 <h2 className="min-w-0 flex-1 text-base font-semibold text-gray-900 line-clamp-2 sm:text-lg">
                                     {lessonPlan.title}
                                 </h2>
-                                {lessonPlan.generated_by_ai ? (
-                                    <Badge variant="purple" size="sm">
-                                        AI
+                                {generationBadge.source !== 'unknown' ? (
+                                    <Badge
+                                        variant={
+                                            generationBadge.tone === 'purple'
+                                                ? 'purple'
+                                                : generationBadge.tone === 'green'
+                                                    ? 'green'
+                                                    : generationBadge.tone === 'amber'
+                                                        ? 'warning'
+                                                        : 'default'
+                                        }
+                                        size="sm"
+                                    >
+                                        {generationBadge.label}
                                     </Badge>
                                 ) : null}
                             </div>
