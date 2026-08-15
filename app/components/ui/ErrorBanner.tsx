@@ -12,6 +12,7 @@ interface ErrorBannerAction {
 }
 
 interface ErrorBannerProps {
+  id?: string;
   message: string;
   onDismiss: () => void;
   variant?: 'error' | 'warning' | 'info' | 'success';
@@ -46,6 +47,7 @@ const VARIANT_STYLES = {
 } as const;
 
 export const ErrorBanner = forwardRef<HTMLDivElement, ErrorBannerProps>(function ErrorBanner({
+  id,
   message,
   onDismiss,
   variant = 'error',
@@ -70,6 +72,7 @@ export const ErrorBanner = forwardRef<HTMLDivElement, ErrorBannerProps>(function
 
   return (
     <div
+      id={id}
       ref={ref}
       role={resolvedRole}
       aria-live={resolvedRole === 'alert' ? 'assertive' : 'polite'}

@@ -173,13 +173,15 @@ export function CBCAuthoringSubStrandsPage() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
-                            label="Name *"
+                            label="Name"
+                            required
                             placeholder="Sub-strand name"
                             value={page.createForm.name ?? ''}
                             onChange={event => page.setCreateForm(previous => ({ ...previous, name: event.target.value }))}
                         />
                         <Input
-                            label="Description (optional)"
+                            label="Description"
+                            optional
                             value={page.createForm.description ?? ''}
                             onChange={event => page.setCreateForm(previous => ({ ...previous, description: event.target.value }))}
                         />
@@ -221,7 +223,8 @@ export function CBCAuthoringSubStrandsPage() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
-                            label="Name *"
+                            label="Name"
+                            required
                             value={page.editForm.name ?? ''}
                             onChange={event => page.setEditForm(previous => ({ ...previous, name: event.target.value }))}
                         />

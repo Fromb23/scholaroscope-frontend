@@ -8,6 +8,7 @@ import { Button } from '@/app/components/ui/Button';
 import { resolveAuthError, type AppError } from '@/app/core/errors';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
+import { FieldLabel } from '@/app/components/ui/FieldLabel';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useRouter } from 'next/navigation';
 import { AuthFrame } from './AuthFrame';
@@ -213,9 +214,9 @@ function LoginForm() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label htmlFor="password" className="block text-sm font-medium theme-text">
+                <FieldLabel htmlFor="password" required className="flex items-center gap-1 text-sm font-medium theme-text">
                   Password
-                </label>
+                </FieldLabel>
                 <button
                   type="button"
                   onClick={() => router.push('/forgot-password')}

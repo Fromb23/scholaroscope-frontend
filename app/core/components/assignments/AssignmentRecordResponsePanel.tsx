@@ -8,6 +8,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { RequiredMarker } from '@/app/components/ui/FieldLabel';
 import { AssignmentWorkUnitNavigation } from '@/app/core/components/assignments/AssignmentWorkUnitNavigation';
 import {
     formatDateTime,
@@ -280,11 +281,12 @@ export function AssignmentRecordResponsePanel({
                                 {attachmentSlots.map((slot) => (
                                     <div key={slot.key} className="rounded-lg border theme-border p-3">
                                         <div className="flex items-center justify-between gap-2">
-                                            <p className="text-sm font-semibold theme-text">{slot.label}</p>
+                                            <p className="flex items-center gap-1 text-sm font-semibold theme-text">
+                                                <span>{slot.label}</span>
+                                                {slot.required ? <RequiredMarker /> : null}
+                                            </p>
                                             {slot.required ? (
-                                                <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
-                                                    Required
-                                                </span>
+                                                <span className="text-xs theme-subtle">Evidence needed</span>
                                             ) : null}
                                         </div>
                                         <p className="mt-1 text-xs theme-subtle">

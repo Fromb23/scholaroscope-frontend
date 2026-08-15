@@ -19,6 +19,73 @@ export interface DerivedSchemeWeek {
     priority: number;
 }
 
+export type CreateSchemeStep = 1 | 2 | 3 | 4;
+
+export type CreateSchemeValidationTarget =
+    | 'curriculum'
+    | 'subject'
+    | 'level'
+    | 'cohort-subject'
+    | 'term-status'
+    | 'title'
+    | 'term-calendar'
+    | 'lessons-per-week'
+    | 'weekly-load-confirmation'
+    | 'lesson-duration'
+    | 'strand-range-status'
+    | 'start-strand'
+    | 'start-substrand'
+    | 'end-strand'
+    | 'end-substrand'
+    | 'generation-status';
+
+export interface CreateSchemeValidationFailure {
+    valid: false;
+    step: CreateSchemeStep;
+    message: string;
+    target: CreateSchemeValidationTarget;
+}
+
+export interface CreateSchemeValidationSuccess {
+    valid: true;
+}
+
+export type CreateSchemeValidationResult =
+    | CreateSchemeValidationFailure
+    | CreateSchemeValidationSuccess;
+
+export interface CreateSchemeStepValidationInput {
+    step: CreateSchemeStep;
+    hasSelectedCurriculum: boolean;
+    hasSelectedSubject: boolean;
+    hasSelectedLevel: boolean;
+    hasSelectedCohortSubject: boolean;
+    hasSelectedTerm: boolean;
+    hasTitle: boolean;
+    noActiveTermMessage?: string | null;
+    termCalendarIsComplete: boolean;
+    termCalendarSetupMessage?: string | null;
+    activeLearningWeekCount: number;
+    lessonsPerWeekValue: number | null;
+    weeklyTeachingLoadConfirmed: boolean;
+    lessonDurationMinutesValue: number | null;
+    strandsError?: string | null;
+    flattenedSubStrandCount: number;
+    rangeError?: string | null;
+    hasStartStrand: boolean;
+    hasStartSubStrand: boolean;
+    hasEndStrand: boolean;
+    hasEndSubStrand: boolean;
+    hasCurriculumRange: boolean;
+}
+
+export interface DefaultSchemeTitleInput {
+    subjectName?: string | null;
+    levelLabel?: string | null;
+    termName?: string | null;
+    academicYearName?: string | null;
+}
+
 const TERM_CALENDAR_EVENT_PRIORITY: Record<TermCalendarEventType, number> = {
     HOLIDAY: 6,
     PUBLIC_HOLIDAY: 6,
@@ -132,6 +199,143 @@ function resolveEventWeekNumber(termStartDate: string, date: string): number {
 
 function eventPriority(eventType: TermCalendarEventType): number {
     return TERM_CALENDAR_EVENT_PRIORITY[eventType] ?? 0;
+}
+
+function validationFailure(
+    step: CreateSchemeStep,
+    target: CreateSchemeValidationTarget,
+    message: string,
+): CreateSchemeValidationFailure {
+    return {
+        valid: false,
+        step,
+        target,
+        message,
+    };
+}
+
+export function buildDefaultSchemeTitle({
+    subjectName,
+    levelLabel,
+    termName,
+    academicYearName,
+}: DefaultSchemeTitleInput): string {
+    const level = levelLabel?.trim();
+    const subject = subjectName?.trim();
+    const term = termName?.trim();
+    const academicYear = academicYearName?.trim();
+
+    if (!level || !subject || !term) {
+        return '';
+    }
+
+    return [level, subject, academicYear, term, 'Scheme of Work']
+        .filter(Boolean)
+        .join(' ');
+}
+
+export function validateCreateSchemeStep(input: CreateSchemeStepValidationInput): CreateSchemeValidationResult {
+    if (input.step === 1) {
+        if (!input.hasSelectedCurriculum) {
+            return validationFailure(1, 'curriculum', 'Choose the curriculum.');
+        }
+        if (!input.hasSelectedSubject) {
+            return validationFailure(1, 'subject', 'Choose the subject.');
+        }
+        if (!input.hasSelectedLevel) {
+            return validationFailure(1, 'level', 'Choose the level or grade.');
+        }
+        if (!input.hasSelectedCohortSubject) {
+            return validationFailure(1, 'cohort-subject', 'Choose the class / subject.');
+        }
+        if (!input.hasSelectedTerm) {
+            return validationFailure(
+                1,
+                'term-status',
+                input.noActiveTermMessage || 'There is no active teaching term for this class subject.',
+            );
+        }
+        if (!input.hasTitle) {
+            return validationFailure(1, 'title', 'Enter a scheme title.');
+        }
+        return { valid: true };
+    }
+
+    if (input.step === 2) {
+        if (!input.hasSelectedTerm) {
+            return validationFailure(
+                2,
+                'term-status',
+                input.noActiveTermMessage || 'There is no active teaching term for this class subject.',
+            );
+        }
+        if (!input.termCalendarIsComplete) {
+            return validationFailure(
+                2,
+                'term-calendar',
+                input.termCalendarSetupMessage || 'Complete the term calendar before generating schemes of work.',
+            );
+        }
+        if (input.activeLearningWeekCount <= 0) {
+            return validationFailure(2, 'term-calendar', 'There must be at least one active learning week.');
+        }
+        if (
+            input.lessonsPerWeekValue === null ||
+            input.lessonsPerWeekValue < 1 ||
+            input.lessonsPerWeekValue > 10
+        ) {
+            return validationFailure(2, 'lessons-per-week', 'Lessons per week must be between 1 and 10.');
+        }
+        if (!input.weeklyTeachingLoadConfirmed) {
+            return validationFailure(
+                2,
+                'weekly-load-confirmation',
+                'Confirm the weekly teaching periods for this subject before continuing.',
+            );
+        }
+        if (
+            input.lessonDurationMinutesValue === null ||
+            input.lessonDurationMinutesValue < 20 ||
+            input.lessonDurationMinutesValue > 120
+        ) {
+            return validationFailure(2, 'lesson-duration', 'Lesson duration must be between 20 and 120 minutes.');
+        }
+        return { valid: true };
+    }
+
+    if (input.step === 3) {
+        if (input.strandsError) {
+            return validationFailure(3, 'strand-range-status', input.strandsError);
+        }
+        if (input.flattenedSubStrandCount === 0) {
+            return validationFailure(
+                3,
+                'strand-range-status',
+                "No strand range is registered for this class subject yet. Register the subject's sub-strands in curriculum setup before generating a scheme.",
+            );
+        }
+        if (!input.hasStartStrand) {
+            return validationFailure(3, 'start-strand', 'Choose the first strand to cover.');
+        }
+        if (!input.hasStartSubStrand) {
+            return validationFailure(3, 'start-substrand', 'Choose the first sub-strand to cover.');
+        }
+        if (!input.hasEndStrand) {
+            return validationFailure(3, 'end-strand', 'Choose the last strand to cover.');
+        }
+        if (!input.hasEndSubStrand) {
+            return validationFailure(3, 'end-substrand', 'Choose the last sub-strand to cover.');
+        }
+        if (input.rangeError) {
+            return validationFailure(3, 'start-strand', input.rangeError);
+        }
+        if (!input.hasCurriculumRange) {
+            return validationFailure(3, 'start-strand', 'Complete the strand range before continuing.');
+        }
+        return { valid: true };
+    }
+
+    return { valid: true };
 }
 
 export function buildSchemeWeeksFromTermCalendar(

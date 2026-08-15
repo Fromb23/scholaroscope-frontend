@@ -209,25 +209,25 @@ function CreateInstructorModal({
                 ) : null}
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Input label="First Name *" value={form.first_name}
+                    <Input label="First Name" required value={form.first_name}
                         onChange={e => set('first_name', e.target.value)} error={errors.first_name} />
-                    <Input label="Last Name *" value={form.last_name}
+                    <Input label="Last Name" required value={form.last_name}
                         onChange={e => set('last_name', e.target.value)} error={errors.last_name} />
                 </div>
-                <Input label="Email *" type="email" value={form.email}
+                <Input label="Email" required type="email" value={form.email}
                     onChange={e => set('email', e.target.value)} error={errors.email} />
-                <Input label="Phone (optional)" value={form.phone}
+                <Input label="Phone" optional value={form.phone}
                     onChange={e => set('phone', e.target.value)} placeholder="+254 700 000 000" />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="relative">
-                        <Input label="Password *" type={showPw ? 'text' : 'password'} value={form.password}
+                        <Input label="Password" required type={showPw ? 'text' : 'password'} value={form.password}
                             onChange={e => set('password', e.target.value)} error={errors.password} />
                         <button type="button" onClick={() => setShowPw(v => !v)}
                             className="absolute right-3 top-8 text-gray-400 hover:text-gray-600 text-xs">
                             {showPw ? 'Hide' : 'Show'}
                         </button>
                     </div>
-                    <Input label="Confirm Password *" type="password" value={form.password2}
+                    <Input label="Confirm Password" required type="password" value={form.password2}
                         onChange={e => set('password2', e.target.value)} error={errors.password2} />
                 </div>
 

@@ -84,7 +84,10 @@ describe('error UI primitives', () => {
     );
 
     expect(html).toContain('for="session-title"');
-    expect(html).toContain('Required');
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('>*</span>');
+    expect(html).toContain('required');
+    expect(html).not.toContain('rounded-full border border-red-200');
     expect(html).toContain('aria-invalid="true"');
     expect(html).toContain('aria-describedby="session-title-error"');
     expect(html).toContain('id="session-title-error"');

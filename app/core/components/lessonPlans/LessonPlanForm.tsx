@@ -10,6 +10,7 @@ import { Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { FieldLabel } from '@/app/components/ui/FieldLabel';
 import { FormValidationSummary } from '@/app/components/ui/forms';
 import { Input } from '@/app/components/ui/Input';
 import { LessonPlanReferenceEditorSlot } from '@/app/core/components/lessonPlans/LessonPlanReferenceEditorSlot';
@@ -416,12 +417,9 @@ export function LessonPlanForm({
                     </div>
 
                     <div className="space-y-1">
-                        <label htmlFor="lesson-plan-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <span>Title</span>
-                            <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
-                                Required
-                            </span>
-                        </label>
+                        <FieldLabel htmlFor="lesson-plan-title" required className="flex items-center gap-1 text-sm font-medium text-gray-700">
+                            Title
+                        </FieldLabel>
                         <textarea
                             id="lesson-plan-title"
                             ref={setFieldRef('title')}

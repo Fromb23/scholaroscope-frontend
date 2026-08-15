@@ -410,13 +410,15 @@ export function EditProfileModal({ isOpen, onClose, initialValues, onSave }: Edi
                 {apiError && <InlineAlert type="error" message={apiError} />}
                 <div className="grid grid-cols-2 gap-4">
                     <Input
-                        label="First Name *"
+                        label="First Name"
+                        required
                         value={form.first_name}
                         onChange={e => handleChange('first_name', e.target.value)}
                         error={errors.first_name}
                     />
                     <Input
-                        label="Last Name *"
+                        label="Last Name"
+                        required
                         value={form.last_name}
                         onChange={e => handleChange('last_name', e.target.value)}
                         error={errors.last_name}

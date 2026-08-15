@@ -172,13 +172,15 @@ export function CBCAuthoringStrandsPage() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <Input
-                            label="Name *"
+                            label="Name"
+                            required
                             placeholder="e.g. Algebra"
                             value={page.createForm.name ?? ''}
                             onChange={event => page.setCreateForm(previous => ({ ...previous, name: event.target.value }))}
                         />
                         <Select
-                            label="Subject (optional)"
+                            label="Subject"
+                            optional
                             value={page.createForm.subject?.toString() ?? ''}
                             onChange={event => page.setCreateForm(previous => ({
                                 ...previous,
@@ -187,7 +189,8 @@ export function CBCAuthoringStrandsPage() {
                             options={page.subjectOptions}
                         />
                         <Input
-                            label="Description (optional)"
+                            label="Description"
+                            optional
                             value={page.createForm.description ?? ''}
                             onChange={event => page.setCreateForm(previous => ({ ...previous, description: event.target.value }))}
                         />
@@ -231,7 +234,8 @@ export function CBCAuthoringStrandsPage() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <Input
-                            label="Name *"
+                            label="Name"
+                            required
                             value={page.editForm.name ?? ''}
                             onChange={event => page.setEditForm(previous => ({ ...previous, name: event.target.value }))}
                         />

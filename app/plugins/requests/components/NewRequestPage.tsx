@@ -225,7 +225,8 @@ export function NewRequestPage() {
                         {/* Type + Priority */}
                         <div className="grid grid-cols-2 gap-4">
                             <Select
-                                label="Request Type *"
+                                label="Request Type"
+                                required
                                 value={form.request_type}
                                 onChange={e => set('request_type', e.target.value)}
                                 error={errors.request_type}
@@ -248,7 +249,8 @@ export function NewRequestPage() {
                         </div>
 
                         <Input
-                            label="Title *"
+                            label="Title"
+                            required
                             value={form.title}
                             onChange={e => set('title', e.target.value)}
                             error={errors.title}

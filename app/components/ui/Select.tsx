@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { SelectHTMLAttributes, forwardRef, useId } from 'react';
+import { FieldLabel } from './FieldLabel';
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
@@ -28,16 +29,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div>
         {label && (
-          <label htmlFor={selectId} className="mb-1 flex items-center gap-2 text-sm font-medium theme-text">
-            <span>{label}</span>
-            {required ? (
-              <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
-                Required
-              </span>
-            ) : optional ? (
-              <span className="theme-subtle text-xs font-normal">{optionalLabel}</span>
-            ) : null}
-          </label>
+          <FieldLabel htmlFor={selectId} required={required} optional={optional ? optionalLabel : false}>
+            {label}
+          </FieldLabel>
         )}
         <select
           id={selectId}

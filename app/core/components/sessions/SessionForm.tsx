@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { FieldLabel } from '@/app/components/ui/FieldLabel';
 import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
@@ -545,13 +546,13 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                             Need a lesson? Start from a lesson plan so the session inherits the plan&apos;s subject, term, and outcomes.
                         </p>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Description {formData.session_type === 'OTHER' ? (
-                                    <span className="text-red-600 font-normal">(required for Other)</span>
-                                ) : (
-                                    <span className="text-gray-400 font-normal">(optional)</span>
-                                )}
-                            </label>
+                            <FieldLabel
+                                required={formData.session_type === 'OTHER'}
+                                optional={formData.session_type !== 'OTHER'}
+                                className="mb-1 flex items-center gap-1 text-sm font-medium text-gray-700"
+                            >
+                                Description
+                            </FieldLabel>
                             <textarea
                                 value={formData.description}
                                 onChange={e => handleChange('description', e.target.value)}
