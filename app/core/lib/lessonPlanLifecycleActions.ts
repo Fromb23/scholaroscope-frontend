@@ -16,6 +16,7 @@ export interface LessonPlanLifecycleActions {
   canReview: boolean;
   canEdit: boolean;
   canSchedule: boolean;
+  canPrepareLearnerTask: boolean;
   canOpenScheduledLesson: boolean;
   canArchive: boolean;
   canRestore: boolean;
@@ -29,6 +30,7 @@ export function resolveLessonPlanLifecycleActions(
   const canAct = context.canCreateTeachingRecords;
   const canReview = canAct && context.status === 'GENERATED';
   const canSchedule = canAct && context.status === 'REVIEWED' && !hasScheduledSession;
+  const canPrepareLearnerTask = canAct && ['REVIEWED', 'SCHEDULED'].includes(context.status);
   const canOpenScheduledLesson = context.status === 'SCHEDULED' && hasScheduledSession;
 
   let primaryAction: LessonPlanPrimaryAction = null;
@@ -44,6 +46,7 @@ export function resolveLessonPlanLifecycleActions(
     canReview,
     canEdit: canAct && ['DRAFT', 'REVIEWED', 'SCHEDULED'].includes(context.status),
     canSchedule,
+    canPrepareLearnerTask,
     canOpenScheduledLesson,
     canArchive: canAct && context.status !== 'ARCHIVED',
     canRestore: canAct && context.status === 'ARCHIVED',

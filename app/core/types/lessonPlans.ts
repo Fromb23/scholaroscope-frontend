@@ -401,7 +401,7 @@ export function canScheduleLesson(status: LessonPlanStatus): boolean {
 }
 
 export function canPrepareAssignmentDraft(status: LessonPlanStatus): boolean {
-    return status === 'GENERATED' || status === 'REVIEWED' || status === 'SCHEDULED';
+    return status === 'REVIEWED' || status === 'SCHEDULED';
 }
 
 export function canMarkLessonPlanUsed(status: LessonPlanStatus): boolean {

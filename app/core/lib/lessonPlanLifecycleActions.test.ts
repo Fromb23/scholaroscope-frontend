@@ -13,6 +13,7 @@ describe('resolveLessonPlanLifecycleActions', () => {
     expect(actions.canReview).toBe(true);
     expect(actions.canEdit).toBe(false);
     expect(actions.canSchedule).toBe(false);
+    expect(actions.canPrepareLearnerTask).toBe(false);
   });
 
   it('allows optional edit and primary scheduling after review', () => {
@@ -25,6 +26,7 @@ describe('resolveLessonPlanLifecycleActions', () => {
     expect(actions.canReview).toBe(false);
     expect(actions.canEdit).toBe(true);
     expect(actions.canSchedule).toBe(true);
+    expect(actions.canPrepareLearnerTask).toBe(true);
   });
 
   it('opens the scheduled lesson as the primary scheduled action', () => {
@@ -37,6 +39,7 @@ describe('resolveLessonPlanLifecycleActions', () => {
     expect(actions.primaryAction).toBe('openScheduledLesson');
     expect(actions.canReview).toBe(false);
     expect(actions.canOpenScheduledLesson).toBe(true);
+    expect(actions.canPrepareLearnerTask).toBe(true);
   });
 
   it('locks used and archived plans for normal standalone editing', () => {
@@ -48,5 +51,15 @@ describe('resolveLessonPlanLifecycleActions', () => {
       status: 'ARCHIVED',
       canCreateTeachingRecords: true,
     }).canEdit).toBe(false);
+  });
+
+  it('does not expose learner task preparation without teaching authority', () => {
+    const actions = resolveLessonPlanLifecycleActions({
+      status: 'REVIEWED',
+      canCreateTeachingRecords: false,
+    });
+
+    expect(actions.canPrepareLearnerTask).toBe(false);
+    expect(actions.primaryAction).toBeNull();
   });
 });

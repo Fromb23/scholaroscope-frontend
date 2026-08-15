@@ -8,18 +8,26 @@ import {
 
 describe('lesson plan detail visibility rules', () => {
   it('hides learner task preparation for used and archived records', () => {
-    expect(shouldShowLearnerTaskSection({ status: 'USED', canShowLearnerTaskAction: true })).toBe(false);
-    expect(shouldShowLearnerTaskSection({ status: 'ARCHIVED', canShowLearnerTaskAction: true })).toBe(false);
+    expect(shouldShowLearnerTaskSection({ status: 'USED', canPrepareLearnerTask: true })).toBe(false);
+    expect(shouldShowLearnerTaskSection({ status: 'ARCHIVED', canPrepareLearnerTask: true })).toBe(false);
   });
 
-  it('keeps learner task preparation visible for active plan states when permitted', () => {
-    expect(shouldShowLearnerTaskSection({ status: 'GENERATED', canShowLearnerTaskAction: true })).toBe(true);
-    expect(shouldShowLearnerTaskSection({ status: 'REVIEWED', canShowLearnerTaskAction: true })).toBe(true);
-    expect(shouldShowLearnerTaskSection({ status: 'SCHEDULED', canShowLearnerTaskAction: true })).toBe(true);
+  it('keeps learner task preparation hidden for generated plans without historical learner work', () => {
+    expect(shouldShowLearnerTaskSection({ status: 'GENERATED', canPrepareLearnerTask: false })).toBe(false);
   });
 
-  it('does not show learner task preparation without teaching permissions', () => {
-    expect(shouldShowLearnerTaskSection({ status: 'GENERATED', canShowLearnerTaskAction: false })).toBe(false);
+  it('shows learner task preparation only when reviewed or scheduled plans are eligible', () => {
+    expect(shouldShowLearnerTaskSection({ status: 'REVIEWED', canPrepareLearnerTask: true })).toBe(true);
+    expect(shouldShowLearnerTaskSection({ status: 'SCHEDULED', canPrepareLearnerTask: true })).toBe(true);
+    expect(shouldShowLearnerTaskSection({ status: 'REVIEWED', canPrepareLearnerTask: false })).toBe(false);
+  });
+
+  it('preserves learner task read access when historical learner work exists', () => {
+    expect(shouldShowLearnerTaskSection({
+      status: 'GENERATED',
+      canPrepareLearnerTask: false,
+      hasPreparedAssignment: true,
+    })).toBe(true);
   });
 
   it('keeps heavy detail sections collapsed by default', () => {

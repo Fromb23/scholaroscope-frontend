@@ -49,7 +49,6 @@ import {
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import {
     canMarkLessonPlanUsed,
-    canPrepareAssignmentDraft,
     type ScheduleLessonFormData,
     SCHEDULE_LESSON_SESSION_TYPE_OPTIONS,
     type AvailableLessonPlanParticipatingCohortSubject,
@@ -61,7 +60,7 @@ import { resolveLessonPlanLifecycleActions } from '@/app/core/lib/lessonPlanLife
 import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
-import { isSafeNextPath, parseAppDestination } from '@/app/core/auth/navigation';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import {
     getLessonPlanDetailInitialSectionState,
     shouldOpenLearnerTaskFromQuery,
@@ -76,40 +75,8 @@ function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     return Number.isFinite(numericId) ? numericId : null;
 }
 
-function formatDate(value: string | null): string {
-    if (!value) {
-        return 'Not scheduled';
-    }
-
-    return new Date(value).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
-}
-
-function formatTime(value: string | null): string {
-    if (!value) {
-        return 'Not set';
-    }
-
-    const [hours = '0', minutes = '0'] = value.split(':');
-    const formatted = new Date();
-    formatted.setHours(Number(hours), Number(minutes), 0, 0);
-
-    return formatted.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-    });
-}
-
 function actionKey(lessonPlanId: number, action: string): string {
     return `${lessonPlanId}:${action}`;
-}
-
-function getScheduledDateValue(lessonPlan: LessonPlan): string | null {
-    return lessonPlan.session_date ?? lessonPlan.planned_date;
 }
 
 function getLinkedLessonLabel(lessonPlan: LessonPlan): string {
@@ -225,7 +192,7 @@ export function LessonPlanDetailPage() {
     const currentReturnTo = useMemo(() => {
         const query = searchParams.toString();
         const candidate = query ? `${pathname}?${query}` : pathname;
-        return isSafeNextPath(candidate) ? candidate : '/lesson-plans';
+        return candidate.startsWith('/lesson-plans/') ? candidate : '/lesson-plans';
     }, [pathname, searchParams]);
     const canCreateTeachingRecords = canCreateTeachingRecord({
         orgType: activeOrg?.org_type,
@@ -272,7 +239,6 @@ export function LessonPlanDetailPage() {
     const learnerTaskSectionRef = useRef<HTMLDivElement | null>(null);
     const [learnerTaskOpen, setLearnerTaskOpen] = useState(false);
     const [planningSourcesOpen, setPlanningSourcesOpen] = useState(INITIAL_SECTION_STATE.outcomesOpen);
-    const [metadataOpen, setMetadataOpen] = useState(INITIAL_SECTION_STATE.metadataOpen);
     const [learnerTaskChoice, setLearnerTaskChoice] = useState<'none' | 'prepare' | 'existing'>('none');
     const [learnerTaskType, setLearnerTaskType] = useState<'class_exercise' | 'homework' | 'group_activity'>('class_exercise');
     const [learnerTaskTitle, setLearnerTaskTitle] = useState('');
@@ -442,9 +408,6 @@ export function LessonPlanDetailPage() {
         ?? latestPreparedAssignment
     ), [latestPreparedAssignment, preparedAssignmentPreviewId, preparedAssignments]);
     const hasPreparedAssignment = Boolean(activePreparedAssignment);
-    const canShowLearnerTaskAction = Boolean(
-        canCreateTeachingRecords && lessonPlan && canPrepareAssignmentDraft(lessonPlan.status)
-    );
     const lifecycleActions = useMemo(
         () => lessonPlan
             ? resolveLessonPlanLifecycleActions({
@@ -457,7 +420,8 @@ export function LessonPlanDetailPage() {
     );
     const showLearnerTaskSection = shouldShowLearnerTaskSection({
         status: lessonPlan?.status,
-        canShowLearnerTaskAction,
+        canPrepareLearnerTask: Boolean(lifecycleActions?.canPrepareLearnerTask),
+        hasPreparedAssignment,
     });
 
     useEffect(() => {
@@ -817,6 +781,7 @@ export function LessonPlanDetailPage() {
     const canShowReviewAction = Boolean(lifecycleActions?.canReview);
     const canShowScheduleLessonAction = Boolean(lifecycleActions?.canSchedule);
     const canShowOpenScheduledLessonAction = Boolean(lifecycleActions?.canOpenScheduledLesson);
+    const canPrepareLearnerTask = Boolean(lifecycleActions?.canPrepareLearnerTask);
     const learnerTaskActionLabel = hasPreparedAssignment
         ? 'Review learner task'
         : 'Prepare learner task';
@@ -845,7 +810,7 @@ export function LessonPlanDetailPage() {
                     href: `/sessions/${lessonPlan?.session}`,
                 }]
                 : []),
-            ...(canShowLearnerTaskAction
+            ...(showLearnerTaskSection
                 ? [{
                     label: learnerTaskActionLabel,
                     type: 'page_action' as const,
@@ -875,7 +840,7 @@ export function LessonPlanDetailPage() {
                     type: 'navigate' as const,
                     href: `/sessions/${lessonPlan?.session}`,
                 }
-                : canShowLearnerTaskAction
+                : showLearnerTaskSection
                     ? {
                         label: learnerTaskActionLabel,
                         type: 'page_action' as const,
@@ -904,7 +869,6 @@ export function LessonPlanDetailPage() {
         };
     }, [
         canShowOpenScheduledLessonAction,
-        canShowLearnerTaskAction,
         canShowReviewAction,
         canShowScheduleLessonAction,
         handleOpenReview,
@@ -917,6 +881,7 @@ export function LessonPlanDetailPage() {
         lessonPlan,
         loading,
         openLearnerTaskSection,
+        showLearnerTaskSection,
     ]);
 
     useAssistantPageContext(assistantContext);
@@ -998,7 +963,7 @@ export function LessonPlanDetailPage() {
                 variant: 'primary',
             }
             : null;
-    const learnerTaskAction: NextActionButton | null = canShowLearnerTaskAction
+    const learnerTaskAction: NextActionButton | null = canPrepareLearnerTask
         ? {
             key: hasPreparedAssignment ? 'review-learner-task' : 'prepare-learner-task',
             label: learnerTaskActionLabel,
@@ -1064,7 +1029,11 @@ export function LessonPlanDetailPage() {
     const originatingSchemeHref = originatingSchemeId
         ? `/schemes/${originatingSchemeId}?${new URLSearchParams({ returnTo: currentReturnTo }).toString()}`
         : null;
-
+    const compactContextParts = [
+        [lessonPlan.cohort_name, lessonPlan.subject_name].filter(Boolean).join(' · '),
+        lessonPlan.curriculum_name,
+        lessonPlan.term_name,
+    ].filter(Boolean);
     return (
         <div className="space-y-6">
             <div className="space-y-3">
@@ -1085,6 +1054,9 @@ export function LessonPlanDetailPage() {
                             </span>
                         </div>
                         <p className="text-gray-600">
+                            {compactContextParts.join(' · ')}
+                        </p>
+                        <p className="text-sm text-gray-500">
                             {getLinkedLessonLabel(lessonPlan)}
                         </p>
                         {generationBadge.source === 'fallback' ? (
@@ -1102,6 +1074,11 @@ export function LessonPlanDetailPage() {
                                     label: 'Edit',
                                     href: `/lesson-plans/${lessonPlan.id}/edit`,
                                     icon: <Edit className="h-4 w-4" />,
+                                }] : []),
+                                ...(originatingSchemeHref ? [{
+                                    label: 'Open scheme',
+                                    href: originatingSchemeHref,
+                                    icon: <Link2 className="h-4 w-4" />,
                                 }] : []),
                                 {
                                     label: exporting
@@ -1208,7 +1185,7 @@ export function LessonPlanDetailPage() {
 
             <section className="space-y-3">
                 <div className="space-y-1">
-                    <h2 className="text-lg font-semibold text-gray-900">Lesson plan content</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Lesson plan</h2>
                     <p className="text-sm text-gray-600">
                         Objectives, prior knowledge, resources, lesson flow, activities, assessment, and differentiation.
                     </p>
@@ -1383,12 +1360,12 @@ export function LessonPlanDetailPage() {
                                     onChange={(event) => setLearnerTaskChoice(event.target.value as 'none' | 'prepare' | 'existing')}
                                     options={[
                                         { value: 'none', label: 'Not for this lesson' },
-                                        { value: 'prepare', label: 'Prepare learner task' },
+                                        { value: 'prepare', label: 'Prepare learner task', disabled: !canPrepareLearnerTask },
                                         { value: 'existing', label: hasPreparedAssignment ? 'Review prepared task' : 'No prepared task yet', disabled: !hasPreparedAssignment },
                                     ]}
                                 />
 
-                                {learnerTaskChoice === 'prepare' ? (
+                                {learnerTaskChoice === 'prepare' && canPrepareLearnerTask ? (
                                     <>
                                         <div className="grid gap-4 md:grid-cols-2">
                                             <Input
@@ -1445,7 +1422,7 @@ export function LessonPlanDetailPage() {
                                     >
                                         Not for this lesson
                                     </Button>
-                                    {learnerTaskChoice === 'prepare' ? (
+                                    {learnerTaskChoice === 'prepare' && canPrepareLearnerTask ? (
                                         <Button
                                             type="button"
                                             onClick={() => {
@@ -1472,82 +1449,6 @@ export function LessonPlanDetailPage() {
                 </div>
             ) : null}
 
-            <CollapsibleDetailSection
-                title="Planning metadata"
-                summary="Class, subject, teacher, year, timing, and linked scheduled lesson."
-                open={metadataOpen}
-                onToggle={() => setMetadataOpen((current) => !current)}
-            >
-                <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 xl:grid-cols-4">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Class Subject</p>
-                        <p className="mt-1 font-medium text-gray-900">{lessonPlan.cohort_subject_name || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Subject</p>
-                        <p className="mt-1 font-medium text-gray-900">{lessonPlan.subject_name || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Cohort</p>
-                        <p className="mt-1 font-medium text-gray-900">{lessonPlan.cohort_name || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Planned For</p>
-                        <p className="mt-1 font-medium text-gray-900">
-                            {formatDate(getScheduledDateValue(lessonPlan))}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Term</p>
-                        <p className="mt-1 font-medium text-gray-900">{lessonPlan.term_name || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Curriculum</p>
-                        <p className="mt-1 font-medium text-gray-900">{lessonPlan.curriculum_name || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Teacher</p>
-                        <p className="mt-1 font-medium text-gray-900">{lessonPlan.teacher_name || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Academic Year</p>
-                        <p className="mt-1 font-medium text-gray-900">{lessonPlan.academic_year_name || 'Not set'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Planned Time</p>
-                        <p className="mt-1 font-medium text-gray-900">
-                            {lessonPlan.planned_start_time || lessonPlan.planned_end_time
-                                ? `${formatTime(lessonPlan.planned_start_time)} - ${formatTime(lessonPlan.planned_end_time)}`
-                                : 'Not set'}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Scheduled Lesson</p>
-                        <p className="mt-1 font-medium text-gray-900">
-                            {lessonPlan.session ? (
-                                <Link href={`/sessions/${lessonPlan.session}`} className="theme-link inline-flex items-center gap-1 hover:underline">
-                                    <Link2 className="h-3.5 w-3.5" />
-                                    {getLinkedLessonLabel(lessonPlan)}
-                                </Link>
-                            ) : (
-                                'Not scheduled yet'
-                            )}
-                        </p>
-                    </div>
-                    {originatingSchemeHref ? (
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Originating Scheme</p>
-                            <p className="mt-1 font-medium text-gray-900">
-                                <Link href={originatingSchemeHref} className="theme-link inline-flex items-center gap-1 hover:underline">
-                                    <Link2 className="h-3.5 w-3.5" />
-                                    Open scheme
-                                </Link>
-                            </p>
-                        </div>
-                    ) : null}
-                </div>
-            </CollapsibleDetailSection>
-
             {postLessonReflection ? (
                 <Card>
                     <div className="space-y-3">
@@ -1569,7 +1470,7 @@ export function LessonPlanDetailPage() {
             ) : null}
 
             <CollapsibleDetailSection
-                title="Planning sources"
+                title="Planning basis"
                 summary={`${lessonPlan.planned_outcomes.length} outcome${lessonPlan.planned_outcomes.length === 1 ? '' : 's'} and ${lessonPlan.selected_references.length} reference${lessonPlan.selected_references.length === 1 ? '' : 's'} attached.`}
                 open={planningSourcesOpen}
                 onToggle={() => setPlanningSourcesOpen((current) => !current)}

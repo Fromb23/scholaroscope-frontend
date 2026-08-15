@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { parseAppDestination } from '@/app/core/auth/navigation';
-import { Eye, FileText, Plus, RotateCcw } from 'lucide-react';
+import { Archive, ChevronDown, ChevronRight, Eye, FileText, Plus, RotateCcw } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -25,6 +25,13 @@ import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
 import { getLessonGenerationBadge } from '@/app/core/lib/lessonPlanGeneration';
+import {
+    buildLessonPlanGroups as buildSharedLessonPlanGroups,
+    getLessonPlanTeacherLabel,
+    sortLessonPlans,
+    type LessonPlanGroup,
+    type LessonPlanGroupSection,
+} from '@/app/core/lib/lessonPlanGrouping';
 import { resolveLessonPlanLifecycleActions } from '@/app/core/lib/lessonPlanLifecycleActions';
 import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
 import {
@@ -93,21 +100,8 @@ function actionKey(lessonPlanId: number, action: string): string {
     return `${lessonPlanId}:${action}`;
 }
 
-function sortLessonPlans(items: LessonPlan[]): LessonPlan[] {
-    return [...items].sort((left, right) => {
-        const leftTimestamp = new Date(left.session_date ?? left.updated_at).getTime();
-        const rightTimestamp = new Date(right.session_date ?? right.updated_at).getTime();
-
-        if (leftTimestamp !== rightTimestamp) {
-            return leftTimestamp - rightTimestamp;
-        }
-
-        return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
-    });
-}
-
 function teacherLabel(lessonPlan: LessonPlan): string {
-    return lessonPlan.teacher_name?.trim() || 'Unassigned teacher';
+    return getLessonPlanTeacherLabel(lessonPlan);
 }
 
 function normalizeText(value: string | null | undefined): string | null {
@@ -149,6 +143,7 @@ interface LessonPlanActionsProps {
     onMarkUsed: (lessonPlan: LessonPlan) => void;
     onArchive: (lessonPlan: LessonPlan) => void;
     onRestore: (lessonPlan: LessonPlan) => void;
+    archiveOnly?: boolean;
     className?: string;
     buttonClassName?: string;
 }
@@ -164,19 +159,8 @@ interface LessonPlanInstructorOption {
     label: string;
 }
 
-interface LessonPlanGroupSection {
-    key: string;
-    label: string;
-    description: string;
-    items: LessonPlan[];
-}
-
-interface LessonPlanGroup {
-    key: string;
-    label: string;
-    description: string;
-    itemCount: number;
-    sections: LessonPlanGroupSection[];
+interface LessonPlansPageProps {
+    archiveMode?: boolean;
 }
 
 function toOptionalNumber(value: string): number | undefined {
@@ -189,6 +173,14 @@ function toOptionalNumber(value: string): number | undefined {
 }
 
 function buildLessonPlanGroups(
+    lessonPlans: LessonPlan[],
+    groupingMode: AdminGroupingMode,
+    showInstructorContext = true,
+): LessonPlanGroup[] {
+    return buildSharedLessonPlanGroups(lessonPlans, groupingMode, showInstructorContext);
+}
+
+export function buildLegacyLessonPlanGroups(
     lessonPlans: LessonPlan[],
     groupingMode: AdminGroupingMode,
     showInstructorContext = true,
@@ -289,6 +281,7 @@ function LessonPlanActions({
     onMarkUsed,
     onArchive,
     onRestore,
+    archiveOnly = false,
     className = '',
     buttonClassName = '',
 }: LessonPlanActionsProps) {
@@ -311,6 +304,22 @@ function LessonPlanActions({
                 View
             </Button>
 
+            {archiveOnly ? (
+                lifecycleActions.canRestore ? (
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => onRestore(lessonPlan)}
+                        disabled={isPending('restored')}
+                        className={buttonClassName}
+                    >
+                        <RotateCcw className="mr-1.5 h-4 w-4" />
+                        Restore
+                    </Button>
+                ) : null
+            ) : (
+            <>
             {lifecycleActions.canReview ? (
                 <Button
                     type="button"
@@ -362,11 +371,13 @@ function LessonPlanActions({
                     Restore
                 </Button>
             ) : null}
+            </>
+            )}
         </div>
     );
 }
 
-export function LessonPlansPage() {
+export function LessonPlansPage({ archiveMode = false }: LessonPlansPageProps = {}) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { activeOrg, activeOperatingContext, user, capabilities } = useAuth();
@@ -413,9 +424,11 @@ export function LessonPlansPage() {
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
     const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
     const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
+    const [openGroupKeys, setOpenGroupKeys] = useState<Set<string>>(new Set());
     const [rowActionFeedback, setRowActionFeedback] = useState<Record<number, RowActionFeedback>>({});
     const [reflection, setReflection] = useState('');
     const [markUsedError, setMarkUsedError] = useState<string | null>(null);
+    const workspacePath = archiveMode ? '/lesson-plans/archive' : '/lesson-plans';
     const queryTerm = useMemo(() => toOptionalNumber(searchParams.get('term') ?? ''), [searchParams]);
     const explicitTermId = useMemo(
         () => resolveExplicitWorkTermId(toOptionalNumber(termFilter) ?? null, terms),
@@ -431,14 +444,14 @@ export function LessonPlansPage() {
     );
     const selectedTermAcceptsNewWork = canCreateWorkForTerm(selectedTermRecord);
     const effectiveMyTeachingMode = teachingSurface || (canUseMyTeaching && (isSelfManagedTeaching || viewMode === 'my_teaching'));
-    const institutionComplianceMode = showInstitutionSupervision && !effectiveMyTeachingMode;
+    const institutionComplianceMode = !archiveMode && showInstitutionSupervision && !effectiveMyTeachingMode;
     const lessonPlanFilters = useMemo(() => ({
-        status: statusFilter || undefined,
+        status: archiveMode ? 'ARCHIVED' as LessonPlanStatus : statusFilter || undefined,
         term: selectedTermId ?? undefined,
         cohort_subject: toOptionalNumber(cohortSubjectFilter),
         subject: cohortSubjectFilter ? undefined : toOptionalNumber(subjectFilter),
         cohort: toOptionalNumber(cohortFilter),
-    }), [cohortFilter, cohortSubjectFilter, selectedTermId, statusFilter, subjectFilter]);
+    }), [archiveMode, cohortFilter, cohortSubjectFilter, selectedTermId, statusFilter, subjectFilter]);
     const {
         lessonPlans,
         loading,
@@ -494,8 +507,8 @@ export function LessonPlansPage() {
         params.delete('term');
 
         const nextQuery = params.toString();
-        router.replace(nextQuery ? `/lesson-plans?${nextQuery}` : '/lesson-plans', { scroll: false });
-    }, [router, searchParams, terms, terms.length, termsLoading]);
+        router.replace(nextQuery ? `${workspacePath}?${nextQuery}` : workspacePath, { scroll: false });
+    }, [router, searchParams, terms, terms.length, termsLoading, workspacePath]);
 
     const handleTermFilterChange = (value: string) => {
         setTermFilter(value);
@@ -506,7 +519,7 @@ export function LessonPlansPage() {
             params.delete('term');
         }
         const nextQuery = params.toString();
-        router.replace(nextQuery ? `/lesson-plans?${nextQuery}` : '/lesson-plans', { scroll: false });
+        router.replace(nextQuery ? `${workspacePath}?${nextQuery}` : workspacePath, { scroll: false });
     };
 
     useEffect(() => {
@@ -521,7 +534,7 @@ export function LessonPlansPage() {
     }, [canUseMyTeaching, isSelfManagedTeaching, viewMode]);
 
     const shouldFilterToMyTeaching = showInstitutionSupervision && effectiveMyTeachingMode;
-    const useGroupedLessonPlanView = (showInstitutionSupervision && !effectiveMyTeachingMode) || isSelfManagedTeaching;
+    const useGroupedLessonPlanView = archiveMode || (showInstitutionSupervision && !effectiveMyTeachingMode) || isSelfManagedTeaching;
     const assignedCohortSubjectOptions = useMemo(() => (
         Array.from(
             new Map(
@@ -587,8 +600,8 @@ export function LessonPlansPage() {
         if (safeReturnTo) params.set('returnTo', safeReturnTo);
 
         const query = params.toString();
-        return query ? `/lesson-plans?${query}` : '/lesson-plans';
-    }, [cohortFilter, cohortSubjectFilter, explicitTermId, safeReturnTo, subjectFilter]);
+        return query ? `${workspacePath}?${query}` : workspacePath;
+    }, [cohortFilter, cohortSubjectFilter, explicitTermId, safeReturnTo, subjectFilter, workspacePath]);
     const createLessonPlanHref = useMemo(() => {
         const params = new URLSearchParams();
         if (cohortSubjectFilter) {
@@ -602,7 +615,9 @@ export function LessonPlansPage() {
     }, [buildWorkspaceHref, cohortSubjectFilter, explicitTermId]);
 
     const subtitle =
-        isSelfManagedTeaching || teachingSurface
+        archiveMode
+            ? 'Review stored lesson preparations by class and restore them when they need to return to active preparation.'
+            : isSelfManagedTeaching || teachingSurface
             ? 'Prepare lessons, review what is ready for class, and schedule the next one.'
             : viewMode === 'my_teaching' && canUseMyTeaching
                 ? 'Use My Teaching to view only lesson plans tied to your own teaching work.'
@@ -663,7 +678,15 @@ export function LessonPlansPage() {
 
         return sortLessonPlans(
             lessonPlans.filter((lessonPlan) => {
-                if (statusFilter && lessonPlan.status !== statusFilter) {
+                if (archiveMode && lessonPlan.status !== 'ARCHIVED') {
+                    return false;
+                }
+
+                if (!archiveMode && lessonPlan.status === 'ARCHIVED') {
+                    return false;
+                }
+
+                if (!archiveMode && statusFilter && lessonPlan.status !== statusFilter) {
                     return false;
                 }
 
@@ -732,6 +755,7 @@ export function LessonPlansPage() {
         search,
         shouldFilterToMyTeaching,
         showInstitutionSupervision,
+        archiveMode,
         statusFilter,
         subjectFilter,
         selectedTermId,
@@ -743,12 +767,53 @@ export function LessonPlansPage() {
     const groupedLessonPlans = useMemo(
         () => (
             useGroupedLessonPlanView
-                ? buildLessonPlanGroups(filteredLessonPlans, isSelfManagedTeaching ? 'class' : groupingMode, !isSelfManagedTeaching)
+                ? buildLessonPlanGroups(filteredLessonPlans, archiveMode || isSelfManagedTeaching ? 'class' : groupingMode, !isSelfManagedTeaching)
                 : []
         ),
-        [filteredLessonPlans, groupingMode, isSelfManagedTeaching, useGroupedLessonPlanView]
+        [archiveMode, filteredLessonPlans, groupingMode, isSelfManagedTeaching, useGroupedLessonPlanView]
     );
+    useEffect(() => {
+        if (!useGroupedLessonPlanView || groupedLessonPlans.length === 0) {
+            setOpenGroupKeys(new Set());
+            return;
+        }
+
+        if (search.trim() || cohortFilter || cohortSubjectFilter) {
+            setOpenGroupKeys(new Set(groupedLessonPlans.map((group) => group.key)));
+            return;
+        }
+
+        setOpenGroupKeys((current) => {
+            const validKeys = new Set(groupedLessonPlans.map((group) => group.key));
+            const retained = Array.from(current).filter((key) => validKeys.has(key));
+            if (retained.length > 0) {
+                return new Set(retained);
+            }
+            if (groupedLessonPlans.length === 1) {
+                return new Set([groupedLessonPlans[0].key]);
+            }
+            return new Set([groupedLessonPlans[0].key]);
+        });
+    }, [
+        cohortFilter,
+        cohortSubjectFilter,
+        groupedLessonPlans,
+        search,
+        useGroupedLessonPlanView,
+    ]);
     const hasServerFilters = Boolean(statusFilter || selectedTermId || cohortSubjectFilter || subjectFilter || cohortFilter);
+
+    const toggleGroup = (groupKey: string) => {
+        setOpenGroupKeys((current) => {
+            const next = new Set(current);
+            if (next.has(groupKey)) {
+                next.delete(groupKey);
+            } else {
+                next.add(groupKey);
+            }
+            return next;
+        });
+    };
 
     const setLessonPlanFeedback = (lessonPlanId: number, feedback: RowActionFeedback | null) => {
         setRowActionFeedback((current) => {
@@ -844,10 +909,24 @@ export function LessonPlansPage() {
         }
     };
 
-    const renderLessonPlanCard = (lessonPlan: LessonPlan) => {
+    const renderLessonPlanCard = (lessonPlan: LessonPlan, compactContext = false) => {
         const lessonSummary = getLessonSummary(lessonPlan);
         const feedback = rowActionFeedback[lessonPlan.id];
         const generationBadge = getLessonGenerationBadge(lessonPlan);
+        const metaItems: Array<{ label: string; value: ReactNode }> = [
+            { label: 'Status', value: <LessonPlanStatusBadge status={lessonPlan.status} size="sm" /> },
+            { label: archiveMode ? 'Stored date' : 'Lesson date', value: formatDate(getLessonDate(lessonPlan)) },
+        ];
+        if (!compactContext) {
+            metaItems.push(
+                { label: 'Cohort', value: lessonPlan.cohort_name || '-' },
+                { label: 'Subject', value: lessonPlan.subject_name || '-' },
+            );
+        }
+        if (!archiveMode && (!compactContext || showInstitutionSupervision)) {
+            metaItems.push({ label: 'Teacher', value: teacherLabel(lessonPlan) });
+        }
+        metaItems.push({ label: 'Updated', value: formatUpdatedAt(lessonPlan.updated_at) });
 
         return (
             <Card key={lessonPlan.id} className="p-4 sm:p-5">
@@ -887,34 +966,13 @@ export function LessonPlansPage() {
                     </div>
 
                     <dl className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-                        <LessonPlanMetaItem
-                            label="Status"
-                            value={<LessonPlanStatusBadge status={lessonPlan.status} size="sm" />}
-                        />
-                        <LessonPlanMetaItem
-                            label="Lesson Date"
-                            value={formatDate(getLessonDate(lessonPlan))}
-                        />
-                        <LessonPlanMetaItem
-                            label="Cohort"
-                            value={lessonPlan.cohort_name || '-'}
-                        />
-                        <LessonPlanMetaItem
-                            label="Subject"
-                            value={lessonPlan.subject_name || '-'}
-                        />
-                        <LessonPlanMetaItem
-                            label="Term"
-                            value={lessonPlan.term_name || '-'}
-                        />
-                        <LessonPlanMetaItem
-                            label="Teacher"
-                            value={teacherLabel(lessonPlan)}
-                        />
-                        <LessonPlanMetaItem
-                            label="Updated"
-                            value={formatUpdatedAt(lessonPlan.updated_at)}
-                        />
+                        {metaItems.map((item) => (
+                            <LessonPlanMetaItem
+                                key={item.label}
+                                label={item.label}
+                                value={item.value}
+                            />
+                        ))}
                     </dl>
 
                     <div className="space-y-3 xl:min-w-[12rem]">
@@ -935,6 +993,7 @@ export function LessonPlansPage() {
                             onRestore={(plan) => {
                                 void handleRowAction(plan, 'restored');
                             }}
+                            archiveOnly={archiveMode}
                             className="w-full xl:flex-col xl:items-stretch"
                             buttonClassName="w-full sm:w-auto xl:w-full"
                         />
@@ -978,7 +1037,9 @@ export function LessonPlansPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
-                        {effectiveMyTeachingMode ? 'Lesson Preparation' : 'Lesson Plans'}
+                        {archiveMode
+                            ? 'Archived lesson plans'
+                            : effectiveMyTeachingMode ? 'Lesson Preparation' : 'Lesson Plans'}
                     </h1>
                     <p className="mt-1 text-gray-600">{subtitle}</p>
                 </div>
@@ -991,29 +1052,45 @@ export function LessonPlansPage() {
                     </Link>
                 ) : null}
 
-                {canCreateLessonPlan && canCreateTeachingRecords && !newWorkUnavailable ? (
-                    <Link href={createLessonPlanHref}>
-                        <Button>
+                <div className="flex flex-wrap gap-2">
+                    {archiveMode ? (
+                        <Link href="/lesson-plans">
+                            <Button variant="secondary">
+                                Back to active preparation
+                            </Button>
+                        </Link>
+                    ) : (
+                        <Link href="/lesson-plans/archive">
+                            <Button variant="secondary">
+                                <Archive className="mr-2 h-4 w-4" />
+                                Archive
+                            </Button>
+                        </Link>
+                    )}
+                    {!archiveMode && canCreateLessonPlan && canCreateTeachingRecords && !newWorkUnavailable ? (
+                        <Link href={createLessonPlanHref}>
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                {createButtonLabel}
+                            </Button>
+                        </Link>
+                    ) : !archiveMode && newWorkUnavailable ? (
+                        <Button disabled>
+                            {newWorkUnavailableReason}
+                        </Button>
+                    ) : !archiveMode && supervisionOnlyAdmin && !isSelfManagedTeaching ? (
+                        <Link href="/admin/instructors">
+                            <Button variant="secondary">
+                                View instructor activity
+                            </Button>
+                        </Link>
+                    ) : !archiveMode ? (
+                        <Button disabled>
                             <Plus className="mr-2 h-4 w-4" />
                             {createButtonLabel}
                         </Button>
-                    </Link>
-                ) : newWorkUnavailable ? (
-                    <Button disabled>
-                        {newWorkUnavailableReason}
-                    </Button>
-                ) : supervisionOnlyAdmin && !isSelfManagedTeaching ? (
-                    <Link href="/admin/instructors">
-                        <Button variant="secondary">
-                            View instructor activity
-                        </Button>
-                    </Link>
-                ) : (
-                    <Button disabled>
-                        <Plus className="mr-2 h-4 w-4" />
-                        {createButtonLabel}
-                    </Button>
-                )}
+                    ) : null}
+                </div>
             </div>
 
             {!canCreateLessonPlan ? (
@@ -1025,7 +1102,7 @@ export function LessonPlansPage() {
                 />
             ) : null}
 
-            {showInstitutionSupervision ? (
+            {showInstitutionSupervision && !archiveMode ? (
                 <Card>
                     <div className="space-y-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1111,15 +1188,17 @@ export function LessonPlansPage() {
                         placeholder="Search lesson plans"
                     />
 
-                    <Select
-                        label="Status"
-                        value={statusFilter}
-                        onChange={(event) => setStatusFilter(event.target.value as LessonPlanStatus | '')}
-                        options={[
-                            { value: '', label: 'All statuses' },
-                            ...LESSON_PLAN_STATUS_OPTIONS,
-                        ]}
-                    />
+                    {!archiveMode ? (
+                        <Select
+                            label="Status"
+                            value={statusFilter}
+                            onChange={(event) => setStatusFilter(event.target.value as LessonPlanStatus | '')}
+                            options={[
+                                { value: '', label: 'All active statuses' },
+                                ...LESSON_PLAN_STATUS_OPTIONS.filter((option) => option.value !== 'ARCHIVED'),
+                            ]}
+                        />
+                    ) : null}
 
                     <Select
                         label="Term"
@@ -1246,36 +1325,55 @@ export function LessonPlansPage() {
                 </Card>
             ) : useGroupedLessonPlanView ? (
                 <div className="space-y-6 pb-24">
-                    {groupedLessonPlans.map((group) => (
-                        <section key={group.key} className="space-y-4">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                                <div>
-                                    <h2 className="text-lg font-semibold text-gray-900">{group.label}</h2>
-                                    <p className="text-sm text-gray-500">{group.description}</p>
-                                </div>
-                                <Badge variant="blue" size="sm">
-                                    {group.itemCount} lesson plan{group.itemCount === 1 ? '' : 's'}
-                                </Badge>
-                            </div>
+                    {groupedLessonPlans.map((group) => {
+                        const isOpen = openGroupKeys.has(group.key);
+                        return (
+                            <section key={group.key} className="rounded-xl border border-gray-200 bg-white">
+                                <button
+                                    type="button"
+                                    className="flex w-full flex-col gap-3 px-4 py-4 text-left sm:flex-row sm:items-center sm:justify-between"
+                                    aria-expanded={isOpen}
+                                    onClick={() => toggleGroup(group.key)}
+                                >
+                                    <span className="flex min-w-0 items-start gap-3">
+                                        {isOpen ? (
+                                            <ChevronDown className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" />
+                                        ) : (
+                                            <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" />
+                                        )}
+                                        <span className="min-w-0">
+                                            <span className="block text-lg font-semibold text-gray-900">{group.label}</span>
+                                            <span className="block text-sm text-gray-500">{group.description}</span>
+                                        </span>
+                                    </span>
+                                    <Badge variant="blue" size="sm">
+                                        {group.itemCount} lesson plan{group.itemCount === 1 ? '' : 's'}
+                                    </Badge>
+                                </button>
 
-                            {group.sections.map((section) => (
-                                <div key={section.key} className="space-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-4">
-                                    <div className="space-y-1">
-                                        <h3 className="text-sm font-semibold text-gray-900">{section.label}</h3>
-                                        <p className="text-sm text-gray-500">{section.description}</p>
-                                    </div>
+                                {isOpen ? (
+                                    <div className="space-y-4 border-t border-gray-100 p-4">
+                                        {group.sections.map((section) => (
+                                            <div key={section.key} className="space-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+                                                <div className="space-y-1">
+                                                    <h3 className="text-sm font-semibold text-gray-900">{section.label}</h3>
+                                                    <p className="text-sm text-gray-500">{section.description}</p>
+                                                </div>
 
-                                    <div className="space-y-4">
-                                        {section.items.map(renderLessonPlanCard)}
+                                                <div className="space-y-4">
+                                                    {section.items.map((item) => renderLessonPlanCard(item, true))}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
-                            ))}
-                        </section>
-                    ))}
+                                ) : null}
+                            </section>
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="space-y-4 pb-24">
-                    {filteredLessonPlans.map(renderLessonPlanCard)}
+                    {filteredLessonPlans.map((item) => renderLessonPlanCard(item, false))}
                 </div>
             )}
 

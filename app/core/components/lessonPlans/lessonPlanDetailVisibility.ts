@@ -12,12 +12,17 @@ export function getLessonPlanDetailInitialSectionState() {
 
 export function shouldShowLearnerTaskSection({
   status,
-  canShowLearnerTaskAction,
+  canPrepareLearnerTask,
+  hasPreparedAssignment = false,
 }: {
   status: LessonPlanStatus | null | undefined;
-  canShowLearnerTaskAction: boolean;
+  canPrepareLearnerTask: boolean;
+  hasPreparedAssignment?: boolean;
 }): boolean {
-  return status !== 'USED' && status !== 'ARCHIVED' && canShowLearnerTaskAction;
+  if (status === 'USED' || status === 'ARCHIVED') {
+    return hasPreparedAssignment;
+  }
+  return canPrepareLearnerTask || hasPreparedAssignment;
 }
 
 export function shouldOpenLearnerTaskFromQuery({

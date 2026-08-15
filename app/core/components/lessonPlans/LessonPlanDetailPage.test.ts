@@ -55,10 +55,12 @@ describe('LessonPlanDetailPage scheme desire path', () => {
   });
 
   it('keeps lesson content prominent and exception requests out of normal lifecycle states', () => {
-    expect(source).toContain('Lesson plan content');
-    expect(source).toContain('Planning sources');
+    expect(source).toContain('Lesson plan');
+    expect(source).toContain('Planning basis');
     expect(source).toContain('Optional follow-up');
+    expect(source).toContain('canPrepareLearnerTask');
     expect(source).not.toContain('Request schedule exception');
     expect(source).not.toContain('Request edit');
+    expect(source).not.toContain('Planning metadata');
   });
 });
