@@ -8,6 +8,10 @@ import {
 } from './CreateSchemePage';
 import {
   buildDefaultSchemeTitle,
+  buildSchemeTermCalendarSetupHref,
+  buildSchemeWeeksFromTermCalendar,
+  resolveSchemeTermCalendarState,
+  summarizeSchemeWeeks,
   validateCreateSchemeStep,
   type CreateSchemeStepValidationInput,
 } from '@/app/plugins/schemes/lib/workflow';
@@ -58,6 +62,130 @@ describe('create scheme term calendar setup copy', () => {
     expect(source).toContain('Generation already queued.');
     expect(source).toContain('generated.result_payload.scheme');
     expect(source).toContain('Scheme generation failed. Please retry.');
+  });
+});
+
+describe('create scheme calendar state projection', () => {
+  it('shows one incomplete calendar state and a configuration action only for SETUP_OPEN', () => {
+    const state = resolveSchemeTermCalendarState({
+      selectedTerm: incompleteTerm,
+      canManageCalendar: true,
+      selfManagedTeachingAdmin: true,
+      setupMessage: SELF_MANAGED_TERM_SETUP_INCOMPLETE_MESSAGE,
+    });
+
+    expect(state).toMatchObject({
+      state: 'INCOMPLETE',
+      showConfigurationAction: true,
+      title: 'Term calendar setup incomplete',
+      actionLabel: 'Review term calendar',
+    });
+    expect(source).toContain('resolveSchemeTermCalendarState');
+    expect(source).toContain('termCalendarState.showConfigurationAction');
+    expect(source).not.toContain("selfManagedTeachingAdmin ? 'Your term calendar' : 'Admin-managed term calendar'");
+  });
+
+  it('treats SETUP_LOCKED as ready and never asks for review', () => {
+    const state = resolveSchemeTermCalendarState({
+      selectedTerm: completeTerm,
+      canManageCalendar: true,
+      selfManagedTeachingAdmin: true,
+      setupMessage: null,
+    });
+
+    expect(state).toMatchObject({
+      state: 'READY',
+      showConfigurationAction: false,
+      title: 'Term calendar ready',
+    });
+    expect(getSchemeTermCalendarSetupMessage({
+      selectedTerm: completeTerm,
+      selfManagedTeachingAdmin: true,
+      isTeachingActor: true,
+    })).toBeNull();
+  });
+
+  it('keeps HISTORICAL_LOCKED read-only with no configuration action', () => {
+    const state = resolveSchemeTermCalendarState({
+      selectedTerm: historicalTerm,
+      canManageCalendar: true,
+      selfManagedTeachingAdmin: false,
+      setupMessage: 'Historical terms are locked.',
+    });
+
+    expect(state).toMatchObject({
+      state: 'HISTORICAL',
+      showConfigurationAction: false,
+      title: 'Term calendar is historical',
+      message: "This term's calendar is locked and cannot be changed.",
+    });
+  });
+
+  it('allows Step 2 for a SETUP_LOCKED term even when there are zero calendar events', () => {
+    const derivedWeeks = buildSchemeWeeksFromTermCalendar(
+      {
+        start_date: '2026-07-01',
+        end_date: '2026-07-28',
+        week_count: 4,
+      },
+      [],
+    );
+    const weekSummary = summarizeSchemeWeeks(derivedWeeks);
+
+    expect(derivedWeeks).toHaveLength(4);
+    expect(weekSummary.activeLearningWeekCount).toBe(4);
+    expect(validateCreateSchemeStep({
+      ...validStepInput,
+      step: 2,
+      termCalendarIsComplete: completeTerm.configuration_state === 'SETUP_LOCKED',
+      activeLearningWeekCount: weekSummary.activeLearningWeekCount,
+    })).toEqual({ valid: true });
+  });
+
+  it('treats a reopened SETUP_OPEN term as incomplete again', () => {
+    expect(resolveSchemeTermCalendarState({
+      selectedTerm: incompleteTerm,
+      canManageCalendar: true,
+      selfManagedTeachingAdmin: false,
+      setupMessage: 'Complete the term calendar in term setup before generating schemes of work.',
+    })).toMatchObject({
+      state: 'INCOMPLETE',
+      showConfigurationAction: true,
+      actionLabel: 'Edit term calendar',
+    });
+  });
+
+  it('builds a safe calendar setup return link with exact scheme context preserved', () => {
+    const href = buildSchemeTermCalendarSetupHref({
+      selectedTermId: 7,
+      currentSchemeHref:
+        '/schemes/new?cohort_subject=28&returnTo=%2Freports%2Fsubjects%2F4%3Fterm%3D7&source=teacher',
+    });
+    const url = new URL(href, 'http://localhost');
+
+    expect(url.pathname).toBe('/academic/terms');
+    expect(url.searchParams.get('term')).toBe('7');
+    expect(url.searchParams.get('returnTo')).toBe(
+      '/schemes/new?cohort_subject=28&returnTo=%2Freports%2Fsubjects%2F4%3Fterm%3D7&source=teacher',
+    );
+  });
+
+  it('rejects unsafe nested returnTo while still navigating to term setup', () => {
+    const href = buildSchemeTermCalendarSetupHref({
+      selectedTermId: 7,
+      currentSchemeHref: '/schemes/new?cohort_subject=28&returnTo=https%3A%2F%2Fevil.example',
+    });
+    const url = new URL(href, 'http://localhost');
+
+    expect(url.pathname).toBe('/academic/terms');
+    expect(url.searchParams.get('term')).toBe('7');
+    expect(url.searchParams.get('returnTo')).toBe('/schemes/new');
+  });
+
+  it('refetches authoritative academic lifecycle state when the wizard mounts or resumes', () => {
+    expect(source).toContain("refetchOnMount: 'always'");
+    expect(source).toContain("termCalendarIsComplete: selectedTerm?.configuration_state === 'SETUP_LOCKED'");
+    expect(source).not.toContain('termCalendarEvents.length');
   });
 });
 
@@ -120,6 +248,20 @@ describe('create scheme wizard validation targets', () => {
       step: 2,
       target: 'term-calendar',
       message: SELF_MANAGED_TERM_SETUP_INCOMPLETE_MESSAGE,
+    });
+  });
+
+  it('Step 2 complete calendar proceeds to later validation fields', () => {
+    expect(validateCreateSchemeStep({
+      ...validStepInput,
+      step: 2,
+      termCalendarIsComplete: true,
+      weeklyTeachingLoadConfirmed: false,
+    })).toEqual({
+      valid: false,
+      step: 2,
+      target: 'weekly-load-confirmation',
+      message: 'Confirm the weekly teaching periods for this subject before continuing.',
     });
   });
 

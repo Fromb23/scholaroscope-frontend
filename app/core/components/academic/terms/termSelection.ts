@@ -73,6 +73,19 @@ export function resolveSelectedTermId(
     return resolveDefaultSelectedTerm(terms)?.id ?? null;
 }
 
+export function resolveRequestedTermSelectionId(
+    requestedTermId: number | null | undefined,
+    terms: Term[],
+): number | null {
+    if (!requestedTermId) {
+        return null;
+    }
+
+    return terms.some((term) => term.id === requestedTermId)
+        ? requestedTermId
+        : null;
+}
+
 export function resolveAvailableWorkTerms(terms: Term[]): Term[] {
     return terms;
 }

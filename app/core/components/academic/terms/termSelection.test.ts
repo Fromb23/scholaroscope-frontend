@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Term } from '@/app/core/types/academic';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import {
     canCreateWorkForTerm,
     canAddTermCalendarEvent,
@@ -11,6 +12,7 @@ import {
     canEditTermCalendar,
     canEditTermCalendarEvent,
     canReopenTermCalendar,
+    resolveRequestedTermSelectionId,
     resolveExplicitWorkTermId,
     resolveAvailableWorkTerms,
     resolveDefaultSelectedTerm,
@@ -183,6 +185,23 @@ describe('academic term default selection', () => {
         });
 
         expect(resolveSelectedTermId(2, [nextYearTerm2, nextYearTerm1])).toBe(11);
+    });
+
+    it('selects a requested term only when it exists in the visible term list', () => {
+        const currentYearTerm = buildTerm({
+            id: 7,
+            academic_year: 2026,
+            academic_year_name: '2026',
+        });
+        const otherYearTerm = buildTerm({
+            id: 8,
+            academic_year: 2027,
+            academic_year_name: '2027',
+        });
+
+        expect(resolveRequestedTermSelectionId(7, [currentYearTerm])).toBe(7);
+        expect(resolveRequestedTermSelectionId(8, [currentYearTerm])).toBeNull();
+        expect(resolveRequestedTermSelectionId(null, [currentYearTerm, otherYearTerm])).toBeNull();
     });
 });
 
@@ -581,5 +600,48 @@ describe('academic term calendar access', () => {
         expect(canEditBlock).not.toContain('isTermPast');
         expect(canEditBlock).not.toContain('is_calendar_setup_complete');
         expect(canEditBlock).not.toContain('term.actions');
+    });
+
+    it('wires workflow return behavior only to successful calendar completion', () => {
+        const termsPage = source('app/core/components/academic/terms/TermsPage.tsx');
+        const completeBlock = termsPage.slice(
+            termsPage.indexOf('const handleCompleteCalendarSetup'),
+            termsPage.indexOf('const handleReopenCalendarSetup'),
+        );
+        const saveEventBlock = termsPage.slice(
+            termsPage.indexOf('const handleSaveCalendarEvent'),
+            termsPage.indexOf('const handleDeleteEvent'),
+        );
+        const deleteEventBlock = termsPage.slice(
+            termsPage.indexOf('const handleDeleteEvent'),
+            termsPage.indexOf('const handleCompleteCalendarSetup'),
+        );
+        const reopenBlock = termsPage.slice(
+            termsPage.indexOf('const handleReopenCalendarSetup'),
+            termsPage.indexOf('if (setupMode && setupStatusQuery.isLoading'),
+        );
+
+        expect(termsPage).toContain('parseAppDestination(searchParams.get(\'returnTo\'))');
+        expect(termsPage).toContain("parsePositiveIntegerParam(searchParams.get('term'))");
+        expect(termsPage).toContain('resolveRequestedTermSelectionId(requestedTermId, visibleTerms)');
+        expect(termsPage).toContain("workflowReturnTo ? 'Complete Calendar and Return' : 'Mark Setup Complete'");
+        expect(completeBlock).toContain("updated.configuration_state === 'SETUP_LOCKED' && workflowReturnTo");
+        expect(completeBlock).toContain("router.push(workflowReturnTo)");
+        expect(completeBlock).toContain("queryKey: ['academic', 'current-context']");
+        expect(saveEventBlock).not.toContain('router.push');
+        expect(deleteEventBlock).not.toContain('router.push');
+        expect(reopenBlock).not.toContain('router.push(workflowReturnTo)');
+    });
+
+    it('keeps direct /academic/terms usage additive while accepting only safe workflow returns', () => {
+        const termsPage = source('app/core/components/academic/terms/TermsPage.tsx');
+
+        expect(parseAppDestination('/schemes/new?cohort_subject=28&returnTo=%2Fschemes')).toBe(
+            '/schemes/new?cohort_subject=28&returnTo=%2Fschemes',
+        );
+        expect(parseAppDestination('https://evil.example/schemes/new')).toBeNull();
+        expect(parseAppDestination('/schemes/new?returnTo=https%3A%2F%2Fevil.example')).toBeNull();
+        expect(termsPage).toContain("const setupMode = searchParams.get('setup') === '1';");
+        expect(termsPage).toContain('workflowReturnTo ? \'Complete Calendar and Return\' : \'Mark Setup Complete\'');
     });
 });

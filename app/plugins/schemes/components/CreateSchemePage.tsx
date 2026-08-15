@@ -4,7 +4,7 @@ import { resolveErrorMessage } from '@/app/core/errors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { parseAppDestination } from '@/app/core/auth/navigation';
 import {
   ArrowLeft,
@@ -38,11 +38,13 @@ import type {
 } from '@/app/core/types/schemes';
 import {
   buildDefaultSchemeTitle,
+  buildSchemeTermCalendarSetupHref,
   buildSchemeWeeksFromTermCalendar,
   calculateTermWeekCount,
   flattenSubjectStrands,
   formatDateRange,
   getSchemeWeekTypeLabel,
+  resolveSchemeTermCalendarState,
   summarizeSchemeWeeks,
   validateCreateSchemeStep,
   type CreateSchemeStep,
@@ -178,6 +180,7 @@ function focusValidationTarget(target: CreateSchemeValidationTarget) {
 
 export function CreateSchemePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { activeOperatingContext, activeOrg, capabilities, user } = useAuth();
   const teachingSurface = activeOperatingContext === 'MY_TEACHING' && Boolean(capabilities.can_teach);
@@ -459,6 +462,7 @@ export function CreateSchemePage() {
   } = useAcademicLifecycleContext({
     cohortSubjectId: resolvedSelectedCohortSubjectId,
     enabled: Boolean(resolvedSelectedCohortSubjectId),
+    refetchOnMount: 'always',
   });
 
   const resolvedSelectedSubjectId =
@@ -622,8 +626,27 @@ export function CreateSchemePage() {
       isTeachingActor,
     });
   }, [isTeachingActor, selectedTerm, selfManagedTeachingAdmin]);
-  const canReviewTermCalendar = selfManagedTeachingAdmin || !isTeachingActor;
-  const termCalendarActionLabel = selfManagedTeachingAdmin ? 'Review term calendar' : 'Open term setup';
+  const canManageCalendar = selfManagedTeachingAdmin || !isTeachingActor;
+  const termCalendarState = useMemo(() => (
+    selectedTerm
+      ? resolveSchemeTermCalendarState({
+          selectedTerm,
+          canManageCalendar,
+          selfManagedTeachingAdmin,
+          setupMessage: termCalendarSetupMessage,
+        })
+      : null
+  ), [canManageCalendar, selectedTerm, selfManagedTeachingAdmin, termCalendarSetupMessage]);
+  const currentSchemeCreationHref = useMemo(() => {
+    const query = searchParams.toString();
+    return `${pathname || '/schemes/new'}${query ? `?${query}` : ''}`;
+  }, [pathname, searchParams]);
+  const termCalendarSetupHref = useMemo(() => (
+    buildSchemeTermCalendarSetupHref({
+      currentSchemeHref: currentSchemeCreationHref,
+      selectedTermId: selectedTerm?.id ?? null,
+    })
+  ), [currentSchemeCreationHref, selectedTerm?.id]);
 
   const lessonsPerWeekValue = useMemo(
     () => parseIntegerInput(lessonsPerWeek),
@@ -1266,72 +1289,50 @@ export function CreateSchemePage() {
                 </div>
               </div>
 
-                <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-3">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                    <div>
-                      <p className="font-medium">
-                        {selfManagedTeachingAdmin ? 'Your term calendar' : 'Admin-managed term calendar'}
-                      </p>
-                      <p className="mt-1">
-                        {selfManagedTeachingAdmin
-                          ? 'Review term calendar events before generating schemes so breaks, exams, and holidays are reflected correctly.'
-                          : isTeachingActor
-                            ? 'Calendar weeks are locked during scheme generation so every teacher in the term uses the same break and exam weeks.'
-                          : 'Edit term calendar events in academic term setup before generating schemes for this term.'}
-                      </p>
-                    </div>
-                  </div>
-                  {canReviewTermCalendar ? (
-                    <Link href="/academic/terms">
-                      <Button type="button" variant="secondary" size="sm">
-                        {selfManagedTeachingAdmin ? 'Review term calendar' : 'Edit term calendar'}
-                      </Button>
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-
-              {termCalendarSetupMessage ? (
+              {termCalendarState ? (
                 <div
                   id={CREATE_SCHEME_TARGET_ELEMENT_IDS['term-calendar']}
                   tabIndex={-1}
                   aria-describedby={stepError?.target === 'term-calendar' ? STEP_ERROR_ID : undefined}
-                  className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900 outline-none"
+                  className={`rounded-xl border px-4 py-4 text-sm outline-none ${
+                    termCalendarState.state === 'READY'
+                      ? 'border-green-200 bg-green-50 text-green-900'
+                      : termCalendarState.state === 'HISTORICAL'
+                        ? 'theme-border bg-gray-50 theme-text'
+                        : 'border-amber-200 bg-amber-50 text-amber-900'
+                  }`}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-3">
-                      <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                      {termCalendarState.state === 'READY' ? (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                      ) : (
+                        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                      )}
                       <div>
-                        <p className="font-medium">Term calendar setup incomplete</p>
-                        <p className="mt-1">{termCalendarSetupMessage}</p>
+                        <p className="font-medium">
+                          {termCalendarState.state === 'READY' ? (
+                            <>
+                              <span aria-hidden="true">✓ </span>
+                              {termCalendarState.title}
+                            </>
+                          ) : (
+                            termCalendarState.title
+                          )}
+                        </p>
+                        <p className="mt-1">{termCalendarState.message}</p>
                       </div>
                     </div>
-                    {canReviewTermCalendar ? (
-                      <Link href="/academic/terms">
+                    {termCalendarState.showConfigurationAction ? (
+                      <Link href={termCalendarSetupHref}>
                         <Button type="button" variant="secondary" size="sm">
-                          {termCalendarActionLabel}
+                          {termCalendarState.actionLabel}
                         </Button>
                       </Link>
                     ) : null}
                   </div>
                 </div>
-              ) : (
-                <div
-                  id={CREATE_SCHEME_TARGET_ELEMENT_IDS['term-calendar']}
-                  tabIndex={-1}
-                  className="rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-900 outline-none"
-                >
-                  <div className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                    <div>
-                      <p className="font-medium">Term calendar setup complete</p>
-                      <p className="mt-1">Schemes can now be generated for this term.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              ) : null}
 
               {termCalendarError ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-900">

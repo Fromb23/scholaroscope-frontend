@@ -61,6 +61,7 @@ export function useAcademicLifecycleContext(options: {
   curriculumId?: number | null;
   cohortId?: number | null;
   cohortSubjectId?: number | null;
+  refetchOnMount?: boolean | 'always';
 } = {}) {
   const { organizationId } = useOrganizationContext();
   const enabled = options.enabled ?? true;
@@ -88,6 +89,7 @@ export function useAcademicLifecycleContext(options: {
       }
     },
     enabled,
+    refetchOnMount: options.refetchOnMount,
     staleTime: 60_000,
   });
 }

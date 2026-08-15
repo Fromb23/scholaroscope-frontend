@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     AlertTriangle,
     Calendar,
@@ -39,6 +40,7 @@ import {
 } from '@/app/core/components/academic/TermComponents';
 import type { TermFormState } from '@/app/core/components/academic/TermComponents';
 import { useAcademicYears, useTermCalendarEvents, useTerms } from '@/app/core/hooks/useAcademic';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { useWorkspaceSubscriptionSummary } from '@/app/core/hooks/useSubscriptions';
 import {
@@ -52,9 +54,11 @@ import {
     canEditTermCalendarEvent,
     canReopenTermCalendar,
     isTermDetailLocked,
+    resolveRequestedTermSelectionId,
     resolveSelectedTermId,
     termHasHistoricalLifecycle,
 } from '@/app/core/components/academic/terms/termSelection';
+import { academicKeys } from '@/app/core/lib/queryKeys';
 import type {
     Term,
     TermCalendarEvent,
@@ -94,6 +98,14 @@ const TERM_CONFIGURATION_LOCK_ERROR_CODES = new Set([
     'TERM_DELETE_BLOCKED_BY_ACADEMIC_RECORDS',
     'TERM_SETUP_REOPEN_NOT_ALLOWED',
 ]);
+
+function parsePositiveIntegerParam(value: string | null): number | null {
+    if (!value) {
+        return null;
+    }
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
 function emptyTermCalendarEventForm(term: Term | null): TermCalendarEventFormState {
     return {
@@ -376,8 +388,17 @@ function TermCalendarEventModal({
 export function TermsPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const queryClient = useQueryClient();
     const setupMode = searchParams.get('setup') === '1';
     const blockedNotice = searchParams.get('blocked') === '1';
+    const workflowReturnTo = useMemo(
+        () => parseAppDestination(searchParams.get('returnTo')),
+        [searchParams],
+    );
+    const requestedTermId = useMemo(
+        () => parsePositiveIntegerParam(searchParams.get('term')),
+        [searchParams],
+    );
     const { user, capabilities } = useAuth();
     const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const subscriptionSummaryQuery = useWorkspaceSubscriptionSummary(undefined, { enabled: Boolean(user) });
@@ -424,10 +445,11 @@ export function TermsPage() {
     );
 
     useEffect(() => {
+        const requestedSelection = resolveRequestedTermSelectionId(requestedTermId, visibleTerms);
         setSelectedTermId((currentSelectedTermId) => (
-            resolveSelectedTermId(currentSelectedTermId, visibleTerms)
+            requestedSelection ?? resolveSelectedTermId(currentSelectedTermId, visibleTerms)
         ));
-    }, [visibleTerms]);
+    }, [requestedTermId, visibleTerms]);
 
     const selectedYear = academicYears.find((year) => year.id === selectedYearId);
     const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
@@ -690,6 +712,11 @@ export function TermsPage() {
             const updated = await completeCalendarSetup(selectedTerm.id);
             setSelectedTermId(updated.id);
             await refetchEvents();
+            if (updated.configuration_state === 'SETUP_LOCKED' && workflowReturnTo) {
+                await queryClient.invalidateQueries({ queryKey: ['academic', 'current-context'] });
+                await queryClient.invalidateQueries({ queryKey: academicKeys.terms.all });
+                router.push(workflowReturnTo);
+            }
         } catch (err) {
             const recovered = await recoverFromConfigurationLockError(
                 err as ApiError & { code?: string | null },
@@ -717,6 +744,7 @@ export function TermsPage() {
             const updated = await reopenCalendarSetup(selectedTerm.id);
             setSelectedTermId(updated.id);
             await refetchEvents();
+            await queryClient.invalidateQueries({ queryKey: ['academic', 'current-context'] });
         } catch (err) {
             const recovered = await recoverFromConfigurationLockError(
                 err as ApiError & { code?: string | null },
@@ -946,7 +974,7 @@ export function TermsPage() {
                                     {calendarCanComplete ? (
                                         <Button onClick={handleCompleteCalendarSetup}>
                                             <CheckCircle2 className="h-4 w-4" />
-                                            Mark Setup Complete
+                                            {workflowReturnTo ? 'Complete Calendar and Return' : 'Mark Setup Complete'}
                                         </Button>
                                     ) : null}
                                 </div>

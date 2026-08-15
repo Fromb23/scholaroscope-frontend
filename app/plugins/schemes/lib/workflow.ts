@@ -1,5 +1,6 @@
 import type { Term, TermCalendarEvent, TermCalendarEventType } from '@/app/core/types/academic';
 import type { SchemeSubjectStrandOption, SchemeWeekType } from '@/app/core/types/schemes';
+import { parseAppDestination } from '@/app/core/auth/navigation';
 
 export interface FlattenedSubStrandOption {
     strandId: number;
@@ -20,6 +21,17 @@ export interface DerivedSchemeWeek {
 }
 
 export type CreateSchemeStep = 1 | 2 | 3 | 4;
+
+export type SchemeTermCalendarStateKind = 'INCOMPLETE' | 'READY' | 'HISTORICAL';
+
+export interface SchemeTermCalendarState {
+    state: SchemeTermCalendarStateKind;
+    canManage: boolean;
+    showConfigurationAction: boolean;
+    actionLabel: string;
+    title: string;
+    message: string;
+}
 
 export type CreateSchemeValidationTarget =
     | 'curriculum'
@@ -84,6 +96,62 @@ export interface DefaultSchemeTitleInput {
     levelLabel?: string | null;
     termName?: string | null;
     academicYearName?: string | null;
+}
+
+export function resolveSchemeTermCalendarState(params: {
+    selectedTerm: Pick<Term, 'configuration_state'>;
+    canManageCalendar: boolean;
+    selfManagedTeachingAdmin: boolean;
+    setupMessage: string | null;
+}): SchemeTermCalendarState {
+    const { selectedTerm, canManageCalendar, selfManagedTeachingAdmin, setupMessage } = params;
+
+    if (selectedTerm.configuration_state === 'HISTORICAL_LOCKED') {
+        return {
+            state: 'HISTORICAL',
+            canManage: canManageCalendar,
+            showConfigurationAction: false,
+            actionLabel: selfManagedTeachingAdmin ? 'Review term calendar' : 'Edit term calendar',
+            title: 'Term calendar is historical',
+            message: "This term's calendar is locked and cannot be changed.",
+        };
+    }
+
+    if (selectedTerm.configuration_state === 'SETUP_LOCKED') {
+        return {
+            state: 'READY',
+            canManage: canManageCalendar,
+            showConfigurationAction: false,
+            actionLabel: selfManagedTeachingAdmin ? 'Review term calendar' : 'Edit term calendar',
+            title: 'Term calendar ready',
+            message:
+                'The calendar is complete and will be used to calculate teaching weeks, exams, breaks, and holidays for this scheme.',
+        };
+    }
+
+    return {
+        state: 'INCOMPLETE',
+        canManage: canManageCalendar,
+        showConfigurationAction: canManageCalendar,
+        actionLabel: selfManagedTeachingAdmin ? 'Review term calendar' : 'Edit term calendar',
+        title: 'Term calendar setup incomplete',
+        message: setupMessage || 'Complete or review your term calendar before generating this scheme.',
+    };
+}
+
+export function buildSchemeTermCalendarSetupHref(params: {
+    currentSchemeHref: string;
+    selectedTermId?: number | null;
+}): string {
+    const safeReturnTo = parseAppDestination(params.currentSchemeHref) ?? '/schemes/new';
+    const query = new URLSearchParams();
+
+    if (params.selectedTermId) {
+        query.set('term', String(params.selectedTermId));
+    }
+    query.set('returnTo', safeReturnTo);
+
+    return `/academic/terms?${query.toString()}`;
 }
 
 const TERM_CALENDAR_EVENT_PRIORITY: Record<TermCalendarEventType, number> = {
