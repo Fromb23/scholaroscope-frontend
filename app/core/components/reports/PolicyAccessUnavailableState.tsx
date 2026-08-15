@@ -5,17 +5,17 @@ import { AlertCircle } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 
-interface PolicyAdminOnlyStateProps {
+interface PolicyAccessUnavailableStateProps {
     title: string;
 }
 
-export function PolicyAdminOnlyState({ title }: PolicyAdminOnlyStateProps) {
+export function PolicyAccessUnavailableState({ title }: PolicyAccessUnavailableStateProps) {
     return (
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
                 <p className="mt-1 text-gray-500">
-                    Policy authoring is managed by administrators.
+                    Policy configuration unavailable.
                 </p>
             </div>
 
@@ -25,11 +25,11 @@ export function PolicyAdminOnlyState({ title }: PolicyAdminOnlyStateProps) {
                     <div className="space-y-3">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900">
-                                Administrator access required
+                                Policy configuration unavailable
                             </h2>
                             <p className="mt-1 text-sm text-gray-600">
-                                Instructors can review resolved policy context inside assessment pages,
-                                but policy authoring and policy lists are restricted to administrators.
+                                This workspace or your current permissions do not allow policy
+                                configuration from this page.
                             </p>
                         </div>
 

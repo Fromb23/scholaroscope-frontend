@@ -9,7 +9,16 @@ export interface LearnerCreateHrefParams {
 export interface LearnerCreateReturnParams {
   returnTo?: string | null;
   cohortId?: number | null;
+  cohortSubjectId?: number | null;
   isSelfManagedTeachingWorkspace?: boolean;
+}
+
+export interface LearnerCreateNavigation {
+  returnTo: string | null;
+  backHref: string;
+  cancelHref: string;
+  successHref: string | null;
+  doneHref: string;
 }
 
 function isPositiveId(value?: number | null): value is number {
@@ -58,10 +67,19 @@ export function buildLearnerCreateHref({
 export function getLearnerCreateReturnTo({
   returnTo,
   cohortId,
+  cohortSubjectId,
   isSelfManagedTeachingWorkspace = false,
 }: LearnerCreateReturnParams): string | null {
   if (isSafeNextPath(returnTo)) {
     return returnTo;
+  }
+
+  if (
+    isSelfManagedTeachingWorkspace
+    && isPositiveId(cohortId)
+    && isPositiveId(cohortSubjectId)
+  ) {
+    return buildClassSubjectReturnTo(cohortId, cohortSubjectId);
   }
 
   if (isSelfManagedTeachingWorkspace && isPositiveId(cohortId)) {
@@ -69,4 +87,19 @@ export function getLearnerCreateReturnTo({
   }
 
   return null;
+}
+
+export function resolveLearnerCreateNavigation(
+  params: LearnerCreateReturnParams,
+): LearnerCreateNavigation {
+  const returnTo = getLearnerCreateReturnTo(params);
+  const fallbackHref = returnTo ?? '/learners';
+
+  return {
+    returnTo,
+    backHref: fallbackHref,
+    cancelHref: fallbackHref,
+    successHref: returnTo,
+    doneHref: fallbackHref,
+  };
 }

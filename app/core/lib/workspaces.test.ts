@@ -257,6 +257,25 @@ describe('workspace report-policy capabilities', () => {
       },
       authoringMode: 'CLASS_CONFIGURATION',
     })).toBe(true);
+
+    expect(canManageReportPolicyAuthoring({
+      user: policyUser,
+      capabilities: {
+        ...basePolicyCapabilities,
+        can_manage_report_policy: true,
+        report_policy_mode: 'CLASS_CONFIGURATION',
+        report_configuration: {
+          report_policy_available: true,
+          report_policy_mode: 'CLASS_CONFIGURATION',
+          report_computation_available: true,
+          report_computation_class_scoped_only: true,
+          subject_profile_authoring_allowed: false,
+          reporting_governance_routes_allowed: false,
+          allowed_policy_scopes: ['WORKSPACE_DEFAULT', 'COHORT', 'COHORT_SUBJECT'],
+        },
+      },
+      authoringMode: 'INSTITUTION_GOVERNANCE',
+    })).toBe(false);
   });
 
   it('allows institution policy governance only with governance-route capability', () => {

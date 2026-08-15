@@ -14,4 +14,16 @@ describe('CbcReportPoliciesPage foreground actions', () => {
     expect(pageSource).toContain('Review recommended fixes');
     expect(pageSource).not.toContain('recommended report setup fix');
   });
+
+  it('derives direct-route authoring mode from workspace capabilities instead of defaulting to governance', () => {
+    const pageSource = readFileSync(
+      join(process.cwd(), 'app/plugins/cbc/components/reportPolicies/CbcReportPoliciesPage.tsx'),
+      'utf8',
+    );
+
+    expect(pageSource).toContain('getReportPolicyAuthoringMode(capabilities)');
+    expect(pageSource).toContain('authoringMode ?? getReportPolicyAuthoringMode(capabilities)');
+    expect(pageSource).toContain('authoringMode: resolvedAuthoringMode');
+    expect(pageSource).not.toContain("authoringMode = 'INSTITUTION_GOVERNANCE'");
+  });
 });

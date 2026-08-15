@@ -120,4 +120,28 @@ describe('CBC report policy authoring access', () => {
             authoringMode: 'INSTITUTION_GOVERNANCE',
         })).toBe(true);
     });
+
+    it('denies institutional users without policy-management capability', () => {
+        expect(canManageCbcReportPolicyAuthoring({
+            user,
+            capabilities: {
+                ...baseCapabilities,
+                workspace_mode: 'INSTITUTION',
+                workspace_behavior: 'INSTITUTION',
+                can_teach: true,
+                can_manage_report_policy: false,
+                report_policy_mode: null,
+                report_configuration: {
+                    report_policy_available: false,
+                    report_policy_mode: null,
+                    report_computation_available: false,
+                    report_computation_class_scoped_only: false,
+                    subject_profile_authoring_allowed: false,
+                    reporting_governance_routes_allowed: false,
+                    allowed_policy_scopes: [],
+                },
+            },
+            authoringMode: 'INSTITUTION_GOVERNANCE',
+        })).toBe(false);
+    });
 });

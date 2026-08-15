@@ -10,8 +10,15 @@ const source = readFileSync(
 describe('new learner class-context save flow', () => {
   it('preselects cohort context and redirects to safe returnTo after create', () => {
     expect(source).toContain("searchParams.get('cohort')");
-    expect(source).toContain('getLearnerCreateReturnTo');
-    expect(source).toContain('router.push(returnAfterCreate)');
+    expect(source).toContain('resolveLearnerCreateNavigation');
+    expect(source).toContain('router.push(navigation.successHref)');
+  });
+
+  it('uses the resolved learner-create navigation for Back, Cancel, and done exits', () => {
+    expect(source).toContain('href={navigation.backHref}');
+    expect(source).toContain('href={navigation.cancelHref}');
+    expect(source).toContain('href={navigation.doneHref}');
+    expect(source).not.toContain('href="/learners"');
   });
 
   it('uses the existing subject enrollment API for subject-context creation', () => {

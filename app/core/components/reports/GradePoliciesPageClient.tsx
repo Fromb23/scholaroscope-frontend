@@ -29,7 +29,7 @@ import {
 import { GradePolicy } from '@/app/core/types/gradePolicy';
 import { resolveReportError, type AppError } from '@/app/core/errors';
 import { useAuth } from '@/app/context/AuthContext';
-import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import { PolicyAccessUnavailableState } from '@/app/core/components/reports/PolicyAccessUnavailableState';
 import { canManageInstitutionReportPolicy } from '@/app/core/components/reports/reportAccessPolicy';
 
 const CBC_REJECTION_MESSAGE = 'CBC uses CbcReportPolicy. Use CBC report policy endpoints.';
@@ -204,7 +204,7 @@ export function GradePoliciesPageClient() {
     };
 
     if (authLoading) return <LoadingSpinner message="Checking grade policy access..." />;
-    if (!canManagePolicies) return <PolicyAdminOnlyState title="Generic Grade Policies" />;
+    if (!canManagePolicies) return <PolicyAccessUnavailableState title="Generic Grade Policies" />;
     if (loading && !policies.length) return <LoadingSpinner message="Loading grade policies..." />;
 
     if (!genericSurfaceAvailable) {

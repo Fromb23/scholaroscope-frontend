@@ -22,7 +22,7 @@ import {
     buildCbcSubjectProfileOptions,
 } from '@/app/plugins/cbc/components/reportPolicies/policyScopeOptions';
 import { buildCbcPolicyRuleSummary } from '@/app/plugins/cbc/components/reportPolicies/policySummaries';
-import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import { PolicyAccessUnavailableState } from '@/app/core/components/reports/PolicyAccessUnavailableState';
 import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
 import {
     InactivePolicyNotice,
@@ -84,7 +84,7 @@ export function CbcReportPolicyDetailPage() {
     }
 
     if (!canManagePolicies) {
-        return <PolicyAdminOnlyState title="Report Policies" />;
+        return <PolicyAccessUnavailableState title="Report Policies" />;
     }
 
     if (loading) {

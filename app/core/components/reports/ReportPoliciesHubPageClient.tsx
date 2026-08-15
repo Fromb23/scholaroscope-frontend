@@ -12,7 +12,7 @@ import {
     getAvailablePolicySurfaces,
     type PolicySurfaceDefinition,
 } from '@/app/core/lib/policySurfaces';
-import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import { PolicyAccessUnavailableState } from '@/app/core/components/reports/PolicyAccessUnavailableState';
 import { useAuth } from '@/app/context/AuthContext';
 import { canManageInstitutionReportPolicy } from '@/app/core/components/reports/reportAccessPolicy';
 
@@ -44,7 +44,7 @@ export function ReportPoliciesHubPageClient() {
     }
 
     if (!canManagePolicies) {
-        return <PolicyAdminOnlyState title="Report Policies" />;
+        return <PolicyAccessUnavailableState title="Report Policies" />;
     }
 
     if (curriculaLoading || pluginsLoading) {

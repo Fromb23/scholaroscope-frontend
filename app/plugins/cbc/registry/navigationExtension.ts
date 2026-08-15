@@ -1,6 +1,7 @@
 import { Award, BarChart3, BookOpen, Target, TrendingUp } from 'lucide-react';
 import { registerPluginNavigationEntry } from '@/app/core/registry/pluginNavigation';
 import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
+import { getReportPolicyAuthoringMode } from '@/app/core/lib/workspaces';
 
 registerPluginNavigationEntry({
     key: 'cbc-admin-nav',
@@ -10,12 +11,19 @@ registerPluginNavigationEntry({
         if (!hasPlugin('cbc') && !hasCurriculumType('CBE')) {
             return null;
         }
+        const reportPolicyAuthoringMode = getReportPolicyAuthoringMode(capabilities);
         const cbcReportPolicyChildren = canManageCbcReportPolicyAuthoring({
             user,
             capabilities,
-            authoringMode: 'INSTITUTION_GOVERNANCE',
+            authoringMode: reportPolicyAuthoringMode,
         })
-            ? [{ name: 'Academic Policies', href: '/reports/policies/cbc', icon: Award }]
+            ? [{
+                name: reportPolicyAuthoringMode === 'INSTITUTION_GOVERNANCE'
+                    ? 'Academic Policies'
+                    : 'Report Setup',
+                href: '/reports/policies/cbc',
+                icon: Award,
+            }]
             : [];
 
         return {

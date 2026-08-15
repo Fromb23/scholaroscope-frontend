@@ -23,7 +23,7 @@ import {
 } from '@/app/core/forms';
 import { resolveLearnerError, type AppError } from '@/app/core/errors';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
-import { getLearnerCreateReturnTo } from '@/app/core/components/learners/learnerCreateNavigation';
+import { resolveLearnerCreateNavigation } from '@/app/core/components/learners/learnerCreateNavigation';
 
 const INITIAL_FORM_DATA = {
     admission_number: '',
@@ -106,9 +106,10 @@ export default function NewStudentPage() {
         orgType: activeOrg?.org_type,
         capabilities,
     });
-    const returnAfterCreate = getLearnerCreateReturnTo({
+    const navigation = resolveLearnerCreateNavigation({
         returnTo: searchParams.get('returnTo'),
         cohortId: requestedCohortId,
+        cohortSubjectId: requestedCohortSubjectId,
         isSelfManagedTeachingWorkspace: selfManagedTeachingWorkspace,
     });
     const [loading, setLoading] = useState(false);
@@ -188,8 +189,8 @@ export default function NewStudentPage() {
                 );
             }
 
-            if (returnAfterCreate) {
-                router.push(returnAfterCreate);
+            if (navigation.successHref) {
+                router.push(navigation.successHref);
                 return;
             }
 
@@ -220,10 +221,10 @@ export default function NewStudentPage() {
         return (
             <div className="mx-auto max-w-5xl space-y-6">
                 <div className="flex items-center gap-4">
-                    <Link href="/learners">
+                    <Link href={navigation.doneHref}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Learners
+                            {navigation.returnTo ? 'Back' : 'Back to Learners'}
                         </Button>
                     </Link>
                     <div>
@@ -311,7 +312,7 @@ export default function NewStudentPage() {
         <div className="mx-auto max-w-3xl space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Link href="/learners">
+                <Link href={navigation.backHref}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back
@@ -462,7 +463,7 @@ export default function NewStudentPage() {
                             <Save className="mr-2 h-4 w-4" />
                             {loading ? 'Creating...' : 'Create Learner'}
                         </Button>
-                        <Link href="/learners">
+                        <Link href={navigation.cancelHref}>
                             <Button type="button" variant="ghost">
                                 Cancel
                             </Button>

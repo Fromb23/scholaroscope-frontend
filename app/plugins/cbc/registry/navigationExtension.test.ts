@@ -57,6 +57,26 @@ const governanceCapabilities = {
     },
 } satisfies WorkspaceCapabilities;
 
+const classConfigurationCapabilities = {
+    ...baseCapabilities,
+    can_manage_report_policy: true,
+    report_policy_mode: 'CLASS_CONFIGURATION',
+    report_configuration: {
+        report_policy_available: true,
+        report_policy_mode: 'CLASS_CONFIGURATION',
+        report_computation_available: true,
+        report_computation_class_scoped_only: true,
+        subject_profile_authoring_allowed: false,
+        reporting_governance_routes_allowed: false,
+        allowed_policy_scopes: [
+            'WORKSPACE_DEFAULT',
+            'COHORT',
+            'COHORT_SUBJECT',
+            'TERM',
+        ],
+    },
+} satisfies WorkspaceCapabilities;
+
 function buildContext(capabilities: WorkspaceCapabilities): PluginNavigationContext {
     return {
         activeOperatingContext: 'WORKSPACE_MANAGEMENT',
@@ -94,6 +114,14 @@ describe('CBC plugin navigation capability boundaries', () => {
         const children = cbcManagementChildren(governanceCapabilities);
 
         expect(children.map((item) => item.name)).toContain('Academic Policies');
+        expect(children.map((item) => item.href)).toContain('/reports/policies/cbc');
+    });
+
+    it('shows class report setup instead of institution policy copy for class-configuration workspaces', () => {
+        const children = cbcManagementChildren(classConfigurationCapabilities);
+
+        expect(children.map((item) => item.name)).toContain('Report Setup');
+        expect(children.map((item) => item.name)).not.toContain('Academic Policies');
         expect(children.map((item) => item.href)).toContain('/reports/policies/cbc');
     });
 });

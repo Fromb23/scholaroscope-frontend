@@ -24,7 +24,7 @@ import {
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 import type { ApiError } from '@/app/core/types/errors';
 import { resolveErrorMessage } from '@/app/core/types/errors';
-import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import { PolicyAccessUnavailableState } from '@/app/core/components/reports/PolicyAccessUnavailableState';
 import {
     InactivePolicyNotice,
     PolicyHierarchyGuide,
@@ -180,7 +180,7 @@ export function GradePolicyDetailPage() {
     }
 
     if (!canManagePolicies) {
-        return <PolicyAdminOnlyState title="Generic Grade Policies" />;
+        return <PolicyAccessUnavailableState title="Generic Grade Policies" />;
     }
 
     if (loading) {

@@ -32,8 +32,9 @@ import {
 } from '@/app/plugins/cbc/components/reportPolicies/policyScopeOptions';
 import { useCbcReportPolicies } from '@/app/plugins/cbc/hooks/useCbcReportPolicies';
 import type { CbcReportPolicy, CbcReportPolicyFilters, PolicyAuthoringMode } from '@/app/plugins/cbc/types/reportPolicy';
-import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import { PolicyAccessUnavailableState } from '@/app/core/components/reports/PolicyAccessUnavailableState';
 import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
+import { getReportPolicyAuthoringMode } from '@/app/core/lib/workspaces';
 import type {
     ReportComputeEngineReadiness,
     ReportComputeReadiness,
@@ -93,7 +94,7 @@ function recordLabel(entry: Record<string, unknown>): string {
 }
 
 export function CbcReportPoliciesPage({
-    authoringMode = 'INSTITUTION_GOVERNANCE',
+    authoringMode,
     cohortId = null,
     lockedCohortSubjectId = null,
     lockedKernelCohortSubjectId = null,
@@ -104,10 +105,14 @@ export function CbcReportPoliciesPage({
     description,
 }: CbcReportPoliciesPageProps = {}) {
     const { user, capabilities, loading: authLoading } = useAuth();
+    const resolvedAuthoringMode = useMemo(
+        () => authoringMode ?? getReportPolicyAuthoringMode(capabilities),
+        [authoringMode, capabilities],
+    );
     const canManagePolicies = canManageCbcReportPolicyAuthoring({
         user,
         capabilities,
-        authoringMode,
+        authoringMode: resolvedAuthoringMode,
     });
     const [showModal, setShowModal] = useState(false);
     const [editingPolicy, setEditingPolicy] = useState<CbcReportPolicy | null>(null);
@@ -168,38 +173,38 @@ export function CbcReportPoliciesPage({
         )
     ), [cohortId, cohortSubjectOptions]);
     const filters = useMemo<CbcReportPolicyFilters | undefined>(() => {
-        if (authoringMode === 'WORKSPACE_POLICY') {
+        if (resolvedAuthoringMode === 'WORKSPACE_POLICY') {
             return { is_default: true };
         }
         return undefined;
-    }, [authoringMode]);
+    }, [resolvedAuthoringMode]);
     const { policies, loading, error, refetch, updatePolicy, deletePolicy } = useCbcReportPolicies(
         filters,
         {
             enabled: canManagePolicies
-                && (authoringMode !== 'CLASS_SUBJECT_SETUP' || Boolean(resolvedLockedCohortSubjectId)),
+                && (resolvedAuthoringMode !== 'CLASS_SUBJECT_SETUP' || Boolean(resolvedLockedCohortSubjectId)),
         },
     );
     const visiblePolicies = useMemo(() => {
-        if (authoringMode === 'CLASS_SUBJECT_SETUP') {
+        if (resolvedAuthoringMode === 'CLASS_SUBJECT_SETUP') {
             return policies.filter((policy) => (
                 policy.is_default
                 || policy.cbc_cohort_subject === resolvedLockedCohortSubjectId
                 || (policy.cohort === cohortId && policy.cbc_cohort_subject === null)
             ));
         }
-        if (authoringMode === 'CLASS_SETUP') {
+        if (resolvedAuthoringMode === 'CLASS_SETUP') {
             return policies.filter((policy) => (
                 policy.is_default
                 || policy.cohort === cohortId
                 || (policy.cbc_cohort_subject !== null && classCohortSubjectIds.has(policy.cbc_cohort_subject))
             ));
         }
-        if (authoringMode === 'WORKSPACE_POLICY') {
+        if (resolvedAuthoringMode === 'WORKSPACE_POLICY') {
             return policies.filter((policy) => policy.is_default);
         }
         return policies;
-    }, [authoringMode, classCohortSubjectIds, cohortId, policies, resolvedLockedCohortSubjectId]);
+    }, [resolvedAuthoringMode, classCohortSubjectIds, cohortId, policies, resolvedLockedCohortSubjectId]);
     const termOptions = useMemo(
         () => terms.map((term) => ({
             id: term.id,
@@ -215,7 +220,7 @@ export function CbcReportPoliciesPage({
         () => policies.find((policy) => policy.is_default) ?? null,
         [policies],
     );
-    const isInstitutionGovernance = authoringMode === 'INSTITUTION_GOVERNANCE';
+    const isInstitutionGovernance = resolvedAuthoringMode === 'INSTITUTION_GOVERNANCE';
     const cbcEngine = useMemo(() => (
         readiness?.engines.find((engine) => engine.key === 'cbc' || engine.engine === 'cbc') ?? null
     ), [readiness]);
@@ -365,7 +370,7 @@ export function CbcReportPoliciesPage({
     }
 
     if (!canManagePolicies) {
-        return <PolicyAdminOnlyState title={title ?? 'Report Policies'} />;
+        return <PolicyAccessUnavailableState title={title ?? 'Report Policies'} />;
     }
 
     if (loading && !policies.length) {
@@ -622,7 +627,7 @@ export function CbcReportPoliciesPage({
                             <CbcReportPoliciesTable
                                 policies={visiblePolicies}
                                 canManage={canManagePolicies}
-                                authoringMode={authoringMode}
+                                authoringMode={resolvedAuthoringMode}
                                 deletingId={deletingId}
                                 onCreate={() => handleOpen()}
                                 onEdit={handleOpen}
@@ -639,7 +644,7 @@ export function CbcReportPoliciesPage({
                 <CbcReportPoliciesTable
                     policies={visiblePolicies}
                     canManage={canManagePolicies}
-                    authoringMode={authoringMode}
+                    authoringMode={resolvedAuthoringMode}
                     deletingId={deletingId}
                     onCreate={() => handleOpen()}
                     onEdit={handleOpen}
@@ -656,7 +661,7 @@ export function CbcReportPoliciesPage({
                     editingPolicy={editingPolicy}
                     templatePolicy={templatePolicy}
                     defaultPolicy={editingPolicy ? null : modalDefaultPolicy}
-                    authoringMode={authoringMode}
+                    authoringMode={resolvedAuthoringMode}
                     lockedCohortId={cohortId}
                     lockedCohortSubjectId={resolvedLockedCohortSubjectId}
                     lockedCohortSubjectLabel={lockedCohortSubject?.label ?? null}
