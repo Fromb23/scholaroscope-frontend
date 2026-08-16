@@ -37,6 +37,28 @@ function revenueApplicable(orgType?: string | null): boolean {
     return !['PERSONAL', 'INDEPENDENT_TEACHER', 'HOMESCHOOL', 'LEARNER_WORKSPACE'].includes(orgType ?? '');
 }
 
+function requestedAuthorityMode(url: URL): 'teaching' | 'supervision' | null {
+    const value = url.searchParams.get('authority_mode');
+    return value === 'teaching' || value === 'supervision' ? value : null;
+}
+
+function isSupervisionReportRoute(context: RouteAccessContext): boolean {
+    return (
+        requestedAuthorityMode(context.url) === 'supervision'
+        && context.operatingContext === 'WORKSPACE_MANAGEMENT'
+        && hasCapabilityPermission(context.capabilities, 'reports.view')
+    );
+}
+
+function isTeachingReportRoute(context: RouteAccessContext): boolean {
+    const mode = requestedAuthorityMode(context.url);
+    return (
+        (mode === null || mode === 'teaching')
+        && context.operatingContext === 'MY_TEACHING'
+        && Boolean(context.capabilities?.can_teach)
+    );
+}
+
 export function isScopedInstructorAttendanceReport(path: string): boolean {
     const url = new URL(path, 'https://scholaroscope.local');
     const hasLearner = hasPositiveParam(url, 'student');
@@ -71,6 +93,26 @@ const kernelRouteRules: RouteAccessRule[] = [
     { pattern: /^\/learners\/[^/]+\/edit$/, requiredAnyPermission: ['learners.manage'] },
     { pattern: /^\/assessments\/new$/, requiredAnyPermission: ['assessments.create', 'assessments.manage'] },
     { pattern: /^\/assessments\/[^/]+\/edit$/, requiredAnyPermission: ['assessments.manage', 'assessments.review'] },
+    {
+        pattern: /^\/reports\/cohort-subjects\/\d+$/,
+        isAllowed: (context) => {
+            const mode = requestedAuthorityMode(context.url);
+            if (mode === 'supervision') return isSupervisionReportRoute(context);
+            if (mode === 'teaching') return isTeachingReportRoute(context);
+            return hasCapabilityPermission(context.capabilities, 'reports.view');
+        },
+    },
+    {
+        pattern: /^\/reports\/instructor\/cohort-subjects\/\d+$/,
+        isAllowed: (context) => (
+            isSupervisionReportRoute(context)
+            || isTeachingReportRoute(context)
+        ),
+    },
+    {
+        pattern: /^\/reports\/instructor\/cohort-subjects\/\d+\/class-report$/,
+        isAllowed: (context) => isTeachingReportRoute(context),
+    },
     { pattern: /^\/reports\/instructor(?:\/|$)/, requiredCapability: 'can_teach' },
     { pattern: /^\/reports\/learners\/[^/]+\/(subject|assessments|overview|assignments)$/, requiredAnyPermission: ['reports.view'] },
     { pattern: /^\/reports\/instructors(?:\/|$)/, requiredAnyPermission: ['reports.view'] },

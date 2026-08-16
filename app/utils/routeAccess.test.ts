@@ -63,6 +63,84 @@ describe('route access', () => {
     expect(canAccess(route, 'WORKSPACE_MANAGEMENT', capabilities())).toBe(false);
   });
 
+  it('allows teaching actors to open teaching cohort-subject compatibility reports', () => {
+    const teachingCaps = capabilities([], { can_teach: true });
+
+    expect(canAccess(
+      '/reports/instructor/cohort-subjects/3?authority_mode=teaching',
+      'MY_TEACHING',
+      teachingCaps,
+    )).toBe(true);
+    expect(canAccess(
+      '/reports/cohort-subjects/3?authority_mode=teaching',
+      'MY_TEACHING',
+      teachingCaps,
+    )).toBe(true);
+    expect(canAccess('/reports/instructor/cohort-subjects/3', 'MY_TEACHING', teachingCaps)).toBe(true);
+  });
+
+  it('denies teaching cohort-subject compatibility reports without can_teach', () => {
+    expect(canAccess(
+      '/reports/instructor/cohort-subjects/3?authority_mode=teaching',
+      'MY_TEACHING',
+      capabilities(['reports.view']),
+    )).toBe(false);
+  });
+
+  it('allows workspace managers with reports.view to open supervised cohort-subject routes', () => {
+    const reportCaps = capabilities(['reports.view']);
+
+    expect(canAccess(
+      '/reports/cohort-subjects/3?authority_mode=supervision',
+      'WORKSPACE_MANAGEMENT',
+      reportCaps,
+    )).toBe(true);
+    expect(canAccess(
+      '/reports/instructor/cohort-subjects/3?authority_mode=supervision',
+      'WORKSPACE_MANAGEMENT',
+      reportCaps,
+    )).toBe(true);
+  });
+
+  it('denies supervised cohort-subject routes without reports.view', () => {
+    expect(canAccess(
+      '/reports/cohort-subjects/3?authority_mode=supervision',
+      'WORKSPACE_MANAGEMENT',
+      capabilities([], { can_teach: true }),
+    )).toBe(false);
+    expect(canAccess(
+      '/reports/instructor/cohort-subjects/3?authority_mode=supervision',
+      'WORKSPACE_MANAGEMENT',
+      capabilities([], { can_teach: true }),
+    )).toBe(false);
+  });
+
+  it('does not grant supervision by appending authority_mode outside management context', () => {
+    expect(canAccess(
+      '/reports/instructor/cohort-subjects/3?authority_mode=supervision',
+      'MY_TEACHING',
+      capabilities(['reports.view'], { can_teach: true }),
+    )).toBe(false);
+    expect(canAccess(
+      '/reports/cohort-subjects/3?authority_mode=supervision',
+      'MY_TEACHING',
+      capabilities(['reports.view'], { can_teach: true }),
+    )).toBe(false);
+  });
+
+  it('keeps other instructor report paths teaching-only', () => {
+    expect(canAccess(
+      '/reports/instructor/attendance-risk?authority_mode=supervision',
+      'WORKSPACE_MANAGEMENT',
+      capabilities(['reports.view']),
+    )).toBe(false);
+    expect(canAccess(
+      '/reports/instructor/cohort-subjects/3/class-report?authority_mode=supervision',
+      'WORKSPACE_MANAGEMENT',
+      capabilities(['reports.view']),
+    )).toBe(false);
+  });
+
   it('requires workspace-scoped reports.compute for the compute route', () => {
     const computeCaps = capabilities(['reports.compute'], {
       report_configuration: {
