@@ -69,7 +69,9 @@ describe('SubjectCataloguePage priority and request workflow', () => {
 
     expect(source).toContain('Request curriculum import');
     expect(source).toContain('requestCurriculumImport');
-    expect(source).toContain('Request sent');
+    expect(source).toContain('canRequestCurriculumImport');
+    expect(source).toContain('curriculum.import.request');
+    expect(source).toContain('Import requested');
     expect(source).toContain('compareCatalogItemsByPriority');
     expect(isCurriculumImportRequested(catalogItem({
       metadata: { is_content_ready: false, curriculum_import_requested: true },

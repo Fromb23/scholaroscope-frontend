@@ -378,7 +378,19 @@ export interface MarkUsedPayload {
     reflection: string;
 }
 
-export type ReviewLessonPlanPayload = Record<string, never>;
+export type ReviewLessonPlanPayload = Pick<
+    LessonPlanUpdatePayload,
+    | 'title'
+    | 'objectives'
+    | 'prior_knowledge'
+    | 'learning_resources'
+    | 'introduction'
+    | 'lesson_development'
+    | 'learner_activities'
+    | 'assessment_strategy'
+    | 'differentiation'
+    | 'conclusion'
+>;
 
 export const LESSON_PLAN_STATUS_OPTIONS: Array<{
     value: LessonPlanStatus;

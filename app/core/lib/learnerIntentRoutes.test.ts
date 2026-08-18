@@ -20,7 +20,7 @@ describe('learner intent routes', () => {
       subjectId: 5,
       returnTo: '/sessions/22?section=attendance',
     })).toBe(
-      '/reports/learners/74/cohort-subjects/11?projection=attendance&term=3&cohort=9&subject=5&cohort_subject=11&student=74&origin=intent&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
+      '/reports/learners/74/cohort-subjects/11?projection=attendance&term=3&cohort=9&subject=5&origin=intent&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
     );
   });
 
@@ -42,7 +42,7 @@ describe('learner intent routes', () => {
       cohortId: 9,
       cohortSubjectId: 11,
     })).toBe(
-      '/reports/learners/74/cohort-subjects/11?projection=attendance&term=3&session=22&cohort=9&cohort_subject=11&student=74&origin=intent&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
+      '/reports/learners/74/cohort-subjects/11?projection=attendance&term=3&session=22&cohort=9&origin=intent&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
     );
   });
 
@@ -56,7 +56,7 @@ describe('learner intent routes', () => {
       sessionId: 22,
       returnTo: '/sessions/22?section=attendance',
     })).toBe(
-      '/reports/learners/74/cohort-subjects/11?projection=attendance&term=3&session=22&cohort=9&subject=5&cohort_subject=11&student=74&origin=intent&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
+      '/reports/learners/74/cohort-subjects/11?projection=attendance&term=3&session=22&cohort=9&subject=5&origin=intent&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
     );
   });
 

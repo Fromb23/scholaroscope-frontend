@@ -16,6 +16,7 @@ export function buildLearnerAssessmentReportHref(
     subjectId?: number | null;
     cohortId?: number | null;
     academicYearId?: number | null;
+    authorityMode?: 'teaching' | 'supervision' | null;
     returnTo?: string | null;
   },
 ): string {
@@ -30,6 +31,7 @@ export function buildLearnerAssessmentReportHref(
         academicYearId: options.academicYearId,
         subjectId: options.subjectId,
         cohortId: options.cohortId,
+        authorityMode: options.authorityMode,
         returnTo: options.returnTo,
         originKind: 'intent',
       },
@@ -57,6 +59,7 @@ export function buildLearnerAssignmentReportHref(
     highlightAssignment?: number | null;
     termId?: number | null;
     academicYearId?: number | null;
+    authorityMode?: 'teaching' | 'supervision' | null;
     returnTo?: string | null;
   },
 ): string {
@@ -69,6 +72,7 @@ export function buildLearnerAssignmentReportHref(
         assignment: options.highlightAssignment,
         term: options.termId,
         academicYearId: options.academicYearId,
+        authorityMode: options.authorityMode,
         returnTo: options.returnTo,
         originKind: 'intent',
       },
@@ -88,6 +92,11 @@ export function buildLearnerSubjectReportHref(
   learnerId: number,
   cohortSubjectId?: number | null,
   options?: {
+    projection?: 'overview' | 'attendance' | 'assessments-results' | 'assignments' | 'curriculum-progress' | null;
+    termId?: number | null;
+    academicYearId?: number | null;
+    authorityMode?: 'teaching' | 'supervision' | null;
+    highlightAssignment?: number | null;
     returnTo?: string | null;
   },
 ): string {
@@ -95,8 +104,15 @@ export function buildLearnerSubjectReportHref(
     return buildCanonicalLearnerSubjectReportHref(
       learnerId,
       cohortSubjectId,
-      'overview',
-      { returnTo: options?.returnTo, originKind: 'hierarchy' },
+      options?.projection ?? 'overview',
+      {
+        term: options?.termId,
+        academicYearId: options?.academicYearId,
+        authorityMode: options?.authorityMode,
+        highlightAssignment: options?.highlightAssignment,
+        returnTo: options?.returnTo,
+        originKind: 'hierarchy',
+      },
     );
   }
   return buildLearnerSubjectReportHrefFromNavigation(

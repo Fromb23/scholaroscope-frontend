@@ -12,6 +12,7 @@ import { useToast } from '@/app/components/ui/toast/useToast';
 import { ButtonPendingContent, CardSkeleton, SectionLoading } from '@/app/components/ui/loading';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useSubjectsPage } from '@/app/core/hooks/academic/useSubjectsPage';
+import { useAuth } from '@/app/context/AuthContext';
 import { subjectOfferingAPI } from '@/app/core/api/academic';
 import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
@@ -38,6 +39,7 @@ import {
   statusLabel,
   uniqueCatalogLevels,
 } from './subjectCatalogUtils';
+import { hasPermission } from '@/app/utils/permissions';
 
 type OfferingStateFilter =
   | 'all'
@@ -94,8 +96,12 @@ function contentFilterLabel(filter: ContentFilter): string {
 export function SubjectCataloguePage() {
   const { showToast } = useToast();
   const searchParams = useSearchParams();
+  const { capabilities } = useAuth();
   const { curricula } = useCurricula();
   const { canManageSubjects } = useSubjectsPage();
+  const canRequestCurriculumImport = canManageSubjects
+    || Boolean(capabilities.can_request_curriculum_import)
+    || hasPermission(capabilities, 'curriculum.import.request');
   const selectedCurriculumId = Number(searchParams.get('curriculum') ?? '') || null;
   const activeCurriculum = useMemo(() => {
     if (selectedCurriculumId) {
@@ -278,25 +284,32 @@ export function SubjectCataloguePage() {
 
   const renderAction = (item: SubjectCatalogItem) => {
     const status = getCatalogStatus(item) as SubjectOfferingCatalogStatus;
-    if (!canManageSubjects) {
-      return null;
-    }
+    const renderImportRequestAction = () => {
+      if (!canRequestCurriculumImport) {
+        return null;
+      }
+      const requested = isCurriculumImportRequested(item);
+      return (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={requested || actionId === item.id}
+          onClick={() => handleRequestCurriculumImport(item)}
+        >
+          <ButtonPendingContent pending={actionId === item.id} pendingLabel="Sending...">
+            {requested ? 'Import requested' : 'Request curriculum import'}
+          </ButtonPendingContent>
+        </Button>
+      );
+    };
+
     if (status === 'DROPPED_HISTORICAL' && canReoffer(item) && item.offering_id) {
       if (!isContentReady(item)) {
-        const requested = isCurriculumImportRequested(item);
-        return (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={requested || actionId === item.id}
-            onClick={() => handleRequestCurriculumImport(item)}
-          >
-            <ButtonPendingContent pending={actionId === item.id} pendingLabel="Sending...">
-              {requested ? 'Request sent' : 'Request curriculum import'}
-            </ButtonPendingContent>
-          </Button>
-        );
+        return renderImportRequestAction();
+      }
+      if (!canManageSubjects) {
+        return null;
       }
       return (
         <Button type="button" size="sm" disabled={actionId === item.id} onClick={() => handleReofferSubject(item)}>
@@ -309,20 +322,10 @@ export function SubjectCataloguePage() {
     }
     if (canOffer(item) && status !== 'DROPPED_HISTORICAL') {
       if (!isContentReady(item)) {
-        const requested = isCurriculumImportRequested(item);
-        return (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={requested || actionId === item.id}
-            onClick={() => handleRequestCurriculumImport(item)}
-          >
-            <ButtonPendingContent pending={actionId === item.id} pendingLabel="Sending...">
-              {requested ? 'Request sent' : 'Request curriculum import'}
-            </ButtonPendingContent>
-          </Button>
-        );
+        return renderImportRequestAction();
+      }
+      if (!canManageSubjects) {
+        return null;
       }
       return (
         <Button type="button" size="sm" disabled={actionId === item.id} onClick={() => handleOfferSubject(item)}>
@@ -334,6 +337,9 @@ export function SubjectCataloguePage() {
       );
     }
     if (canRestore(item) && item.offering_id) {
+      if (!canManageSubjects) {
+        return null;
+      }
       return (
         <Button type="button" size="sm" variant="secondary" disabled={actionId === item.id} onClick={() => handleRestoreOffering(item)}>
           <ButtonPendingContent pending={actionId === item.id} pendingLabel="Restoring...">
@@ -344,6 +350,9 @@ export function SubjectCataloguePage() {
       );
     }
     if (canRemove(item) && item.offering_id) {
+      if (!canManageSubjects) {
+        return null;
+      }
       return (
         <Button type="button" size="sm" variant="secondary" disabled={actionId === item.id} onClick={() => handleRemoveOffering(item)}>
           <ButtonPendingContent pending={actionId === item.id} pendingLabel="Removing...">

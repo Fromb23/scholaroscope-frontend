@@ -10,13 +10,14 @@ import { Card } from '@/app/components/ui/Card';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { EntityLoadingState, ReportPreparingState } from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
-import { useLearnerAssignmentReport } from '@/app/core/hooks/useReporting';
+import { useLearnerAssignmentReport, useReportAuthorityMode } from '@/app/core/hooks/useReporting';
 import {
   buildAssignmentDetailHref,
   getOperationalDetailBackLabel,
   resolveOperationalDetailBack,
 } from '@/app/core/lib/operationalDetailNavigation';
 import { buildReportReturnTo } from '@/app/core/components/reports/reportNavigation';
+import { buildLearnerAssignmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import { formatDate } from '@/app/core/components/reports/LearnerSubjectReportPresentation';
 import type { AppError } from '@/app/core/errors';
 import type { LearnerAssignmentReportRow } from '@/app/core/types/reporting';
@@ -147,12 +148,15 @@ function RowCard({ row, highlighted, returnTo }: {
 }
 
 export function LearnerAssignmentReportPage() {
-  const params = useParams<{ learnerId: string }>();
+  const params = useParams<{ learnerId: string; cohortSubjectId?: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const authorityMode = useReportAuthorityMode();
   const learnerId = Number(params.learnerId);
-  const cohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject'));
+  const pathCohortSubjectId = parsePositiveNumber(params.cohortSubjectId ?? null);
+  const cohortSubjectId = pathCohortSubjectId
+    ?? parsePositiveNumber(searchParams.get('cohort_subject'));
   const termId = parsePositiveNumber(searchParams.get('term') ?? searchParams.get('term_id'));
   const academicYearId = parsePositiveNumber(searchParams.get('academic_year') ?? searchParams.get('academic_year_id'));
   const highlightAssignment = parsePositiveNumber(
@@ -182,6 +186,18 @@ export function LearnerAssignmentReportPage() {
   ], [report?.available_filters.cohort_subjects]);
 
   const updateSubject = (value: string) => {
+    const nextCohortSubjectId = parsePositiveNumber(value);
+    if (pathCohortSubjectId && nextCohortSubjectId) {
+      router.replace(buildLearnerAssignmentReportHref(learnerId, {
+        cohortSubjectId: nextCohortSubjectId,
+        highlightAssignment,
+        termId,
+        academicYearId,
+        authorityMode,
+        returnTo,
+      }), { scroll: false });
+      return;
+    }
     const next = new URLSearchParams(searchParams.toString());
     if (value) next.set('cohort_subject', value);
     else next.delete('cohort_subject');

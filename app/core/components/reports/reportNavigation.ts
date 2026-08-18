@@ -291,10 +291,7 @@ export function buildCanonicalLearnerSubjectReportHref(
     filters: {
       cohortId: normalizePositiveId(state?.cohort ?? state?.cohortId) ?? undefined,
       subjectId: normalizePositiveId(state?.subject ?? state?.subjectId) ?? undefined,
-      cohortSubjectId:
-        normalizePositiveId(state?.cohortSubject ?? state?.cohortSubjectId) ?? undefined,
       instructorId: normalizePositiveId(state?.instructor ?? state?.instructorId) ?? undefined,
-      learnerId,
       assessmentType: state?.assessmentType ?? undefined,
       evidenceType: state?.source ?? undefined,
     },

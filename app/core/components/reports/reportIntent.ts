@@ -231,21 +231,13 @@ export function serializeReportIntent(intent: ReportIntent): URLSearchParams {
   setPositive(params, 'evidence', intent.focus?.evidenceId);
   setPositive(params, 'cohort', intent.filters?.cohortId);
   setPositive(params, 'subject', intent.filters?.subjectId);
-  setPositive(
-    params,
-    'cohort_subject',
-    intent.object.type === 'learner-subject'
-      ? intent.object.cohortSubjectId
-      : intent.filters?.cohortSubjectId,
-  );
+  if (intent.object.type !== 'learner-subject') {
+    setPositive(params, 'cohort_subject', intent.filters?.cohortSubjectId);
+  }
   setPositive(params, 'instructor', intent.filters?.instructorId);
-  setPositive(
-    params,
-    'student',
-    intent.object.type === 'learner-subject'
-      ? intent.object.learnerId
-      : intent.filters?.learnerId,
-  );
+  if (intent.object.type !== 'learner-subject') {
+    setPositive(params, 'student', intent.filters?.learnerId);
+  }
   setText(params, 'assessment_type', intent.filters?.assessmentType);
   setText(params, 'source', intent.filters?.evidenceType);
   setText(params, 'q', intent.table?.query);

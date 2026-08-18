@@ -6,10 +6,12 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Select } from '@/app/components/ui/Select';
-import { cohortAPI } from '@/app/core/api/academic';
+import { cohortAPI, subjectOfferingAPI } from '@/app/core/api/academic';
+import { useAuth } from '@/app/context/AuthContext';
 import { resolveErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { CohortSubjectPanelContext } from '@/app/core/registry/cohortSubjectPanels';
+import { hasPermission } from '@/app/utils/permissions';
 import { cbcPathwayAPI } from '@/app/plugins/cbc/api/pathways';
 import type {
     CbcAllowedSubject,
@@ -40,7 +42,8 @@ function statusVariant(label?: string | null) {
             return 'blue' as const;
         case 'Ready to add':
             return 'info' as const;
-        case 'Not ready yet':
+        case 'Needs curriculum import':
+        case 'Import requested':
             return 'warning' as const;
         case 'Not allowed for this class':
             return 'default' as const;
@@ -53,18 +56,31 @@ function SubjectRow({
     subject,
     isHistorical,
     working,
+    canRequestCurriculumImport,
     onAdd,
     onRemove,
+    onRequestImport,
 }: {
     subject: CbcAllowedSubject;
     isHistorical: boolean;
     working: boolean;
+    canRequestCurriculumImport: boolean;
     onAdd: (subject: CbcAllowedSubject) => void;
     onRemove: (subject: CbcAllowedSubject) => void;
+    onRequestImport: (subject: CbcAllowedSubject) => void;
 }) {
     const addedToClass = Boolean(subject.added_to_class);
     const canAdd = !addedToClass && Boolean(subject.ui_action_label);
     const canRemove = addedToClass && !subject.locked;
+    const needsCurriculumImport = subject.is_content_ready === false;
+    const importRequested = Boolean(subject.curriculum_import_requested || subject.curriculum_import_request);
+    const statusLabel = needsCurriculumImport
+        ? importRequested ? 'Import requested' : 'Needs curriculum import'
+        : subject.ui_status_label;
+    const canRequestImport = !addedToClass
+        && needsCurriculumImport
+        && canRequestCurriculumImport
+        && !importRequested;
 
     return (
         <div className="flex items-start justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
@@ -72,9 +88,9 @@ function SubjectRow({
                 <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-gray-900">{subject.subject_name}</p>
                     <span className="font-mono text-xs text-gray-500">{subject.subject_code}</span>
-                    {subject.ui_status_label ? (
-                        <Badge variant={statusVariant(subject.ui_status_label)} size="sm">
-                            {subject.ui_status_label}
+                    {statusLabel ? (
+                        <Badge variant={statusVariant(statusLabel)} size="sm">
+                            {statusLabel}
                         </Badge>
                     ) : null}
                     {subject.ui_requirement_label ? (
@@ -88,7 +104,25 @@ function SubjectRow({
                 ) : null}
             </div>
 
-            {!isHistorical && (canAdd || canRemove) ? (
+            {!isHistorical && canRequestImport ? (
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={working}
+                    onClick={() => onRequestImport(subject)}
+                >
+                    Request curriculum import
+                </Button>
+            ) : null}
+
+            {!isHistorical && !canRequestImport && importRequested ? (
+                <Button type="button" size="sm" variant="secondary" disabled>
+                    Import requested
+                </Button>
+            ) : null}
+
+            {!isHistorical && !needsCurriculumImport && (canAdd || canRemove) ? (
                 <Button
                     type="button"
                     size="sm"
@@ -105,10 +139,15 @@ function SubjectRow({
 
 export function CBCCohortSubjectPanel({
     cohortId,
+    curriculumId,
     cohortLevel,
     isHistorical,
     onSubjectsChanged,
 }: CohortSubjectPanelContext) {
+    const { capabilities } = useAuth();
+    const canRequestCurriculumImport = Boolean(capabilities.can_request_curriculum_import)
+        || Boolean(capabilities.can_manage_subjects)
+        || hasPermission(capabilities, 'curriculum.import.request');
     const [snapshot, setSnapshot] = useState<CbcCohortAllowedSubjects | null>(null);
     const [pathways, setPathways] = useState<CbcPathway[]>([]);
     const [tracks, setTracks] = useState<CbcTrack[]>([]);
@@ -336,6 +375,30 @@ export function CBCCohortSubjectPanel({
         }
     };
 
+    const handleRequestCurriculumImport = async (subject: CbcAllowedSubject) => {
+        setWorking(true);
+        setSuccessMessage(null);
+        setError(null);
+
+        try {
+            const result = await subjectOfferingAPI.requestCurriculumImport({
+                curriculum: curriculumId,
+                catalog_subject_id: String(subject.subject_profile_id),
+                subject_code: subject.subject_code,
+                subject_name: subject.subject_name,
+                level: cohortLevel,
+                platform_subject_id: subject.platform_subject_id ?? subject.subject_id ?? null,
+                content_status: subject.content_status ?? undefined,
+            });
+            await loadSnapshot();
+            setSuccessMessage(result.detail ?? 'Curriculum import requested.');
+        } catch (err) {
+            setError(resolveErrorMessage(err as ApiError, 'Failed to request curriculum import.'));
+        } finally {
+            setWorking(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="py-6 text-center">
@@ -504,8 +567,10 @@ export function CBCCohortSubjectPanel({
                                 subject={subject}
                                 isHistorical={isHistorical}
                                 working={working}
+                                canRequestCurriculumImport={canRequestCurriculumImport}
                                 onAdd={handleAddSubject}
                                 onRemove={handleRemoveSubject}
+                                onRequestImport={handleRequestCurriculumImport}
                             />
                         ))}
                     </div>
@@ -535,8 +600,10 @@ export function CBCCohortSubjectPanel({
                                 subject={subject}
                                 isHistorical={isHistorical}
                                 working={working}
+                                canRequestCurriculumImport={canRequestCurriculumImport}
                                 onAdd={handleAddSubject}
                                 onRemove={handleRemoveSubject}
+                                onRequestImport={handleRequestCurriculumImport}
                             />
                         ))}
                     </div>

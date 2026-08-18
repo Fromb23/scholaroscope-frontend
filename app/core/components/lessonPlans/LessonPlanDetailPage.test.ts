@@ -38,12 +38,13 @@ describe('LessonPlanDetailPage scheme desire path', () => {
 
   it('treats review as explicit acceptance rather than mandatory rewriting', () => {
     expect(source).toContain('Scholaroscope-generated lesson plans are system drafts');
-    expect(source).toContain('Structured lesson draft');
     expect(source).toContain('Edits are optional');
+    expect(source).toContain('Teacher-reviewed lesson content');
+    expect(source).toContain('reviewForm');
+    expect(source).toContain('buildReviewPayload(reviewForm)');
     expect(source).toContain('Complete review');
-    expect(source).toContain('await markReviewed()');
+    expect(source).toContain('await markReviewed(buildReviewPayload(reviewForm))');
     expect(source).not.toContain('REVIEW_SECTION_FIELDS');
-    expect(source).not.toContain('reviewForm');
   });
 
   it('uses generation source labels without exposing raw fallback errors to ordinary banners', () => {

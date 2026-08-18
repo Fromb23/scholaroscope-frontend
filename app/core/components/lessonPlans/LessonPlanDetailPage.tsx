@@ -35,7 +35,6 @@ import { LessonPlanSections } from '@/app/core/components/lessonPlans/LessonPlan
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
 import {
     getLessonGenerationBadge,
-    getStructuredLessonDraft,
 } from '@/app/core/lib/lessonPlanGeneration';
 import { getLessonPlanScheduleExtensions } from '@/app/core/registry/lessonPlanScheduleExtensions';
 import {
@@ -53,6 +52,7 @@ import {
     SCHEDULE_LESSON_SESSION_TYPE_OPTIONS,
     type AvailableLessonPlanParticipatingCohortSubject,
     type LessonPlan,
+    type ReviewLessonPlanPayload,
     type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
 import { resolveLessonPlanLifecycleActions } from '@/app/core/lib/lessonPlanLifecycleActions';
@@ -129,6 +129,128 @@ function buildLessonTaskInstructions(lessonPlan: LessonPlan): string {
 }
 
 const INITIAL_SECTION_STATE = getLessonPlanDetailInitialSectionState();
+
+interface ReviewFormData {
+    title: string;
+    objectives: string;
+    prior_knowledge: string;
+    learning_resources: string;
+    introduction: string;
+    lesson_development: string;
+    learner_activities: string;
+    assessment_strategy: string;
+    differentiation: string;
+    conclusion: string;
+}
+
+type ReviewFormField = keyof ReviewFormData;
+
+const EMPTY_REVIEW_FORM: ReviewFormData = {
+    title: '',
+    objectives: '',
+    prior_knowledge: '',
+    learning_resources: '',
+    introduction: '',
+    lesson_development: '',
+    learner_activities: '',
+    assessment_strategy: '',
+    differentiation: '',
+    conclusion: '',
+};
+
+function listToLines(value: string[] | null | undefined): string {
+    return (value ?? []).join('\n');
+}
+
+function linesToList(value: string): string[] {
+    return value
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
+
+function buildReviewFormData(lessonPlan: LessonPlan): ReviewFormData {
+    return {
+        title: lessonPlan.title ?? '',
+        objectives: listToLines(lessonPlan.objectives),
+        prior_knowledge: lessonPlan.prior_knowledge ?? '',
+        learning_resources: listToLines(lessonPlan.learning_resources),
+        introduction: lessonPlan.introduction ?? '',
+        lesson_development: lessonPlan.lesson_development ?? '',
+        learner_activities: lessonPlan.learner_activities ?? '',
+        assessment_strategy: lessonPlan.assessment_strategy ?? '',
+        differentiation: lessonPlan.differentiation ?? '',
+        conclusion: lessonPlan.conclusion ?? '',
+    };
+}
+
+function buildReviewPayload(form: ReviewFormData): ReviewLessonPlanPayload {
+    return {
+        title: form.title.trim(),
+        objectives: linesToList(form.objectives),
+        prior_knowledge: form.prior_knowledge,
+        learning_resources: linesToList(form.learning_resources),
+        introduction: form.introduction,
+        lesson_development: form.lesson_development,
+        learner_activities: form.learner_activities,
+        assessment_strategy: form.assessment_strategy,
+        differentiation: form.differentiation,
+        conclusion: form.conclusion,
+    };
+}
+
+function normalizeReviewFieldErrors(error: unknown): Partial<Record<ReviewFormField, string>> {
+    const data = (error as { response?: { data?: unknown }; data?: unknown })?.response?.data
+        ?? (error as { data?: unknown })?.data;
+    if (!data || typeof data !== 'object') {
+        return {};
+    }
+    const fieldErrors: Partial<Record<ReviewFormField, string>> = {};
+    (Object.entries(data) as Array<[string, unknown]>).forEach(([key, value]) => {
+        if (!(key in EMPTY_REVIEW_FORM)) {
+            return;
+        }
+        fieldErrors[key as ReviewFormField] = Array.isArray(value)
+            ? value.map(String).join(' ')
+            : String(value);
+    });
+    return fieldErrors;
+}
+
+function ReviewTextArea({
+    id,
+    label,
+    value,
+    rows,
+    error,
+    help,
+    onChange,
+}: {
+    id: ReviewFormField;
+    label: string;
+    value: string;
+    rows?: number;
+    error?: string;
+    help?: string;
+    onChange: (field: ReviewFormField, value: string) => void;
+}) {
+    return (
+        <div className="space-y-1">
+            <label htmlFor={`review-${id}`} className="block text-sm font-medium theme-text">{label}</label>
+            {help ? <p className="text-xs theme-muted">{help}</p> : null}
+            <textarea
+                id={`review-${id}`}
+                value={value}
+                onChange={(event) => onChange(id, event.target.value)}
+                rows={rows ?? 4}
+                className={`w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    error ? 'border-red-300 bg-red-50' : 'theme-border theme-surface'
+                }`}
+            />
+            {error ? <p className="text-xs text-red-600">{error}</p> : null}
+        </div>
+    );
+}
 
 function CollapsibleDetailSection({
     title,
@@ -232,6 +354,8 @@ export function LessonPlanDetailPage() {
     const [reflection, setReflection] = useState('');
     const [reviewOpen, setReviewOpen] = useState(false);
     const [reviewError, setReviewError] = useState<string | null>(null);
+    const [reviewFieldErrors, setReviewFieldErrors] = useState<Partial<Record<ReviewFormField, string>>>({});
+    const [reviewForm, setReviewForm] = useState<ReviewFormData>(EMPTY_REVIEW_FORM);
     const [scheduleOpen, setScheduleOpen] = useState(false);
     const [scheduleError, setScheduleError] = useState<string | null>(null);
     const [scheduleFieldErrors, setScheduleFieldErrors] = useState<Record<string, string>>({});
@@ -567,21 +691,38 @@ export function LessonPlanDetailPage() {
 
     const handleOpenReview = useCallback(() => {
         if (!lessonPlan) return;
+        setReviewForm(buildReviewFormData(lessonPlan));
         setReviewError(null);
+        setReviewFieldErrors({});
         setReviewOpen(true);
     }, [lessonPlan]);
+
+    const handleReviewFormChange = useCallback((field: ReviewFormField, value: string) => {
+        setReviewForm((current) => ({ ...current, [field]: value }));
+        setReviewFieldErrors((current) => {
+            if (!current[field]) {
+                return current;
+            }
+            const next = { ...current };
+            delete next[field];
+            return next;
+        });
+        setReviewError(null);
+    }, []);
 
     const handleSubmitReview = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!lessonPlan) return;
         setPendingActionKey(actionKey(lessonPlan.id, 'reviewed'));
         setReviewError(null);
+        setReviewFieldErrors({});
         try {
-            await markReviewed();
+            await markReviewed(buildReviewPayload(reviewForm));
             await refetch();
             setReviewOpen(false);
             setActionSuccess('Lesson plan reviewed. Scheduling is now available.');
         } catch (err) {
+            setReviewFieldErrors(normalizeReviewFieldErrors(err));
             setReviewError(resolveErrorMessage(err, 'Lesson review could not be completed.'));
         } finally {
             setPendingActionKey(null);
@@ -1024,7 +1165,6 @@ export function LessonPlanDetailPage() {
             : generationBadge.tone === 'amber'
                 ? 'bg-amber-50 text-amber-700'
                 : 'bg-gray-100 text-gray-700';
-    const structuredDraft = getStructuredLessonDraft(lessonPlan);
     const originatingSchemeId = getOriginatingSchemeId(lessonPlan);
     const originatingSchemeHref = originatingSchemeId
         ? `/schemes/${originatingSchemeId}?${new URLSearchParams({ returnTo: currentReturnTo }).toString()}`
@@ -1514,6 +1654,7 @@ export function LessonPlanDetailPage() {
                 onClose={() => {
                     setReviewOpen(false);
                     setReviewError(null);
+                    setReviewFieldErrors({});
                 }}
                 title="Review generated lesson plan"
                 size="lg"
@@ -1526,85 +1667,101 @@ export function LessonPlanDetailPage() {
                     <div className="rounded-xl border theme-border bg-gray-50 px-4 py-3 text-sm theme-muted">
                         <p className="font-medium theme-text">Edits are optional</p>
                         <p className="mt-1">
-                            You can schedule immediately after review, or use Edit from the More menu after review if the preparation needs changes.
+                            Leave the generated preparation unchanged to accept it as-is, or correct any field before completing review. The generated draft snapshot is retained as provenance.
                         </p>
                     </div>
 
-                    {structuredDraft ? (
-                        <div className="space-y-4 rounded-xl border theme-border bg-white px-4 py-4">
-                            <div className="space-y-1">
-                                <p className="text-sm font-semibold theme-text">Structured lesson draft</p>
-                                <p className="text-sm theme-muted">
-                                    Review the generated phases before accepting this lesson preparation.
-                                </p>
-                            </div>
-                            <div className="space-y-4">
-                                {structuredDraft.phases.map((phase, index) => (
-                                    <div key={`${phase.phase_type}-${index}`} className="rounded-lg border theme-border bg-gray-50 p-3">
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <div>
-                                                <p className="text-sm font-semibold theme-text">
-                                                    {phase.phase_type.replaceAll('_', ' ')}
-                                                </p>
-                                                <p className="text-xs theme-muted">{phase.title}</p>
-                                            </div>
-                                            {phase.duration_minutes > 0 ? (
-                                                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium theme-muted">
-                                                    {phase.duration_minutes} min
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                        <div className="mt-3 grid gap-3 md:grid-cols-2">
-                                            <div>
-                                                <p className="text-xs font-semibold uppercase tracking-wide theme-muted">Teacher actions</p>
-                                                <ul className="mt-1 list-disc space-y-1 pl-4 text-sm theme-text">
-                                                    {phase.teacher_actions.map((item, itemIndex) => (
-                                                        <li key={`teacher-${itemIndex}`}>{item}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-semibold uppercase tracking-wide theme-muted">Learner actions</p>
-                                                <ul className="mt-1 list-disc space-y-1 pl-4 text-sm theme-text">
-                                                    {phase.learner_actions.map((item, itemIndex) => (
-                                                        <li key={`learner-${itemIndex}`}>{item}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <p className="text-xs font-semibold uppercase tracking-wide theme-muted">Assessment / evidence</p>
-                                                <ul className="mt-1 list-disc space-y-1 pl-4 text-sm theme-text">
-                                                    {[...phase.assessment_checks, ...phase.evidence_expected].map((item, itemIndex) => (
-                                                        <li key={`evidence-${itemIndex}`}>{item}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="grid gap-3 md:grid-cols-2">
-                                <div className="rounded-lg border theme-border bg-gray-50 p-3">
-                                    <p className="text-xs font-semibold uppercase tracking-wide theme-muted">Differentiation support</p>
-                                    <ul className="mt-1 list-disc space-y-1 pl-4 text-sm theme-text">
-                                        {structuredDraft.differentiation.support.map((item, index) => (
-                                            <li key={`support-${index}`}>{item}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                                <div className="rounded-lg border theme-border bg-gray-50 p-3">
-                                    <p className="text-xs font-semibold uppercase tracking-wide theme-muted">Differentiation extension</p>
-                                    <ul className="mt-1 list-disc space-y-1 pl-4 text-sm theme-text">
-                                        {structuredDraft.differentiation.extension.map((item, index) => (
-                                            <li key={`extension-${index}`}>{item}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
+                    <div className="space-y-4 rounded-xl border theme-border bg-white px-4 py-4">
+                        <div className="space-y-1">
+                            <p className="text-sm font-semibold theme-text">Teacher-reviewed lesson content</p>
+                            <p className="text-sm theme-muted">
+                                Complete review persists the current values below and moves the lesson to REVIEWED.
+                            </p>
                         </div>
-                    ) : (
-                        <LessonPlanSections lessonPlan={lessonPlan} />
-                    )}
+
+                        <div className="space-y-1">
+                            <label htmlFor="review-title" className="block text-sm font-medium theme-text">Title</label>
+                            <Input
+                                id="review-title"
+                                value={reviewForm.title}
+                                onChange={(event) => handleReviewFormChange('title', event.target.value)}
+                                error={reviewFieldErrors.title}
+                            />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <ReviewTextArea
+                                id="objectives"
+                                label="Objectives"
+                                value={reviewForm.objectives}
+                                onChange={handleReviewFormChange}
+                                error={reviewFieldErrors.objectives}
+                                help="One objective per line."
+                            />
+                            <ReviewTextArea
+                                id="learning_resources"
+                                label="Learning resources"
+                                value={reviewForm.learning_resources}
+                                onChange={handleReviewFormChange}
+                                error={reviewFieldErrors.learning_resources}
+                                help="One resource per line."
+                            />
+                        </div>
+
+                        <ReviewTextArea
+                            id="prior_knowledge"
+                            label="Prior knowledge"
+                            value={reviewForm.prior_knowledge}
+                            onChange={handleReviewFormChange}
+                            error={reviewFieldErrors.prior_knowledge}
+                            rows={3}
+                        />
+
+                        <div className="grid gap-4 lg:grid-cols-2">
+                            <ReviewTextArea
+                                id="introduction"
+                                label="Introduction"
+                                value={reviewForm.introduction}
+                                onChange={handleReviewFormChange}
+                                error={reviewFieldErrors.introduction}
+                            />
+                            <ReviewTextArea
+                                id="lesson_development"
+                                label="Lesson development / teacher actions"
+                                value={reviewForm.lesson_development}
+                                onChange={handleReviewFormChange}
+                                error={reviewFieldErrors.lesson_development}
+                            />
+                            <ReviewTextArea
+                                id="learner_activities"
+                                label="Learner activities"
+                                value={reviewForm.learner_activities}
+                                onChange={handleReviewFormChange}
+                                error={reviewFieldErrors.learner_activities}
+                            />
+                            <ReviewTextArea
+                                id="assessment_strategy"
+                                label="Assessment / evidence"
+                                value={reviewForm.assessment_strategy}
+                                onChange={handleReviewFormChange}
+                                error={reviewFieldErrors.assessment_strategy}
+                            />
+                            <ReviewTextArea
+                                id="differentiation"
+                                label="Differentiation"
+                                value={reviewForm.differentiation}
+                                onChange={handleReviewFormChange}
+                                error={reviewFieldErrors.differentiation}
+                            />
+                            <ReviewTextArea
+                                id="conclusion"
+                                label="Conclusion / exit evidence"
+                                value={reviewForm.conclusion}
+                                onChange={handleReviewFormChange}
+                                error={reviewFieldErrors.conclusion}
+                            />
+                        </div>
+                    </div>
 
                     {reviewError ? (
                         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -1616,7 +1773,10 @@ export function LessonPlanDetailPage() {
                         <Button
                             type="button"
                             variant="secondary"
-                            onClick={() => setReviewOpen(false)}
+                            onClick={() => {
+                                setReviewOpen(false);
+                                setReviewFieldErrors({});
+                            }}
                         >
                             Cancel
                         </Button>

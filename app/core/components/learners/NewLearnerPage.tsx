@@ -5,7 +5,6 @@ import { ArrowLeft, CheckCircle2, ChevronRight, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { learnersAPI } from '@/app/core/api/learners';
-import { bulkEnrollCohortSubjectLearners } from '@/app/core/api/academic';
 import { useCohortDetail, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useAuth } from '@/app/context/AuthContext';
 import { Card } from '@/app/components/ui/Card';
@@ -176,18 +175,12 @@ export default function NewStudentPage() {
                 cohort: Number(formData.cohort),
                 email: formData.email || undefined,
                 phone: formData.phone || undefined,
+                cohort_subject_ids: requestedCohortSubjectId ? [requestedCohortSubjectId] : undefined,
             };
 
             const createdStudent = await learnersAPI.createStudent(studentData);
             const learnerName = createdStudent.full_name?.trim()
                 || `${formData.first_name} ${formData.last_name}`.trim();
-
-            if (requestedCohortSubjectId) {
-                await bulkEnrollCohortSubjectLearners(
-                    requestedCohortSubjectId,
-                    [createdStudent.id],
-                );
-            }
 
             if (navigation.successHref) {
                 router.push(navigation.successHref);

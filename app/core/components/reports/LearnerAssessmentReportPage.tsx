@@ -25,6 +25,7 @@ import { isSafeNextPath } from '@/app/core/auth/navigation';
 import {
   useLearnerAssessmentReport,
   useLearnerAvailableReportScopes,
+  useReportAuthorityMode,
 } from '@/app/core/hooks/useReporting';
 import { buildLearnerAssessmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import { buildReportReturnTo } from '@/app/core/components/reports/reportNavigation';
@@ -370,13 +371,16 @@ function SubjectsView({
 }
 
 export function LearnerAssessmentReportPage() {
-  const params = useParams<{ learnerId: string }>();
+  const params = useParams<{ learnerId: string; cohortSubjectId?: string }>();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const authorityMode = useReportAuthorityMode();
   const learnerId = Number(params.learnerId);
   const assessmentId = parsePositiveNumber(searchParams.get('assessment') ?? searchParams.get('assessment_id'));
-  const cohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject') ?? searchParams.get('cohort_subject_id'));
+  const pathCohortSubjectId = parsePositiveNumber(params.cohortSubjectId ?? null);
+  const cohortSubjectId = pathCohortSubjectId
+    ?? parsePositiveNumber(searchParams.get('cohort_subject') ?? searchParams.get('cohort_subject_id'));
   const termId = parsePositiveNumber(searchParams.get('term') ?? searchParams.get('term_id'));
   const subjectId = parsePositiveNumber(searchParams.get('subject') ?? searchParams.get('subject_id'));
   const cohortId = parsePositiveNumber(searchParams.get('cohort') ?? searchParams.get('cohort_id'));
@@ -432,6 +436,26 @@ export function LearnerAssessmentReportPage() {
   );
 
   const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
+    const nextCohortSubjectValue = updates.cohort_subject;
+    const nextCohortSubjectId = typeof nextCohortSubjectValue === 'number'
+      ? nextCohortSubjectValue
+      : typeof nextCohortSubjectValue === 'string'
+        ? parsePositiveNumber(nextCohortSubjectValue)
+        : null;
+    if (pathCohortSubjectId && nextCohortSubjectId) {
+      router.replace(buildLearnerAssessmentReportHref(learnerId, {
+        assessmentId,
+        cohortSubjectId: nextCohortSubjectId,
+        assessmentType,
+        termId,
+        subjectId,
+        cohortId,
+        academicYearId,
+        authorityMode,
+        returnTo,
+      }), { scroll: false });
+      return;
+    }
     const nextParams = new URLSearchParams(searchParams.toString());
     if (assessmentId) {
       nextParams.set('assessment', String(assessmentId));
@@ -448,7 +472,21 @@ export function LearnerAssessmentReportPage() {
     }
     const query = nextParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }, [assessmentId, pathname, returnTo, router, searchParams]);
+  }, [
+    academicYearId,
+    assessmentId,
+    assessmentType,
+    authorityMode,
+    cohortId,
+    learnerId,
+    pathCohortSubjectId,
+    pathname,
+    returnTo,
+    router,
+    searchParams,
+    subjectId,
+    termId,
+  ]);
 
   if (!Number.isFinite(learnerId) || learnerId <= 0) {
     return (

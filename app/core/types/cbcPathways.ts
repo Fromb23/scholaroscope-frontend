@@ -7,7 +7,7 @@ export interface CbcAllowedSubject {
     is_linked_to_cohort?: boolean;
     subject_name: string;
     subject_code: string;
-    category: 'CORE' | 'PATHWAY' | 'OTHER';
+    category: 'CORE' | 'PATHWAY' | 'PATHWAY_COMBINATION' | 'OTHER';
     legal_status: string;
     org_registration_status: string;
     school_offering_status?: string;
@@ -19,6 +19,13 @@ export interface CbcAllowedSubject {
     content_status?: string | null;
     is_content_ready?: boolean;
     platform_subject_id?: number | null;
+    curriculum_import_requested?: boolean;
+    curriculum_import_request?: {
+        id: number;
+        status: string;
+        requested_at: string;
+        requested_by: number | null;
+    } | null;
     ui_status_label?: string | null;
     ui_requirement_label?: string | null;
     ui_action_label?: string | null;

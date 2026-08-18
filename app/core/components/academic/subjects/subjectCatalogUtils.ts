@@ -92,7 +92,10 @@ export function isCurriculumImportRequested(item: SubjectCatalogItem): boolean {
 }
 
 export function contentReadinessLabel(item: SubjectCatalogItem): string {
-  return isContentReady(item) ? 'Content ready' : 'Needs curriculum import';
+  if (isContentReady(item)) {
+    return 'Content ready';
+  }
+  return isCurriculumImportRequested(item) ? 'Import requested' : 'Needs curriculum import';
 }
 
 export function canOffer(item: SubjectCatalogItem): boolean {

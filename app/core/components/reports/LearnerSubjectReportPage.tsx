@@ -288,13 +288,18 @@ function OutcomeSummaryList({
 
 export function LearnerSubjectReportPage() {
   const authorityMode = useReportAuthorityMode();
-  const params = useParams<{ learnerId: string }>();
+  const params = useParams<{ learnerId: string; cohortSubjectId?: string }>();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const learnerId = Number(params.learnerId);
   const termId = parsePositiveNumber(searchParams.get('term') ?? searchParams.get('term_id'));
-  const requestedCohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject'));
+  const pathCohortSubjectId = parsePositiveNumber(params.cohortSubjectId ?? null);
+  const requestedCohortSubjectId = pathCohortSubjectId
+    ?? parsePositiveNumber(searchParams.get('cohort_subject'));
+  const projection = searchParams.get('projection') === 'curriculum-progress'
+    ? 'curriculum-progress'
+    : 'overview';
   const returnTo = sanitizeAppDestination(
     searchParams.get('returnTo'),
     `/learners/${learnerId}`,
@@ -355,6 +360,15 @@ export function LearnerSubjectReportPage() {
   }, [allowedSubjectScopes]);
 
   const updateCohortSubject = useCallback((cohortSubjectId: number | null) => {
+    if (cohortSubjectId) {
+      router.replace(buildLearnerSubjectReportHref(learnerId, cohortSubjectId, {
+        projection,
+        termId,
+        authorityMode,
+        returnTo,
+      }), { scroll: false });
+      return;
+    }
     const nextParams = new URLSearchParams(searchParams.toString());
     if (cohortSubjectId) {
       nextParams.set('cohort_subject', String(cohortSubjectId));
@@ -363,7 +377,7 @@ export function LearnerSubjectReportPage() {
     }
     const nextQuery = nextParams.toString();
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
-  }, [pathname, router, searchParams]);
+  }, [authorityMode, learnerId, pathname, projection, returnTo, router, searchParams, termId]);
 
   useEffect(() => {
     if (scopesLoading) {

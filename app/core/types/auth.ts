@@ -66,6 +66,7 @@ export interface WorkspaceCapabilities {
   can_manage_learners: boolean;
   can_manage_cohorts: boolean;
   can_manage_subjects: boolean;
+  can_request_curriculum_import?: boolean;
   can_manage_assessments: boolean;
   can_view_reports: boolean;
   can_manage_staff: boolean;

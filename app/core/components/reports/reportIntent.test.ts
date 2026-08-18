@@ -42,8 +42,8 @@ describe('report intent contract', () => {
 
     expect(href).toContain('/reports/learners/22/cohort-subjects/3?');
     expect(href).toContain('projection=attendance');
-    expect(href).toContain('cohort_subject=3');
-    expect(href).toContain('student=22');
+    expect(href).not.toContain('cohort_subject=3');
+    expect(href).not.toContain('student=22');
     expect(href).toContain('academic_year=8');
     expect(href).toContain('term=4');
     expect(href).toContain('session=19');

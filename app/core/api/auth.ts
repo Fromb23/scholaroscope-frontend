@@ -59,6 +59,7 @@ export const DEFAULT_WORKSPACE_CAPABILITIES: WorkspaceCapabilities = {
   can_manage_learners: false,
   can_manage_cohorts: false,
   can_manage_subjects: false,
+  can_request_curriculum_import: false,
   can_manage_assessments: false,
   can_view_reports: false,
   can_manage_staff: false,

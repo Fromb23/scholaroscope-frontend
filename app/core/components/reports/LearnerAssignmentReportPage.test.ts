@@ -22,6 +22,11 @@ describe('LearnerAssignmentReportPage', () => {
   it('reads cohort-subject, highlighted assignment and safe return state from the URL', () => {
     const pageSource = source();
 
+    expect(pageSource).toContain("useParams<{ learnerId: string; cohortSubjectId?: string }>()");
+    expect(pageSource).toContain('pathCohortSubjectId');
+    expect(pageSource).toContain('?? parsePositiveNumber');
+    expect(pageSource).toContain('buildLearnerAssignmentReportHref(learnerId');
+    expect(pageSource).toContain('authorityMode');
     expect(pageSource).toContain("searchParams.get('cohort_subject')");
     expect(pageSource).toContain("searchParams.get('highlightAssignment')");
     expect(pageSource).toContain("returnTo: searchParams.get('returnTo')");

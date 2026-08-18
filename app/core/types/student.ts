@@ -165,6 +165,7 @@ export interface StudentFormData {
     enrollment_type?: 'PRIMARY' | 'ELECTIVE' | 'REMEDIAL' | 'ADVANCED' | 'TRANSFER';
     notes?: string;
   }>;
+  cohort_subject_ids?: number[];
 }
 
 export type StudentProfileUpdateData = Pick<

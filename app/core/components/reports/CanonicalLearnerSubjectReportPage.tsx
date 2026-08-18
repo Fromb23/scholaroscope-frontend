@@ -18,6 +18,15 @@ const PROJECTIONS: Array<{ id: ReportProjection; label: string; icon: typeof Fil
   { id: 'curriculum-progress', label: 'Curriculum Progress', icon: Activity },
 ];
 
+const PATH_OWNED_QUERY_KEYS = [
+  'cohort_subject',
+  'cohortSubject',
+  'cohort_subject_id',
+  'student',
+  'learner',
+  'learner_id',
+] as const;
+
 export function CanonicalLearnerSubjectReportPage() {
   const params = useParams<{ learnerId: string; cohortSubjectId: string }>();
   const pathname = usePathname();
@@ -39,23 +48,23 @@ export function CanonicalLearnerSubjectReportPage() {
 
   const navigateProjection = useCallback((nextProjection: ReportProjection) => {
     const next = new URLSearchParams(searchParams.toString());
+    PATH_OWNED_QUERY_KEYS.forEach((key) => next.delete(key));
     next.set('projection', nextProjection);
     next.delete('tab');
-    router.push(`${pathname}?${next.toString()}`, { scroll: false });
+    const query = next.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
   useEffect(() => {
     if (!validIds) return;
     const next = new URLSearchParams(searchParams.toString());
     let changed = false;
-    if (next.get('cohort_subject') !== String(cohortSubjectId)) {
-      next.set('cohort_subject', String(cohortSubjectId));
-      changed = true;
-    }
-    if (next.get('student') !== String(learnerId)) {
-      next.set('student', String(learnerId));
-      changed = true;
-    }
+    PATH_OWNED_QUERY_KEYS.forEach((key) => {
+      if (next.has(key)) {
+        next.delete(key);
+        changed = true;
+      }
+    });
     if (!next.get('projection') || next.has('tab')) {
       next.set('projection', projection);
       next.delete('tab');
@@ -65,7 +74,10 @@ export function CanonicalLearnerSubjectReportPage() {
       next.set('highlightAssignment', String(intent.focus.assignmentId));
       changed = true;
     }
-    if (changed) router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    if (changed) {
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }
   }, [cohortSubjectId, intent.focus?.assignmentId, learnerId, pathname, projection, router, searchParams, validIds]);
 
   if (!validIds) return <LearnerSubjectReportPage />;
@@ -97,4 +109,3 @@ export function CanonicalLearnerSubjectReportPage() {
     </div>
   );
 }
-

@@ -43,6 +43,11 @@ describe('LearnerAssessmentReportPage state handling', () => {
   it('preserves assessment and returnTo while replacing filter state', () => {
     const pageSource = source();
 
+    expect(pageSource).toContain("useParams<{ learnerId: string; cohortSubjectId?: string }>()");
+    expect(pageSource).toContain('pathCohortSubjectId');
+    expect(pageSource).toContain('?? parsePositiveNumber');
+    expect(pageSource).toContain('buildLearnerAssessmentReportHref(learnerId');
+    expect(pageSource).toContain('authorityMode');
     expect(pageSource).toContain("nextParams.set('assessment', String(assessmentId))");
     expect(pageSource).toContain("nextParams.set('returnTo', returnTo)");
     expect(pageSource).toContain('router.replace');

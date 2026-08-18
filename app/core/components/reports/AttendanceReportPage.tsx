@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Calendar,
@@ -39,6 +39,7 @@ import {
 } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import { isScopedInstructorAttendanceReport } from '@/app/utils/routeAccess';
+import { buildLearnerSubjectReportHref } from '@/app/core/lib/learnerReportingRoutes';
 
 function focusReportPanel(panelId: string) {
   if (typeof document === 'undefined') {
@@ -57,14 +58,17 @@ function focusReportPanel(panelId: string) {
 export function AttendanceReportPage() {
   const authorityMode = useReportAuthorityMode();
   const router = useRouter();
+  const params = useParams<{ learnerId?: string; cohortSubjectId?: string }>();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
-  const selectedStudentId = parsePositiveReportParam(searchParams.get('student'));
+  const pathStudentId = parsePositiveReportParam(params.learnerId ?? null);
+  const pathCohortSubjectId = parsePositiveReportParam(params.cohortSubjectId ?? null);
+  const selectedStudentId = pathStudentId ?? parsePositiveReportParam(searchParams.get('student'));
   const selectedCohortId = parsePositiveReportParam(searchParams.get('cohort'));
   const selectedSubjectId = parsePositiveReportParam(searchParams.get('subject'));
-  const selectedCohortSubjectId = parsePositiveReportParam(
+  const selectedCohortSubjectId = pathCohortSubjectId ?? parsePositiveReportParam(
     searchParams.get('cohortSubject') ?? searchParams.get('cohort_subject'),
   );
   const selectedSessionId = parsePositiveReportParam(searchParams.get('session'));
@@ -118,6 +122,21 @@ export function AttendanceReportPage() {
   });
 
   const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
+    const nextCohortSubjectValue = updates.cohortSubject ?? updates.cohort_subject;
+    const nextCohortSubjectId = typeof nextCohortSubjectValue === 'number'
+      ? nextCohortSubjectValue
+      : typeof nextCohortSubjectValue === 'string'
+        ? parsePositiveReportParam(nextCohortSubjectValue)
+        : null;
+    if (pathStudentId && pathCohortSubjectId && nextCohortSubjectId) {
+      router.replace(buildLearnerSubjectReportHref(pathStudentId, nextCohortSubjectId, {
+        projection: 'attendance',
+        termId: selectedTermId,
+        authorityMode,
+        returnTo: searchParams.get('returnTo'),
+      }), { scroll: false });
+      return;
+    }
     const nextParams = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
       if (value === null || value === '') {
@@ -128,7 +147,7 @@ export function AttendanceReportPage() {
     });
     const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
     router.replace(nextUrl, { scroll: false });
-  }, [pathname, router, searchParams]);
+  }, [authorityMode, pathCohortSubjectId, pathStudentId, pathname, router, searchParams, selectedTermId]);
 
   useEffect(() => {
     if (selectedTermId || currentTermLoading) {
