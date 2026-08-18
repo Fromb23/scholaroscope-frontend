@@ -42,3 +42,14 @@ npm run check:plugin-boundaries
 ```
 
 The guard blocks new direct imports from core-owned app surfaces into plugin UI implementation files. Existing direct route-shell imports are captured in `tools/plugin-ui-boundary-baseline.json` and should be removed as routes move behind declared plugin registries.
+# External timetable plugin boundary
+
+The timetable plugin is an external integration, not a frontend-only route
+exception. The Stage 0 UI contract is documented in
+`docs/external-timetable-plugin-ui-contract.md`.
+
+Teacher timetable views are rendered inside Scholaroscope from backend
+projection APIs. Manager timetable editing happens in the independent temporal
+portal and may be reached only through a backend-authorized launch action. The
+frontend must not infer timetable authority from raw role labels or workspace
+types.
