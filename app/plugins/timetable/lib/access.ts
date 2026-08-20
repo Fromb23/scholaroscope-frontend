@@ -73,3 +73,8 @@ export function canLaunchTimetableManagement(
     && provisioningReady
     && hasWorkspacePermission(capabilities, TIMETABLE_PERMISSIONS.manage);
 }
+
+export function canManageTimetable(capabilities: TimetableCapabilities): boolean {
+  return hasTimetableCapability(capabilities, 'timetable.enabled')
+    && hasWorkspacePermission(capabilities, TIMETABLE_PERMISSIONS.manage);
+}

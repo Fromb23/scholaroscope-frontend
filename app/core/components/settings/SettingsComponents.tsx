@@ -50,6 +50,11 @@ import {
     PluginManagementContract, SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
 } from '@/app/core/types/plugins';
 import { pluginModalSlots } from '@/app/core/registry/pluginModalSlots';
+import {
+    canManageTimetable,
+    canViewOwnTimetable,
+    canViewWorkspaceTimetable,
+} from '@/app/plugins/timetable/lib/access';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -302,6 +307,32 @@ function getConfigureHref(plugin: InstalledPlugin, management: PluginManagementC
 
     if (plugin.key === 'themes') {
         return '/admin/settings?tab=general';
+    }
+
+    return null;
+}
+
+function getTimetableAction(
+    plugin: InstalledPlugin,
+    capabilities: ReturnType<typeof useAuth>['capabilities'],
+): { href: string; label: string } | null {
+    if (
+        plugin.key !== 'timetable'
+        || !getEffectivePluginEnabled(plugin)
+        || plugin.entitled === false
+    ) {
+        return null;
+    }
+
+    if (canManageTimetable(capabilities) || canViewWorkspaceTimetable(capabilities)) {
+        return {
+            href: '/timetable/workspace',
+            label: canManageTimetable(capabilities) ? 'Manage timetable' : 'Open workspace timetable',
+        };
+    }
+
+    if (canViewOwnTimetable(capabilities)) {
+        return { href: '/timetable/my', label: 'Open my timetable' };
     }
 
     return null;
@@ -760,6 +791,7 @@ export function InstalledPluginCard({
     highlighted = false,
     containerRef,
 }: InstalledPluginCardProps) {
+    const { capabilities } = useAuth();
     const [curriculumOpen, setCurriculumOpen] = useState(false);
     const [disableWorkflowOpen, setDisableWorkflowOpen] = useState(false);
     const [modalKey, setModalKey] = useState(0);
@@ -776,6 +808,7 @@ export function InstalledPluginCard({
         : canManagePluginConfiguration;
     const configureHref = canConfigurePlugin ? getConfigureHref(plugin, management) : null;
     const configureLabel = getConfigureActionLabel(plugin, management);
+    const timetableAction = getTimetableAction(plugin, capabilities);
     const canStartDisableWorkflow = canStartNewDisableRequest({
         isEnabled: Boolean(isActive && plugin.is_available && curriculum?.is_active && curriculum.offering_status === 'ACTIVE'),
         activeDisableRequestStatus: activeDisableRequest?.status ?? null,
@@ -1036,6 +1069,13 @@ export function InstalledPluginCard({
                             </Button>
                         </NextLink>
                     ) : null}
+                    {timetableAction ? (
+                        <NextLink href={timetableAction.href} className="w-full sm:w-auto">
+                            <Button size="sm" variant="secondary" className="w-full sm:w-auto">
+                                {timetableAction.label}
+                            </Button>
+                        </NextLink>
+                    ) : null}
                     {management.can_toggle && canManagePluginConfiguration ? (
                         <button
                             onClick={() => onToggle(plugin.id)}
@@ -1052,6 +1092,7 @@ export function InstalledPluginCard({
                     {!canUseCurriculumLifecycle
                     && !canOpenPluginConfiguration
                     && !configureHref
+                    && !timetableAction
                     && !(management.can_toggle && canManagePluginConfiguration) ? (
                         <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500">
                             No workspace action

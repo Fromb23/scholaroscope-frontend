@@ -109,6 +109,9 @@ export async function getTimetableIntegrationStatus(): Promise<TimetableIntegrat
 }
 
 export async function launchTimetablePortal(): Promise<void> {
+  const pendingWindow = typeof window !== 'undefined'
+    ? window.open('about:blank', '_blank', 'noopener,noreferrer')
+    : null;
   const response = await apiClient.post<{ launch_action: LaunchAction }>(
     '/plugins/timetable/launch/',
   );
@@ -120,8 +123,16 @@ export async function launchTimetablePortal(): Promise<void> {
     credentials: 'include',
   });
   if (!exchange.ok) {
+    pendingWindow?.close();
     throw new Error('Timetable portal launch was rejected.');
   }
   const portalURL = new URL(launchAction.url);
-  window.location.assign(portalURL.origin);
+  if (pendingWindow && !pendingWindow.closed) {
+    pendingWindow.location.replace(portalURL.origin);
+    return;
+  }
+  const opened = window.open(portalURL.origin, '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    throw new Error('Timetable portal launched, but the browser blocked the portal tab. Allow pop-ups for Scholaroscope and try again.');
+  }
 }

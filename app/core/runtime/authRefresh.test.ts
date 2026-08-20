@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   apiClient,
+  beginAuthenticationTransition,
   refreshClient,
   registerAuthFailureHandler,
 } from '@/app/core/api/client';
@@ -29,6 +30,7 @@ type Deferred<T> = {
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
+  _allowDuringAuthTransition?: boolean;
 };
 
 type ResponseRejectedHandler = (error: unknown) => Promise<unknown>;
@@ -241,6 +243,27 @@ describe('runtime auth refresh boundaries', () => {
 
     expect(getAccessToken()).toBeNull();
     expect(authFailureHandler).toHaveBeenCalledOnce();
+  });
+
+  it('suppresses obsolete 401 refresh attempts during a workspace transition', async () => {
+    setAccessToken('workspace-a-access');
+    const authFailureHandler = vi.fn();
+    const handle401 = getAuthRejectedHandler();
+    registerAuthFailureHandler(authFailureHandler);
+    const endTransition = beginAuthenticationTransition();
+    const refreshPost = vi.spyOn(refreshClient, 'post');
+
+    try {
+      await expect(
+        handle401(statusError(requestConfig('/students/'), 401, 'Access token expired')),
+      ).rejects.toThrow('earlier workspace or authentication generation');
+    } finally {
+      endTransition();
+    }
+
+    expect(refreshPost).not.toHaveBeenCalled();
+    expect(getAccessToken()).toBe('workspace-a-access');
+    expect(authFailureHandler).not.toHaveBeenCalled();
   });
 
   it('membership-version changes emit the runtime context reload signal', async () => {
