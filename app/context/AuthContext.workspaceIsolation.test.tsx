@@ -249,7 +249,7 @@ describe('AuthContext workspace authority races', () => {
     });
 
     expect(currentAuth().activeOrg?.id).toBe(1);
-    expect(currentAuth().workspaceGeneration).toBe(generationBefore);
+    expect(currentAuth().workspaceGeneration).toBeGreaterThan(generationBefore);
   });
 
   it('does not call boot refresh while an explicit logout tombstone is active', async () => {

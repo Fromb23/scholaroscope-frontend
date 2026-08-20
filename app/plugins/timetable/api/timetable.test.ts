@@ -35,12 +35,18 @@ describe('launchTimetablePortal', () => {
       },
     });
     const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-    const assignMock = vi.fn();
+    const replaceMock = vi.fn();
+    const openMock = vi.fn().mockReturnValue({
+      closed: false,
+      location: { replace: replaceMock },
+      close: vi.fn(),
+    });
     vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('window', { location: { assign: assignMock } });
+    vi.stubGlobal('window', { open: openMock });
 
     await launchTimetablePortal();
 
+    expect(openMock).toHaveBeenCalledWith('about:blank', '_blank', 'noopener,noreferrer');
     expect(fetchMock).toHaveBeenCalledWith(
       'https://timetable.example.test/portal/launch/exchange',
       expect.objectContaining({
@@ -52,6 +58,6 @@ describe('launchTimetablePortal', () => {
       expect.anything(),
       expect.objectContaining({ body: JSON.stringify({ z: 2, a: 1 }) }),
     );
-    expect(assignMock).toHaveBeenCalledWith('https://timetable.example.test');
+    expect(replaceMock).toHaveBeenCalledWith('https://timetable.example.test');
   });
 });

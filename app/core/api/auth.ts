@@ -290,6 +290,8 @@ export const authAPI = {
   switchOrg: async (organizationId: number): Promise<SwitchOrgResponse> => {
     const response = await apiClient.post<SwitchOrgResponse>('/users/switch_org/', {
       organization_id: organizationId,
+    }, {
+      _allowDuringAuthTransition: true,
     });
     return normalizeSwitchOrgResponse(response.data);
   },

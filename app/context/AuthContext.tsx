@@ -13,7 +13,10 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 
 import { DEFAULT_WORKSPACE_CAPABILITIES, authAPI } from '@/app/core/api/auth';
-import { registerAuthFailureHandler } from '@/app/core/api/client';
+import {
+  beginAuthenticationTransition,
+  registerAuthFailureHandler,
+} from '@/app/core/api/client';
 import { logoutLocalFirst } from '@/app/core/auth/logout';
 import {
   clearExplicitLogout,
@@ -453,10 +456,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }), [clearAuthState]);
 
   const switchOrg = useCallback(async (organizationId: number) => {
-    const response = await authAPI.switchOrg(organizationId);
-    applyAuthState(response, 'workspace-switch');
-    return response;
-  }, [applyAuthState]);
+    const endTransition = beginAuthenticationTransition();
+    advanceAuthority('workspace-switch');
+    try {
+      const response = await authAPI.switchOrg(organizationId);
+      applyAuthState(response, 'workspace-switch');
+      return response;
+    } finally {
+      endTransition();
+    }
+  }, [advanceAuthority, applyAuthState]);
 
   const restoreWorkspace = useCallback(async (organizationId: number) => {
     const response = await authAPI.restoreWorkspace(organizationId);

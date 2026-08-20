@@ -19,6 +19,14 @@ import {
   WorkspaceGenerationSupersededError,
 } from '@/app/core/runtime/workspaceGeneration';
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    _allowDuringAuthTransition?: boolean;
+    _retry?: boolean;
+    _workspaceGeneration?: number;
+  }
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 let hasWarnedAboutApiBaseUrl = false;
 
@@ -27,6 +35,7 @@ type AuthFailureHandler = () => void;
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
   _workspaceGeneration?: number;
+  _allowDuringAuthTransition?: boolean;
 };
 
 interface RefreshPayload {
@@ -36,6 +45,7 @@ interface RefreshPayload {
 
 let authFailureHandler: AuthFailureHandler | null = null;
 let refreshPromise: Promise<string> | null = null;
+let authTransitionDepth = 0;
 
 class AuthRefreshSupersededError extends Error {
   constructor() {
@@ -46,6 +56,20 @@ class AuthRefreshSupersededError extends Error {
 
 function isAuthRefreshSupersededError(error: unknown): error is AuthRefreshSupersededError {
   return error instanceof AuthRefreshSupersededError;
+}
+
+export function beginAuthenticationTransition(): () => void {
+  authTransitionDepth += 1;
+  let ended = false;
+  return () => {
+    if (ended) return;
+    ended = true;
+    authTransitionDepth = Math.max(0, authTransitionDepth - 1);
+  };
+}
+
+function isAuthenticationTransitionActive(): boolean {
+  return authTransitionDepth > 0;
 }
 
 function apiBaseUrlIncludesApiPath(baseURL: string): boolean {
@@ -208,6 +232,13 @@ apiClient.interceptors.response.use(
 
     if (isAuthEndpoint(originalRequest.url) || originalRequest._retry) {
       return Promise.reject(error);
+    }
+
+    if (
+      isAuthenticationTransitionActive()
+      && !originalRequest._allowDuringAuthTransition
+    ) {
+      return Promise.reject(new WorkspaceGenerationSupersededError());
     }
 
     originalRequest._retry = true;

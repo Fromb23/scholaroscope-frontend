@@ -25,6 +25,19 @@ import { useTheme } from '@/app/context/ThemeContext';
 import { themeAPI } from '@/app/core/api/theme';
 import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { themeModeToAppearanceMode } from '@/app/core/theme/effectiveTheme';
+import type { OperatingContext, SwitchOrgResponse } from '@/app/core/types/auth';
+
+function switchedWorkspaceHomeRoute(response: SwitchOrgResponse): string {
+  const contexts = response.capabilities?.authorization?.operating_contexts ?? [];
+  const context = (
+    contexts.includes('WORKSPACE_MANAGEMENT')
+      ? 'WORKSPACE_MANAGEMENT'
+      : contexts.includes('MY_TEACHING')
+        ? 'MY_TEACHING'
+        : null
+  ) as OperatingContext | null;
+  return operatingContextHomeRoute(context);
+}
 
 export default function Header() {
   const {
@@ -79,9 +92,9 @@ export default function Header() {
     }
     setSwitching(orgId);
     try {
-      await switchOrg(orgId);
+      const response = await switchOrg(orgId);
       setOrgDropdownOpen(false);
-      router.replace(operatingContextHomeRoute(activeOperatingContext));
+      router.replace(switchedWorkspaceHomeRoute(response));
     } catch (err) {
       console.error('Failed to switch org:', err);
     } finally {
