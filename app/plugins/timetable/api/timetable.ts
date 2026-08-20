@@ -70,6 +70,7 @@ type LaunchAction = {
   method: 'POST';
   url: string;
   body: Record<string, unknown>;
+  body_json: string;
   headers: Record<string, string>;
   expires_at: string;
   correlation_id: string;
@@ -115,7 +116,7 @@ export async function launchTimetablePortal(): Promise<void> {
   const exchange = await fetch(launchAction.url, {
     method: launchAction.method,
     headers: launchAction.headers,
-    body: JSON.stringify(launchAction.body),
+    body: launchAction.body_json,
     credentials: 'include',
   });
   if (!exchange.ok) {
