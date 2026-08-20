@@ -8,7 +8,7 @@ import {
   supportsInternalRequests,
 } from '@/app/core/lib/workspaceGovernance';
 
-export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'schemes' | 'themes';
+export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'schemes' | 'themes' | 'timetable';
 
 export type PluginLoadContext = {
   activeOrg?: ActiveOrg | null;
@@ -75,6 +75,20 @@ function isPersonalOrFreelanceWorkspace(context: PluginLoadContext): boolean {
 function hasAnyWorkspacePermission(context: PluginLoadContext, keys: string[]): boolean {
   const permissionKeys = context.capabilities.authorization?.permission_keys ?? [];
   return keys.some((key) => permissionKeys.includes(key));
+}
+
+function shouldLoadTimetable(context: PluginLoadContext): boolean {
+  const explicitCapability = getProductCapability(context.capabilities, 'timetable.enabled');
+  if (explicitCapability !== null) return explicitCapability.enabled === true;
+  const pluginCapability = getProductCapability(context.capabilities, 'timetable');
+  if (pluginCapability !== null) return pluginCapability.enabled === true;
+  return routeMatches(context, pluginManifestById.timetable)
+    || hasLegacyInstalledFeature(context, 'timetable')
+    || hasAnyWorkspacePermission(context, [
+      'timetable.view_own',
+      'timetable.view_workspace',
+      'timetable.manage',
+    ]);
 }
 
 export const pluginManifest: PluginManifestEntry[] = [
@@ -210,6 +224,21 @@ export const pluginManifest: PluginManifestEntry[] = [
     load: async () => {
       const { registerThemesPlugin } = await import('./themes/register');
       await registerThemesPlugin();
+    },
+  },
+  {
+    id: 'timetable',
+    label: 'Timetable',
+    featureFlags: ['timetable'],
+    routePatterns: [/^\/timetable(?:\/|$)/],
+    navigationSlots: [
+      'admin.primary.afterDashboard',
+      'instructor.primary.afterDashboard',
+    ],
+    shouldLoad: shouldLoadTimetable,
+    load: async () => {
+      const { registerTimetablePlugin } = await import('./timetable/register');
+      await registerTimetablePlugin();
     },
   },
 ];

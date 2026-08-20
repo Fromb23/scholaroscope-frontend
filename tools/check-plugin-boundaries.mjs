@@ -20,6 +20,7 @@ const allowedPluginInfrastructureImports = new Set([
   '@/app/plugins/PluginRegistryProvider',
   '@/app/plugins/loadPlugin',
   '@/app/plugins/manifest',
+  '@/app/plugins/PluginRouteRenderer',
   '@/app/plugins/registerAll',
 ]);
 

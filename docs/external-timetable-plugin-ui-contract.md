@@ -1,6 +1,7 @@
 # External Timetable Plugin UI Contract
 
-Status: Stage 0 contract definition. Implementation is added in later staged commits.
+Status: implemented route shell and projection UI for the external timetable
+plugin.
 
 ## Boundary
 
@@ -47,3 +48,35 @@ Print output includes workspace name, term, timetable type, effective date, vers
 Timetable pages use the existing structured error presentation rules. Permission, entitlement, disabled-plugin, provisioning, stale-session, and integration-health failures render safe user-facing messages without exposing internal exception text.
 
 Workspace-generation boundaries must prevent stale timetable responses from crossing active workspace changes.
+
+## Implemented public routes
+
+The timetable plugin registers these public routes through the plugin manifest
+and route-access extension:
+
+- `/timetable`
+- `/timetable/my`
+- `/timetable/my/print`
+- `/timetable/workspace`
+- `/timetable/workspace/print`
+
+Route files render a plugin-owned route renderer rather than importing timetable
+page components directly into core route shells. Runtime visibility and route
+access are still enforced from backend capability and permission state; the
+frontend checks exist only to select the appropriate user experience.
+
+## Backend endpoint map
+
+The implemented UI uses:
+
+- `GET /api/plugins/timetable/integration/status/`
+- `GET /api/plugins/timetable/projections/own/`
+- `GET /api/plugins/timetable/projections/own/changes/`
+- `GET /api/plugins/timetable/projections/own/print/`
+- `GET /api/plugins/timetable/projections/workspace/`
+- `GET /api/plugins/timetable/projections/workspace/print/`
+- `POST /api/plugins/timetable/launch/`
+
+The launch action posts the backend-issued single-use grant to the temporal
+portal exchange endpoint and does not persist the grant or any installation
+secret in browser storage.
