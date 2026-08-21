@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { launchTimetablePortal } from '@/app/plugins/timetable/api/timetable';
+import { launchTimetablePortal, refreshTimetableAcademicData } from '@/app/plugins/timetable/api/timetable';
 
 vi.mock('@/app/core/api/client', () => ({
   apiClient: {
@@ -187,5 +187,22 @@ describe('launchTimetablePortal', () => {
 
     expect(openMock.mock.calls).toEqual([['about:blank', '_blank']]);
     expect(pendingWindow.close).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('refreshTimetableAcademicData', () => {
+  it('uses the authorized workspace-scoped refresh operation', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: {
+        status: 'SYNCHRONIZATION_PENDING',
+        message: 'Academic data refresh has been queued.',
+        last_successful_sync_at: null,
+      },
+    });
+
+    await expect(refreshTimetableAcademicData()).resolves.toMatchObject({
+      status: 'SYNCHRONIZATION_PENDING',
+    });
+    expect(apiClient.post).toHaveBeenCalledWith('/plugins/timetable/integration/refresh/');
   });
 });

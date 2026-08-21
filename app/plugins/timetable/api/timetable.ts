@@ -108,6 +108,19 @@ export async function getTimetableIntegrationStatus(): Promise<TimetableIntegrat
   return response.data;
 }
 
+export async function refreshTimetableAcademicData(): Promise<{
+  status: 'SYNCHRONIZATION_PENDING';
+  message: string;
+  last_successful_sync_at: string | null;
+}> {
+  const response = await apiClient.post<{
+    status: 'SYNCHRONIZATION_PENDING';
+    message: string;
+    last_successful_sync_at: string | null;
+  }>('/plugins/timetable/integration/refresh/');
+  return response.data;
+}
+
 export async function launchTimetablePortal(): Promise<void> {
   if (typeof window === 'undefined') {
     throw new Error('Timetable portal can only be launched from a browser.');

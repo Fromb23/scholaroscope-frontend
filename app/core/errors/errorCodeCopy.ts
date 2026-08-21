@@ -10,6 +10,30 @@ export interface ErrorCodeCopyEntry {
 }
 
 export const ERROR_CODE_COPY: Record<string, ErrorCodeCopyEntry> = {
+  timetable_integration_not_ready: {
+    kind: 'setup_required',
+    title: 'Timetable setup is still synchronizing.',
+    message: 'Refresh academic data and wait for synchronization to finish before opening timetable management.',
+    actionLabel: 'Refresh academic data',
+    retryable: true,
+    severity: 'warning',
+  },
+  timetable_identity_mapping_missing: {
+    kind: 'setup_required',
+    title: 'Timetable access is still being prepared.',
+    message: 'Refresh academic data so this workspace and your access can be synchronized.',
+    actionLabel: 'Refresh academic data',
+    retryable: true,
+    severity: 'warning',
+  },
+  timetable_launch_failed: {
+    kind: 'server',
+    title: 'Timetable management could not be opened.',
+    message: 'Try again. Scholaroscope remains available in this tab.',
+    actionLabel: 'Try again',
+    retryable: true,
+    severity: 'error',
+  },
   customer_registration_account_not_allowed: {
     kind: 'permission',
     title: 'This email cannot be used here.',
