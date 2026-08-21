@@ -230,12 +230,6 @@ export function MyTimetablePage({ printable = false }: { printable?: boolean }) 
     enabled: allowed && !printable,
   });
 
-  useEffect(() => {
-    if (printable && timetable.data?.status === 'PUBLISHED') {
-      window.setTimeout(() => window.print(), 100);
-    }
-  }, [printable, timetable.data?.status]);
-
   if (!allowed) {
     return (
       <StateCard
@@ -351,12 +345,6 @@ export function WorkspaceTimetablePage({ printable = false }: { printable?: bool
   });
   const ready = statusQuery.data?.integration.ready === true;
   const canManage = canLaunchTimetableManagement(capabilities, ready);
-
-  useEffect(() => {
-    if (printable && timetable.data?.status === 'PUBLISHED') {
-      window.setTimeout(() => window.print(), 100);
-    }
-  }, [printable, timetable.data?.status]);
 
   async function launchPortal() {
     setLaunching(true);

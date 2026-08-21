@@ -7,15 +7,14 @@
 // No any. No alert(). No inline definitions in page.
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AlertCircle } from 'lucide-react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { resolveErrorMessage } from '@/app/core/types/errors';
-import type { ApiError } from '@/app/core/types/errors';
+import { resolveAppError } from '@/app/core/errors';
 import type { Term, AcademicYear } from '@/app/core/types/academic';
 
 // ── Pure utilities ────────────────────────────────────────────────────────
@@ -44,7 +43,6 @@ export interface TermFormState {
     academic_year: string;
     start_date: string;
     end_date: string;
-    sequence?: number;
 }
 
 // ── TermFormModal ─────────────────────────────────────────────────────────
@@ -69,11 +67,27 @@ export function TermFormModal({
     const [form, setForm] = useState<TermFormState>(initialData);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+    const submittingRef = useRef(false);
 
     useEffect(() => {
         setForm(initialData);
         setError(null);
+        setFieldErrors({});
+        submittingRef.current = false;
     }, [isOpen, initialData]);
+
+    const updateField = (field: keyof TermFormState, value: string) => {
+        setForm((previous) => ({ ...previous, [field]: value }));
+        setFieldErrors((previous) => {
+            if (!previous[field]) return previous;
+            const next = { ...previous };
+            delete next[field];
+            return next;
+        });
+    };
+
+    const fieldError = (field: keyof TermFormState) => fieldErrors[field]?.[0];
 
     const selectedFormYear = academicYears.find((y) => String(y.id) === form.academic_year);
     const formYearIsHistorical = selectedFormYear ? !selectedFormYear.is_current : false;
@@ -86,20 +100,30 @@ export function TermFormModal({
     };
 
     const handleSubmit = async () => {
+        if (submittingRef.current) return;
         const validationError = validate();
         if (validationError) {
             setError(validationError);
             return;
         }
 
+        submittingRef.current = true;
         setSaving(true);
         setError(null);
+        setFieldErrors({});
         try {
             await onSave(form, editing?.id);
             onClose();
         } catch (err) {
-            setError(resolveErrorMessage(err as ApiError, 'Failed to save term.'));
+            const resolved = resolveAppError(err, {
+                domain: 'academic_setup',
+                action: editing ? 'update' : 'create',
+                entityLabel: 'term',
+            });
+            setFieldErrors(resolved.fieldErrors ?? {});
+            setError(resolved.message);
         } finally {
+            submittingRef.current = false;
             setSaving(false);
         }
     };
@@ -125,7 +149,8 @@ export function TermFormModal({
                 <Input
                     label="Term Name"
                     value={form.name}
-                    onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => updateField('name', e.target.value)}
+                    error={fieldError('name')}
                     placeholder="e.g. Term 1, First Semester"
                     required
                 />
@@ -133,7 +158,8 @@ export function TermFormModal({
                 <Select
                     label="Academic Year"
                     value={form.academic_year}
-                    onChange={(e) => setForm((prev) => ({ ...prev, academic_year: e.target.value }))}
+                    onChange={(e) => updateField('academic_year', e.target.value)}
+                    error={fieldError('academic_year')}
                     required
                     options={[
                         { value: '', label: 'Select Academic Year' },
@@ -149,26 +175,19 @@ export function TermFormModal({
                         label="Start Date"
                         type="date"
                         value={form.start_date}
-                        onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
+                        onChange={(e) => updateField('start_date', e.target.value)}
+                        error={fieldError('start_date')}
                         required
                     />
                     <Input
                         label="End Date"
                         type="date"
                         value={form.end_date}
-                        onChange={(e) => setForm((prev) => ({ ...prev, end_date: e.target.value }))}
+                        onChange={(e) => updateField('end_date', e.target.value)}
+                        error={fieldError('end_date')}
                         required
                     />
                 </div>
-
-                {editing && typeof form.sequence === 'number' ? (
-                    <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm">
-                        <p className="font-medium theme-text">Sequence</p>
-                        <p className="mt-1 theme-muted">
-                            {form.sequence}. Term ordering is managed by Scholaroscope.
-                        </p>
-                    </div>
-                ) : null}
 
                 <div className="flex justify-end gap-3 border-t pt-2 theme-border">
                     <Button variant="secondary" onClick={handleClose} disabled={saving}>
