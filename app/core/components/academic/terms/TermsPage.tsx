@@ -486,7 +486,6 @@ export function TermsPage() {
                 academic_year: String(editingTerm.academic_year),
                 start_date: editingTerm.start_date,
                 end_date: editingTerm.end_date,
-                sequence: editingTerm.sequence,
             }
             : {
                 name: '',
