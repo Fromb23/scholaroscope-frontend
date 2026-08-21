@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -417,6 +417,7 @@ export function TermsPage() {
     const [showEventModal, setShowEventModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState<TermCalendarEvent | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
+    const consumedCreateActionRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (currentYear && selectedYearId === undefined) {
@@ -492,9 +493,8 @@ export function TermsPage() {
                 academic_year: selectedYearId ? String(selectedYearId) : currentYear ? String(currentYear.id) : '',
                 start_date: '',
                 end_date: '',
-                sequence: visibleTerms.length + 1,
             }
-    ), [editingTerm, currentYear, selectedYearId, visibleTerms.length]);
+    ), [editingTerm, currentYear, selectedYearId]);
 
     const selectedTermCalendarBadge = selectedTerm ? getCalendarSetupBadge(selectedTerm) : null;
 
@@ -509,18 +509,29 @@ export function TermsPage() {
     };
 
     const closeModal = useCallback(() => {
-        setShowModal(false);
-        setEditingTerm(null);
         if (searchParams.get('action') === 'create') {
+            consumedCreateActionRef.current = searchParams.toString();
             const nextParams = new URLSearchParams(searchParams.toString());
             nextParams.delete('action');
             const query = nextParams.toString();
             router.replace(query ? `/academic/terms?${query}` : '/academic/terms', { scroll: false });
         }
+        setShowModal(false);
+        setEditingTerm(null);
     }, [router, searchParams, setEditingTerm, setShowModal]);
 
     useEffect(() => {
-        if (loading || !currentYear || searchParams.get('action') !== 'create' || showModal) {
+        const actionKey = searchParams.toString();
+        if (searchParams.get('action') !== 'create') {
+            consumedCreateActionRef.current = null;
+        }
+        if (
+            loading
+            || !currentYear
+            || searchParams.get('action') !== 'create'
+            || showModal
+            || consumedCreateActionRef.current === actionKey
+        ) {
             return;
         }
         const requestedAcademicYear = Number(
@@ -586,7 +597,6 @@ export function TermsPage() {
             academic_year: Number(data.academic_year),
             start_date: data.start_date,
             end_date: data.end_date,
-            sequence: data.sequence,
         };
 
         if (editingId) {

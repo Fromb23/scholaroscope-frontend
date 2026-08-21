@@ -44,7 +44,7 @@ export interface TermFormState {
     academic_year: string;
     start_date: string;
     end_date: string;
-    sequence: number;
+    sequence?: number;
 }
 
 // ── TermFormModal ─────────────────────────────────────────────────────────
@@ -161,14 +161,14 @@ export function TermFormModal({
                     />
                 </div>
 
-                <Input
-                    label="Sequence"
-                    type="number"
-                    value={form.sequence}
-                    onChange={(e) => setForm((prev) => ({ ...prev, sequence: Number(e.target.value) }))}
-                    min={1}
-                    required
-                />
+                {editing && typeof form.sequence === 'number' ? (
+                    <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm">
+                        <p className="font-medium theme-text">Sequence</p>
+                        <p className="mt-1 theme-muted">
+                            {form.sequence}. Term ordering is managed by Scholaroscope.
+                        </p>
+                    </div>
+                ) : null}
 
                 <div className="flex justify-end gap-3 border-t pt-2 theme-border">
                     <Button variant="secondary" onClick={handleClose} disabled={saving}>

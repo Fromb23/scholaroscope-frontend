@@ -361,8 +361,9 @@ export function WorkspaceTimetablePage({ printable = false }: { printable?: bool
   async function launchPortal() {
     setLaunching(true);
     setLaunchError(null);
-    try {
+  try {
       await launchTimetablePortal();
+      setLaunching(false);
     } catch {
       setLaunchError('Timetable management could not be launched. Check integration readiness and your permission.');
       setLaunching(false);
