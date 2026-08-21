@@ -109,30 +109,61 @@ export async function getTimetableIntegrationStatus(): Promise<TimetableIntegrat
 }
 
 export async function launchTimetablePortal(): Promise<void> {
-  const pendingWindow = typeof window !== 'undefined'
-    ? window.open('about:blank', '_blank', 'noopener,noreferrer')
-    : null;
-  const response = await apiClient.post<{ launch_action: LaunchAction }>(
-    '/plugins/timetable/launch/',
-  );
-  const { launch_action: launchAction } = response.data;
-  const exchange = await fetch(launchAction.url, {
-    method: launchAction.method,
-    headers: launchAction.headers,
-    body: launchAction.body_json,
-    credentials: 'include',
-  });
+  if (typeof window === 'undefined') {
+    throw new Error('Timetable portal can only be launched from a browser.');
+  }
+
+  const pendingWindow = window.open('about:blank', '_blank');
+  if (!pendingWindow) {
+    throw new Error('The browser blocked the timetable portal tab. Allow pop-ups for Scholaroscope and try again.');
+  }
+
+  const closePendingWindow = () => {
+    if (!pendingWindow.closed) {
+      pendingWindow.close();
+    }
+  };
+
+  try {
+    pendingWindow.opener = null;
+  } catch {
+    closePendingWindow();
+    throw new Error('Timetable portal tab could not be isolated. Try again.');
+  }
+
+  let launchAction: LaunchAction;
+  try {
+    const response = await apiClient.post<{ launch_action: LaunchAction }>(
+      '/plugins/timetable/launch/',
+    );
+    launchAction = response.data.launch_action;
+  } catch {
+    closePendingWindow();
+    throw new Error('Timetable portal launch could not be prepared. Try again.');
+  }
+
+  let exchange: Response;
+  try {
+    exchange = await fetch(launchAction.url, {
+      method: launchAction.method,
+      headers: launchAction.headers,
+      body: launchAction.body_json,
+      credentials: 'include',
+    });
+  } catch {
+    closePendingWindow();
+    throw new Error('Timetable portal launch exchange failed. Check your connection and try again.');
+  }
+
   if (!exchange.ok) {
-    pendingWindow?.close();
+    closePendingWindow();
     throw new Error('Timetable portal launch was rejected.');
   }
-  const portalURL = new URL(launchAction.url);
-  if (pendingWindow && !pendingWindow.closed) {
-    pendingWindow.location.replace(portalURL.origin);
-    return;
-  }
-  const opened = window.open(portalURL.origin, '_blank', 'noopener,noreferrer');
-  if (!opened) {
-    throw new Error('Timetable portal launched, but the browser blocked the portal tab. Allow pop-ups for Scholaroscope and try again.');
+
+  try {
+    pendingWindow.location.replace(new URL(launchAction.url).origin);
+  } catch {
+    closePendingWindow();
+    throw new Error('Timetable portal tab could not be redirected. Try again.');
   }
 }
