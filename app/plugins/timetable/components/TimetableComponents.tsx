@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, ExternalLink, Printer } from 'lucide-react';
+import { CalendarDays, ExternalLink, Printer, RefreshCw } from 'lucide-react';
 
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -17,11 +17,13 @@ import {
   getTimetableIntegrationStatus,
   getWorkspaceTimetable,
   launchTimetablePortal,
+  refreshTimetableAcademicData,
   type TimetableEntry,
   type TimetableProjectionResponse,
 } from '@/app/plugins/timetable/api/timetable';
 import {
   canLaunchTimetableManagement,
+  canManageTimetable,
   canPrintOwnTimetable,
   canPrintWorkspaceTimetable,
   canViewOwnTimetable,
@@ -332,6 +334,8 @@ export function WorkspaceTimetablePage({ printable = false }: { printable?: bool
   const { capabilities, workspaceGeneration } = useAuth();
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const allowed = printable ? canPrintWorkspaceTimetable(capabilities) : canViewWorkspaceTimetable(capabilities);
   const statusQuery = useQuery({
     queryKey: ['timetable', 'integration-status', workspaceGeneration],
@@ -345,6 +349,14 @@ export function WorkspaceTimetablePage({ printable = false }: { printable?: bool
   });
   const ready = statusQuery.data?.integration.ready === true;
   const canManage = canLaunchTimetableManagement(capabilities, ready);
+  const canRefresh = canManageTimetable(capabilities);
+  const integrationMessage = ready
+    ? 'Academic data synchronization is ready.'
+    : statusQuery.data?.integration.reconciliation_required
+      ? 'Academic data may be out of date. Refresh this workspace before managing the timetable.'
+      : statusQuery.data?.integration.provisioning_state === 'FAILED'
+        ? 'Academic data synchronization failed. Refresh this workspace or contact support if it continues.'
+        : 'Academic data synchronization is still being prepared.';
 
   async function launchPortal() {
     setLaunching(true);
@@ -355,6 +367,20 @@ export function WorkspaceTimetablePage({ printable = false }: { printable?: bool
     } catch {
       setLaunchError('Timetable management could not be launched. Check integration readiness and your permission.');
       setLaunching(false);
+    }
+  }
+
+  async function refreshAcademicData() {
+    setRefreshing(true);
+    setLaunchError(null);
+    try {
+      const result = await refreshTimetableAcademicData();
+      setRefreshMessage(result.message);
+      await statusQuery.refetch();
+    } catch {
+      setLaunchError('Academic data refresh could not be queued. Try again.');
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -378,12 +404,13 @@ export function WorkspaceTimetablePage({ printable = false }: { printable?: bool
   if (!timetable.data || timetable.data.status === 'NO_PUBLISHED_TIMETABLE') {
     return (
       <TimetableShell
-        actions={canManage ? <Button onClick={launchPortal} disabled={launching}>Manage Timetable <ExternalLink className="h-4 w-4" /></Button> : null}
+        actions={<>{canRefresh && !ready ? <Button variant="secondary" onClick={refreshAcademicData} disabled={refreshing}><RefreshCw className="h-4 w-4" /> {refreshing ? 'Refreshing…' : 'Refresh academic data'}</Button> : null}{canManage ? <Button onClick={launchPortal} disabled={launching}>Manage Timetable <ExternalLink className="h-4 w-4" /></Button> : null}</>}
       >
         <StateCard
           title="No published timetable"
-          message="This workspace has not published a timetable yet. Authorized managers can launch timetable management when provisioning is ready."
+          message={`This workspace has not published a timetable yet. ${integrationMessage}`}
         />
+        {refreshMessage ? <p className="text-sm text-green-700">{refreshMessage}</p> : null}
         {launchError ? <p className="text-sm text-red-600">{launchError}</p> : null}
       </TimetableShell>
     );
@@ -401,18 +428,16 @@ export function WorkspaceTimetablePage({ printable = false }: { printable?: bool
               Manage Timetable <ExternalLink className="h-4 w-4" />
             </Button>
           ) : null}
+          {canRefresh && !ready ? <Button variant="secondary" onClick={refreshAcademicData} disabled={refreshing}><RefreshCw className="h-4 w-4" /> {refreshing ? 'Refreshing…' : 'Refresh academic data'}</Button> : null}
         </>
       )}
     >
       <ProjectionSummary data={timetable.data} title="Workspace Timetable" />
       {!printable ? (
         <Card>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant={ready ? 'success' : 'warning'}>Integration {statusQuery.data?.integration.provisioning_state ?? 'UNKNOWN'}</Badge>
-            <Badge variant={statusQuery.data?.integration.health === 'HEALTHY' ? 'success' : 'warning'}>
-              Health {statusQuery.data?.integration.health ?? 'UNKNOWN'}
-            </Badge>
-          </div>
+          <div className="flex flex-wrap gap-2"><Badge variant={ready ? 'success' : 'warning'}>{ready ? 'Academic data ready' : 'Academic data needs attention'}</Badge></div>
+          <p className="mt-3 text-sm theme-muted">{integrationMessage}</p>
+          {refreshMessage ? <p className="mt-3 text-sm text-green-700">{refreshMessage}</p> : null}
           {launchError ? <p className="mt-3 text-sm text-red-600">{launchError}</p> : null}
         </Card>
       ) : null}

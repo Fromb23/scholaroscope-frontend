@@ -80,3 +80,12 @@ The implemented UI uses:
 The launch action posts the backend-issued single-use grant to the temporal
 portal exchange endpoint and does not persist the grant or any installation
 secret in browser storage.
+
+## Synchronization recovery
+
+Managers with `timetable.manage` may queue a complete, idempotent academic
+snapshot through `POST /api/plugins/timetable/integration/refresh/`. The action
+is available in Scholaroscope even while temporal provisioning is not ready, so
+the original authenticated tab remains the recovery boundary. The UI presents
+pending, failed, ready, and empty-eligibility states as readable guidance rather
+than exposing integration state-machine values.
