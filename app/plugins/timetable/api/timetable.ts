@@ -8,6 +8,12 @@ export type TimetableEntry = {
   teacher_name: string;
   cohort_id: number | null;
   cohort_name: string;
+  cohorts?: Array<{ cohort_ref?: string; cohort_id?: string; cohort_name: string }>;
+  cohort_subjects?: Array<{ cohort_subject_ref?: string; cohort_subject_uuid?: string; cohort_uuid?: string }>;
+  teaching_assignment_uuids?: string[];
+  delivery_group_uuid?: string | null;
+  parallel_block_uuid?: string | null;
+  learner_count?: number;
   subject_id: number | null;
   subject_name: string;
   subject_code: string;

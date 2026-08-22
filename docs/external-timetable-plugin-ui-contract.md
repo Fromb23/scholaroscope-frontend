@@ -43,6 +43,14 @@ Manager projections:
 
 Print output includes workspace name, term, timetable type, effective date, version, filter subject, and generated timestamp.
 
+Merged and parallel learning entries:
+
+- display all participating classes in teacher, workspace, and print views;
+- show a “Combined lesson” label and learner count, but never learner names;
+- show when a lesson runs with alternatives in the same parallel block;
+- remain read-only inside Scholaroscope; managers change grouping in the Temporal portal;
+- allow workspace filtering by any participating class through the backend projection API.
+
 ## Error and stale-state handling
 
 Timetable pages use the existing structured error presentation rules. Permission, entitlement, disabled-plugin, provisioning, stale-session, and integration-health failures render safe user-facing messages without exposing internal exception text.

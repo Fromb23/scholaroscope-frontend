@@ -46,6 +46,13 @@ function dayLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase();
 }
 
+function classLabel(entry: TimetableEntry): string {
+  if (entry.cohorts?.length) {
+    return entry.cohorts.map((cohort) => cohort.cohort_name).filter(Boolean).join(', ');
+  }
+  return entry.cohort_name || 'Class not specified';
+}
+
 function StateCard({
   title,
   message,
@@ -143,8 +150,14 @@ function WeeklyGrid({ entries }: { entries: TimetableEntry[] }) {
                 <div key={entry.id} className="rounded-lg border border-[color:var(--color-border)] p-3">
                   <p className="text-sm font-semibold theme-text">{entry.start_time}–{entry.end_time}</p>
                   <p className="mt-1 text-sm theme-text">{entry.subject_name || 'Subject not specified'}</p>
-                  <p className="text-xs theme-muted">{entry.cohort_name || 'Cohort not specified'}</p>
+                  <p className="text-xs theme-muted">{classLabel(entry)}</p>
                   {entry.teacher_name ? <p className="text-xs theme-muted">{entry.teacher_name}</p> : null}
+                  {entry.delivery_group_uuid ? (
+                    <p className="mt-1 text-xs theme-muted">
+                      Combined lesson{entry.learner_count ? ` · ${entry.learner_count} learners` : ''}
+                    </p>
+                  ) : null}
+                  {entry.parallel_block_uuid ? <p className="text-xs theme-muted">Runs with alternatives</p> : null}
                   {entry.room_name ? <p className="mt-1 text-xs theme-muted">Room: {entry.room_name}</p> : null}
                 </div>
               )) : (
