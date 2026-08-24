@@ -115,7 +115,8 @@ function isAuthEndpoint(url?: string): boolean {
   return !!url && (
     url.includes('/users/login/') ||
     url.includes('/users/logout/') ||
-    url.includes('/users/refresh/')
+    url.includes('/users/refresh/') ||
+    url.includes('/users/switch_org/')
   );
 }
 

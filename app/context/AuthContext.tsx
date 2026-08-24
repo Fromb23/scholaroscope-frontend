@@ -213,6 +213,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [offline, setOffline] = useState(false);
   const [savedOperatingContext, setSavedOperatingContext] = useState<OperatingContext | null>(() => readStoredOperatingContext());
   const authStateVersionRef = useRef(0);
+  const switchOrgInFlightRef = useRef<{
+    organizationId: number;
+    promise: Promise<SwitchOrgResponse>;
+  } | null>(null);
 
   const activeRole = useMemo(
     () => resolveActiveRole(user, activeOrg, memberships),
@@ -456,16 +460,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }), [clearAuthState]);
 
   const switchOrg = useCallback(async (organizationId: number) => {
+    const existingSwitch = switchOrgInFlightRef.current;
+    if (existingSwitch) {
+      if (existingSwitch.organizationId === organizationId) {
+        return existingSwitch.promise;
+      }
+      throw new Error('Workspace switching is already in progress.');
+    }
+
     const endTransition = beginAuthenticationTransition();
-    advanceAuthority('workspace-switch');
-    try {
+    const switchPromise = (async () => {
       const response = await authAPI.switchOrg(organizationId);
       applyAuthState(response, 'workspace-switch');
       return response;
+    })();
+    switchOrgInFlightRef.current = {
+      organizationId,
+      promise: switchPromise,
+    };
+    try {
+      return await switchPromise;
     } finally {
+      if (switchOrgInFlightRef.current?.promise === switchPromise) {
+        switchOrgInFlightRef.current = null;
+      }
       endTransition();
     }
-  }, [advanceAuthority, applyAuthState]);
+  }, [applyAuthState]);
 
   const restoreWorkspace = useCallback(async (organizationId: number) => {
     const response = await authAPI.restoreWorkspace(organizationId);

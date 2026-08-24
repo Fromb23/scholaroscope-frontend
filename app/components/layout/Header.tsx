@@ -19,10 +19,12 @@ import {
 
 import { GlobalPeopleSearch } from '@/app/components/layout/GlobalPeopleSearch';
 import { NotificationBell } from '@/app/components/layout/NotificationBell';
+import { useToast } from '@/app/components/ui/toast/useToast';
 import { useAuth } from '@/app/context/AuthContext';
 import { useSidebar } from '@/app/context/SidebarContext';
 import { useTheme } from '@/app/context/ThemeContext';
 import { themeAPI } from '@/app/core/api/theme';
+import { resolveWorkspaceError } from '@/app/core/errors';
 import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { themeModeToAppearanceMode } from '@/app/core/theme/effectiveTheme';
 import type { OperatingContext, SwitchOrgResponse } from '@/app/core/types/auth';
@@ -52,6 +54,7 @@ export default function Header() {
   } = useAuth();
   const { themeMode, setThemeMode, isDark } = useTheme();
   const { toggleSidebar } = useSidebar();
+  const { showToast } = useToast();
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
@@ -86,6 +89,9 @@ export default function Header() {
   };
 
   const handleSwitchOrg = async (orgId: number) => {
+    if (switching !== null) {
+      return;
+    }
     if (orgId === activeOrg?.id) {
       setOrgDropdownOpen(false);
       return;
@@ -97,6 +103,18 @@ export default function Header() {
       router.replace(switchedWorkspaceHomeRoute(response));
     } catch (err) {
       console.error('Failed to switch org:', err);
+      const resolved = resolveWorkspaceError(err, {
+        action: 'switch',
+        entityLabel: 'workspace',
+        channel: 'toast',
+        background: false,
+      });
+      showToast({
+        id: 'workspace-switch-error',
+        title: resolved.title,
+        message: resolved.message,
+        severity: resolved.severity === 'info' ? 'info' : resolved.severity,
+      });
     } finally {
       setSwitching(null);
     }
