@@ -1,5 +1,7 @@
 // app/core/types/assessment.ts
 
+import type { ComponentType } from 'react';
+
 export enum AssessmentType {
   ENTRY = 'ENTRY',
   CAT = 'CAT',
@@ -42,6 +44,51 @@ export enum AssessmentStatus {
   DRAFT = 'DRAFT',
   ACTIVE = 'ACTIVE',
   FINALIZED = 'FINALIZED',
+}
+
+export enum AssessmentGovernance {
+  POLICY_GOVERNED = 'POLICY_GOVERNED',
+  FORMATIVE = 'FORMATIVE',
+}
+
+export const ASSESSMENT_GOVERNANCE_LABELS: Record<AssessmentGovernance, string> = {
+  [AssessmentGovernance.POLICY_GOVERNED]: 'School assessment',
+  [AssessmentGovernance.FORMATIVE]: 'Quick assessment',
+};
+
+export enum AssessmentObjectiveSource {
+  CURRICULUM_OUTCOME = 'CURRICULUM_OUTCOME',
+  TEACHER_DEFINED = 'TEACHER_DEFINED',
+}
+
+export interface AssessmentObjectiveSnapshot {
+  provider?: string;
+  outcome_id?: number | string;
+  code?: string;
+  text?: string;
+  strand?: string;
+  sub_strand?: string;
+  subject_profile_id?: number;
+  subject_profile_name?: string;
+  source?: string;
+}
+
+export interface AssessmentObjectiveValue {
+  source: AssessmentObjectiveSource | null;
+  provider: string | null;
+  referenceId: string | null;
+  text: string;
+}
+
+export interface AssessmentObjectiveSelectorProps {
+  cohortSubjectId: number;
+  value: AssessmentObjectiveValue;
+  onChange: (value: AssessmentObjectiveValue) => void;
+}
+
+export interface AssessmentObjectiveProviderRegistration {
+  provider: string;
+  ObjectiveSelector: ComponentType<AssessmentObjectiveSelectorProps>;
 }
 
 export enum AssessmentParticipationMode {
@@ -120,6 +167,7 @@ export interface Assessment {
   subject_profile_id: number | null;
   name: string;
   assessment_type: string;
+  governance: AssessmentGovernance;
   report_component_key?: string | null;
   assessment_type_display: string;
   evaluation_type: string;
@@ -129,6 +177,11 @@ export interface Assessment {
   rubric_scale_name: string | null;
   assessment_date: string | null;
   description: string;
+  objective_source: AssessmentObjectiveSource | null;
+  objective_provider: string | null;
+  objective_reference_id: string | null;
+  teacher_defined_objective: string;
+  objective_snapshot: AssessmentObjectiveSnapshot;
   participation_mode: AssessmentParticipationMode;
   status: AssessmentStatus;
   status_display: string;
@@ -337,6 +390,7 @@ export interface LearnerAssessmentDetail extends Pick<
   | 'term_name'
   | 'name'
   | 'assessment_type'
+  | 'governance'
   | 'assessment_type_display'
   | 'evaluation_type'
   | 'evaluation_type_display'
@@ -345,6 +399,11 @@ export interface LearnerAssessmentDetail extends Pick<
   | 'rubric_scale_name'
   | 'assessment_date'
   | 'description'
+  | 'objective_source'
+  | 'objective_provider'
+  | 'objective_reference_id'
+  | 'teacher_defined_objective'
+  | 'objective_snapshot'
   | 'participation_mode'
   | 'status'
   | 'status_display'
@@ -380,11 +439,17 @@ export interface AssessmentFormData {
   term: number | null;
   name: string;
   assessment_type: string;
+  governance: AssessmentGovernance;
+  report_component_key?: string | null;
   evaluation_type: string;
   total_marks: number | null;
   rubric_scale: number | null;
   assessment_date: string | null;
   description: string;
+  objective_source?: AssessmentObjectiveSource | null;
+  objective_provider?: string | null;
+  objective_reference_id?: string | null;
+  teacher_defined_objective?: string;
   participation_mode: AssessmentParticipationMode;
 }
 
@@ -425,6 +490,20 @@ export function getAssessmentTypeLabel(type: string): string {
       .split('_')
       .map(part => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
+}
+
+export function getAssessmentGovernanceLabel(
+  governance: AssessmentGovernance | string | null | undefined,
+): string {
+  return ASSESSMENT_GOVERNANCE_LABELS[governance as AssessmentGovernance] ?? 'School assessment';
+}
+
+export function getAssessmentObjectiveText(
+  assessment: Pick<Assessment, 'objective_snapshot' | 'teacher_defined_objective'>,
+): string {
+  return assessment.objective_snapshot?.text
+    ?? assessment.teacher_defined_objective
+    ?? '';
 }
 
 export function calculateGrade(

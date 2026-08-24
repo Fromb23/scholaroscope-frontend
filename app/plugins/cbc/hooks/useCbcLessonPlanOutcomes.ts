@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cbcLessonPlanOutcomeAPI } from '@/app/plugins/cbc/api/lessonPlanOutcomes';
 import type { ApiError } from '@/app/core/types/errors';
 import type { CbcLessonPlanOutcomeOption } from '@/app/plugins/cbc/types/cbc';
+import { useAuth } from '@/app/context/AuthContext';
 
 function resolveLessonPlanOutcomeError(error: ApiError): string {
     const detail = typeof error?.response?.data === 'string'
@@ -20,8 +21,17 @@ function resolveLessonPlanOutcomeError(error: ApiError): string {
 }
 
 export function useCbcLessonPlanOutcomes(cohortSubjectId: number | null) {
+    const { activeOrg, activeOperatingContext, workspaceGeneration } = useAuth();
+
     return useQuery<CbcLessonPlanOutcomeOption[], Error>({
-        queryKey: ['cbc', 'lesson-plan-outcomes', cohortSubjectId],
+        queryKey: [
+            'cbc',
+            'lesson-plan-outcomes',
+            activeOrg?.id ?? null,
+            activeOperatingContext,
+            workspaceGeneration,
+            cohortSubjectId,
+        ],
         queryFn: async () => {
             try {
                 return await cbcLessonPlanOutcomeAPI.getAll(cohortSubjectId!);

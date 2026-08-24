@@ -7,6 +7,7 @@ import {
 } from '@/app/core/api/downloads';
 import {
   Assessment,
+  AssessmentGovernance,
   AssessmentDetailResponse,
   AssessmentMakeupCompletionData,
   AssessmentParticipationBulkUpdateData,
@@ -135,6 +136,7 @@ export const assessmentAPI = {
     term?: number;
     cohort_subject?: number;
     assessment_type?: string;
+    governance?: AssessmentGovernance | string;
     evaluation_type?: string;
     status?: string;
     authority_mode?: 'teaching' | 'supervision';
@@ -147,6 +149,7 @@ export const assessmentAPI = {
           term: params?.term,
           cohort_subject: params?.cohort_subject,
           assessment_type: params?.assessment_type,
+          governance: params?.governance,
           evaluation_type: params?.evaluation_type,
           status: params?.status,
           authority_mode: params?.authority_mode,
