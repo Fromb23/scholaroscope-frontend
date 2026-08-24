@@ -6,7 +6,11 @@ import { useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import type { AssessmentDetailResponse } from '@/app/core/types/assessment';
+import {
+  AssessmentGovernance,
+  getAssessmentGovernanceLabel,
+  type AssessmentDetailResponse,
+} from '@/app/core/types/assessment';
 import {
   getOperationalDetailBackLabel,
   resolveOperationalDetailBack,
@@ -51,6 +55,9 @@ export function AssessmentDetailHeader({
         <div className="min-w-0 flex-1">
           <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold">
             <span className="truncate">{assessment.name}</span>
+            <Badge variant={assessment.governance === AssessmentGovernance.FORMATIVE ? 'yellow' : 'blue'}>
+              {getAssessmentGovernanceLabel(assessment.governance)}
+            </Badge>
             <Badge variant="blue">{assessment.assessment_type_display}</Badge>
             <Badge variant="purple">{assessment.evaluation_type_display}</Badge>
           </h1>

@@ -14,4 +14,18 @@ describe('assessment cohort-subject return policy', () => {
     expect(source).toContain("const backLabel = source === 'cohort_subject'");
     expect(source).toContain('getReturnBackLabel(safeReturnTo)');
   });
+
+  it('keeps School and Quick assessments in one page with governance filtering', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/assessments/AssessmentsOverview.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('All assessments');
+    expect(source).toContain('School assessments');
+    expect(source).toContain('Quick assessments');
+    expect(source).toContain('governance: selectedGovernance');
+    expect(source).toContain('getAssessmentGovernanceLabel(assessment.governance)');
+    expect(source).toContain('const isSchoolAssessmentGroup = category.governance === AssessmentGovernance.POLICY_GOVERNED');
+  });
 });
