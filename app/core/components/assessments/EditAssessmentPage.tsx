@@ -23,8 +23,11 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import {
     ASSESSMENT_TYPE_OPTIONS,
     AssessmentFormData,
+    AssessmentGovernance,
     AssessmentParticipationMode,
     AssessmentStatus,
+    getAssessmentGovernanceLabel,
+    getAssessmentObjectiveText,
     isLearnerAssessmentDetail,
 } from '@/app/core/types/assessment';
 import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
@@ -112,6 +115,7 @@ export function EditAssessmentPage() {
         term: null,
         name: '',
         assessment_type: 'CAT',
+        governance: AssessmentGovernance.POLICY_GOVERNED,
         evaluation_type: 'NUMERIC',
         total_marks: 100,
         rubric_scale: null,
@@ -129,16 +133,25 @@ export function EditAssessmentPage() {
             term: staffAssessment.term,
             name: staffAssessment.name,
             assessment_type: staffAssessment.assessment_type,
+            governance: staffAssessment.governance ?? AssessmentGovernance.POLICY_GOVERNED,
+            report_component_key: staffAssessment.report_component_key ?? null,
             evaluation_type: staffAssessment.evaluation_type,
             total_marks: staffAssessment.total_marks,
             rubric_scale: staffAssessment.rubric_scale,
             assessment_date: staffAssessment.assessment_date,
             description: staffAssessment.description,
+            objective_source: staffAssessment.objective_source,
+            objective_provider: staffAssessment.objective_provider,
+            objective_reference_id: staffAssessment.objective_reference_id,
+            teacher_defined_objective: staffAssessment.teacher_defined_objective,
             participation_mode: staffAssessment.participation_mode,
         });
     }, [staffAssessment]);
 
     const isFinalized = staffAssessment?.status === AssessmentStatus.FINALIZED;
+    const isQuickAssessment = formData.governance === AssessmentGovernance.FORMATIVE;
+    const isSchoolAssessment = formData.governance !== AssessmentGovernance.FORMATIVE;
+    const objectiveText = staffAssessment ? getAssessmentObjectiveText(staffAssessment) : '';
     const canUpdateAssessment = staffAssessment?.can_update ?? (
         Boolean(staffAssessment)
         && !isFinalized
@@ -153,6 +166,7 @@ export function EditAssessmentPage() {
         || staffAssessment?.cohort_curriculum_type === 'CBE'
         || staffAssessment?.cohort_curriculum_type === 'CBC'
     );
+    const isSchoolCbcPolicyContext = isSchoolAssessment && isCbcPolicyContext;
     const allowedAssessmentTypes = useMemo(
         () => policyGuidance?.allowed_assessment_types ?? [],
         [policyGuidance],
@@ -246,7 +260,7 @@ export function EditAssessmentPage() {
     };
 
     useEffect(() => {
-        if (!canUpdateAssessment || !isCbcPolicyContext || !formData.term || !formData.cohort_subject) {
+        if (!canUpdateAssessment || !isSchoolCbcPolicyContext || !formData.term || !formData.cohort_subject) {
             setPolicyGuidance(null);
             setPolicyGuidanceError(null);
             setPolicyGuidanceLoading(false);
@@ -289,7 +303,7 @@ export function EditAssessmentPage() {
         canUpdateAssessment,
         formData.cohort_subject,
         formData.term,
-        isCbcPolicyContext,
+        isSchoolCbcPolicyContext,
         teachingSurface,
     ]);
 
@@ -323,7 +337,7 @@ export function EditAssessmentPage() {
             setSaveError('You do not have permission to update this assessment.');
             return;
         }
-        if (isCbcPolicyContext && formData.term && formData.cohort_subject && (policyGuidanceError || policyGuidanceLoading)) {
+        if (isSchoolCbcPolicyContext && formData.term && formData.cohort_subject && (policyGuidanceError || policyGuidanceLoading)) {
             return;
         }
         if (unsupportedAssessmentType) {
@@ -335,7 +349,18 @@ export function EditAssessmentPage() {
         setSaving(true);
         setSaveError(null);
         try {
-            await assessmentAPI.update(assessmentId, formData);
+            await assessmentAPI.update(assessmentId, {
+                cohort_subject: formData.cohort_subject,
+                term: formData.term,
+                name: formData.name,
+                assessment_type: formData.assessment_type,
+                evaluation_type: formData.evaluation_type,
+                total_marks: formData.total_marks,
+                rubric_scale: formData.rubric_scale,
+                assessment_date: formData.assessment_date,
+                description: formData.description,
+                participation_mode: formData.participation_mode,
+            });
             router.push(`/assessments/${assessmentId}`);
         } catch (err) {
             setSaveError(
@@ -397,7 +422,9 @@ export function EditAssessmentPage() {
                 </Link>
                 <div className="flex-1">
                     <h1 className="text-2xl font-semibold text-gray-900">Edit Assessment</h1>
-                    <p className="text-gray-600 mt-1">Update assessment facts for this cohort subject</p>
+                    <p className="text-gray-600 mt-1">
+                        Update {getAssessmentGovernanceLabel(formData.governance).toLowerCase()} facts for this cohort subject
+                    </p>
                 </div>
             </div>
 
@@ -424,6 +451,20 @@ export function EditAssessmentPage() {
                         <div className="flex items-center gap-2 mb-6">
                             <ClipboardList className="w-5 h-5 text-gray-400" />
                             <h2 className="text-lg font-semibold text-gray-900">Basic Information</h2>
+                        </div>
+
+                        <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                Assessment category
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-gray-900">
+                                {getAssessmentGovernanceLabel(formData.governance)}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-600">
+                                {isQuickAssessment
+                                    ? 'Quick assessment category cannot be changed after creation.'
+                                    : 'School assessment category cannot be changed after creation.'}
+                            </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -480,23 +521,27 @@ export function EditAssessmentPage() {
                                 {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
                             </div>
 
-                            <Select
-                                label="Assessment Type"
-                                value={unsupportedAssessmentType ? '' : formData.assessment_type}
-                                onChange={(e) => handleChange('assessment_type', e.target.value)}
-                                required
-                                options={[
-                                    ...(allowedAssessmentTypes.length
-                                        ? [{ value: '', label: 'Select policy allowed type', disabled: true }]
-                                        : []),
-                                    ...assessmentTypeOptions,
-                                ]}
-                                disabled={!canUpdateAssessment || policyGuidanceLoading || Boolean(policyGuidanceError)}
-                            />
-                            {unsupportedAssessmentType ? (
-                                <p className="text-sm text-red-600">
-                                    This term policy allows {allowedAssessmentTypes.join(', ')} only.
-                                </p>
+                            {isSchoolAssessment ? (
+                                <>
+                                    <Select
+                                        label="Assessment Type"
+                                        value={unsupportedAssessmentType ? '' : formData.assessment_type}
+                                        onChange={(e) => handleChange('assessment_type', e.target.value)}
+                                        required
+                                        options={[
+                                            ...(allowedAssessmentTypes.length
+                                                ? [{ value: '', label: 'Select policy allowed type', disabled: true }]
+                                                : []),
+                                            ...assessmentTypeOptions,
+                                        ]}
+                                        disabled={!canUpdateAssessment || policyGuidanceLoading || Boolean(policyGuidanceError)}
+                                    />
+                                    {unsupportedAssessmentType ? (
+                                        <p className="text-sm text-red-600">
+                                            This term policy allows {allowedAssessmentTypes.join(', ')} only.
+                                        </p>
+                                    ) : null}
+                                </>
                             ) : null}
 
                             <div>
@@ -515,7 +560,7 @@ export function EditAssessmentPage() {
                                 />
                             </div>
 
-                            {canUpdateAssessment && isCbcPolicyContext && formData.term && formData.cohort_subject ? (
+                            {canUpdateAssessment && isSchoolCbcPolicyContext && formData.term && formData.cohort_subject ? (
                                 <div className="md:col-span-2">
                                     {policyGuidanceError ? (
                                         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -552,11 +597,25 @@ export function EditAssessmentPage() {
                     </div>
                 </Card>
 
-                <AssessmentPolicyPreviewCard
-                    cohortId={selectedCohortId || null}
-                    cohortSubjectId={formData.cohort_subject || null}
-                    termId={formData.term}
-                />
+                {isQuickAssessment ? (
+                    <Card>
+                        <div className="p-6">
+                            <h2 className="text-lg font-semibold text-gray-900">Learning objective</h2>
+                            <p className="mt-2 text-sm text-gray-700">
+                                {objectiveText || 'No learning objective was returned for this assessment.'}
+                            </p>
+                            <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                                This assessment does not affect official school report grades.
+                            </p>
+                        </div>
+                    </Card>
+                ) : (
+                    <AssessmentPolicyPreviewCard
+                        cohortId={selectedCohortId || null}
+                        cohortSubjectId={formData.cohort_subject || null}
+                        termId={formData.term}
+                    />
+                )}
 
                 <Card>
                     <div className="p-6">
@@ -647,7 +706,7 @@ export function EditAssessmentPage() {
                         disabled={
                             saving
                             || !canUpdateAssessment
-                            || (isCbcPolicyContext && formData.term && formData.cohort_subject && (policyGuidanceLoading || Boolean(policyGuidanceError)))
+                            || (isSchoolCbcPolicyContext && formData.term && formData.cohort_subject && (policyGuidanceLoading || Boolean(policyGuidanceError)))
                             || unsupportedAssessmentType
                         }
                     >

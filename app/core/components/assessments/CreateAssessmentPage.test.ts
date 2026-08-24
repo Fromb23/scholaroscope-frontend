@@ -26,4 +26,33 @@ describe('CreateAssessmentPage foreground action state', () => {
     expect(pageSource).toContain('submitDisabledReason ? (');
     expect(pageSource).toContain('variant={cbcComponentsExhausted ? \'blocked\' : \'warning\'}');
   });
+
+  it('starts creation with teacher-facing School and Quick assessment choices', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('School assessment');
+    expect(pageSource).toContain('Quick assessment');
+    expect(pageSource).toContain('An official assessment that follows your school&apos;s assessment policy.');
+    expect(pageSource).toContain('A short classroom assessment for one learning objective.');
+  });
+
+  it('gates school policy guidance away from Quick assessments', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('const isQuickAssessment = form.governance === AssessmentGovernance.FORMATIVE');
+    expect(pageSource).toContain('const isSchoolCbcPolicyContext = usesSchoolPolicy && isCbcPolicyContext');
+    expect(pageSource).toContain('if (!isSchoolCbcPolicyContext || !form.term || !form.cohort_subject)');
+    expect(pageSource).toContain('{!isQuickAssessment ? (');
+    expect(pageSource).toContain('<AssessmentPolicyPreviewCard');
+  });
+
+  it('requires exactly one learning objective path for Quick assessments', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('Select a learning objective or enter one.');
+    expect(pageSource).toContain('Use an available curriculum objective for this class subject.');
+    expect(pageSource).toContain('Enter a custom learning objective');
+    expect(pageSource).toContain('setField(\'objective_provider\', null)');
+    expect(pageSource).toContain('setField(\'objective_reference_id\', null)');
+  });
 });
