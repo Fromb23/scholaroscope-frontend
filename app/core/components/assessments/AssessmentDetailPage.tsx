@@ -33,7 +33,10 @@ import { ContextualApprovalRequestButton } from '@/app/core/components/approvals
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { useAuth } from '@/app/context/AuthContext';
 import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
-import { isLearnerAssessmentDetail } from '@/app/core/types/assessment';
+import {
+    AssessmentGovernance,
+    isLearnerAssessmentDetail,
+} from '@/app/core/types/assessment';
 import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 
 export function AssessmentDetailPage() {
@@ -340,6 +343,8 @@ export function AssessmentDetailPage() {
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
     if (!assessment) return <div className="p-10 text-gray-500">Assessment not found.</div>;
 
+    const isQuickAssessment = assessment.governance === AssessmentGovernance.FORMATIVE;
+
     if (isLearnerAssessmentDetail(assessment)) {
         const result = learnerScore
             ? assessment.evaluation_type === 'NUMERIC'
@@ -452,7 +457,9 @@ export function AssessmentDetailPage() {
             {isFinalized && (
                 <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
                     <CheckCircle className="h-4 w-4 shrink-0" />
-                    This assessment is finalized. Scores are locked and grades have been queued for computation.
+                    {isQuickAssessment
+                        ? 'This assessment is finalized. Scores are locked.'
+                        : 'This assessment is finalized. Scores are locked and grades have been queued for computation.'}
                 </div>
             )}
 

@@ -14,6 +14,12 @@ const stageCardSource = () =>
     'utf8',
   );
 
+const infoCardSource = () =>
+  readFileSync(
+    join(process.cwd(), 'app/core/components/assessments/AssessmentInfoCard.tsx'),
+    'utf8',
+  );
+
 describe('AssessmentDetailPage stage-oriented actions', () => {
   it('renders assessment progress and one primary stage action', () => {
     const source = detailSource();
@@ -44,6 +50,22 @@ describe('AssessmentDetailPage stage-oriented actions', () => {
     expect(source).not.toContain('>Draft<');
   });
 
+  it('uses teacher-facing labels for School and Quick assessment categories', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/assessments/AssessmentDetailHeader.tsx'),
+      'utf8',
+    );
+    const typeSource = readFileSync(
+      join(process.cwd(), 'app/core/types/assessment.ts'),
+      'utf8',
+    );
+
+    expect(source).toContain('getAssessmentGovernanceLabel');
+    expect(source).toContain('AssessmentGovernance.FORMATIVE');
+    expect(typeSource).toContain('School assessment');
+    expect(typeSource).toContain('Quick assessment');
+  });
+
   it('adapts the existing Back action from safe returnTo and canonical fallbacks', () => {
     const source = readFileSync(
       join(process.cwd(), 'app/core/components/assessments/AssessmentDetailHeader.tsx'),
@@ -63,5 +85,23 @@ describe('AssessmentDetailPage stage-oriented actions', () => {
     expect(source).toContain('!isFinalized && !canScore && showInternalRequestActions');
     expect(source).toContain('isFinalized && !canReopen && showInternalRequestActions');
     expect(source).toContain('Ask admin for late score entry');
+  });
+
+  it('shows Quick assessment objective and excludes report policy preview', () => {
+    const source = infoCardSource();
+
+    expect(source).toContain('getAssessmentObjectiveText');
+    expect(source).toContain('Learning objective');
+    expect(source).toContain('This assessment does not affect official school report grades.');
+    expect(source).toContain('{!isQuickAssessment ? (');
+    expect(source).toContain('<AssessmentPolicyPreviewCard');
+  });
+
+  it('does not claim Quick assessment finalization queues formal grade computation', () => {
+    const source = detailSource();
+
+    expect(source).toContain('const isQuickAssessment = assessment.governance === AssessmentGovernance.FORMATIVE');
+    expect(source).toContain('This assessment is finalized. Scores are locked.');
+    expect(source).toContain('Scores are locked and grades have been queued for computation.');
   });
 });

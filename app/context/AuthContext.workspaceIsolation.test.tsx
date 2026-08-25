@@ -8,7 +8,10 @@ import {
   DEFAULT_WORKSPACE_CAPABILITIES,
   authAPI,
 } from '@/app/core/api/auth';
-import { resetWorkspaceGenerationForTests } from '@/app/core/runtime/workspaceGeneration';
+import {
+  resetWorkspaceGenerationForTests,
+  WorkspaceGenerationBoundary,
+} from '@/app/core/runtime/workspaceGeneration';
 import {
   clearExplicitLogout,
   isExplicitLogoutActive,
@@ -21,14 +24,17 @@ import {
 type Deferred<T> = {
   promise: Promise<T>;
   resolve: (value: T) => void;
+  reject: (reason?: unknown) => void;
 };
 
 function deferred<T>(): Deferred<T> {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
+    reject = rejectPromise;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 function authState(
@@ -249,7 +255,113 @@ describe('AuthContext workspace authority races', () => {
     });
 
     expect(currentAuth().activeOrg?.id).toBe(1);
-    expect(currentAuth().workspaceGeneration).toBeGreaterThan(generationBefore);
+    expect(currentAuth().workspaceGeneration).toBe(generationBefore);
+  });
+
+  it('keeps the generation boundary mounted while a switch is pending and remounts after success', async () => {
+    const switchResponse = deferred<ReturnType<typeof authState>>();
+    vi.spyOn(authAPI, 'refresh').mockResolvedValue(authState(1, false));
+    vi.spyOn(authAPI, 'switchOrg').mockReturnValue(switchResponse.promise);
+    const queryClient = new QueryClient();
+    const clearQueryCache = vi.spyOn(queryClient, 'clear');
+    const observeAuth = vi.fn<(value: ReturnType<typeof useAuth>) => void>();
+    const mountEvents: string[] = [];
+
+    function BoundaryProbe() {
+      useEffect(() => {
+        mountEvents.push('mount');
+        return () => {
+          mountEvents.push('unmount');
+        };
+      }, []);
+      return createElement('dashboard-selector', null);
+    }
+
+    function Probe({ onAuth }: { onAuth: (value: ReturnType<typeof useAuth>) => void }) {
+      const auth = useAuth();
+      useEffect(() => onAuth(auth), [auth, onAuth]);
+      return createElement(
+        WorkspaceGenerationBoundary,
+        null,
+        createElement(BoundaryProbe),
+      );
+    }
+
+    await act(async () => {
+      renderer = create(
+        createElement(
+          QueryClientProvider,
+          { client: queryClient },
+          createElement(AuthProvider, null, createElement(Probe, { onAuth: observeAuth })),
+        ),
+      );
+      await Promise.resolve();
+    });
+    const currentAuth = () => observeAuth.mock.calls.at(-1)![0];
+    const generationAfterBoot = currentAuth().workspaceGeneration;
+    expect(mountEvents).toEqual(['mount', 'unmount', 'mount']);
+    mountEvents.length = 0;
+    clearQueryCache.mockClear();
+
+    let pendingSwitch!: Promise<unknown>;
+    await act(async () => {
+      pendingSwitch = currentAuth().switchOrg(2);
+      await Promise.resolve();
+    });
+
+    expect(currentAuth().activeOrg?.id).toBe(1);
+    expect(currentAuth().workspaceGeneration).toBe(generationAfterBoot);
+    expect(mountEvents).toEqual([]);
+    expect(clearQueryCache).not.toHaveBeenCalled();
+
+    await act(async () => {
+      switchResponse.resolve(authState(2, true));
+      await pendingSwitch;
+    });
+
+    expect(currentAuth().activeOrg?.id).toBe(2);
+    expect(currentAuth().workspaceGeneration).toBeGreaterThan(generationAfterBoot);
+    expect(mountEvents).toEqual(['unmount', 'mount']);
+    expect(clearQueryCache).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates repeated switch requests for the same target while pending', async () => {
+    const switchResponse = deferred<ReturnType<typeof authState>>();
+    vi.spyOn(authAPI, 'refresh').mockResolvedValue(authState(1, false));
+    const switchOrgRequest = vi.spyOn(authAPI, 'switchOrg').mockReturnValue(switchResponse.promise);
+    const observeAuth = vi.fn<(value: ReturnType<typeof useAuth>) => void>();
+
+    function Probe() {
+      const auth = useAuth();
+      useEffect(() => observeAuth(auth), [auth]);
+      return createElement('auth-state');
+    }
+
+    await act(async () => {
+      renderer = create(
+        createElement(
+          QueryClientProvider,
+          { client: new QueryClient() },
+          createElement(AuthProvider, null, createElement(Probe)),
+        ),
+      );
+      await Promise.resolve();
+    });
+    const currentAuth = () => observeAuth.mock.calls.at(-1)![0];
+
+    let first!: Promise<unknown>;
+    let second!: Promise<unknown>;
+    await act(async () => {
+      first = currentAuth().switchOrg(2);
+      second = currentAuth().switchOrg(2);
+      await Promise.resolve();
+    });
+    expect(switchOrgRequest).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      switchResponse.resolve(authState(2, true));
+      await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+    });
   });
 
   it('does not call boot refresh while an explicit logout tombstone is active', async () => {

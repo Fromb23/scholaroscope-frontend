@@ -49,7 +49,9 @@ import {
 import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
 import {
     ASSESSMENT_TYPE_OPTIONS,
+    AssessmentGovernance,
     AssessmentStatus,
+    getAssessmentGovernanceLabel,
     getAssessmentTypeLabel,
     type Assessment,
 } from '@/app/core/types/assessment';
@@ -86,6 +88,7 @@ interface SubjectBucket {
 
 interface CategoryBucket {
     key: string;
+    governance: AssessmentGovernance;
     assessmentType: string;
     label: string;
     subjects: SubjectBucket[];
@@ -355,6 +358,9 @@ function AssessmentLeafRow({
                 <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-gray-900">{assessment.name}</span>
+                        <Badge variant={assessment.governance === AssessmentGovernance.FORMATIVE ? 'yellow' : 'blue'}>
+                            {getAssessmentGovernanceLabel(assessment.governance)}
+                        </Badge>
                         {stalled ? (
                             <Badge variant="orange">Stalled</Badge>
                         ) : null}
@@ -539,6 +545,7 @@ function AssessmentCategoryAccordion({
     const categoryAssessments = category.subjects.flatMap((subject) =>
         subject.cohorts.flatMap((cohort) => cohort.items)
     );
+    const isSchoolAssessmentGroup = category.governance === AssessmentGovernance.POLICY_GOVERNED;
     const allFinalized =
         categoryAssessments.length > 0 &&
         categoryAssessments.every((item) => item.status === AssessmentStatus.FINALIZED);
@@ -570,7 +577,7 @@ function AssessmentCategoryAccordion({
                         </p>
                     </div>
                 </button>
-                {categoryAssessments.length === 0 ? null : allFinalized ? (
+                {categoryAssessments.length === 0 || !isSchoolAssessmentGroup ? null : allFinalized ? (
                     <BulkReopenAssessmentAction
                         termId={termId}
                         termName={termName}
@@ -686,6 +693,7 @@ export function AssessmentsOverview() {
     const [selectedCohort, setSelectedCohort] = useState<number | undefined>();
     const [selectedCohortSubject, setSelectedCohortSubject] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
+    const [selectedGovernance, setSelectedGovernance] = useState<AssessmentGovernance | undefined>();
     const [selectedEvalType, setSelectedEvalType] = useState<string | undefined>();
     const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
     const [openSubjects, setOpenSubjects] = useState<Set<string>>(new Set());
@@ -875,6 +883,7 @@ export function AssessmentsOverview() {
         term: selectedTerm,
         cohort_subject: isAdminSupervisionMode ? undefined : selectedCohortSubject,
         assessment_type: isAdminSupervisionMode ? undefined : selectedType,
+        governance: selectedGovernance,
         evaluation_type: isAdminSupervisionMode ? undefined : selectedEvalType,
         authority_mode: isAdminSupervisionMode ? 'supervision' : 'teaching',
         enabled: shouldFetchAssessments,
@@ -951,6 +960,7 @@ export function AssessmentsOverview() {
             ASSESSMENT_TYPE_OPTIONS.map((option, index) => [option.value, index])
         );
         const categories = new Map<string, {
+            governance: AssessmentGovernance;
             assessmentType: string;
             label: string;
             subjects: Map<string, {
@@ -965,19 +975,24 @@ export function AssessmentsOverview() {
         }>();
 
         visibleAssessments.forEach((assessment) => {
+            const governance = assessment.governance ?? AssessmentGovernance.POLICY_GOVERNED;
             const categoryType = assessment.assessment_type;
-            const categoryLabel = getAssessmentTypeLabel(categoryType);
-            const subjectKey = `${categoryType}:subject:${assessment.subject_id}`;
+            const categoryKey = `${governance}:${categoryType}`;
+            const categoryLabel = governance === AssessmentGovernance.FORMATIVE
+                ? 'Quick assessments'
+                : getAssessmentTypeLabel(categoryType);
+            const subjectKey = `${categoryKey}:subject:${assessment.subject_id}`;
             const cohortKey = `${subjectKey}:cohort:${assessment.cohort_id}`;
 
-            if (!categories.has(categoryType)) {
-                categories.set(categoryType, {
+            if (!categories.has(categoryKey)) {
+                categories.set(categoryKey, {
+                    governance,
                     assessmentType: categoryType,
                     label: categoryLabel,
                     subjects: new Map(),
                 });
             }
-            const category = categories.get(categoryType);
+            const category = categories.get(categoryKey);
             if (!category) return;
 
             if (!category.subjects.has(subjectKey)) {
@@ -1032,6 +1047,7 @@ export function AssessmentsOverview() {
                 const stalledCount = subjects.reduce((sum, subject) => sum + subject.stalledCount, 0);
                 return {
                     key,
+                    governance: category.governance,
                     assessmentType: category.assessmentType,
                     label: category.label,
                     subjects,
@@ -1040,6 +1056,9 @@ export function AssessmentsOverview() {
                 };
             })
             .sort((left, right) => {
+                if (left.governance !== right.governance) {
+                    return left.governance === AssessmentGovernance.POLICY_GOVERNED ? -1 : 1;
+                }
                 const leftOrder = categoryOrder.get(left.assessmentType) ?? Number.MAX_SAFE_INTEGER;
                 const rightOrder = categoryOrder.get(right.assessmentType) ?? Number.MAX_SAFE_INTEGER;
                 return leftOrder - rightOrder || left.label.localeCompare(right.label);
@@ -1087,6 +1106,12 @@ export function AssessmentsOverview() {
     const assessmentTypes = [
         { value: '', label: 'All types' },
         ...ASSESSMENT_TYPE_OPTIONS,
+    ];
+
+    const governanceTypes = [
+        { value: '', label: 'All assessments' },
+        { value: AssessmentGovernance.POLICY_GOVERNED, label: 'School assessments' },
+        { value: AssessmentGovernance.FORMATIVE, label: 'Quick assessments' },
     ];
 
     const evaluationTypes = [
@@ -1266,6 +1291,16 @@ export function AssessmentsOverview() {
                                 ]}
                             />
                             <Select
+                                label="Assessment category"
+                                value={selectedGovernance || ''}
+                                onChange={(event) => setSelectedGovernance(
+                                    event.target.value
+                                        ? event.target.value as AssessmentGovernance
+                                        : undefined
+                                )}
+                                options={governanceTypes}
+                            />
+                            <Select
                                 label="Assessment type"
                                 value={selectedType || ''}
                                 onChange={(event) => setSelectedType(event.target.value || undefined)}
@@ -1316,7 +1351,7 @@ export function AssessmentsOverview() {
                                     ? 'No assessments are visible for the selected term.'
                                     : 'Try adjusting your filters.'}
                         </p>
-                        {canCreateAssessment && !newWorkUnavailable && !selectedTerm && !selectedCohort && !selectedCohortSubject && !selectedType && !selectedEvalType ? (
+                        {canCreateAssessment && !newWorkUnavailable && !selectedTerm && !selectedCohort && !selectedCohortSubject && !selectedGovernance && !selectedType && !selectedEvalType ? (
                             <Link href={createAssessmentHref}>
                                 <Button className="mt-4">
                                     <Plus className="h-4 w-4" />

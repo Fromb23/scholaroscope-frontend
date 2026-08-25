@@ -52,6 +52,28 @@ export const ERROR_CODE_COPY: Record<string, ErrorCodeCopyEntry> = {
     retryable: false,
     severity: 'warning',
   },
+  workspace_access_removed: {
+    kind: 'permission',
+    title: 'Workspace access changed.',
+    message: 'You no longer have access to this workspace.',
+    retryable: false,
+    severity: 'warning',
+  },
+  workspace_unavailable: {
+    kind: 'workspace_boundary',
+    title: 'Workspace unavailable.',
+    message: 'This workspace is currently unavailable.',
+    retryable: false,
+    severity: 'warning',
+  },
+  workspace_switch_unavailable: {
+    kind: 'server',
+    title: 'Workspace switching is unavailable.',
+    message: 'Workspace switching is temporarily unavailable. Please try again.',
+    actionLabel: 'Try again',
+    retryable: true,
+    severity: 'error',
+  },
   account_email_already_exists: {
     kind: 'conflict',
     title: 'An account already exists for this email.',

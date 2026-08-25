@@ -13,6 +13,8 @@ import { getDefaultAssessmentParticipationMode } from '@/app/core/lib/assessment
 import {
   Assessment,
   AssessmentDetailResponse,
+  AssessmentGovernance,
+  AssessmentObjectiveSource,
   AssessmentParticipationMode,
   AssessmentScore,
   AssessmentScoreDraft,
@@ -27,6 +29,7 @@ import {
 import { PaginatedResponse } from '@/app/core/types/api';
 import { ApiError, resolveErrorMessage } from '../types/errors';
 import { withOperationalScope, type OperationalScope } from '@/app/core/lib/academicScope';
+import { useAuth } from '@/app/context/AuthContext';
 
 // ── Helper ────────────────────────────────────────────────────────────────
 
@@ -46,33 +49,47 @@ export const useAssessments = (params?: {
   term?: number;
   cohort_subject?: number;
   assessment_type?: string;
+  governance?: AssessmentGovernance | string;
   evaluation_type?: string;
   status?: AssessmentStatus;
   authority_mode?: 'teaching' | 'supervision';
   enabled?: boolean;
 }) => {
+  const { activeOrg, activeOperatingContext, workspaceGeneration } = useAuth();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const enabled = params?.enabled ?? true;
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const assessmentFilters = useMemo(
-    () => withOperationalScope({
-      scope: params?.scope,
-      term: params?.term,
-      cohort_subject: params?.cohort_subject,
-      assessment_type: params?.assessment_type,
-      evaluation_type: params?.evaluation_type,
-      status: params?.status,
-      authority_mode: params?.authority_mode,
-    }),
+    () => {
+      const filters = withOperationalScope({
+        scope: params?.scope,
+        term: params?.term,
+        cohort_subject: params?.cohort_subject,
+        assessment_type: params?.assessment_type,
+        governance: params?.governance,
+        evaluation_type: params?.evaluation_type,
+        status: params?.status,
+        authority_mode: params?.authority_mode,
+      });
+
+      return {
+        ...filters,
+        __cache_scope: `${activeOrg?.id ?? 'none'}:${activeOperatingContext ?? 'none'}:${workspaceGeneration}`,
+      };
+    },
     [
+      activeOperatingContext,
+      activeOrg?.id,
       params?.scope,
       params?.term,
       params?.cohort_subject,
       params?.assessment_type,
+      params?.governance,
       params?.evaluation_type,
       params?.status,
       params?.authority_mode,
+      workspaceGeneration,
     ]
   );
 
@@ -86,7 +103,9 @@ export const useAssessments = (params?: {
 
     try {
       setLoading(true);
-      const data = await assessmentAPI.getAll(assessmentFilters);
+      const { __cache_scope: _cacheScope, ...requestFilters } = assessmentFilters;
+      void _cacheScope;
+      const data = await assessmentAPI.getAll(requestFilters);
       setAssessments(unwrapList(data));
       setError(null);
     } catch (err) {
@@ -496,12 +515,17 @@ interface AssessmentFormState {
   term: number | null;
   name: string;
   assessment_type: string;
+  governance: AssessmentGovernance;
   report_component_key: string | null;
   evaluation_type: string;
   total_marks: number | null;
   rubric_scale: number | null;
   assessment_date: string;
   description: string;
+  objective_source: AssessmentObjectiveSource | null;
+  objective_provider: string | null;
+  objective_reference_id: string | null;
+  teacher_defined_objective: string;
   participation_mode: AssessmentParticipationMode;
 }
 
@@ -511,6 +535,7 @@ interface FormErrors {
   name?: string;
   total_marks?: string;
   rubric_scale?: string;
+  objective?: string;
 }
 
 export const useCreateAssessmentForm = (options?: {
@@ -524,6 +549,7 @@ export const useCreateAssessmentForm = (options?: {
     cohort_subject: 0,
     term: null,
     name: '',
+    governance: AssessmentGovernance.POLICY_GOVERNED,
     assessment_type: 'CAT',
     report_component_key: null,
     evaluation_type: 'NUMERIC',
@@ -531,6 +557,10 @@ export const useCreateAssessmentForm = (options?: {
     rubric_scale: null,
     assessment_date: new Date().toISOString().split('T')[0],
     description: '',
+    objective_source: null,
+    objective_provider: null,
+    objective_reference_id: null,
+    teacher_defined_objective: '',
     participation_mode: getDefaultAssessmentParticipationMode(),
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -543,6 +573,29 @@ export const useCreateAssessmentForm = (options?: {
   ) => {
     setForm(prev => {
       const updated = { ...prev, [field]: value };
+      if (field === 'governance') {
+        updated.report_component_key = null;
+        updated.objective_source = null;
+        updated.objective_provider = null;
+        updated.objective_reference_id = null;
+        updated.teacher_defined_objective = '';
+        if (value === AssessmentGovernance.FORMATIVE) {
+          updated.assessment_type = 'TEST';
+          updated.evaluation_type = 'NUMERIC';
+          updated.total_marks = 10;
+          updated.rubric_scale = null;
+        } else {
+          updated.assessment_type = 'CAT';
+          updated.total_marks = 100;
+        }
+      }
+      if (field === 'cohort_subject') {
+        updated.report_component_key = null;
+        updated.objective_source = null;
+        updated.objective_provider = null;
+        updated.objective_reference_id = null;
+        updated.teacher_defined_objective = '';
+      }
       if (field === 'evaluation_type') {
         if (value === 'NUMERIC') { updated.rubric_scale = null; updated.total_marks = 100; }
         if (value === 'RUBRIC') { updated.total_marks = null; }
@@ -559,7 +612,15 @@ export const useCreateAssessmentForm = (options?: {
 
   const selectCohort = useCallback((cohortId: number) => {
     setSelectedCohortId(cohortId);
-    setForm(prev => ({ ...prev, cohort_subject: 0 }));
+    setForm(prev => ({
+      ...prev,
+      cohort_subject: 0,
+      report_component_key: null,
+      objective_source: null,
+      objective_provider: null,
+      objective_reference_id: null,
+      teacher_defined_objective: '',
+    }));
     setErrors(prev => { const e = { ...prev }; delete e.cohort; return e; });
   }, []);
 
@@ -575,6 +636,13 @@ export const useCreateAssessmentForm = (options?: {
       e.cohort_subject = 'You are not assigned to this cohort subject';
     }
     if (!form.name.trim()) e.name = 'Assessment name is required';
+    if (form.governance === AssessmentGovernance.FORMATIVE) {
+      const hasCurriculumObjective = Boolean(form.objective_provider && form.objective_reference_id);
+      const hasTeacherObjective = Boolean(form.teacher_defined_objective.trim());
+      if (hasCurriculumObjective === hasTeacherObjective) {
+        e.objective = 'Select a learning objective or enter one';
+      }
+    }
     if (form.evaluation_type === 'NUMERIC' && !form.total_marks)
       e.total_marks = 'Total marks required for numeric assessments';
     if (form.evaluation_type === 'RUBRIC' && !form.rubric_scale)

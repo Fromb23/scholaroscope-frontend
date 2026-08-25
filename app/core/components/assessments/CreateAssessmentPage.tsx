@@ -15,6 +15,7 @@ import { ActionStateBanner } from '@/app/components/ui/actions';
 import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
 import { assessmentAPI } from '@/app/core/api/assessments';
 import { useCreateAssessmentForm, useRubricScales } from '@/app/core/hooks/useAssessments';
+import { getAssessmentObjectiveProvider } from '@/app/core/registry/assessmentObjectiveProviders';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -22,7 +23,12 @@ import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { tracksAssessmentParticipation } from '@/app/core/lib/assessmentParticipation';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
-import { ASSESSMENT_TYPE_OPTIONS, AssessmentParticipationMode } from '@/app/core/types/assessment';
+import {
+    ASSESSMENT_TYPE_OPTIONS,
+    AssessmentGovernance,
+    AssessmentObjectiveSource,
+    AssessmentParticipationMode,
+} from '@/app/core/types/assessment';
 import { resolveReportError } from '@/app/core/errors';
 import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import { useAuth } from '@/app/context/AuthContext';
@@ -74,6 +80,7 @@ export function CreateAssessmentPage() {
     const [policyGuidance, setPolicyGuidance] = useState<AcademicPolicyBrief | null>(null);
     const [policyGuidanceLoading, setPolicyGuidanceLoading] = useState(false);
     const [policyGuidanceError, setPolicyGuidanceError] = useState<string | null>(null);
+    const [objectiveMode, setObjectiveMode] = useState<'curriculum' | 'custom'>('curriculum');
 
     const assignedSubjectOptions = useMemo<InstructorSubjectOption[]>(() => {
         const options = instructorAccess.assignments
@@ -228,6 +235,22 @@ export function CreateAssessmentPage() {
     }, [availableCohorts, curricula, selectedCohortId]);
     const isSelectedCurriculumWritable = selectedCurriculum ? canCreateCurriculumWork(selectedCurriculum) : true;
     const isCbcPolicyContext = selectedCurriculum?.curriculum_type === 'CBE' || selectedCurriculum?.curriculum_type === 'CBC';
+    const isQuickAssessment = form.governance === AssessmentGovernance.FORMATIVE;
+    const usesSchoolPolicy = form.governance === AssessmentGovernance.POLICY_GOVERNED;
+    const isSchoolCbcPolicyContext = usesSchoolPolicy && isCbcPolicyContext;
+    const objectiveProvider = isCbcPolicyContext ? getAssessmentObjectiveProvider('cbc') : null;
+    const ObjectiveSelector = objectiveProvider?.ObjectiveSelector ?? null;
+    const objectiveValue = useMemo(() => ({
+        source: form.objective_source,
+        provider: form.objective_provider,
+        referenceId: form.objective_reference_id,
+        text: form.teacher_defined_objective,
+    }), [
+        form.objective_provider,
+        form.objective_reference_id,
+        form.objective_source,
+        form.teacher_defined_objective,
+    ]);
     const allowedAssessmentTypes = useMemo(
         () => policyGuidance?.allowed_assessment_types ?? [],
         [policyGuidance],
@@ -240,7 +263,7 @@ export function CreateAssessmentPage() {
     const policyUserMessage = policyGuidance?.user_message ?? policyGuidance?.message ?? null;
     const policyReady = policyGuidance?.policy_ready !== false && !policyDisabledReason;
     const cbcComponentsExhausted = Boolean(
-        isCbcPolicyContext
+        isSchoolCbcPolicyContext
         && form.term
         && form.cohort_subject
         && policyGuidance
@@ -250,7 +273,7 @@ export function CreateAssessmentPage() {
         )
     );
     const assessmentTypeOptions = useMemo(() => {
-        if (isCbcPolicyContext && policyGuidance) {
+        if (isSchoolCbcPolicyContext && policyGuidance) {
             return availableAssessmentComponents.map((component) => ({
                 value: component.component_key,
                 label: component.label,
@@ -262,9 +285,10 @@ export function CreateAssessmentPage() {
 
         const allowed = new Set(allowedAssessmentTypes.map((type) => type.toUpperCase()));
         return ASSESSMENT_TYPE_OPTIONS.filter((option) => allowed.has(String(option.value).toUpperCase()));
-    }, [allowedAssessmentTypes, availableAssessmentComponents, isCbcPolicyContext, policyGuidance]);
+    }, [allowedAssessmentTypes, availableAssessmentComponents, isSchoolCbcPolicyContext, policyGuidance]);
     const unsupportedAssessmentType = Boolean(
-        !isCbcPolicyContext
+        !isQuickAssessment
+        && !isSchoolCbcPolicyContext
         && allowedAssessmentTypes.length
         && form.assessment_type
         && !allowedAssessmentTypes
@@ -287,7 +311,7 @@ export function CreateAssessmentPage() {
     };
 
     useEffect(() => {
-        if (!isCbcPolicyContext || !form.term || !form.cohort_subject) {
+        if (!isSchoolCbcPolicyContext || !form.term || !form.cohort_subject) {
             setPolicyGuidance(null);
             setPolicyGuidanceError(null);
             setPolicyGuidanceLoading(false);
@@ -358,7 +382,7 @@ export function CreateAssessmentPage() {
         form.name,
         form.report_component_key,
         form.term,
-        isCbcPolicyContext,
+        isSchoolCbcPolicyContext,
         isTeachingActor,
         setField,
     ]);
@@ -368,20 +392,26 @@ export function CreateAssessmentPage() {
         if (!managementAssessmentAuthor && !isTeachingActor) return 'You do not have permission to create assessments.';
         if (newWorkUnavailable) return newWorkUnavailableReason;
         if (!isSelectedCurriculumWritable) return 'This curriculum is blocked for new work.';
-        if (isCbcPolicyContext && !form.term) return 'Select a term before creating an official assessment.';
-        if (isCbcPolicyContext && form.term && form.cohort_subject && policyGuidanceLoading) {
+        if (isQuickAssessment && !form.term) return 'Select an active term before creating a Quick assessment.';
+        if (isQuickAssessment) {
+            const hasCurriculumObjective = Boolean(form.objective_provider && form.objective_reference_id);
+            const hasTeacherObjective = Boolean(form.teacher_defined_objective.trim());
+            if (hasCurriculumObjective === hasTeacherObjective) return 'Select a learning objective or enter one.';
+        }
+        if (isSchoolCbcPolicyContext && !form.term) return 'Select a term before creating an official assessment.';
+        if (isSchoolCbcPolicyContext && form.term && form.cohort_subject && policyGuidanceLoading) {
             return 'Loading active policy guidance.';
         }
-        if (isCbcPolicyContext && form.term && form.cohort_subject && policyGuidanceError) {
+        if (isSchoolCbcPolicyContext && form.term && form.cohort_subject && policyGuidanceError) {
             return policyGuidanceError;
         }
-        if (isCbcPolicyContext && form.term && form.cohort_subject && policyDisabledReason === 'all_components_created') {
+        if (isSchoolCbcPolicyContext && form.term && form.cohort_subject && policyDisabledReason === 'all_components_created') {
             return ALL_COMPONENTS_CREATED_MESSAGE;
         }
-        if (isCbcPolicyContext && form.term && form.cohort_subject && !policyReady) {
+        if (isSchoolCbcPolicyContext && form.term && form.cohort_subject && !policyReady) {
             return policyUserMessage ?? 'Official assessment creation is blocked by report policy setup.';
         }
-        if (isCbcPolicyContext && form.term && form.cohort_subject && cbcComponentsExhausted) {
+        if (isSchoolCbcPolicyContext && form.term && form.cohort_subject && cbcComponentsExhausted) {
             return ALL_COMPONENTS_CREATED_MESSAGE;
         }
         if (unsupportedAssessmentType) return `This term policy allows ${allowedAssessmentTypes.join(', ')} only.`;
@@ -390,8 +420,12 @@ export function CreateAssessmentPage() {
         allowedAssessmentTypes,
         cbcComponentsExhausted,
         form.cohort_subject,
+        form.objective_provider,
+        form.objective_reference_id,
+        form.teacher_defined_objective,
         form.term,
-        isCbcPolicyContext,
+        isQuickAssessment,
+        isSchoolCbcPolicyContext,
         isSelectedCurriculumWritable,
         managementAssessmentAuthor,
         isTeachingActor,
@@ -462,21 +496,25 @@ export function CreateAssessmentPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [requestedTermId, form.term]);
 
+    useEffect(() => {
+        setObjectiveMode(ObjectiveSelector ? 'curriculum' : 'custom');
+    }, [ObjectiveSelector, form.cohort_subject, form.governance]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isSelectedCurriculumWritable) {
             return;
         }
-        if (isCbcPolicyContext && form.term && form.cohort_subject && (policyGuidanceError || policyGuidanceLoading)) {
+        if (isSchoolCbcPolicyContext && form.term && form.cohort_subject && (policyGuidanceError || policyGuidanceLoading)) {
             return;
         }
         if (unsupportedAssessmentType) {
             return;
         }
-        if (isCbcPolicyContext && form.term && form.cohort_subject && (!policyReady || cbcComponentsExhausted)) {
+        if (isSchoolCbcPolicyContext && form.term && form.cohort_subject && (!policyReady || cbcComponentsExhausted)) {
             return;
         }
-        if (isCbcPolicyContext && !form.term) {
+        if (isSchoolCbcPolicyContext && !form.term) {
             return;
         }
         const result = await submit();
@@ -561,6 +599,44 @@ export function CreateAssessmentPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
                 <Card>
                     <div className="p-6">
+                        <h2 className="mb-4 text-lg font-semibold text-gray-900">Assessment Category</h2>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <button
+                                type="button"
+                                onClick={() => setField('governance', AssessmentGovernance.POLICY_GOVERNED)}
+                                className={[
+                                    'rounded-lg border px-4 py-4 text-left transition-colors',
+                                    form.governance === AssessmentGovernance.POLICY_GOVERNED
+                                        ? 'border-blue-300 bg-blue-50'
+                                        : 'border-gray-200 bg-white hover:border-gray-300',
+                                ].join(' ')}
+                            >
+                                <p className="text-sm font-medium text-gray-900">School assessment</p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    An official assessment that follows your school&apos;s assessment policy.
+                                </p>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setField('governance', AssessmentGovernance.FORMATIVE)}
+                                className={[
+                                    'rounded-lg border px-4 py-4 text-left transition-colors',
+                                    form.governance === AssessmentGovernance.FORMATIVE
+                                        ? 'border-blue-300 bg-blue-50'
+                                        : 'border-gray-200 bg-white hover:border-gray-300',
+                                ].join(' ')}
+                            >
+                                <p className="text-sm font-medium text-gray-900">Quick assessment</p>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    A short classroom assessment for one learning objective.
+                                </p>
+                            </button>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card>
+                    <div className="p-6">
                         <div className="flex items-center gap-2 mb-6">
                             <ClipboardList className="w-5 h-5 text-gray-400" />
                             <h2 className="text-lg font-semibold text-gray-900">Basic Information</h2>
@@ -617,44 +693,46 @@ export function CreateAssessmentPage() {
                                 {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
                             </div>
 
-                            <Select
-                                label={isCbcPolicyContext ? 'Assessment Component' : 'Assessment Type'}
-                                value={
-                                    isCbcPolicyContext
-                                        ? (form.report_component_key ?? '')
-                                        : (unsupportedAssessmentType ? '' : form.assessment_type)
-                                }
-                                onChange={e => (
-                                    isCbcPolicyContext
-                                        ? selectPolicyComponent(e.target.value)
-                                        : setField('assessment_type', e.target.value)
-                                )}
-                                required
-                                disabled={
-                                    policyGuidanceLoading
-                                    || Boolean(policyGuidanceError)
-                                    || cbcComponentsExhausted
-                                }
-                                options={[
-                                    ...(isCbcPolicyContext
-                                        ? [{ value: '', label: 'Select policy component', disabled: true }]
-                                        : allowedAssessmentTypes.length
-                                            ? [{ value: '', label: 'Select policy allowed type', disabled: true }]
-                                            : []),
-                                    ...assessmentTypeOptions,
-                                ]}
-                            />
+                            {!isQuickAssessment ? (
+                                <Select
+                                    label={isSchoolCbcPolicyContext ? 'Assessment Component' : 'Assessment Type'}
+                                    value={
+                                        isSchoolCbcPolicyContext
+                                            ? (form.report_component_key ?? '')
+                                            : (unsupportedAssessmentType ? '' : form.assessment_type)
+                                    }
+                                    onChange={e => (
+                                        isSchoolCbcPolicyContext
+                                            ? selectPolicyComponent(e.target.value)
+                                            : setField('assessment_type', e.target.value)
+                                    )}
+                                    required
+                                    disabled={
+                                        policyGuidanceLoading
+                                        || Boolean(policyGuidanceError)
+                                        || cbcComponentsExhausted
+                                    }
+                                    options={[
+                                        ...(isSchoolCbcPolicyContext
+                                            ? [{ value: '', label: 'Select policy component', disabled: true }]
+                                            : allowedAssessmentTypes.length
+                                                ? [{ value: '', label: 'Select policy allowed type', disabled: true }]
+                                                : []),
+                                        ...assessmentTypeOptions,
+                                    ]}
+                                />
+                            ) : null}
                             {selectedPolicyComponent ? (
                                 <p className="text-xs text-gray-500">
                                     Official component type: {selectedPolicyComponent.assessment_type}.
                                 </p>
                             ) : null}
-                            {isCbcPolicyContext && availableAssessmentComponents.length === 1 && !cbcComponentsExhausted ? (
+                            {isSchoolCbcPolicyContext && availableAssessmentComponents.length === 1 && !cbcComponentsExhausted ? (
                                 <p className="text-sm text-green-700">
                                     Next official component: {availableAssessmentComponents[0].label}.
                                 </p>
                             ) : null}
-                            {isCbcPolicyContext && (policyGuidanceError || cbcComponentsExhausted) ? (
+                            {isSchoolCbcPolicyContext && (policyGuidanceError || cbcComponentsExhausted) ? (
                                 <div className="md:col-span-2">
                                     <ActionStateBanner
                                         variant={policyGuidanceError ? 'error' : 'blocked'}
@@ -672,15 +750,15 @@ export function CreateAssessmentPage() {
 
                             <div>
                                 <Select
-                                    label={isCbcPolicyContext ? 'Term' : 'Term (Optional)'}
+                                    label={isQuickAssessment || isSchoolCbcPolicyContext ? 'Term' : 'Term (Optional)'}
                                     value={form.term?.toString() ?? ''}
                                     onChange={e => setField('term', e.target.value ? Number(e.target.value) : null)}
                                     disabled={!form.cohort_subject}
                                     options={[
                                         {
                                             value: '',
-                                            label: isCbcPolicyContext ? 'Select Term' : 'No Term (Year-round)',
-                                            disabled: isCbcPolicyContext,
+                                            label: isQuickAssessment || isSchoolCbcPolicyContext ? 'Select Term' : 'No Term (Year-round)',
+                                            disabled: isQuickAssessment || isSchoolCbcPolicyContext,
                                         },
                                         ...terms.map((term) => ({
                                             value: String(term.id),
@@ -689,13 +767,15 @@ export function CreateAssessmentPage() {
                                     ]}
                                 />
                                 <p className="mt-1 text-xs text-gray-500">
-                                    {isCbcPolicyContext
+                                    {isQuickAssessment
+                                        ? 'Required for Quick assessments.'
+                                        : isSchoolCbcPolicyContext
                                         ? 'Required for official CBC assessment.'
                                         : 'Optional for year-round assessment flows.'}
                                 </p>
                             </div>
 
-                            {isCbcPolicyContext && form.term && form.cohort_subject ? (
+                            {isSchoolCbcPolicyContext && form.term && form.cohort_subject ? (
                                 <div className="md:col-span-2">
                                     {policyGuidanceError ? (
                                         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -766,6 +846,92 @@ export function CreateAssessmentPage() {
                     </div>
                 </Card>
 
+                {isQuickAssessment ? (
+                    <Card>
+                        <div className="p-6">
+                            <h2 className="mb-4 text-lg font-semibold text-gray-900">Learning Objective</h2>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {ObjectiveSelector ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setObjectiveMode('curriculum');
+                                            setField('teacher_defined_objective', '');
+                                        }}
+                                        className={[
+                                            'rounded-lg border px-4 py-3 text-left transition-colors',
+                                            objectiveMode === 'curriculum'
+                                                ? 'border-blue-300 bg-blue-50'
+                                                : 'border-gray-200 bg-white hover:border-gray-300',
+                                        ].join(' ')}
+                                    >
+                                        <p className="text-sm font-medium text-gray-900">Select a learning objective</p>
+                                        <p className="mt-1 text-sm text-gray-500">
+                                            Use an available curriculum objective for this class subject.
+                                        </p>
+                                    </button>
+                                ) : null}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setObjectiveMode('custom');
+                                        setField('objective_source', AssessmentObjectiveSource.TEACHER_DEFINED);
+                                        setField('objective_provider', null);
+                                        setField('objective_reference_id', null);
+                                    }}
+                                    className={[
+                                        'rounded-lg border px-4 py-3 text-left transition-colors',
+                                        objectiveMode === 'custom' || !ObjectiveSelector
+                                            ? 'border-blue-300 bg-blue-50'
+                                            : 'border-gray-200 bg-white hover:border-gray-300',
+                                    ].join(' ')}
+                                >
+                                    <p className="text-sm font-medium text-gray-900">Enter a custom learning objective</p>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        Use a short classroom objective for this assessment.
+                                    </p>
+                                </button>
+                            </div>
+
+                            <div className="mt-5">
+                                {ObjectiveSelector && objectiveMode === 'curriculum' ? (
+                                    <ObjectiveSelector
+                                        cohortSubjectId={form.cohort_subject}
+                                        value={objectiveValue}
+                                        onChange={(value) => {
+                                            setField('objective_source', value.source);
+                                            setField('objective_provider', value.provider);
+                                            setField('objective_reference_id', value.referenceId);
+                                            setField('teacher_defined_objective', '');
+                                        }}
+                                    />
+                                ) : (
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                            Custom learning objective
+                                        </label>
+                                        <textarea
+                                            value={form.teacher_defined_objective}
+                                            onChange={(event) => {
+                                                setField('objective_source', AssessmentObjectiveSource.TEACHER_DEFINED);
+                                                setField('objective_provider', null);
+                                                setField('objective_reference_id', null);
+                                                setField('teacher_defined_objective', event.target.value);
+                                            }}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                                            rows={3}
+                                            placeholder="e.g., Explain the water cycle."
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            {errors.objective ? (
+                                <p className="mt-2 text-sm text-red-600">{errors.objective}</p>
+                            ) : null}
+                        </div>
+                    </Card>
+                ) : null}
+
                 <Card>
                     <div className="p-6">
                         <div className="mb-4 flex items-center gap-2">
@@ -815,11 +981,13 @@ export function CreateAssessmentPage() {
                     </div>
                 </Card>
 
-                <AssessmentPolicyPreviewCard
-                    cohortId={selectedCohortId || null}
-                    cohortSubjectId={form.cohort_subject || null}
-                    termId={form.term}
-                />
+                {!isQuickAssessment ? (
+                    <AssessmentPolicyPreviewCard
+                        cohortId={selectedCohortId || null}
+                        cohortSubjectId={form.cohort_subject || null}
+                        termId={form.term}
+                    />
+                ) : null}
 
                 <Card>
                     <div className="p-6">

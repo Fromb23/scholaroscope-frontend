@@ -393,7 +393,7 @@ export function AssessmentStageActionCard({
             >
                 <div className="space-y-5">
                     <p className="text-sm theme-muted">
-                        This returns the assessment to Active, removes system absent marks created during finalization, clears the frozen policy version, and allows scores/participation to be edited again.
+                        This returns the assessment to Active, removes system absent marks created during finalization, and allows scores/participation to be edited again.
                     </p>
                     <div className="flex justify-end gap-2">
                         <Button

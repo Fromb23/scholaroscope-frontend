@@ -4,6 +4,7 @@ import {
   getSessionTeachingObjectKey,
 } from './teachingActionQueue';
 import {
+  AssessmentGovernance,
   AssessmentParticipationMode,
   AssessmentScoreStatus,
   AssessmentStatus,
@@ -129,6 +130,7 @@ function buildAssessment(overrides: Partial<Assessment> = {}): Assessment {
     subject_profile_id: null,
     name: 'Matter quiz',
     assessment_type: AssessmentType.CAT,
+    governance: AssessmentGovernance.POLICY_GOVERNED,
     assessment_type_display: 'CAT',
     evaluation_type: EvaluationType.NUMERIC,
     evaluation_type_display: 'Numeric',
@@ -137,6 +139,11 @@ function buildAssessment(overrides: Partial<Assessment> = {}): Assessment {
     rubric_scale_name: null,
     assessment_date: '2026-06-30',
     description: '',
+    objective_source: null,
+    objective_provider: null,
+    objective_reference_id: null,
+    teacher_defined_objective: '',
+    objective_snapshot: {},
     participation_mode: AssessmentParticipationMode.NONE,
     status: AssessmentStatus.DRAFT,
     status_display: 'Draft',
