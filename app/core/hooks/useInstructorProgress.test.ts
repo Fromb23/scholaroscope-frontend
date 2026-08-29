@@ -6,6 +6,10 @@ const hookSource = readFileSync(
   join(process.cwd(), 'app/core/hooks/useInstructorProgress.ts'),
   'utf8',
 );
+const progressPageSource = readFileSync(
+  join(process.cwd(), 'app/core/components/admin/instructors/InstructorProgressPage.tsx'),
+  'utf8',
+);
 
 describe('useInstructorProgress session scope', () => {
   it('does not remove admin-created sessions returned by the server instructor scope', () => {
@@ -40,5 +44,15 @@ describe('useInstructorProgress session scope', () => {
     expect(hookSource).toContain('session_date__gte: scope.startDate');
     expect(hookSource).toContain('session_date__lte: scope.endDate');
     expect(hookSource).not.toContain("scope: 'current'");
+  });
+
+  it('applies the membership action response before a non-silent background refresh without a hard reload', () => {
+    expect(hookSource).toContain('applyMembershipAction');
+    expect(hookSource).toContain('response.membership_status');
+    expect(hookSource).toContain("throw new Error('Failed to refresh staff profile')");
+    expect(progressPageSource).toContain('publishInstructorMembershipState');
+    expect(progressPageSource).toContain('Access was updated, but the latest staff profile details could not be refreshed.');
+    expect(progressPageSource).not.toContain('window.location.reload');
+    expect(progressPageSource).not.toContain('router.refresh()');
   });
 });

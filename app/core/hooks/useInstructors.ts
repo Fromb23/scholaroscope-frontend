@@ -14,6 +14,15 @@ type InstructorListFilters = {
     membership_status?: string;
 };
 
+export const INSTRUCTOR_MEMBERSHIP_STATE_EVENT = 'instructor-membership-state-updated';
+
+export function publishInstructorMembershipState(
+    instructor: Pick<GlobalUser, 'id' | 'membership_status' | 'is_active' | 'global_status' | 'state_message' | 'can_restrict_access' | 'can_reactivate_access'>,
+) {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent(INSTRUCTOR_MEMBERSHIP_STATE_EVENT, { detail: instructor }));
+}
+
 function resolveActionUser(
     response: GlobalUserActionResponse,
     fallback: GlobalUser | undefined,
@@ -82,6 +91,19 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
     useEffect(() => {
         void fetchInstructors();
     }, [fetchInstructors]);
+
+    useEffect(() => {
+        const applyMembershipState = (event: Event) => {
+            const next = (event as CustomEvent<GlobalUser>).detail;
+            if (!next) return;
+            setInstructors((current) => current.map((instructor) => (
+                instructor.id === next.id ? { ...instructor, ...next } : instructor
+            )));
+        };
+
+        window.addEventListener(INSTRUCTOR_MEMBERSHIP_STATE_EVENT, applyMembershipState);
+        return () => window.removeEventListener(INSTRUCTOR_MEMBERSHIP_STATE_EVENT, applyMembershipState);
+    }, []);
 
     const createInstructor = async (data: UserCreatePayload) => {
         try {

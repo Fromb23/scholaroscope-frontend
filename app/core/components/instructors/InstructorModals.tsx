@@ -383,6 +383,37 @@ interface PendingReassignment {
     currentInstructorLabel: string;
 }
 
+type SearchableAssignmentSubject = AvailableCohortSubject | ActiveTeachingAssignment;
+
+function normalizeCohortSubjectSearch(value: string) {
+    return value.trim().toLocaleLowerCase();
+}
+
+function matchesCohortSubjectSearch(subject: SearchableAssignmentSubject, query: string) {
+    if (!query) return true;
+
+    const optionalFields = subject as SearchableAssignmentSubject & {
+        cohort_level?: string | null;
+        subject_code?: string | null;
+        curriculum_type?: string | null;
+        stream?: string | null;
+    };
+    const values = [
+        'cohortName' in subject ? subject.cohortName : subject.cohort_name,
+        'subjectName' in subject ? subject.subjectName : subject.subject_name,
+        'academicYear' in subject ? subject.academicYear : (subject.academic_year_name ?? subject.academic_year),
+        'curriculumName' in subject ? subject.curriculumName : (subject.curriculum_name ?? subject.curriculum_type),
+        optionalFields.cohort_level,
+        optionalFields.subject_code,
+        optionalFields.curriculum_type,
+        subject.current_instructor_name,
+        subject.current_instructor_email,
+        optionalFields.stream,
+    ];
+
+    return values.some((value) => value?.trim().toLocaleLowerCase().includes(query));
+}
+
 function inferSubjectSource(context: SourceNormalizationContext = {}): SubjectSource {
     if (isCambridgeCurriculumType(context.curriculumType)) {
         return 'cambridge';
@@ -871,9 +902,12 @@ export function CohortAssignModal({
     const [working, setWorking] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [unassignReason, setUnassignReason] = useState('MANUAL');
     const [unassignNotes, setUnassignNotes] = useState('');
     const [pendingReassignment, setPendingReassignment] = useState<PendingReassignment | null>(null);
+    const [pendingReassignmentError, setPendingReassignmentError] = useState<string | null>(null);
+    const confirmReassignRef = useRef<HTMLButtonElement | null>(null);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -957,34 +991,76 @@ export function CohortAssignModal({
 
         setSelectedCohortSubject('');
         setPendingReassignment(null);
+        setPendingReassignmentError(null);
         setError(null);
         setSuccessMessage(null);
+        setSearchQuery('');
     }, [isOpen]);
 
-    const normalizedCohortSubjects = allCohortSubjects.map((cohortSubject) =>
+    const normalizedCohortSubjects = useMemo(() => allCohortSubjects.map((cohortSubject) =>
         normalizeAssignableCohortSubject(cohortSubject, subjectOptionIndex)
+    ), [allCohortSubjects, subjectOptionIndex]);
+    const activeTeachingAssignments = useMemo(
+        () => getActiveTeachingAssignments(detail, subjectOptionIndex),
+        [detail, subjectOptionIndex],
     );
-    const activeTeachingAssignments = getActiveTeachingAssignments(detail, subjectOptionIndex);
-    const assignedTeachingKeys = new Set(
-        activeTeachingAssignments.map((assignment) => assignment.assignmentKey)
+    const assignedTeachingKeys = useMemo(
+        () => new Set(activeTeachingAssignments.map((assignment) => assignment.assignmentKey)),
+        [activeTeachingAssignments],
     );
-    const availableCohortSubjects = normalizedCohortSubjects.filter(
+    const availableCohortSubjects = useMemo(() => normalizedCohortSubjects.filter(
         (cohortSubject) =>
             !cohortSubject.assigned &&
             !assignedTeachingKeys.has(getSourceAwareSubjectKey(cohortSubject)) &&
             typeof getSourceAwareSubjectId(cohortSubject) === 'number'
-    );
-    const assignedElsewhereCohortSubjects = normalizedCohortSubjects.filter(
+    ), [assignedTeachingKeys, normalizedCohortSubjects]);
+    const assignedElsewhereCohortSubjects = useMemo(() => normalizedCohortSubjects.filter(
         (cohortSubject) => (
             cohortSubject.assigned
             && !cohortSubject.assigned_to_current_instructor
             && !assignedTeachingKeys.has(getSourceAwareSubjectKey(cohortSubject))
             && typeof getSourceAwareSubjectId(cohortSubject) === 'number'
         )
+    ), [assignedTeachingKeys, normalizedCohortSubjects]);
+    const normalizedSearchQuery = normalizeCohortSubjectSearch(searchQuery);
+    const filteredActiveTeachingAssignments = useMemo(
+        () => activeTeachingAssignments.filter((assignment) => matchesCohortSubjectSearch(assignment, normalizedSearchQuery)),
+        [activeTeachingAssignments, normalizedSearchQuery],
     );
-    const selectedCohortSubjectOption = availableCohortSubjects.find(
+    const filteredAvailableCohortSubjects = useMemo(
+        () => availableCohortSubjects.filter((subject) => matchesCohortSubjectSearch(subject, normalizedSearchQuery)),
+        [availableCohortSubjects, normalizedSearchQuery],
+    );
+    const filteredAssignedElsewhereCohortSubjects = useMemo(
+        () => assignedElsewhereCohortSubjects.filter((subject) => matchesCohortSubjectSearch(subject, normalizedSearchQuery)),
+        [assignedElsewhereCohortSubjects, normalizedSearchQuery],
+    );
+    const selectedCohortSubjectOption = filteredAvailableCohortSubjects.find(
         (cohortSubject) => getSourceAwareSubjectKey(cohortSubject) === selectedCohortSubject
     );
+
+    useEffect(() => {
+        if (selectedCohortSubject && !selectedCohortSubjectOption) {
+            setSelectedCohortSubject('');
+        }
+    }, [selectedCohortSubject, selectedCohortSubjectOption]);
+
+    useEffect(() => {
+        if (!pendingReassignment) return;
+        const pendingKey = getSourceAwareSubjectKey(pendingReassignment.subject);
+        if (!filteredAssignedElsewhereCohortSubjects.some(
+            (subject) => getSourceAwareSubjectKey(subject) === pendingKey
+        )) {
+            setPendingReassignment(null);
+            setPendingReassignmentError(null);
+        }
+    }, [filteredAssignedElsewhereCohortSubjects, pendingReassignment]);
+
+    useEffect(() => {
+        if (pendingReassignment) {
+            confirmReassignRef.current?.focus();
+        }
+    }, [pendingReassignment]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -1008,9 +1084,10 @@ export function CohortAssignModal({
         }
     }, [availableCohortSubjects, initialCohortSubjectId, initialSubjectSource, isOpen, selectedCohortSubject]);
 
-    const assignSubject = async (subject: AvailableCohortSubject) => {
+    const assignSubject = async (subject: AvailableCohortSubject, isReassignment = false) => {
         setWorking(true);
         setError(null);
+        setPendingReassignmentError(null);
         setSuccessMessage(null);
         try {
             await instructorsAPI.assignToCohortSubject(instructorId, subject);
@@ -1020,11 +1097,16 @@ export function CohortAssignModal({
             await onAssignmentsChanged?.();
             setSuccessMessage(`${subject.subject_name} assigned to ${instructorName}.`);
         } catch (err) {
-            setError(resolveWorkspaceError(err, {
+            const message = resolveWorkspaceError(err, {
                 action: 'update',
                 entityLabel: 'instructor subject assignment',
                 role: 'ADMIN',
-            }).message);
+            }).message;
+            if (isReassignment) {
+                setPendingReassignmentError(message);
+            } else {
+                setError(message);
+            }
         } finally {
             setWorking(false);
         }
@@ -1041,6 +1123,7 @@ export function CohortAssignModal({
             || 'another teacher';
         setError(null);
         setSuccessMessage(null);
+        setPendingReassignmentError(null);
         setPendingReassignment({
             subject,
             currentInstructorLabel,
@@ -1052,7 +1135,7 @@ export function CohortAssignModal({
             return;
         }
 
-        await assignSubject(pendingReassignment.subject);
+        await assignSubject(pendingReassignment.subject, true);
     };
 
     const handleUnassign = async (assignment: ActiveTeachingAssignment) => {
@@ -1119,8 +1202,35 @@ export function CohortAssignModal({
                 ) : null}
 
                 <div className="min-w-0">
+                    <label htmlFor="cohort-subject-search" className="mb-1 block text-sm font-medium text-gray-700">
+                        Search cohort subjects
+                    </label>
+                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                        <input
+                            id="cohort-subject-search"
+                            type="search"
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            placeholder="Search by class, subject, year, curriculum, or teacher"
+                            className="block w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {searchQuery ? (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => setSearchQuery('')}
+                                disabled={working}
+                                className="w-full shrink-0 sm:w-auto"
+                            >
+                                Clear search
+                            </Button>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-700 mb-2">
-                        Current Teaching Assignments ({activeTeachingAssignments.length})
+                        Current Teaching Assignments ({filteredActiveTeachingAssignments.length})
                     </p>
                     {loading ? (
                         <div className="h-12 flex items-center justify-center">
@@ -1130,9 +1240,13 @@ export function CohortAssignModal({
                         <p className="text-sm text-gray-400 py-3 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">
                             No active cohort-subject teaching assignments
                         </p>
+                    ) : filteredActiveTeachingAssignments.length === 0 ? (
+                        <p className="text-sm text-gray-400 py-3 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            No cohort subjects match &quot;{searchQuery.trim()}&quot;
+                        </p>
                     ) : (
                         <div className="min-w-0 space-y-2">
-                            {activeTeachingAssignments.map((assignment) => (
+                            {filteredActiveTeachingAssignments.map((assignment) => (
                                 <div key={assignment.assignmentKey} className="rounded-lg border border-gray-200 overflow-hidden">
                                     <div className="flex min-w-0 items-start justify-between gap-3 bg-gray-50 p-3">
                                         <div className="min-w-0 flex-1">
@@ -1199,34 +1313,6 @@ export function CohortAssignModal({
                         </div>
                     </div>
 
-                    {pendingReassignment ? (
-                        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                            <p className="font-medium text-amber-900">Confirm reassignment</p>
-                            <p className="mt-1 break-words whitespace-normal">
-                                This cohort subject is currently assigned to {pendingReassignment.currentInstructorLabel}.
-                                Reassigning will remove {pendingReassignment.currentInstructorLabel} and assign it to {instructorName}.
-                            </p>
-                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => setPendingReassignment(null)}
-                                    disabled={working}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    onClick={() => {
-                                        void handleConfirmReassign();
-                                    }}
-                                    disabled={working}
-                                >
-                                    {working ? 'Reassigning...' : 'Confirm Reassign'}
-                                </Button>
-                            </div>
-                        </div>
-                    ) : null}
-
                     <div className="space-y-3">
                         <div>
                             <p className="text-sm font-semibold text-gray-700">Available Cohort Subjects</p>
@@ -1241,11 +1327,15 @@ export function CohortAssignModal({
                                 ? 'No cohort subjects available'
                                 : 'No unassigned cohort subjects are available right now.'}
                         </p>
+                    ) : filteredAvailableCohortSubjects.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-2">
+                            No cohort subjects match &quot;{searchQuery.trim()}&quot;
+                        </p>
                     ) : (
                         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
                             <div className="min-w-0 flex-1">
                                 <CohortSubjectDropdown
-                                    options={availableCohortSubjects}
+                                    options={filteredAvailableCohortSubjects}
                                     value={selectedCohortSubject}
                                     onChange={setSelectedCohortSubject}
                                     disabled={working}
@@ -1274,9 +1364,13 @@ export function CohortAssignModal({
                             <p className="text-sm text-gray-400 text-center py-2">
                                 No cohort subjects are currently assigned to another teacher.
                             </p>
+                        ) : filteredAssignedElsewhereCohortSubjects.length === 0 ? (
+                            <p className="text-sm text-gray-400 text-center py-2">
+                                No cohort subjects match &quot;{searchQuery.trim()}&quot;
+                            </p>
                         ) : (
                             <div className="space-y-2">
-                                {assignedElsewhereCohortSubjects.map((cohortSubject) => (
+                                {filteredAssignedElsewhereCohortSubjects.map((cohortSubject) => (
                                     <div
                                         key={getSourceAwareSubjectKey(cohortSubject)}
                                         className="rounded-lg border border-gray-200 bg-gray-50 p-3"
@@ -1314,6 +1408,44 @@ export function CohortAssignModal({
                                                 Reassign
                                             </Button>
                                         </div>
+                                        {pendingReassignment
+                                        && getSourceAwareSubjectKey(pendingReassignment.subject) === getSourceAwareSubjectKey(cohortSubject) ? (
+                                            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                                                <p className="font-medium text-amber-900">Confirm reassignment</p>
+                                                <p className="mt-1 break-words whitespace-normal">
+                                                    Currently assigned to {pendingReassignment.currentInstructorLabel}. Reassign to {instructorName}.
+                                                </p>
+                                                {pendingReassignmentError ? (
+                                                    <p role="alert" className="mt-2 break-words text-sm text-red-700">
+                                                        {pendingReassignmentError}
+                                                    </p>
+                                                ) : null}
+                                                <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:justify-end">
+                                                    <Button
+                                                        variant="secondary"
+                                                        onClick={() => {
+                                                            setPendingReassignment(null);
+                                                            setPendingReassignmentError(null);
+                                                        }}
+                                                        disabled={working}
+                                                        className="w-full sm:w-auto"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        ref={confirmReassignRef}
+                                                        variant="primary"
+                                                        onClick={() => {
+                                                            void handleConfirmReassign();
+                                                        }}
+                                                        disabled={working}
+                                                        className="w-full sm:w-auto"
+                                                    >
+                                                        {working ? 'Reassigning...' : 'Confirm Reassign'}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ) : null}
                                     </div>
                                 ))}
                             </div>
