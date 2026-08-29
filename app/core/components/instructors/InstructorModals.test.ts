@@ -46,4 +46,14 @@ describe('Instructor foreground modals', () => {
     expect(progressPageSource).not.toContain('Back to Instructors');
     expect(progressPageSource).not.toContain('Instructor access restricted');
   });
+
+  it('keeps reassignment confirmation source-aware and inline with searchable cohort-subject rows', () => {
+    expect(modalsSource).toContain('getSourceAwareSubjectKey(pendingReassignment.subject) === getSourceAwareSubjectKey(cohortSubject)');
+    expect(modalsSource).toContain('Currently assigned to {pendingReassignment.currentInstructorLabel}. Reassign to {instructorName}.');
+    expect(modalsSource).toContain('ref={confirmReassignRef}');
+    expect(modalsSource).toContain('Search cohort subjects');
+    expect(modalsSource).toContain('Search by class, subject, year, curriculum, or teacher');
+    expect(modalsSource).toContain('filteredAvailableCohortSubjects');
+    expect(modalsSource).toContain('filteredAssignedElsewhereCohortSubjects');
+  });
 });
