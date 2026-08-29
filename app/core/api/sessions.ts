@@ -38,7 +38,7 @@ import {
 } from '../types/session';
 import { CohortSubject } from '../types/academic';
 
-const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
+const KERNEL_COHORT_SUBJECTS_BASE = '/cohort-subjects';
 
 // ── Shared response shapes ────────────────────────────────────────────────
 

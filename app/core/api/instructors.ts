@@ -20,7 +20,7 @@ import {
     UserUpdatePayload,
 } from '@/app/core/types/globalUsers';
 
-const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
+const KERNEL_COHORT_SUBJECTS_BASE = '/cohort-subjects';
 const STAFF_LIST_PAGE_SIZE = 100;
 export const STAFF_INSTRUCTORS_PAGE_SIZE = STAFF_LIST_PAGE_SIZE;
 

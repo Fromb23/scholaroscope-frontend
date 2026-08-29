@@ -70,39 +70,39 @@ export interface AssessmentBulkReopenResult {
 // Rubric Scale API
 export const rubricScaleAPI = {
   getAll: async (params?: { curriculum?: number; is_active?: boolean }) => {
-    const response = await apiClient.get<RubricScale[]>('/assessments/rubric-scales/', { params });
+    const response = await apiClient.get<RubricScale[]>('/rubric-scales/', { params });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<RubricScaleDetail>(`/assessments/rubric-scales/${id}/`);
+    const response = await apiClient.get<RubricScaleDetail>(`/rubric-scales/${id}/`);
     return response.data;
   },
 
   getActive: async () => {
-    const response = await apiClient.get<RubricScale[]>('/assessments/rubric-scales/active/');
+    const response = await apiClient.get<RubricScale[]>('/rubric-scales/active/');
     return response.data;
   },
 
   getByCurriculum: async (curriculumId: number) => {
-    const response = await apiClient.get<RubricScaleDetail[]>('/assessments/rubric-scales/by_curriculum/', {
+    const response = await apiClient.get<RubricScaleDetail[]>('/rubric-scales/by_curriculum/', {
       params: { curriculum_id: curriculumId }
     });
     return response.data;
   },
 
   create: async (data: Partial<RubricScale>) => {
-    const response = await apiClient.post<RubricScale>('/assessments/rubric-scales/', data);
+    const response = await apiClient.post<RubricScale>('/rubric-scales/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<RubricScale>) => {
-    const response = await apiClient.patch<RubricScale>(`/assessments/rubric-scales/${id}/`, data);
+    const response = await apiClient.patch<RubricScale>(`/rubric-scales/${id}/`, data);
     return response.data;
   },
 
   delete: async (id: number) => {
-    await apiClient.delete(`/assessments/rubric-scales/${id}/`);
+    await apiClient.delete(`/rubric-scales/${id}/`);
   }
 };
 
@@ -110,22 +110,22 @@ export const rubricScaleAPI = {
 export const rubricLevelAPI = {
   getAll: async (rubricScaleId?: number) => {
     const params = rubricScaleId ? { rubric_scale: rubricScaleId } : {};
-    const response = await apiClient.get<RubricLevel[]>('/assessments/rubric-levels/', { params });
+    const response = await apiClient.get<RubricLevel[]>('/rubric-levels/', { params });
     return response.data;
   },
 
   create: async (data: Partial<RubricLevel>) => {
-    const response = await apiClient.post<RubricLevel>('/assessments/rubric-levels/', data);
+    const response = await apiClient.post<RubricLevel>('/rubric-levels/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<RubricLevel>) => {
-    const response = await apiClient.patch<RubricLevel>(`/assessments/rubric-levels/${id}/`, data);
+    const response = await apiClient.patch<RubricLevel>(`/rubric-levels/${id}/`, data);
     return response.data;
   },
 
   delete: async (id: number) => {
-    await apiClient.delete(`/assessments/rubric-levels/${id}/`);
+    await apiClient.delete(`/rubric-levels/${id}/`);
   }
 };
 

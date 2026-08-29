@@ -6,7 +6,7 @@ import { CohortSubject } from '../types/academic';
 import { apiClient } from './client';
 import { unwrapPaginated } from './unwrap';
 
-const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
+const KERNEL_COHORT_SUBJECTS_BASE = '/cohort-subjects';
 
 export interface Cohort {
   students_count: number;
