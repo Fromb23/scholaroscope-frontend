@@ -45,7 +45,7 @@ export function CbcAssessmentObjectiveSelector({
   return (
     <div className="space-y-3">
       <Input
-        label="Find a learning objective"
+        label="Search curriculum learning outcomes"
         value={search}
         onChange={(event) => setSearch(event.target.value)}
         placeholder="Search by code, strand, or objective"

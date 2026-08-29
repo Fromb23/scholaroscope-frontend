@@ -8,12 +8,15 @@ const source = () => readFileSync(
 );
 
 describe('CreateAssessmentPage foreground action state', () => {
-  it('keeps critical create errors visible until dismissed', () => {
+  it('uses toast for operation-level create errors without auto-scroll banners', () => {
     const pageSource = source();
 
-    expect(pageSource).toContain('saveError ? (');
-    expect(pageSource).toContain('<ActionStateBanner');
+    expect(pageSource).toContain('useToast');
+    expect(pageSource).toContain('onSubmitError');
+    expect(pageSource).toContain('showToast({');
     expect(pageSource).toContain('Assessment not created');
+    expect(pageSource).not.toContain('useScrollIntoViewOnMessage(saveError)');
+    expect(pageSource).not.toContain('ref={saveErrorRef}');
     expect(pageSource).not.toContain('autoDismissMs={5000}');
   });
 
@@ -51,7 +54,8 @@ describe('CreateAssessmentPage foreground action state', () => {
 
     expect(pageSource).toContain('Select a learning objective or enter one.');
     expect(pageSource).toContain('Use an available curriculum objective for this class subject.');
-    expect(pageSource).toContain('Enter a custom learning objective');
+    expect(pageSource).toContain('Write your own learning objective');
+    expect(pageSource).toContain("useState<'curriculum' | 'custom'>('custom')");
     expect(pageSource).toContain('setField(\'objective_provider\', null)');
     expect(pageSource).toContain('setField(\'objective_reference_id\', null)');
   });
