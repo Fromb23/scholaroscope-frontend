@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
+import type { GlobalUserActionResponse, MembershipStatus } from '@/app/core/types/globalUsers';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import { sessionAPI } from '@/app/core/api/sessions';
 import { schemesAPI } from '@/app/core/api/schemes';
@@ -97,6 +98,7 @@ export function useInstructorProgress(
     const [schemes, setSchemes] = useState<InstructorSchemeDrilldownItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [refreshError, setRefreshError] = useState<string | null>(null);
     const [sectionErrors, setSectionErrors] = useState<InstructorProgressSectionErrors>({
         sessions: null,
         schemes: null,
@@ -130,12 +132,19 @@ export function useInstructorProgress(
             schemesRequest,
         ]);
 
+        const profileRefreshFailed = profileResult.status === 'rejected';
         if (profileResult.status === 'fulfilled') {
             setInstructor(profileResult.value);
             setError(null);
-        } else if (showLoadingState) {
-            setInstructor(null);
-            setError('Failed to load staff profile');
+            setRefreshError(null);
+        } else {
+            if (showLoadingState) {
+                setInstructor(null);
+                setError('Failed to load staff profile');
+            } else {
+                setRefreshError('Failed to refresh staff profile');
+            }
+
         }
 
         if (sessionsResult.status === 'fulfilled') {
@@ -158,7 +167,35 @@ export function useInstructorProgress(
         });
 
         if (showLoadingState) setLoading(false);
+        if (profileRefreshFailed && !showLoadingState) {
+            throw new Error('Failed to refresh staff profile');
+        }
     }, [instructorId, scope.cohortId, scope.endDate, scope.startDate, scope.subjectId, scope.termId]);
+
+    const applyMembershipAction = useCallback((response: GlobalUserActionResponse) => {
+        setInstructor((current) => {
+            if (!current) return current;
+
+            const membershipStatus: MembershipStatus | null | undefined =
+                response.membership_status ?? response.user?.membership_status ?? current.membership_status;
+            const next = {
+                ...current,
+                ...response.user,
+                membership_status: membershipStatus,
+            };
+
+            // The action response is authoritative for membership state. When it omits
+            // derived flags, they can be calculated without changing global account state.
+            if (membershipStatus === 'ACTIVE' || membershipStatus === 'SUSPENDED') {
+                next.can_restrict_access = next.is_active && membershipStatus === 'ACTIVE';
+                next.can_reactivate_access = next.is_active && membershipStatus === 'SUSPENDED';
+            }
+
+            return next;
+        });
+        setError(null);
+        setRefreshError(null);
+    }, []);
 
     useEffect(() => {
         void load();
@@ -218,8 +255,10 @@ export function useInstructorProgress(
         schemes,
         loading,
         error,
+        refreshError,
         sectionErrors,
         refetch: () => load(false),
+        applyMembershipAction,
         teachingAssignments,
         cbcTeachingAssignments,
         sessionStats,

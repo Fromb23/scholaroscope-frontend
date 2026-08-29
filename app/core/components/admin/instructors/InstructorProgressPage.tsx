@@ -19,6 +19,7 @@ import { instructorsAPI } from '@/app/core/api/instructors';
 import {
     useInstructorProgress,
 } from '@/app/core/hooks/useInstructorProgress';
+import { publishInstructorMembershipState } from '@/app/core/hooks/useInstructors';
 import type { InstructorProgressScope } from '@/app/core/hooks/useInstructorProgress';
 import {
     EditModal,
@@ -126,7 +127,7 @@ export default function InstructorProgressPage() {
     const {
         instructor, sessions, loading, error,
         sectionErrors,
-        refetch, teachingAssignments, cbcTeachingAssignments,
+        refetch, applyMembershipAction, teachingAssignments, cbcTeachingAssignments,
         sessionStats, attendanceStats, schemes,
     } = useInstructorProgress(instructorId, activeScope);
 
@@ -176,13 +177,6 @@ export default function InstructorProgressPage() {
         setTimeout(() => setFeedback(null), 3000);
     };
 
-    const withSubmit = async (fn: () => Promise<void>, successMsg: string, failMsg: string) => {
-        setSubmitting(true);
-        try { await fn(); flash('success', successMsg); }
-        catch { flash('error', failMsg); }
-        finally { setSubmitting(false); }
-    };
-
     const handleEdit = async (data: UserUpdatePayload) => {
         setSubmitting(true);
         try {
@@ -202,17 +196,37 @@ export default function InstructorProgressPage() {
         }
     };
 
-    const handleToggle = () => {
+    const handleToggle = async () => {
+        if (!instructor || submitting) return;
         const isRestricted = instructor?.membership_status === 'SUSPENDED';
-        withSubmit(async () => {
-            await (isRestricted
+        setSubmitting(true);
+        try {
+            const response = await (isRestricted
                 ? instructorsAPI.activate(instructorId)
                 : instructorsAPI.deactivate(instructorId));
-            await refetch();
-        },
-            isRestricted ? 'Staff access reactivated' : 'Staff access restricted',
-            'Failed to update status'
-        );
+
+            applyMembershipAction(response);
+            publishInstructorMembershipState({
+                ...instructor,
+                ...response.user,
+                membership_status: response.membership_status ?? response.user?.membership_status ?? instructor.membership_status,
+                can_restrict_access: response.user?.can_restrict_access
+                    ?? (instructor.is_active && (response.membership_status ?? response.user?.membership_status) === 'ACTIVE'),
+                can_reactivate_access: response.user?.can_reactivate_access
+                    ?? (instructor.is_active && (response.membership_status ?? response.user?.membership_status) === 'SUSPENDED'),
+            });
+
+            try {
+                await refetch();
+                flash('success', isRestricted ? 'Staff access reactivated' : 'Staff access restricted');
+            } catch {
+                flash('error', 'Access was updated, but the latest staff profile details could not be refreshed.');
+            }
+        } catch {
+            flash('error', 'Failed to update status');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleDelete = async () => {
@@ -417,7 +431,14 @@ export default function InstructorProgressPage() {
                         size="sm"
                         variant="secondary"
                         onClick={handleToggle}
-                        disabled={globalStatus !== 'ACTIVE' || isMembershipRemoved}
+                        disabled={
+                            submitting ||
+                            globalStatus !== 'ACTIVE' ||
+                            isMembershipRemoved ||
+                            (isMembershipRestricted
+                                ? instructor.can_reactivate_access === false
+                                : instructor.can_restrict_access === false)
+                        }
                         className={isMembershipRestricted ? 'text-green-600 hover:bg-green-50' : 'text-orange-600 hover:bg-orange-50'}
                     >
                         {isMembershipRestricted
