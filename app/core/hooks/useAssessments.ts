@@ -28,6 +28,7 @@ import {
 } from '../types/assessment';
 import { PaginatedResponse } from '@/app/core/types/api';
 import { ApiError, resolveErrorMessage } from '../types/errors';
+import { resolveAppError } from '@/app/core/errors';
 import { withOperationalScope, type OperationalScope } from '@/app/core/lib/academicScope';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -405,12 +406,22 @@ export const useAssessmentReviewSummary = (params?: {
 
 // ── useRubricScales ───────────────────────────────────────────────────────
 
-export const useRubricScales = (curriculumId?: number) => {
+export const useRubricScales = (
+  curriculumId?: number,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
   const [rubricScales, setRubricScales] = useState<RubricScale[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRubricScales = useCallback(async () => {
+    if (!enabled) {
+      setRubricScales([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const data = curriculumId
@@ -423,7 +434,7 @@ export const useRubricScales = (curriculumId?: number) => {
     } finally {
       setLoading(false);
     }
-  }, [curriculumId]);
+  }, [curriculumId, enabled]);
 
   useEffect(() => { void fetchRubricScales(); }, [fetchRubricScales]);
 
@@ -532,15 +543,19 @@ interface AssessmentFormState {
 interface FormErrors {
   cohort?: string;
   cohort_subject?: string;
+  term?: string;
   name?: string;
   total_marks?: string;
   rubric_scale?: string;
   objective?: string;
+  assessment_type?: string;
+  assessment_date?: string;
 }
 
 export const useCreateAssessmentForm = (options?: {
   allowedCohortSubjectIds?: number[];
   enforceAssignedSubject?: boolean;
+  onSubmitError?: (message: string) => void;
 }) => {
   const [selectedCohortId, setSelectedCohortId] = useState<number>(0);
   const allowedCohortSubjectIds = options?.allowedCohortSubjectIds ?? [];
@@ -651,6 +666,28 @@ export const useCreateAssessmentForm = (options?: {
     return Object.keys(e).length === 0;
   };
 
+  const applyServerFieldErrors = (fieldErrors: Record<string, string[]> | undefined) => {
+    if (!fieldErrors) return false;
+    const nextErrors: FormErrors = {};
+    const first = (field: string) => fieldErrors[field]?.[0];
+    nextErrors.cohort_subject = first('cohort_subject') ?? first('subject');
+    nextErrors.term = first('term');
+    nextErrors.name = first('name');
+    nextErrors.total_marks = first('total_marks');
+    nextErrors.rubric_scale = first('rubric_scale');
+    nextErrors.assessment_type = first('assessment_type') ?? first('report_component_key');
+    nextErrors.assessment_date = first('assessment_date');
+    nextErrors.objective = first('objective')
+      ?? first('objective_reference_id')
+      ?? first('objective_provider')
+      ?? first('teacher_defined_objective');
+    const compact = Object.fromEntries(
+      Object.entries(nextErrors).filter(([, value]) => Boolean(value))
+    ) as FormErrors;
+    setErrors(compact);
+    return Object.keys(compact).length > 0;
+  };
+
   const submit = async (): Promise<Assessment | null> => {
     if (!validate()) return null;
     setSaving(true);
@@ -659,7 +696,15 @@ export const useCreateAssessmentForm = (options?: {
       const result = await assessmentAPI.create(form);
       return result;
     } catch (err) {
-      setSaveError(resolveErrorMessage(err as ApiError, 'Failed to create assessment'));
+      const resolved = resolveAppError(err, {
+        domain: 'assessments',
+        action: 'create',
+        entityLabel: 'assessment',
+      });
+      applyServerFieldErrors(resolved.fieldErrors);
+      const message = resolved.message || resolveErrorMessage(err as ApiError, 'Failed to create assessment');
+      setSaveError(message);
+      options?.onSubmitError?.(message);
       return null;
     } finally {
       setSaving(false);

@@ -12,9 +12,9 @@ import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/Curr
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { useToast } from '@/app/components/ui/toast/useToast';
 import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
 import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
-import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { assessmentAPI } from '@/app/core/api/assessments';
 import { useAssessmentDetail, useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useTerms } from '@/app/core/hooks/useAcademic';
@@ -54,6 +54,7 @@ type InstructorSubjectOption = {
 export function EditAssessmentPage() {
     const params = useParams();
     const router = useRouter();
+    const { showToast } = useToast();
     const { activeOperatingContext, capabilities } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const assessmentId = Number(params.id);
@@ -67,12 +68,11 @@ export function EditAssessmentPage() {
 
     const [selectedCohortId, setSelectedCohortId] = useState<number>(0);
     const [saving, setSaving] = useState(false);
-    const [saveError, setSaveError] = useState<string | null>(null);
+    const [, setSaveError] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [policyGuidance, setPolicyGuidance] = useState<AcademicPolicyBrief | null>(null);
     const [policyGuidanceLoading, setPolicyGuidanceLoading] = useState(false);
     const [policyGuidanceError, setPolicyGuidanceError] = useState<string | null>(null);
-    const saveErrorRef = useScrollIntoViewOnMessage(saveError);
 
     const { assessment, loading, error } = useAssessmentDetail(assessmentId);
     const staffAssessment = assessment && !isLearnerAssessmentDetail(assessment)
@@ -87,7 +87,6 @@ export function EditAssessmentPage() {
     const { terms } = useTerms();
     const { cohorts } = useCohorts();
     const { subjects } = useCohortSubjects(selectedCohortId || undefined);
-    const { rubricScales } = useRubricScales();
 
     const assignedSubjectOptions = useMemo<InstructorSubjectOption[]>(() => {
         const options = instructorAccess.assignments
@@ -122,6 +121,9 @@ export function EditAssessmentPage() {
         assessment_date: new Date().toISOString().split('T')[0],
         description: '',
         participation_mode: AssessmentParticipationMode.NONE,
+    });
+    const { rubricScales } = useRubricScales(undefined, {
+        enabled: formData.evaluation_type === 'RUBRIC',
     });
 
     useEffect(() => {
@@ -334,14 +336,28 @@ export function EditAssessmentPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!canUpdateAssessment) {
-            setSaveError('You do not have permission to update this assessment.');
+            const message = 'You do not have permission to update this assessment.';
+            setSaveError(message);
+            showToast({
+                severity: 'error',
+                title: 'Assessment not updated',
+                message,
+                autoDismissMs: false,
+            });
             return;
         }
         if (isSchoolCbcPolicyContext && formData.term && formData.cohort_subject && (policyGuidanceError || policyGuidanceLoading)) {
             return;
         }
         if (unsupportedAssessmentType) {
-            setSaveError(`This term policy allows ${allowedAssessmentTypes.join(', ')} only.`);
+            const message = `This term policy allows ${allowedAssessmentTypes.join(', ')} only.`;
+            setSaveError(message);
+            showToast({
+                severity: 'warning',
+                title: 'Assessment not updated',
+                message,
+                autoDismissMs: false,
+            });
             return;
         }
         if (!validateForm()) return;
@@ -363,9 +379,14 @@ export function EditAssessmentPage() {
             });
             router.push(`/assessments/${assessmentId}`);
         } catch (err) {
-            setSaveError(
-                resolveErrorMessage(err as ApiError, 'Failed to update assessment')
-            );
+            const message = resolveErrorMessage(err as ApiError, 'Failed to update assessment');
+            setSaveError(message);
+            showToast({
+                severity: 'error',
+                title: 'Assessment not updated',
+                message,
+                autoDismissMs: false,
+            });
         } finally {
             setSaving(false);
         }
@@ -687,15 +708,6 @@ export function EditAssessmentPage() {
                         />
                     </div>
                 </Card>
-
-                {saveError ? (
-                    <ErrorBanner
-                        ref={saveErrorRef}
-                        message={saveError}
-                        onDismiss={() => setSaveError(null)}
-                        autoDismissMs={5000}
-                    />
-                ) : null}
 
                 <div className="flex items-center justify-end gap-4">
                     <Link href={`/assessments/${assessmentId}`}>
