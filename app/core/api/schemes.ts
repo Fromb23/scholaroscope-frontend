@@ -17,6 +17,8 @@ import type {
   SchemeUpdatePayload,
   SchemeWeek,
   SchemeWeekUpdatePayload,
+  SchemeApplication,
+  CompatibleCohortSubject,
 } from '@/app/core/types/schemes';
 
 export const SCHEMES_BASE_PATH = '/schemes';
@@ -95,6 +97,25 @@ export const schemesAPI = {
   getSchemeWeeks: async (id: number): Promise<SchemeWeek[]> => {
     const response = await apiClient.get<SchemeWeek[]>(`${SCHEMES_BASE_PATH}/${id}/weeks/`);
     return response.data;
+  },
+
+  getCompatibleCohortSubjects: async (id: number): Promise<CompatibleCohortSubject[]> => {
+    const response = await apiClient.get<CompatibleCohortSubject[]>(
+      `${SCHEMES_BASE_PATH}/${id}/compatible-cohort-subjects/`,
+    );
+    return response.data;
+  },
+
+  applyToCohortSubjects: async (id: number, cohortSubjectIds: number[]): Promise<SchemeApplication[]> => {
+    const response = await apiClient.post<SchemeApplication[]>(
+      `${SCHEMES_BASE_PATH}/${id}/applications/`,
+      { cohort_subject_ids: cohortSubjectIds },
+    );
+    return response.data;
+  },
+
+  detachApplication: async (id: number, applicationId: number): Promise<void> => {
+    await apiClient.delete(`${SCHEMES_BASE_PATH}/${id}/applications/${applicationId}/`);
   },
 
   updateScheme: async (id: number, payload: SchemeUpdatePayload): Promise<SchemeOfWork> => {

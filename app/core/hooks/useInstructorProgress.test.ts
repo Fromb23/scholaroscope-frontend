@@ -18,17 +18,17 @@ describe('useInstructorProgress session scope', () => {
     expect(hookSource).not.toContain('shouldFilterByCreatorId');
   });
 
-  it('keeps the lifecycle-safe profile when an optional history projection fails', () => {
+  it('keeps the lifecycle-safe profile when an optional current-term projection fails', () => {
     expect(hookSource).toContain('Promise.allSettled');
     expect(hookSource).toContain("setError('Failed to load staff profile')");
-    expect(hookSource).toContain('Historical sessions are temporarily unavailable.');
-    expect(hookSource).toContain('Historical schemes are temporarily unavailable.');
+    expect(hookSource).toContain('Current-term sessions are temporarily unavailable.');
+    expect(hookSource).toContain('Current-term schemes are temporarily unavailable.');
     expect(hookSource).not.toContain("setError('Failed to load instructor data')");
   });
 
   it('loads schemes but not the removed instructor lesson-plan drilldown', () => {
     expect(hookSource).toContain('schemesAPI.getInstructorSchemes(instructorId, {');
-    expect(hookSource).toContain('term_id: scope.termId');
+    expect(hookSource).toContain("scope: 'current'");
     expect(hookSource).toContain('subject_id: scope.subjectId');
     expect(hookSource).not.toContain('lessonPlanAPI');
     expect(hookSource).not.toContain('getInstructorLessonPlans');
@@ -37,13 +37,13 @@ describe('useInstructorProgress session scope', () => {
     expect(hookSource).not.toContain("schemesAPI.listSchemes({ teacher: instructorId })");
   });
 
-  it('sends inherited historical scope to the session API without implicit current scope', () => {
+  it('always sends the server-authoritative current scope to the session API', () => {
     expect(hookSource).toContain('sessionAPI.getSupervisedComplete({');
-    expect(hookSource).toContain('term: scope.termId');
-    expect(hookSource).toContain("scope: scope.termId ? undefined : 'all'");
-    expect(hookSource).toContain('session_date__gte: scope.startDate');
-    expect(hookSource).toContain('session_date__lte: scope.endDate');
-    expect(hookSource).not.toContain("scope: 'current'");
+    expect(hookSource).toContain("scope: 'current'");
+    expect(hookSource).not.toContain("scope: scope.termId ? undefined : 'all'");
+    expect(progressPageSource).not.toContain('review_term_id');
+    expect(progressPageSource).not.toContain('review_start_date');
+    expect(progressPageSource).not.toContain('review_end_date');
   });
 
   it('applies the membership action response before a non-silent background refresh without a hard reload', () => {
