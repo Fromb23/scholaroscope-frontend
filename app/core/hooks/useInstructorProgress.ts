@@ -13,6 +13,7 @@ import { sessionAPI } from '@/app/core/api/sessions';
 import { schemesAPI } from '@/app/core/api/schemes';
 import type { Session } from '@/app/core/types/session';
 import type { InstructorSchemeDrilldownItem } from '@/app/core/types/schemes';
+import type { OperationalScope } from '@/app/core/lib/academicScope';
 
 export interface SessionStats {
     total: number;
@@ -28,6 +29,7 @@ export interface AttendanceStats {
 }
 
 export interface InstructorProgressScope {
+    lifecycleScope?: OperationalScope;
     termId?: number;
     subjectId?: number;
     cohortId?: number;
@@ -122,6 +124,7 @@ export function useInstructorProgress(
                 session_date__lte: scope.endDate,
             });
         const schemesRequest = schemesAPI.getInstructorSchemes(instructorId, {
+                scope: scope.lifecycleScope,
                 term_id: scope.termId,
                 subject_id: scope.subjectId,
             });
@@ -170,7 +173,7 @@ export function useInstructorProgress(
         if (profileRefreshFailed && !showLoadingState) {
             throw new Error('Failed to refresh staff profile');
         }
-    }, [instructorId, scope.cohortId, scope.endDate, scope.startDate, scope.subjectId, scope.termId]);
+    }, [instructorId, scope.cohortId, scope.endDate, scope.lifecycleScope, scope.startDate, scope.subjectId, scope.termId]);
 
     const applyMembershipAction = useCallback((response: GlobalUserActionResponse) => {
         setInstructor((current) => {

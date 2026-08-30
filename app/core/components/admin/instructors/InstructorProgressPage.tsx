@@ -42,6 +42,7 @@ import {
     membershipStatusVariant,
     resolveGlobalStatus,
 } from '@/app/core/types/globalUsers';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 
 function positiveNumberParam(value: string | null) {
     if (!value) return undefined;
@@ -130,6 +131,17 @@ export default function InstructorProgressPage() {
         refetch, applyMembershipAction, teachingAssignments, cbcTeachingAssignments,
         sessionStats, attendanceStats, schemes,
     } = useInstructorProgress(instructorId, activeScope);
+
+    const instructorTitleName = instructor?.full_name?.trim() || instructor?.email?.trim();
+    useSemanticPageTitle(
+        loading
+            ? 'Staff Teaching'
+            : error || !instructor
+                ? 'Staff Teaching'
+                : instructorTitleName
+                    ? `Staff - ${instructorTitleName} Teaching`
+                    : 'Staff Teaching',
+    );
 
     const [submitting, setSubmitting] = useState(false);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
@@ -544,7 +556,7 @@ export default function InstructorProgressPage() {
                         </p>
                     ) : schemes.length === 0 ? (
                         <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
-                            No schemes of work have been created by this teacher yet.
+                            No schemes have been created for the active term.
                         </p>
                     ) : (
                         <div className="space-y-4">
