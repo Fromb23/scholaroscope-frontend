@@ -37,12 +37,24 @@ describe('semantic page identity titles', () => {
     expect(assignment).not.toContain('/academic/cohorts/12/assignments/99');
   });
 
+  it('uses a stable staff-teaching fallback for instructor progress routes', () => {
+    const label = resolvePageIdentity('/admin/instructors/42/progress').displayLabel;
+    expect(label).toBe('Staff Teaching');
+    expect(formatDocumentTitle(label)).toBe('Staff Teaching | Scholaroscope');
+    // Route identity deliberately receives a pathname, so a return target
+    // query string cannot leak into the browser title.
+    expect(resolvePageIdentity('/admin/instructors/42/progress').displayLabel).toBe(label);
+  });
+
   it('formats loaded, loading, forbidden, and not-found labels exactly once', () => {
     expect(formatDocumentTitle('Fractions CAT')).toBe('Fractions CAT | Scholaroscope');
     expect(formatDocumentTitle('Assessment')).toBe('Assessment | Scholaroscope');
     expect(formatDocumentTitle('Access denied')).toBe('Access denied | Scholaroscope');
     expect(formatDocumentTitle('Assessment not found')).toBe('Assessment not found | Scholaroscope');
     expect(formatDocumentTitle('Fractions CAT | Scholaroscope')).toBe('Fractions CAT | Scholaroscope');
+    expect(formatDocumentTitle('Staff - Mr Rombo Teaching')).toBe(
+      'Staff - Mr Rombo Teaching | Scholaroscope',
+    );
   });
 
   it('allows plugin routes to contribute semantic titles', () => {
