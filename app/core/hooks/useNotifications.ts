@@ -75,7 +75,7 @@ export function useNotifications() {
     }
 
     try {
-      const data = await notificationAPI.getAll();
+      const data = await notificationAPI.getAll({ scope: 'current' });
       if (
         authorityAtStart.generation !== generationAtStart
         || !isWorkspaceAuthorityCurrent(authorityAtStart)
@@ -97,7 +97,7 @@ export function useNotifications() {
 
   const markRead = useCallback(async (ids: number[]) => {
     const authorityAtStart = captureWorkspaceAuthority();
-    await notificationAPI.markRead(ids);
+    await notificationAPI.markRead(ids, { scope: 'current' });
     if (!isWorkspaceAuthorityCurrent(authorityAtStart)) {
       return;
     }
@@ -110,7 +110,7 @@ export function useNotifications() {
 
   const markAllRead = useCallback(async () => {
     const authorityAtStart = captureWorkspaceAuthority();
-    await notificationAPI.markAllRead();
+    await notificationAPI.markAllRead({ scope: 'current' });
     if (!isWorkspaceAuthorityCurrent(authorityAtStart)) {
       return;
     }
