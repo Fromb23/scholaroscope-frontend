@@ -8,6 +8,9 @@ export interface Notification {
     body: string;
     entity_type: string;
     entity_id: number | null;
+    scope_kind?: 'TERM' | 'WORKSPACE';
+    term_id?: number | null;
+    term_name?: string | null;
     is_read: boolean;
     read_at: string | null;
     created_at: string;

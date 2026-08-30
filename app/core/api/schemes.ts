@@ -61,11 +61,16 @@ export const schemesAPI = {
 
   getInstructorSchemes: async (
     instructorId: number,
-    params?: { term_id?: number | string; subject_id?: number | string },
+    params?: {
+      scope?: 'current' | 'historical' | 'upcoming' | 'all';
+      term?: number | string;
+      term_id?: number | string;
+      subject_id?: number | string;
+    },
   ): Promise<InstructorSchemeDrilldown> => {
     const response = await apiClient.get<InstructorSchemeDrilldown>(
       `/admin/instructors/${instructorId}/schemes/`,
-      { params },
+      { params: withOperationalScope(params) },
     );
     return response.data;
   },
