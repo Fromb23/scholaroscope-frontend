@@ -13,7 +13,6 @@ import { sessionAPI } from '@/app/core/api/sessions';
 import { schemesAPI } from '@/app/core/api/schemes';
 import type { Session } from '@/app/core/types/session';
 import type { InstructorSchemeDrilldownItem } from '@/app/core/types/schemes';
-import type { OperationalScope } from '@/app/core/lib/academicScope';
 
 export interface SessionStats {
     total: number;
@@ -29,12 +28,8 @@ export interface AttendanceStats {
 }
 
 export interface InstructorProgressScope {
-    lifecycleScope?: OperationalScope;
-    termId?: number;
     subjectId?: number;
     cohortId?: number;
-    startDate?: string;
-    endDate?: string;
 }
 
 export interface InstructorProgressSectionErrors {
@@ -116,18 +111,16 @@ export function useInstructorProgress(
         const sessionsRequest = sessionAPI.getSupervisedComplete({
             authority_mode: 'supervision',
             instructor_id: instructorId,
-            scope: scope.termId ? undefined : 'all',
-            term: scope.termId,
-                cohort_subject__subject: scope.subjectId,
-                cohort_subject__cohort: scope.cohortId,
-                session_date__gte: scope.startDate,
-                session_date__lte: scope.endDate,
+            // This surface is operational, never a reporting/history view.
+            // The API resolves all curriculum-specific active terms.
+            scope: 'current',
+            cohort_subject__subject: scope.subjectId,
+            cohort_subject__cohort: scope.cohortId,
             });
         const schemesRequest = schemesAPI.getInstructorSchemes(instructorId, {
-                scope: scope.lifecycleScope,
-                term_id: scope.termId,
-                subject_id: scope.subjectId,
-            });
+            scope: 'current',
+            subject_id: scope.subjectId,
+        });
 
         const [profileResult, sessionsResult, schemesResult] = await Promise.allSettled([
             profileRequest,
@@ -162,10 +155,10 @@ export function useInstructorProgress(
         }
         setSectionErrors({
             sessions: sessionsResult.status === 'rejected'
-                ? 'Historical sessions are temporarily unavailable.'
+                ? 'Current-term sessions are temporarily unavailable.'
                 : null,
             schemes: schemesResult.status === 'rejected'
-                ? 'Historical schemes are temporarily unavailable.'
+                ? 'Current-term schemes are temporarily unavailable.'
                 : null,
         });
 
@@ -173,7 +166,7 @@ export function useInstructorProgress(
         if (profileRefreshFailed && !showLoadingState) {
             throw new Error('Failed to refresh staff profile');
         }
-    }, [instructorId, scope.cohortId, scope.endDate, scope.lifecycleScope, scope.startDate, scope.subjectId, scope.termId]);
+    }, [instructorId, scope.cohortId, scope.subjectId]);
 
     const applyMembershipAction = useCallback((response: GlobalUserActionResponse) => {
         setInstructor((current) => {

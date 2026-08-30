@@ -11,7 +11,6 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import { Input } from '@/app/components/ui/Input';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -113,17 +112,15 @@ export default function InstructorProgressPage() {
     const initialSubjectSource = searchParams.get('subject_source');
     const shouldOpenTeachingModal = searchParams.get('open') === 'teaching' || hasInitialCohortSubjectId;
 
-    const inheritedScope = useMemo<InstructorProgressScope>(() => {
+    // Lesson-plan review links may retain a non-temporal narrowing filter, but
+    // must never carry a reporting term or date range into this current view.
+    const activeScope = useMemo<InstructorProgressScope>(() => {
         if (searchParams.get('source') !== 'lesson-plan-review') return {};
         return {
-            startDate: searchParams.get('review_start_date') || undefined,
-            endDate: searchParams.get('review_end_date') || undefined,
-            termId: positiveNumberParam(searchParams.get('review_term_id')),
             subjectId: positiveNumberParam(searchParams.get('review_subject_id')),
             cohortId: positiveNumberParam(searchParams.get('review_cohort_id')),
         };
     }, [searchParams]);
-    const [activeScope, setActiveScope] = useState<InstructorProgressScope>(inheritedScope);
 
     const {
         instructor, sessions, loading, error,
@@ -158,15 +155,6 @@ export default function InstructorProgressPage() {
         const query = searchParams.toString();
         return `${pathname}${query ? `?${query}` : ''}#sessions`;
     }, [pathname, searchParams]);
-    const planningReviewScope = activeScope.startDate && activeScope.endDate
-        ? {
-            startDate: activeScope.startDate,
-            endDate: activeScope.endDate,
-            termId: activeScope.termId,
-            subjectId: activeScope.subjectId,
-            cohortId: activeScope.cohortId,
-        }
-        : undefined;
 
     useEffect(() => {
         if (shouldOpenTeachingModal) {
@@ -286,71 +274,14 @@ export default function InstructorProgressPage() {
                 <ArrowLeft className="h-4 w-4 mr-2" />{progressBackTarget.label}
             </Button>
 
-            {searchParams.get('source') === 'lesson-plan-review' ? (
-                <Card>
-                    <div className="p-4">
-                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                                <h2 className="text-sm font-semibold text-gray-900">Instructor progress scope</h2>
-                                <p className="text-xs text-gray-500">Inherited from Lesson Plan Review; edits apply only on this page.</p>
-                            </div>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => setActiveScope({})}>
-                                Clear inherited scope
-                            </Button>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                            <Input
-                                label="Term ID"
-                                type="number"
-                                min={1}
-                                value={activeScope.termId ?? ''}
-                                onChange={(event) => setActiveScope((current) => ({
-                                    ...current,
-                                    termId: positiveNumberParam(event.target.value),
-                                }))}
-                            />
-                            <Input
-                                label="Subject ID"
-                                type="number"
-                                min={1}
-                                value={activeScope.subjectId ?? ''}
-                                onChange={(event) => setActiveScope((current) => ({
-                                    ...current,
-                                    subjectId: positiveNumberParam(event.target.value),
-                                }))}
-                            />
-                            <Input
-                                label="Cohort ID"
-                                type="number"
-                                min={1}
-                                value={activeScope.cohortId ?? ''}
-                                onChange={(event) => setActiveScope((current) => ({
-                                    ...current,
-                                    cohortId: positiveNumberParam(event.target.value),
-                                }))}
-                            />
-                            <Input
-                                label="From"
-                                type="date"
-                                value={activeScope.startDate ?? ''}
-                                onChange={(event) => setActiveScope((current) => ({
-                                    ...current,
-                                    startDate: event.target.value || undefined,
-                                }))}
-                            />
-                            <Input
-                                label="To"
-                                type="date"
-                                value={activeScope.endDate ?? ''}
-                                onChange={(event) => setActiveScope((current) => ({
-                                    ...current,
-                                    endDate: event.target.value || undefined,
-                                }))}
-                            />
-                        </div>
-                    </div>
-                </Card>
-            ) : null}
+            <Card>
+                <div className="p-4">
+                    <h2 className="text-sm font-semibold text-gray-900">Current term progress</h2>
+                    <p className="mt-1 text-xs text-gray-500">
+                        Sessions, attendance, curriculum progress, and schemes are restricted to the server-authoritative active term.
+                    </p>
+                </div>
+            </Card>
 
             {feedback && (
                 <div className={`flex items-center gap-2 p-3 rounded-lg text-sm border ${feedback.type === 'success'
@@ -477,9 +408,9 @@ export default function InstructorProgressPage() {
 
             {/* Stats */}
             <StatStrip mdColumns={4}>
-                <StatsCard title="Total Sessions" value={sessionStats.total} icon={Calendar} color="blue" mobile="hide" />
-                <StatsCard title="This Month" value={sessionStats.thisMonth} icon={Calendar} color="purple" mobile="compact" />
-                <StatsCard title="Avg Attendance" value={`${attendanceStats.rate}%`} icon={Users} color="green" mobile="compact" />
+                <StatsCard title="Current Term Sessions" value={sessionStats.total} icon={Calendar} color="blue" mobile="hide" />
+                <StatsCard title="This Month (Current Term)" value={sessionStats.thisMonth} icon={Calendar} color="purple" mobile="compact" />
+                <StatsCard title="Current Term Attendance" value={`${attendanceStats.rate}%`} icon={Users} color="green" mobile="compact" />
                 <StatsCard title="Cohorts" value={instructor.cohort_assignments?.length ?? 0} icon={GraduationCap} color="orange" mobile="hide" />
             </StatStrip>
 
@@ -488,8 +419,7 @@ export default function InstructorProgressPage() {
                 <div className="p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Users className="h-5 w-5 text-blue-500" />
-                        <h2 className="text-lg font-semibold text-gray-900">Attendance Overview</h2>
-                        <span className="text-sm text-gray-400">across all sessions</span>
+                        <h2 className="text-lg font-semibold text-gray-900">Attendance during the current term</h2>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {attendanceItems.map(stat => (
@@ -524,7 +454,7 @@ export default function InstructorProgressPage() {
                 <div className="p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Calendar className="h-5 w-5 text-blue-500" />
-                        <h2 className="text-lg font-semibold text-gray-900">Sessions</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">Current term sessions</h2>
                         <Badge variant="info" size="sm">{sessions.length} total</Badge>
                     </div>
                     {sectionErrors.sessions ? (
@@ -535,7 +465,7 @@ export default function InstructorProgressPage() {
                         <GroupedSessions
                             sessions={sessions}
                             returnTo={progressReturnTo}
-                            planningReviewScope={planningReviewScope}
+                            planningReviewScope={undefined}
                         />
                     )}
                 </div>
@@ -546,7 +476,7 @@ export default function InstructorProgressPage() {
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <BookOpen className="h-5 w-5 text-emerald-500" />
-                            <h2 className="text-lg font-semibold text-gray-900">Schemes of Work</h2>
+                            <h2 className="text-lg font-semibold text-gray-900">Current term schemes of work</h2>
                             <Badge variant="info" size="sm">{schemes.length} total</Badge>
                         </div>
                     </div>
@@ -596,7 +526,7 @@ export default function InstructorProgressPage() {
                                                     {scheme.cohort_subject_id ? (
                                                         <Link href={buildRelatedLessonsHref({
                                                             cohortSubjectId: scheme.cohort_subject_id,
-                                                            termId: scheme.term?.id ?? activeScope.termId,
+                                                            termId: scheme.term?.id,
                                                             instructorId,
                                                             returnTo: progressReturnTo,
                                                         })}>

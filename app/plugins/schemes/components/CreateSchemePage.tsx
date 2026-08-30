@@ -210,6 +210,7 @@ export function CreateSchemePage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedLevelLabel, setSelectedLevelLabel] = useState('');
   const [selectedCohortSubjectId, setSelectedCohortSubjectId] = useState('');
+  const [selectedApplicationIds, setSelectedApplicationIds] = useState<number[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
@@ -455,6 +456,15 @@ export function CreateSchemePage() {
   const resolvedSelectedCohortSubjectId =
     selectedContext?.cohortSubjectId ??
     (selectedCohortSubjectId ? Number(selectedCohortSubjectId) : null);
+
+  useEffect(() => {
+    if (resolvedSelectedCohortSubjectId) {
+      setSelectedApplicationIds((current) => Array.from(new Set([
+        resolvedSelectedCohortSubjectId,
+        ...current,
+      ])));
+    }
+  }, [resolvedSelectedCohortSubjectId]);
   const {
     data: academicContext,
     isLoading: academicContextLoading,
@@ -880,6 +890,7 @@ export function CreateSchemePage() {
       const payload: GenerateSchemePayload = {
         term: selectedTerm.id,
         cohort_subject: resolvedSelectedCohortSubjectId,
+        cohort_subject_ids: selectedApplicationIds,
         title: title.trim(),
         lessons_per_week: lessonsPerWeekValue ?? 1,
         lesson_duration_minutes: lessonDurationMinutesValue ?? 40,
@@ -1164,6 +1175,31 @@ export function CreateSchemePage() {
                 })),
               ]}
             />
+
+            {resolvedSelectedCohortSubjectId ? (
+              <div className="rounded-lg border theme-border p-3 md:col-span-2 xl:col-span-3">
+                <p className="text-sm font-medium theme-text">Use this scheme with classes</p>
+                <p className="mt-1 text-xs theme-subtle">Choose compatible assigned classes. The server revalidates every choice before applying the scheme.</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {filteredContextOptions.map((option) => {
+                    const checked = selectedApplicationIds.includes(option.cohortSubjectId);
+                    return (
+                      <label key={option.cohortSubjectId} className="flex items-center gap-2 text-sm theme-text">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={option.cohortSubjectId === resolvedSelectedCohortSubjectId}
+                          onChange={(event) => setSelectedApplicationIds((current) => event.target.checked
+                            ? [...current, option.cohortSubjectId]
+                            : current.filter((id) => id !== option.cohortSubjectId))}
+                        />
+                        {option.cohortName} • {option.subjectName}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             <div
               id={CREATE_SCHEME_TARGET_ELEMENT_IDS['term-status']}

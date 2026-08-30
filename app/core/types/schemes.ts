@@ -37,12 +37,39 @@ export interface CurriculumRangeInput {
 export interface GenerateSchemePayload {
     term: number;
     cohort_subject: number;
+    cohort_subject_ids?: number[];
     teacher?: number;
     title?: string;
     lessons_per_week: number;
     lesson_duration_minutes?: number;
     curriculum_range: CurriculumRangeInput;
     generation_mode?: SchemeGenerationMode;
+}
+
+export type SchemeApplicationStatus = 'ACTIVE' | 'DETACHED' | 'HISTORICAL';
+
+export interface SchemeApplication {
+    id: number;
+    cohort_subject: number;
+    cohort_name: string;
+    subject_name: string;
+    teacher: number | null;
+    term: number;
+    status: SchemeApplicationStatus;
+    is_origin: boolean;
+    applied_at: string;
+    detached_at: string | null;
+    cohort_name_snapshot: string;
+    subject_name_snapshot: string;
+    teacher_name_snapshot: string;
+}
+
+export interface CompatibleCohortSubject {
+    id: number;
+    cohort_id: number;
+    cohort_name: string;
+    subject_id: number;
+    subject_name: string;
 }
 
 export interface SchemeGenerationJob {
@@ -137,6 +164,8 @@ export interface SchemeOfWork {
     created_at: string;
     updated_at: string;
     entries?: SchemeEntry[];
+    applications: SchemeApplication[];
+    application_count: number;
 }
 
 export type SchemeComplianceStatus =

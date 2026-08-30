@@ -26,7 +26,9 @@ import { Select } from '@/app/components/ui/Select';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { isSafeNextPath, parseAppDestination } from '@/app/core/auth/navigation';
 import { useSchemeDetail } from '@/app/core/hooks/useSchemes';
+import { schemesAPI } from '@/app/core/api/schemes';
 import type {
+  CompatibleCohortSubject,
   SchemeEntry,
   SchemeEntryUpdatePayload,
   SchemeWeek,
@@ -289,6 +291,10 @@ export function SchemeDetailPage() {
   const [editingWeekId, setEditingWeekId] = useState<number | null>(null);
   const [expandedTeacherFields, setExpandedTeacherFields] = useState<Record<number, boolean>>({});
   const [expandedReflections, setExpandedReflections] = useState<Record<number, boolean>>({});
+  const [compatibleClasses, setCompatibleClasses] = useState<CompatibleCohortSubject[]>([]);
+  const [selectedCompatibleIds, setSelectedCompatibleIds] = useState<number[]>([]);
+  const [applicationPickerOpen, setApplicationPickerOpen] = useState(false);
+  const [applyingClasses, setApplyingClasses] = useState(false);
 
   useEffect(() => {
     if (!scheme) {
@@ -540,6 +546,32 @@ export function SchemeDetailPage() {
     );
   }
 
+  const activeApplications = (scheme.applications ?? []).filter((item) => item.status === 'ACTIVE');
+  const openApplicationPicker = async () => {
+    try {
+      setActionError(null);
+      setCompatibleClasses(await schemesAPI.getCompatibleCohortSubjects(scheme.id));
+      setSelectedCompatibleIds([]);
+      setApplicationPickerOpen(true);
+    } catch (err) {
+      setActionError(resolveErrorMessage(err, 'Compatible classes could not be loaded.'));
+    }
+  };
+  const applyToClasses = async () => {
+    if (selectedCompatibleIds.length === 0) return;
+    try {
+      setApplyingClasses(true);
+      await schemesAPI.applyToCohortSubjects(scheme.id, selectedCompatibleIds);
+      setApplicationPickerOpen(false);
+      await refetch();
+      setActionSuccess('Scheme applied to the selected classes.');
+    } catch (err) {
+      setActionError(resolveErrorMessage(err, 'The scheme could not be applied to those classes.'));
+    } finally {
+      setApplyingClasses(false);
+    }
+  };
+
   const filteredLessonPlansHref = scheme.cohort_subject && scheme.term
     ? `/lesson-plans?${new URLSearchParams({
         cohort_subject: String(scheme.cohort_subject),
@@ -606,6 +638,12 @@ export function SchemeDetailPage() {
             {scheme.exceptional_week_count > 0 ? (
               <Badge variant="warning">{scheme.exceptional_week_count} exceptional weeks</Badge>
             ) : null}
+            {!readOnly ? (
+              <Button type="button" variant="secondary" onClick={() => void openApplicationPicker()}>
+                <Link2 className="h-4 w-4" />
+                Use with another class
+              </Button>
+            ) : null}
             {filteredLessonPlansHref ? (
               <Link href={filteredLessonPlansHref}>
                 <Button type="button" variant="secondary">
@@ -646,6 +684,47 @@ export function SchemeDetailPage() {
             value={String(scheme.total_lesson_slots ?? scheme.entries_count)}
           />
           <MetaItem label="Last updated" value={formatTimestamp(scheme.updated_at)} />
+        </div>
+
+        <div className="rounded-xl border theme-border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold theme-text">Used by {activeApplications.length} class{activeApplications.length === 1 ? '' : 'es'}</h2>
+              <p className="mt-1 text-xs theme-subtle">Sessions and lesson evidence remain separate for each class.</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {activeApplications.map((application) => (
+              <Badge key={application.id} variant={application.is_origin ? 'blue' : 'default'}>
+                {application.cohort_name || application.cohort_name_snapshot}{application.is_origin ? ' · origin' : ''}
+              </Badge>
+            ))}
+          </div>
+          {applicationPickerOpen ? (
+            <div className="mt-4 rounded-lg bg-gray-50 p-3">
+              <p className="text-sm font-medium theme-text">Compatible assigned classes</p>
+              <div className="mt-2 space-y-2">
+                {compatibleClasses.length === 0 ? <p className="text-sm theme-subtle">No additional compatible classes are available.</p> : compatibleClasses.map((item) => (
+                  <label key={item.id} className="flex items-center gap-2 text-sm theme-text">
+                    <input
+                      type="checkbox"
+                      checked={selectedCompatibleIds.includes(item.id)}
+                      onChange={(event) => setSelectedCompatibleIds((current) => event.target.checked
+                        ? [...current, item.id]
+                        : current.filter((id) => id !== item.id))}
+                    />
+                    {item.cohort_name} · {item.subject_name}
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Button type="button" size="sm" onClick={() => void applyToClasses()} disabled={applyingClasses || selectedCompatibleIds.length === 0}>
+                  {applyingClasses ? 'Applying...' : 'Apply scheme'}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setApplicationPickerOpen(false)}>Cancel</Button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">

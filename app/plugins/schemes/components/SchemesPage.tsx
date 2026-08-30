@@ -121,6 +121,7 @@ function SchemeCard({
             <Badge variant="blue">{scheme.entries_count} lesson drafts</Badge>
             <Badge variant="default">{scheme.active_learning_week_count} active weeks</Badge>
             <Badge variant="default">{scheme.lessons_per_week} lessons/week</Badge>
+            <Badge variant="default">Used by {scheme.application_count ?? scheme.applications?.filter((item) => item.status === 'ACTIVE').length ?? 1} classes</Badge>
           </div>
         </div>
 
