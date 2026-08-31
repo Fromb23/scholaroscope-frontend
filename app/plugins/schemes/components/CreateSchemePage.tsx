@@ -33,6 +33,7 @@ import type { PaginatedResponse } from '@/app/core/types/api';
 import type { CohortSubject, Curriculum, Subject, Term } from '@/app/core/types/academic';
 import { useAuth } from '@/app/context/AuthContext';
 import type {
+  CompatibleCohortSubject,
   CurriculumRangeInput,
   GenerateSchemePayload,
 } from '@/app/core/types/schemes';
@@ -211,6 +212,9 @@ export function CreateSchemePage() {
   const [selectedLevelLabel, setSelectedLevelLabel] = useState('');
   const [selectedCohortSubjectId, setSelectedCohortSubjectId] = useState('');
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<number[]>([]);
+  const [compatibleApplicationOptions, setCompatibleApplicationOptions] = useState<CompatibleCohortSubject[]>([]);
+  const [compatibleApplicationsLoading, setCompatibleApplicationsLoading] = useState(false);
+  const [compatibleApplicationsError, setCompatibleApplicationsError] = useState<string | null>(null);
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
@@ -458,12 +462,39 @@ export function CreateSchemePage() {
     (selectedCohortSubjectId ? Number(selectedCohortSubjectId) : null);
 
   useEffect(() => {
-    if (resolvedSelectedCohortSubjectId) {
-      setSelectedApplicationIds((current) => Array.from(new Set([
-        resolvedSelectedCohortSubjectId,
-        ...current,
-      ])));
+    if (!resolvedSelectedCohortSubjectId) {
+      setCompatibleApplicationOptions([]);
+      setSelectedApplicationIds([]);
+      setCompatibleApplicationsError(null);
+      return;
     }
+
+    let active = true;
+    setCompatibleApplicationsLoading(true);
+    setCompatibleApplicationsError(null);
+    schemesAPI.getGenerationCompatibleCohortSubjects(resolvedSelectedCohortSubjectId)
+      .then((items) => {
+        if (!active) return;
+        setCompatibleApplicationOptions(items);
+        setSelectedApplicationIds(
+          items.some((item) => item.id === resolvedSelectedCohortSubjectId)
+            ? [resolvedSelectedCohortSubjectId]
+            : [],
+        );
+      })
+      .catch((error) => {
+        if (!active) return;
+        setCompatibleApplicationOptions([]);
+        setSelectedApplicationIds([]);
+        setCompatibleApplicationsError(resolveErrorMessage(error, 'Compatible classes could not be loaded.'));
+      })
+      .finally(() => {
+        if (active) setCompatibleApplicationsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [resolvedSelectedCohortSubjectId]);
   const {
     data: academicContext,
@@ -1179,21 +1210,23 @@ export function CreateSchemePage() {
             {resolvedSelectedCohortSubjectId ? (
               <div className="rounded-lg border theme-border p-3 md:col-span-2 xl:col-span-3">
                 <p className="text-sm font-medium theme-text">Use this scheme with classes</p>
-                <p className="mt-1 text-xs theme-subtle">Choose compatible assigned classes. The server revalidates every choice before applying the scheme.</p>
+                <p className="mt-1 text-xs theme-subtle">Choose server-authorized compatible assigned classes. Every choice is revalidated before applying the scheme.</p>
+                {compatibleApplicationsError ? <p className="mt-2 text-sm text-red-600">{compatibleApplicationsError}</p> : null}
+                {compatibleApplicationsLoading ? <p className="mt-2 text-sm theme-subtle">Checking compatible classes…</p> : null}
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {filteredContextOptions.map((option) => {
-                    const checked = selectedApplicationIds.includes(option.cohortSubjectId);
+                  {compatibleApplicationOptions.map((option) => {
+                    const checked = selectedApplicationIds.includes(option.id);
                     return (
-                      <label key={option.cohortSubjectId} className="flex items-center gap-2 text-sm theme-text">
+                      <label key={option.id} className="flex items-center gap-2 text-sm theme-text">
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={option.cohortSubjectId === resolvedSelectedCohortSubjectId}
+                          disabled={compatibleApplicationsLoading || option.id === resolvedSelectedCohortSubjectId}
                           onChange={(event) => setSelectedApplicationIds((current) => event.target.checked
-                            ? [...current, option.cohortSubjectId]
-                            : current.filter((id) => id !== option.cohortSubjectId))}
+                            ? [...current, option.id]
+                            : current.filter((id) => id !== option.id))}
                         />
-                        {option.cohortName} • {option.subjectName}
+                        {option.cohort_name} • {option.subject_name}
                       </label>
                     );
                   })}

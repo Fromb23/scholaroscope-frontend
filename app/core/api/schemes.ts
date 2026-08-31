@@ -106,6 +106,22 @@ export const schemesAPI = {
     return response.data;
   },
 
+  getGenerationCompatibleCohortSubjects: async (
+    cohortSubjectId: number,
+    lessonsPerWeek?: number,
+  ): Promise<CompatibleCohortSubject[]> => {
+    const response = await apiClient.get<CompatibleCohortSubject[]>(
+      `${SCHEMES_BASE_PATH}/compatible-cohort-subjects/`,
+      {
+        params: {
+          cohort_subject_id: cohortSubjectId,
+          ...(lessonsPerWeek ? { lessons_per_week: lessonsPerWeek } : {}),
+        },
+      },
+    );
+    return response.data;
+  },
+
   applyToCohortSubjects: async (id: number, cohortSubjectIds: number[]): Promise<SchemeApplication[]> => {
     const response = await apiClient.post<SchemeApplication[]>(
       `${SCHEMES_BASE_PATH}/${id}/applications/`,

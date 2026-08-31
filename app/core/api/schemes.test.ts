@@ -36,6 +36,18 @@ describe('scheme application API', () => {
     });
   });
 
+  it('gets creation choices from the server using the selected origin class', async () => {
+    get.mockResolvedValue({ data: [{ id: 22, cohort_name: 'Grade 10 Green' }] });
+
+    await expect(schemesAPI.getGenerationCompatibleCohortSubjects(7, 3)).resolves.toEqual([
+      { id: 22, cohort_name: 'Grade 10 Green' },
+    ]);
+
+    expect(get).toHaveBeenCalledWith('/schemes/compatible-cohort-subjects/', {
+      params: { cohort_subject_id: 7, lessons_per_week: 3 },
+    });
+  });
+
   it('detaches by application identity without deleting the scheme document', async () => {
     deleteRequest.mockResolvedValue({});
 
