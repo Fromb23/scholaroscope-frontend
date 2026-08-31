@@ -644,6 +644,17 @@ export function SchemeDetailPage() {
                 Use with another class
               </Button>
             ) : null}
+            {scheme.cohort_subject ? (
+              <Link href={`/schemes/create?${new URLSearchParams({
+                cohort_subject: String(scheme.cohort_subject),
+                returnTo: currentReturnTo,
+              })}`}>
+                <Button type="button" variant="secondary">
+                  <NotebookPen className="h-4 w-4" />
+                  Create independent copy
+                </Button>
+              </Link>
+            ) : null}
             {filteredLessonPlansHref ? (
               <Link href={filteredLessonPlansHref}>
                 <Button type="button" variant="secondary">
