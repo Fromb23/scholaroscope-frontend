@@ -7,9 +7,9 @@ export function getProjectLifecycleActions(
 ): ProjectLifecycleAction[] {
   const actions: ProjectLifecycleAction[] = [];
   if (project.authority.can_publish) actions.push('publish');
-  if (project.authority.can_administer && project.status === 'PUBLISHED') actions.push('start');
-  if (project.authority.can_manage && project.status === 'ACTIVE') actions.push('complete');
-  if (project.authority.can_finalize && project.status === 'COMPLETED') actions.push('finalize');
+  if (project.authority.can_start) actions.push('start');
+  if (project.authority.can_complete) actions.push('complete');
+  if (project.authority.can_finalize) actions.push('finalize');
   if (project.authority.can_cancel) actions.push('cancel');
   return actions;
 }

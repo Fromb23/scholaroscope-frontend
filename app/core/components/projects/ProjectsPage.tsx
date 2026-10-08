@@ -12,6 +12,7 @@ import { Select } from '@/app/components/ui/Select';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { resolveAppError } from '@/app/core/errors';
 import { useProjectDeployments } from '@/app/core/hooks/useProjects';
+import { useAuth } from '@/app/context/AuthContext';
 
 const statusOptions = [
   '',
@@ -26,6 +27,8 @@ const statusOptions = [
 ].map((value) => ({ value, label: value ? value.replaceAll('_', ' ') : 'All lifecycle states' }));
 
 export function ProjectsPage() {
+  const { capabilities } = useAuth();
+  const canCreateCustom = capabilities.authorization?.permission_keys.includes('projects.create') ?? false;
   const [status, setStatus] = useState('');
   const [subject, setSubject] = useState('');
   const [cohort, setCohort] = useState('');
@@ -58,7 +61,7 @@ export function ProjectsPage() {
         <div>
           <h1 className="text-2xl font-bold theme-text">Projects</h1>
           <p className="mt-1 theme-muted">
-            Teaching projects and server-authorized supervision in one workspace.
+            Active and historical deployments authorized for your teaching or supervision scope.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -68,12 +71,14 @@ export function ProjectsPage() {
               Catalogue
             </Button>
           </Link>
-          <Link href="/projects/imports">
-            <Button variant="secondary">
-              <Import className="h-4 w-4" />
-              Imports
-            </Button>
-          </Link>
+          {canCreateCustom ? (
+            <Link href="/projects/imports">
+              <Button variant="secondary">
+                <Import className="h-4 w-4" />
+                Create custom project
+              </Button>
+            </Link>
+          ) : null}
         </div>
       </div>
 

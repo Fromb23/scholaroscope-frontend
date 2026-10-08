@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
   ProjectChecklistItem,
+  CreateProjectDeploymentPayload,
   ProjectDefinitionVersion,
   ProjectDeployment,
   ProjectEvidence,
@@ -24,6 +25,8 @@ export const projectsAPI = {
     ).data,
   getDeployment: async (id: number) =>
     (await apiClient.get<ProjectDeployment>(`/project-deployments/${id}/`)).data,
+  createDeployment: async (payload: CreateProjectDeploymentPayload) =>
+    (await apiClient.post<ProjectDeployment>('/project-deployments/', payload)).data,
   deploymentAction: async (
     id: number,
     action: 'publish' | 'start' | 'complete' | 'finalize' | 'cancel',
@@ -134,10 +137,15 @@ export const projectsAPI = {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
     ).data,
-  confirmImport: async (id: number, semanticDuplicateDecision = '') =>
+  confirmImport: async (
+    id: number,
+    organizationCohortSubject: number,
+    semanticDuplicateDecision = '',
+  ) =>
     (
       await apiClient.post(`/project-sources/${id}/confirm-extraction/`, {
         semantic_duplicate_decision: semanticDuplicateDecision,
+        organization_cohort_subject: organizationCohortSubject,
       })
     ).data,
   rejectImport: async (id: number, reason: string) =>
