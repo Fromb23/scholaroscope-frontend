@@ -3,15 +3,39 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = process.cwd();
-const pageSource = readFileSync(join(root, 'app/core/components/portfolio/LearnerPortfolioPage.tsx'), 'utf8');
-const cardSource = readFileSync(join(root, 'app/core/components/portfolio/PortfolioEvidenceCard.tsx'), 'utf8');
-const detailSource = readFileSync(join(root, 'app/core/components/portfolio/PortfolioEvidenceDetail.tsx'), 'utf8');
-const filtersSource = readFileSync(join(root, 'app/core/components/portfolio/PortfolioFilters.tsx'), 'utf8');
-const identitySource = readFileSync(join(root, 'app/core/components/learners/LearnerIdentityHeader.tsx'), 'utf8');
-const learnerDetailSource = readFileSync(join(root, 'app/core/components/learners/LearnerDetailPage.tsx'), 'utf8');
+const pageSource = readFileSync(
+  join(root, 'app/core/components/portfolio/LearnerPortfolioPage.tsx'),
+  'utf8',
+);
+const cardSource = readFileSync(
+  join(root, 'app/core/components/portfolio/PortfolioEvidenceCard.tsx'),
+  'utf8',
+);
+const detailSource = readFileSync(
+  join(root, 'app/core/components/portfolio/PortfolioEvidenceDetail.tsx'),
+  'utf8',
+);
+const filtersSource = readFileSync(
+  join(root, 'app/core/components/portfolio/PortfolioFilters.tsx'),
+  'utf8',
+);
+const identitySource = readFileSync(
+  join(root, 'app/core/components/learners/LearnerIdentityHeader.tsx'),
+  'utf8',
+);
+const learnerDetailSource = readFileSync(
+  join(root, 'app/core/components/learners/LearnerDetailPage.tsx'),
+  'utf8',
+);
 const canonicalPortfolioRoute = join(root, 'app/(dashboard)/learners/[id]/portfolio/page.tsx');
-const conflictingPortfolioRoute = join(root, 'app/(dashboard)/learners/[learnerId]/portfolio/page.tsx');
-const canonicalReportingPortfolioRoute = join(root, 'app/(dashboard)/reports/learners/[learnerId]/portfolio/page.tsx');
+const conflictingPortfolioRoute = join(
+  root,
+  'app/(dashboard)/learners/[learnerId]/portfolio/page.tsx',
+);
+const canonicalReportingPortfolioRoute = join(
+  root,
+  'app/(dashboard)/reports/learners/[learnerId]/portfolio/page.tsx',
+);
 const routeSource = readFileSync(canonicalPortfolioRoute, 'utf8');
 
 const learnerReportRoutes = [
@@ -48,7 +72,9 @@ function hasRouteFileDescendant(directory: string): boolean {
 
 function findDynamicSlugConflicts(directory: string, routeSegments: string[] = []): string[] {
   const childDirectories = readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && !entry.name.startsWith('_'))
+    .filter(
+      (entry) => entry.isDirectory() && !entry.name.startsWith('.') && !entry.name.startsWith('_'),
+    )
     .map((entry) => ({ name: entry.name, path: join(directory, entry.name) }))
     .filter((entry) => statSync(entry.path).isDirectory() && hasRouteFileDescendant(entry.path));
 
@@ -68,7 +94,9 @@ function findDynamicSlugConflicts(directory: string, routeSegments: string[] = [
 
   for (const child of childDirectories) {
     const key = routeSegmentKey(child.name);
-    conflicts.push(...findDynamicSlugConflicts(child.path, key ? [...routeSegments, key] : routeSegments));
+    conflicts.push(
+      ...findDynamicSlugConflicts(child.path, key ? [...routeSegments, key] : routeSegments),
+    );
   }
 
   return conflicts;
@@ -113,7 +141,7 @@ describe('Learner Portfolio route and UI contract', () => {
     expect(pageSource).toContain('No visible evidence matches the active portfolio filters');
     expect(detailSource).toContain('missing or inaccessible');
     expect(detailSource).toContain('resolveLearnerError');
-    expect(detailSource).toContain('entityLabel: \'portfolio evidence\'');
+    expect(detailSource).toContain("entityLabel: 'portfolio evidence'");
   });
 
   it('supports the required filter controls', () => {
@@ -124,7 +152,7 @@ describe('Learner Portfolio route and UI contract', () => {
     expect(filtersSource).toContain('Evidence source');
   });
 
-  it('renders learner work without raw JSON or production provenance', () => {
+  it('renders learner work and curated project provenance without raw JSON', () => {
     expect(detailSource).toContain('LearnerWorkSection');
     expect(detailSource).toContain('whitespace-pre-wrap text-sm theme-text');
     expect(detailSource).toContain('Submitted {formatDateTime(value.submitted_at)}');
@@ -132,18 +160,25 @@ describe('Learner Portfolio route and UI contract', () => {
     expect(detailSource).toContain('No response text or artifact was submitted');
     expect(detailSource).not.toContain('JSON.stringify');
     expect(detailSource).not.toContain('<pre');
-    expect(detailSource).not.toContain('Provenance');
+    expect(detailSource).toContain('Project evidence provenance');
+    expect(detailSource).not.toContain('Raw provenance');
   });
 
   it('uses backend available learning areas and kernel cohort-subject identifiers', () => {
-    expect(pageSource).toContain('const represented = portfolio?.filters.represented_learning_areas ?? []');
-    expect(pageSource).not.toContain('portfolio?.results.map((evidence) => evidence.learning_area)');
+    expect(pageSource).toContain(
+      'const represented = portfolio?.filters.represented_learning_areas ?? []',
+    );
+    expect(pageSource).not.toContain(
+      'portfolio?.results.map((evidence) => evidence.learning_area)',
+    );
     expect(filtersSource).toContain('const id = area.cohort_subject_id ?? area.id');
     expect(filtersSource).not.toContain('area.cbc_cohort_subject_id ?? area.cohort_subject_id');
   });
 
   it('reconciles unscoped portfolio URLs to the backend-resolved current context', () => {
-    expect(pageSource).toContain("if (searchParams.get('academic_year') || searchParams.get('term'))");
+    expect(pageSource).toContain(
+      "if (searchParams.get('academic_year') || searchParams.get('term'))",
+    );
     expect(pageSource).toContain('portfolio.filters.applied');
     expect(pageSource).toContain('router.replace(query ? `${pathname}?${query}` : pathname');
   });
