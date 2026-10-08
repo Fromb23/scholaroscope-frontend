@@ -54,6 +54,7 @@ export interface ResolveAppErrorContext {
     | 'schemes'
     | 'assignments'
     | 'assessments'
+    | 'projects'
     | 'reports'
     | 'academic_setup'
     | 'cbc'
@@ -95,18 +96,25 @@ export class AppErrorException extends Error {
 
 export function isAppError(value: unknown): value is AppError {
   return Boolean(
-    value
-      && typeof value === 'object'
-      && 'kind' in value
-      && 'title' in value
-      && 'message' in value
-      && 'retryable' in value,
+    value &&
+    typeof value === 'object' &&
+    'kind' in value &&
+    'title' in value &&
+    'message' in value &&
+    'retryable' in value,
   );
 }
 
 export function isAppErrorException(value: unknown): value is AppErrorException {
-  return value instanceof AppErrorException
-    || Boolean(value && typeof value === 'object' && 'appError' in value && isAppError((value as { appError?: unknown }).appError));
+  return (
+    value instanceof AppErrorException ||
+    Boolean(
+      value &&
+      typeof value === 'object' &&
+      'appError' in value &&
+      isAppError((value as { appError?: unknown }).appError),
+    )
+  );
 }
 
 export function getAppError(value: unknown): AppError | null {

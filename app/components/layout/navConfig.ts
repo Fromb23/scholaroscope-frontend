@@ -25,8 +25,15 @@ import {
   Database,
   CalendarDays,
   CircleDollarSign,
+  FolderKanban,
 } from 'lucide-react';
-import type { OperatingContext, OrgType, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type {
+  OperatingContext,
+  OrgType,
+  Role,
+  User,
+  WorkspaceCapabilities,
+} from '@/app/core/types/auth';
 import {
   getPluginNavigationItems,
   type NavItem as RegistryNavItem,
@@ -45,10 +52,7 @@ import {
   isSelfManagedTeachingWorkspace,
 } from '@/app/core/lib/workspaces';
 import { getAdminReportNavigationItems } from '../../core/components/reports/reportHierarchy';
-import {
-  supportsCustomRoles,
-  supportsInternalRequests,
-} from '@/app/core/lib/workspaceGovernance';
+import { supportsCustomRoles, supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
 import { routeAllowedForContext } from '@/app/utils/routeAccess';
 
 export type { NavItem } from '@/app/core/registry/pluginNavigation';
@@ -61,9 +65,11 @@ export interface NavigationConfig {
   mobilePrimary?: RegistryNavItem[];
 }
 
-type AdminAcademicSetupNavStatus =
-  Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'>
-  & Partial<AcademicSetupStatus>;
+type AdminAcademicSetupNavStatus = Pick<
+  AcademicSetupStatus,
+  'complete' | 'current_step_label' | 'next_action'
+> &
+  Partial<AcademicSetupStatus>;
 
 const MAX_MOBILE_PRIMARY_ITEMS = 4;
 
@@ -128,13 +134,17 @@ export function canViewRevenueProgram(
   capabilities?: WorkspaceCapabilities | null,
   orgType?: OrgType | null,
 ): boolean {
-  if (isSelfManagedWorkspace(orgType) || isLearnerCenteredWorkspace(orgType) || orgType === 'HOMESCHOOL') {
+  if (
+    isSelfManagedWorkspace(orgType) ||
+    isLearnerCenteredWorkspace(orgType) ||
+    orgType === 'HOMESCHOOL'
+  ) {
     return false;
   }
   return Boolean(
-    capabilities?.can_view_revenue_program
-    || capabilities?.revenue?.can_view_program
-    || capabilities?.authorization?.permission_keys.includes('revenue.program.view')
+    capabilities?.can_view_revenue_program ||
+    capabilities?.revenue?.can_view_program ||
+    capabilities?.authorization?.permission_keys.includes('revenue.program.view'),
   );
 }
 
@@ -155,14 +165,16 @@ export function isNavHrefActive(pathname: string, href: string): boolean {
 }
 
 export function resolveMobilePrimaryNav(navConfig: NavigationConfig): RegistryNavItem[] {
-  const mobileItems = navConfig.mobilePrimary
-    ?? navConfig.primary.filter((item) => typeof item.mobilePriority === 'number');
+  const mobileItems =
+    navConfig.mobilePrimary ??
+    navConfig.primary.filter((item) => typeof item.mobilePriority === 'number');
 
   return mobileItems
     .map((item, index) => ({ item, index }))
     .sort((left, right) => {
-      const priorityDelta = (left.item.mobilePriority ?? Number.MAX_SAFE_INTEGER)
-        - (right.item.mobilePriority ?? Number.MAX_SAFE_INTEGER);
+      const priorityDelta =
+        (left.item.mobilePriority ?? Number.MAX_SAFE_INTEGER) -
+        (right.item.mobilePriority ?? Number.MAX_SAFE_INTEGER);
       return priorityDelta === 0 ? left.index - right.index : priorityDelta;
     })
     .slice(0, MAX_MOBILE_PRIMARY_ITEMS)
@@ -189,10 +201,12 @@ function filterNavItemsForRouteAuthority(
       capabilities,
       orgType,
     );
-    return [{
-      ...item,
-      ...(children.length ? { children } : { children: undefined }),
-    }];
+    return [
+      {
+        ...item,
+        ...(children.length ? { children } : { children: undefined }),
+      },
+    ];
   });
 }
 
@@ -243,12 +257,7 @@ export function resolveNavConfig({
 
   if (isSelfManagedTeachingWorkspace({ orgType, capabilities }) && capabilities?.can_teach) {
     return filterNavigationConfigForRouteAuthority(
-      getWorkspaceManagementNav(
-        pluginNavigationContext,
-        orgType,
-        academicSetup,
-        capabilities,
-      ),
+      getWorkspaceManagementNav(pluginNavigationContext, orgType, academicSetup, capabilities),
       'WORKSPACE_MANAGEMENT',
       capabilities,
       orgType,
@@ -266,7 +275,11 @@ export function resolveNavConfig({
       );
       break;
     case 'MY_TEACHING':
-      navConfig = getMyTeachingNav(pluginNavigationContext, academicTodayMode, instructorAssignedCohortCount);
+      navConfig = getMyTeachingNav(
+        pluginNavigationContext,
+        academicTodayMode,
+        instructorAssignedCohortCount,
+      );
       break;
     default:
       return { primary: [] };
@@ -310,7 +323,10 @@ function selfManagedAcademicSetupNav(): RegistryNavItem {
 export function getWorkspaceManagementNav(
   pluginContext: PluginNavigationContext,
   orgType?: OrgType | null,
-  academicSetup?: (Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'> & Partial<AcademicSetupStatus>) | null,
+  academicSetup?:
+    | (Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'> &
+        Partial<AcademicSetupStatus>)
+    | null,
   capabilities?: WorkspaceCapabilities | null,
 ): NavigationConfig {
   const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
@@ -321,14 +337,12 @@ export function getWorkspaceManagementNav(
     orgType,
     capabilities,
   });
-  const workspaceAccessNavItems: RegistryNavItem[] = (
-    !isSelfManagedWorkspace(orgType)
-    &&
-    supportsCustomRoles(capabilities)
-    && capabilities?.authorization?.permission_keys.includes('workspace.roles.view')
-  )
-    ? [{ name: 'Workspace Roles', href: '/workspace-access/roles', icon: ShieldCheck }]
-    : [];
+  const workspaceAccessNavItems: RegistryNavItem[] =
+    !isSelfManagedWorkspace(orgType) &&
+    supportsCustomRoles(capabilities) &&
+    capabilities?.authorization?.permission_keys.includes('workspace.roles.view')
+      ? [{ name: 'Workspace Roles', href: '/workspace-access/roles', icon: ShieldCheck }]
+      : [];
 
   if (academicSetup && !academicSetup.complete) {
     const setupItems = academicSetup.steps?.length
@@ -336,19 +350,21 @@ export function getWorkspaceManagementNav(
       : [
           { label: 'Overview', href: '/academic' },
           {
-            label: getAcademicSetupCurrentStepDisplayLabel(academicSetup as AcademicSetupStatus)
-              ?? academicSetup.next_action.label,
+            label:
+              getAcademicSetupCurrentStepDisplayLabel(academicSetup as AcademicSetupStatus) ??
+              academicSetup.next_action.label,
             href: academicSetup.next_action.href,
           },
         ];
     const setupChildren = setupItems.map((item) => ({
       name: item.label,
       href: item.href,
-      icon: item.label.includes('Curricula') || item.label.includes('Subjects') ? BookOpen : CalendarDays,
+      icon:
+        item.label.includes('Curricula') || item.label.includes('Subjects')
+          ? BookOpen
+          : CalendarDays,
     }));
-    const dashboardLabel = selfManagedTeachingWorkspace
-      ? 'My teaching workspace'
-      : 'Dashboard';
+    const dashboardLabel = selfManagedTeachingWorkspace ? 'My teaching workspace' : 'Dashboard';
     const dashboardNavItem: RegistryNavItem = {
       name: dashboardLabel,
       shortName: 'Home',
@@ -366,10 +382,7 @@ export function getWorkspaceManagementNav(
     };
 
     return {
-      primary: [
-        dashboardNavItem,
-        academicSetupNavItem,
-      ],
+      primary: [dashboardNavItem, academicSetupNavItem],
       secondary: [
         ...workspaceAccessNavItems,
         { name: 'Settings', href: '/admin/settings', icon: Settings },
@@ -398,13 +411,26 @@ export function getWorkspaceManagementNav(
       primary: [
         teachingWorkspaceNavItem,
         lessonPreparationsNavItem,
+        { name: 'Projects', href: '/projects', icon: FolderKanban },
         academicSetupNavItem,
       ],
       mobilePrimary: [
         teachingWorkspaceNavItem,
         lessonPreparationsNavItem,
-        { name: 'My classes', shortName: 'Classes', href: '/academic/cohorts', icon: Users, mobilePriority: 3 },
-        { name: 'Assessments', shortName: 'Assess', href: '/assessments', icon: ClipboardCheck, mobilePriority: 4 },
+        {
+          name: 'My classes',
+          shortName: 'Classes',
+          href: '/academic/cohorts',
+          icon: Users,
+          mobilePriority: 3,
+        },
+        {
+          name: 'Assessments',
+          shortName: 'Assess',
+          href: '/assessments',
+          icon: ClipboardCheck,
+          mobilePriority: 4,
+        },
       ],
       secondary: [
         ...workspaceAccessNavItems,
@@ -416,9 +442,21 @@ export function getWorkspaceManagementNav(
   if (isSelfManagedWorkspace(orgType)) {
     return {
       primary: [
-        { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
+        {
+          name: 'Dashboard',
+          shortName: 'Home',
+          href: '/dashboard/admin',
+          icon: LayoutDashboard,
+          mobilePriority: 1,
+        },
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
-        { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
+        {
+          name: 'Learners',
+          shortName: 'Learners',
+          href: '/learners',
+          icon: Users,
+          mobilePriority: 2,
+        },
         { name: 'Teaching Sessions', href: '/sessions', icon: Calendar },
         { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
         {
@@ -432,6 +470,7 @@ export function getWorkspaceManagementNav(
             ...reportPoliciesChild,
           ],
         },
+        { name: 'Projects', href: '/projects', icon: FolderKanban },
         {
           name: 'Reports',
           shortName: 'Reports',
@@ -453,10 +492,22 @@ export function getWorkspaceManagementNav(
   if (orgType === 'TUITION_CENTER') {
     return {
       primary: [
-        { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
+        {
+          name: 'Dashboard',
+          shortName: 'Home',
+          href: '/dashboard/admin',
+          icon: LayoutDashboard,
+          mobilePriority: 1,
+        },
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
         { name: 'Staff', href: '/admin/instructors', icon: UserCog },
-        { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
+        {
+          name: 'Learners',
+          shortName: 'Learners',
+          href: '/learners',
+          icon: Users,
+          mobilePriority: 2,
+        },
         { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
         { name: 'Lesson Plan Review', href: '/admin/lesson-plans', icon: FileText },
         {
@@ -470,6 +521,7 @@ export function getWorkspaceManagementNav(
             ...reportPoliciesChild,
           ],
         },
+        { name: 'Projects', href: '/projects', icon: FolderKanban },
         {
           name: 'Reports',
           shortName: 'Reports',
@@ -491,12 +543,25 @@ export function getWorkspaceManagementNav(
   if (isLearnerCenteredWorkspace(orgType)) {
     return {
       primary: [
-        { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
+        {
+          name: 'Dashboard',
+          shortName: 'Home',
+          href: '/dashboard/admin',
+          icon: LayoutDashboard,
+          mobilePriority: 1,
+        },
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
-        { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
+        {
+          name: 'Learners',
+          shortName: 'Learners',
+          href: '/learners',
+          icon: Users,
+          mobilePriority: 2,
+        },
         { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
         { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
         { name: 'Lesson Plan Review', href: '/admin/lesson-plans', icon: FileText },
+        { name: 'Projects', href: '/projects', icon: FolderKanban },
         {
           name: 'Reports',
           shortName: 'Reports',
@@ -516,11 +581,23 @@ export function getWorkspaceManagementNav(
 
   return {
     primary: [
-      { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
+      {
+        name: 'Dashboard',
+        shortName: 'Home',
+        href: '/dashboard/admin',
+        icon: LayoutDashboard,
+        mobilePriority: 1,
+      },
       ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
       ACADEMIC_SETUP_NAV,
       { name: 'Staff', href: '/admin/instructors', icon: UserCog },
-      { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
+      {
+        name: 'Learners',
+        shortName: 'Learners',
+        href: '/learners',
+        icon: Users,
+        mobilePriority: 2,
+      },
       { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
       { name: 'Lesson Plan Review', href: '/admin/lesson-plans', icon: FileText },
       {
@@ -535,6 +612,7 @@ export function getWorkspaceManagementNav(
         ],
       },
       ...getPluginNavigationItems('admin.primary.afterAssessments', pluginContext),
+      { name: 'Projects', href: '/projects', icon: FolderKanban },
       ...(canViewRevenueProgram(capabilities, orgType)
         ? [{ name: 'Revenue cycle', href: '/revenue', icon: CircleDollarSign }]
         : []),
@@ -587,8 +665,20 @@ export function getMyTeachingNav(
         mobilePriority: 1,
       },
       ...getPluginNavigationItems('instructor.primary.afterDashboard', pluginContext),
-      { name: 'Lesson Preparation', shortName: 'Prepare', href: '/lesson-plans', icon: FileText, mobilePriority: 2 },
-      { name: 'My Lessons', shortName: 'Lessons', href: '/sessions', icon: Calendar, mobilePriority: 3 },
+      {
+        name: 'Lesson Preparation',
+        shortName: 'Prepare',
+        href: '/lesson-plans',
+        icon: FileText,
+        mobilePriority: 2,
+      },
+      {
+        name: 'My Lessons',
+        shortName: 'Lessons',
+        href: '/sessions',
+        icon: Calendar,
+        mobilePriority: 3,
+      },
       ...getPluginNavigationItems('instructor.primary.afterMySessions', pluginContext),
       { name: classesLabel, href: '/academic/cohorts', icon: Users },
       { name: 'My Learners', href: '/learners', icon: Users },
@@ -603,6 +693,7 @@ export function getMyTeachingNav(
           { name: 'Needs Grading', href: '/assessments?status=pending', icon: AlertCircle },
         ],
       },
+      { name: 'Projects', href: '/projects', icon: FolderKanban },
       ...getPluginNavigationItems('instructor.primary.afterAssessments', pluginContext),
       {
         name: 'My Reports',
@@ -635,7 +726,10 @@ export function getMyTeachingNav(
 
 // ── Footer label ──────────────────────────────────────────────────────────
 
-export function getRoleFooterLabel(context: OperatingContext | null, orgType?: OrgType | null): string {
+export function getRoleFooterLabel(
+  context: OperatingContext | null,
+  orgType?: OrgType | null,
+): string {
   if (context === 'WORKSPACE_MANAGEMENT') {
     return getWorkspaceManagementLabel(orgType);
   }
