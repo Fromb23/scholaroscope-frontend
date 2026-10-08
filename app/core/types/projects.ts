@@ -37,6 +37,8 @@ export interface EligibleProjectTarget {
   subject: { id: number; name: string };
   academic_year: number;
   can_deploy: boolean;
+  eligible_instructors: Array<{ id: number; name: string; email: string }>;
+  requires_instructor_selection: boolean;
 }
 
 export interface ProjectCatalogueAuthority {
@@ -60,6 +62,12 @@ export interface ProjectCriterion {
   description: string;
   maximum_marks: string;
   order: number;
+  curriculum_mappings: Array<{
+    provider_key: string;
+    reference_type: string;
+    reference_id: string;
+    reference_snapshot: { code?: string; description?: string };
+  }>;
 }
 export interface ProjectTask {
   id: number;
@@ -256,6 +264,23 @@ export interface ProjectChecklistItem {
   completed: boolean;
   completed_at: string | null;
 }
+export interface ProjectClassObservation {
+  id: number;
+  organization: number;
+  deployment: number;
+  task: number | null;
+  author: number;
+  author_name: string;
+  comment: string;
+  observed_at: string;
+  status: 'DRAFT' | 'FINALIZED' | 'ARCHIVED';
+  supersedes: number | null;
+  amendment_reason: string;
+  finalized_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 export interface ProjectImportJob {
   id: number;
   catalogue_scope: 'ORGANIZATION_CUSTOM';
@@ -281,6 +306,7 @@ export interface CreateProjectDeploymentPayload {
   scheduled_end: string;
   submission_deadline?: string;
   local_operational_instructions?: string;
+  administering_instructor?: number;
 }
 export interface ProjectServerError {
   code?: string;

@@ -71,7 +71,12 @@ export function useProjectRelated(id: number | null) {
     queryFn: () => projectsAPI.eligibleLateParticipants(id as number),
     enabled,
   });
-  return { participants, groups, evidence, evaluations, results, checklist, eligible };
+  const observations = useQuery({
+    queryKey: projectKeys.related(organizationId, id, 'class-observations'),
+    queryFn: async () => unwrapProjectList(await projectsAPI.classObservations(id as number)),
+    enabled,
+  });
+  return { participants, groups, evidence, evaluations, results, checklist, eligible, observations };
 }
 
 export function useProjectAction(deploymentId: number) {
@@ -160,15 +165,26 @@ export function useProjectResourceMutations(deploymentId: number) {
         evaluation,
         criterion,
         awarded_marks,
+        feedback,
       }: {
         evaluation: number;
         criterion: number;
         awarded_marks: string;
-      }) => projectsAPI.recordCriterionScore(evaluation, { criterion, awarded_marks }),
+        feedback?: string;
+      }) => projectsAPI.recordCriterionScore(evaluation, { criterion, awarded_marks, feedback }),
       ...options,
     }),
     finalizeEvaluation: useMutation({
       mutationFn: (evaluation: number) => projectsAPI.finalizeEvaluation(evaluation),
+      ...options,
+    }),
+    createClassObservation: useMutation({
+      mutationFn: (payload: { task?: number; comment: string; observed_at: string }) =>
+        projectsAPI.createClassObservation({ deployment: deploymentId, ...payload }),
+      ...options,
+    }),
+    finalizeClassObservation: useMutation({
+      mutationFn: (observation: number) => projectsAPI.finalizeClassObservation(observation),
       ...options,
     }),
   };

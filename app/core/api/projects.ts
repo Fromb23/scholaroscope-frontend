@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
   ProjectChecklistItem,
+  ProjectClassObservation,
   CreateProjectDeploymentPayload,
   ProjectDefinitionVersion,
   ProjectDeployment,
@@ -116,11 +117,56 @@ export const projectsAPI = {
         `/project-task-evaluations/${evaluation}/finalize/`,
       )
     ).data,
+  classObservations: async (deployment: number) =>
+    (
+      await apiClient.get<ProjectListResponse<ProjectClassObservation>>(
+        '/project-class-observations/',
+        { params: { deployment } },
+      )
+    ).data,
+  createClassObservation: async (payload: {
+    deployment: number;
+    task?: number;
+    comment: string;
+    observed_at: string;
+    supersedes?: number;
+    amendment_reason?: string;
+  }) =>
+    (await apiClient.post<ProjectClassObservation>('/project-class-observations/', payload)).data,
+  finalizeClassObservation: async (id: number) =>
+    (
+      await apiClient.post<ProjectClassObservation>(
+        `/project-class-observations/${id}/finalize/`,
+      )
+    ).data,
   catalogue: async (params?: Record<string, unknown>) =>
     (
       await apiClient.get<ProjectListResponse<ProjectDefinitionVersion>>('/project-catalogue/', {
         params,
       })
+    ).data,
+  curriculumMappings: async (definitionVersion: number, cohortSubject: number) =>
+    (
+      await apiClient.get<{
+        definition: ProjectDefinitionVersion;
+        outcomes: Array<{ id: number; code: string; description: string }>;
+      }>(`/project-catalogue/${definitionVersion}/curriculum-mappings/`, {
+        params: { cohort_subject: cohortSubject },
+      })
+    ).data,
+  updateCurriculumMappings: async (
+    definitionVersion: number,
+    payload: {
+      cohort_subject: number;
+      tasks: Array<{ task: number; learning_outcome: number }>;
+      criteria: Array<{ criterion: number; learning_outcome: number }>;
+    },
+  ) =>
+    (
+      await apiClient.post<{
+        definition: ProjectDefinitionVersion;
+        outcomes: Array<{ id: number; code: string; description: string }>;
+      }>(`/project-catalogue/${definitionVersion}/curriculum-mappings/`, payload)
     ).data,
   adoptDefinition: async (definitionVersion: number, decision = 'VERIFIED') =>
     (

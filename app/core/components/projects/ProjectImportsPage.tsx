@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Badge } from '@/app/components/ui/Badge';
@@ -14,8 +17,11 @@ import { resolveAppError } from '@/app/core/errors';
 import { useCohortSubjects } from '@/app/core/hooks/useCohortSubjects';
 import { useProjectImports, useProjectMutationInvalidation } from '@/app/core/hooks/useProjects';
 import { useAuth } from '@/app/context/AuthContext';
+import { projectBackHref } from './projectNavigation';
 
 export function ProjectImportsPage() {
+  const searchParams = useSearchParams();
+  const returnTo = projectBackHref(searchParams.get('returnTo'));
   const { capabilities } = useAuth();
   const query = useProjectImports();
   const { cohortSubjects } = useCohortSubjects();
@@ -47,6 +53,7 @@ export function ProjectImportsPage() {
 
   return (
     <div className="space-y-6">
+      <Link href={returnTo} className="inline-flex items-center gap-2 text-sm theme-muted"><ArrowLeft className="h-4 w-4" />Back to projects</Link>
       <div>
         <h1 className="text-2xl font-bold theme-text">Custom organization projects</h1>
         <p className="mt-1 theme-muted">Import an institutional project document owned only by this organization. Official authority instruments are registered in the separate platform control plane.</p>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, FolderKanban, Import } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -13,6 +14,7 @@ import { AppErrorBanner } from '@/app/components/ui/errors';
 import { resolveAppError } from '@/app/core/errors';
 import { useProjectDeployments } from '@/app/core/hooks/useProjects';
 import { useAuth } from '@/app/context/AuthContext';
+import { buildProjectDetailHref } from './projectNavigation';
 
 const statusOptions = [
   '',
@@ -27,12 +29,32 @@ const statusOptions = [
 ].map((value) => ({ value, label: value ? value.replaceAll('_', ' ') : 'All lifecycle states' }));
 
 export function ProjectsPage() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { capabilities } = useAuth();
   const canCreateCustom = capabilities.authorization?.permission_keys.includes('projects.create') ?? false;
-  const [status, setStatus] = useState('');
-  const [subject, setSubject] = useState('');
-  const [cohort, setCohort] = useState('');
-  const [search, setSearch] = useState('');
+  const [status, setStatusState] = useState(searchParams.get('status') ?? '');
+  const [subject, setSubjectState] = useState(searchParams.get('subject') ?? '');
+  const [cohort, setCohortState] = useState(searchParams.get('cohort') ?? '');
+  const [search, setSearchState] = useState(searchParams.get('search') ?? '');
+  const updateFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (value) next.set(key, value);
+    else next.delete(key);
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+  const setStatus = (value: string) => { setStatusState(value); updateFilter('status', value); };
+  const setSubject = (value: string) => { setSubjectState(value); updateFilter('subject', value); };
+  const setCohort = (value: string) => { setCohortState(value); updateFilter('cohort', value); };
+  const setSearch = (value: string) => { setSearchState(value); updateFilter('search', value); };
+  const currentParams = new URLSearchParams();
+  if (status) currentParams.set('status', status);
+  if (subject) currentParams.set('subject', subject);
+  if (cohort) currentParams.set('cohort', cohort);
+  if (search) currentParams.set('search', search);
+  const returnTo = currentParams.size ? `${pathname}?${currentParams}` : pathname;
   const query = useProjectDeployments({
     status: status || undefined,
     subject: subject ? Number(subject) : undefined,
@@ -65,14 +87,14 @@ export function ProjectsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/projects/catalogue">
+          <Link href={`/projects/catalogue?returnTo=${encodeURIComponent(returnTo)}`}>
             <Button variant="secondary">
               <BookOpen className="h-4 w-4" />
               Catalogue
             </Button>
           </Link>
           {canCreateCustom ? (
-            <Link href="/projects/imports">
+            <Link href={`/projects/imports?returnTo=${encodeURIComponent(returnTo)}`}>
               <Button variant="secondary">
                 <Import className="h-4 w-4" />
                 Create custom project
@@ -187,7 +209,7 @@ export function ProjectsPage() {
                     </Badge>
                   ))}
               </div>
-              <Link href={`/projects/${project.id}`}>
+              <Link href={buildProjectDetailHref(project.id, returnTo)}>
                 <Button size="sm">Open project</Button>
               </Link>
             </div>
