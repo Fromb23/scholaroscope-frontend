@@ -348,7 +348,7 @@ export function ProjectDetailPage() {
               title={item.label}
               detail={`${item.category} · ${item.completed ? 'Complete' : item.required ? 'Required' : 'Optional'}`}
               icon={
-                project.authority.can_administer ? (
+                project.authority.can_update_checklist ? (
                   <Button
                     size="sm"
                     variant="secondary"

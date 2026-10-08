@@ -13,13 +13,37 @@ export interface ProjectAuthority {
   can_supervise: boolean;
   can_manage: boolean;
   can_publish: boolean;
+  can_start: boolean;
+  can_complete: boolean;
   can_administer: boolean;
   can_record_evidence: boolean;
   can_evaluate: boolean;
   can_finalize: boolean;
+  can_update_checklist: boolean;
   can_cancel: boolean;
   can_export: boolean;
   allowed_actions: string[];
+  blocked_reason_codes: Record<string, string>;
+}
+
+export type ProjectCatalogueScope =
+  | 'PLATFORM_OFFICIAL'
+  | 'ORGANIZATION_CUSTOM'
+  | 'LEGACY_UNCLASSIFIED';
+
+export interface EligibleProjectTarget {
+  id: number;
+  cohort: { id: number; name: string };
+  subject: { id: number; name: string };
+  academic_year: number;
+  can_deploy: boolean;
+}
+
+export interface ProjectCatalogueAuthority {
+  can_view: boolean;
+  can_deploy: boolean;
+  can_edit_definition: boolean;
+  can_verify_official: false;
 }
 
 export interface ProjectTaskStep {
@@ -65,6 +89,8 @@ export interface ProjectAdoption {
 }
 export interface ProjectDefinitionVersion {
   id: number;
+  catalogue_scope: ProjectCatalogueScope;
+  owning_organization: number | null;
   canonical_key: string;
   curriculum_key: string;
   authority_key: string;
@@ -92,6 +118,8 @@ export interface ProjectDefinitionVersion {
   source_provenance: Array<Record<string, unknown>>;
   aggregate_verification_count: number;
   organization_adoption: ProjectAdoption | null;
+  eligible_cohort_subjects: EligibleProjectTarget[];
+  authority: ProjectCatalogueAuthority;
 }
 
 export interface ProjectDeploymentProgress {
@@ -230,6 +258,7 @@ export interface ProjectChecklistItem {
 }
 export interface ProjectImportJob {
   id: number;
+  catalogue_scope: 'ORGANIZATION_CUSTOM';
   original_filename: string;
   document_kind: string;
   uploaded_at: string;
@@ -242,6 +271,16 @@ export interface ProjectImportJob {
   failure_code: string;
   safe_failure_message: string;
   confirmed_at: string | null;
+}
+
+export interface CreateProjectDeploymentPayload {
+  definition_version: number;
+  cohort_subject: number;
+  academic_year: number;
+  scheduled_start: string;
+  scheduled_end: string;
+  submission_deadline?: string;
+  local_operational_instructions?: string;
 }
 export interface ProjectServerError {
   code?: string;

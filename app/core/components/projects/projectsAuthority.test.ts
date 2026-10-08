@@ -11,13 +11,17 @@ function authority(overrides: Partial<ProjectAuthority> = {}): ProjectAuthority 
     can_supervise: false,
     can_manage: false,
     can_publish: false,
+    can_start: false,
+    can_complete: false,
     can_administer: false,
     can_record_evidence: false,
     can_evaluate: false,
     can_finalize: false,
+    can_update_checklist: false,
     can_cancel: false,
     can_export: false,
     allowed_actions: ['view'],
+    blocked_reason_codes: {},
     ...overrides,
   };
 }
@@ -45,13 +49,28 @@ describe('Projects authority rendering', () => {
     ).toEqual([]);
   });
 
-  it('derives lifecycle buttons only from server authority plus matching state', () => {
+  it('derives lifecycle buttons only from exact server decisions', () => {
     expect(
       getProjectLifecycleActions({
         status: 'COMPLETED',
         authority: authority({ can_finalize: true, can_cancel: true }),
       }),
     ).toEqual(['finalize', 'cancel']);
+  });
+
+  it('does not reconstruct start readiness from status or broad administration authority', () => {
+    expect(
+      getProjectLifecycleActions({
+        status: 'PUBLISHED',
+        authority: authority({ can_administer: true, can_start: false }),
+      }),
+    ).toEqual([]);
+    expect(
+      getProjectLifecycleActions({
+        status: 'PUBLISHED',
+        authority: authority({ can_start: true }),
+      }),
+    ).toEqual(['start']);
   });
 
   it('handles API 403 as a safe permission error', () => {
