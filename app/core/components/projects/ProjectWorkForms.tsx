@@ -161,7 +161,7 @@ export function ProjectEvaluationForm({
         ]}
       />
       <label className="block text-sm font-medium theme-text">
-        Teacher feedback
+        Learner feedback
         <textarea
           className="theme-input mt-1 min-h-28 w-full rounded-lg px-4 py-2"
           value={feedback}
@@ -191,12 +191,17 @@ export function ProjectCriteriaForm({
   evaluation: ProjectTaskEvaluation;
   pending: boolean;
   onCancel: () => void;
-  onSubmit: (scores: Array<{ criterion: number; awarded_marks: string }>) => Promise<void>;
+  onSubmit: (scores: Array<{ criterion: number; awarded_marks: string; feedback?: string }>) => Promise<void>;
 }) {
   const task = project.definition?.tasks.find((item) => item.id === evaluation.task);
   const [scores, setScores] = useState<Record<number, string>>(() =>
     Object.fromEntries(
       evaluation.criterion_scores.map((item) => [item.criterion, item.awarded_marks]),
+    ),
+  );
+  const [feedback, setFeedback] = useState<Record<number, string>>(() =>
+    Object.fromEntries(
+      evaluation.criterion_scores.map((item) => [item.criterion, item.feedback]),
     ),
   );
   const criteria = task?.criteria ?? [];
@@ -206,6 +211,7 @@ export function ProjectCriteriaForm({
       criteria.map((criterion) => ({
         criterion: criterion.id,
         awarded_marks: scores[criterion.id] ?? '',
+        feedback: feedback[criterion.id] ?? '',
       })),
     ).catch(() => undefined);
   };
@@ -217,13 +223,23 @@ export function ProjectCriteriaForm({
       {criteria.map((criterion) => (
         <div
           key={criterion.id}
-          className="grid gap-2 rounded-lg border theme-border p-3 sm:grid-cols-[1fr_9rem]"
+          className="grid gap-3 rounded-lg border theme-border p-3 sm:grid-cols-[1fr_9rem]"
         >
           <div>
             <p className="font-medium theme-text">
               {criterion.code} · {criterion.description}
             </p>
             <p className="text-xs theme-subtle">Maximum {criterion.maximum_marks}</p>
+            <label className="mt-2 block text-xs theme-muted">
+              Criterion feedback for this learner
+              <textarea
+                className="theme-input mt-1 min-h-20 w-full rounded-lg px-3 py-2 text-sm"
+                value={feedback[criterion.id] ?? ''}
+                onChange={(event) =>
+                  setFeedback((current) => ({ ...current, [criterion.id]: event.target.value }))
+                }
+              />
+            </label>
           </div>
           <input
             className="theme-input rounded-lg px-3 py-2"

@@ -8,10 +8,12 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
+import { Select } from '@/app/components/ui/Select';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ResponsiveActionSheet } from '@/app/components/ui/actions';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { resolveAppError } from '@/app/core/errors';
+import { buildProjectWorkspaceHref, projectBackHref } from './projectNavigation';
 import {
   useProjectAction,
   useProjectDeployment,
@@ -35,6 +37,7 @@ const tabs = [
   'participants',
   'groups',
   'evidence',
+  'observations',
   'evaluations',
   'results',
   'administration',
@@ -63,6 +66,8 @@ export function ProjectDetailPage() {
   const [workAction, setWorkAction] = useState<'evidence' | 'evaluation' | null>(null);
   const [groupName, setGroupName] = useState('');
   const [scoringEvaluationId, setScoringEvaluationId] = useState<number | null>(null);
+  const [observationTask, setObservationTask] = useState(searchParams.get('task') ?? '');
+  const [observationComment, setObservationComment] = useState('');
   const project = deploymentQuery.data;
   const error = mutation.error
     ? resolveAppError(mutation.error, {
@@ -73,7 +78,12 @@ export function ProjectDetailPage() {
     : null;
   const lifecycleActions = project ? getProjectLifecycleActions(project) : [];
 
-  const setTab = (tab: Tab) => router.replace(`/projects/${id}?tab=${tab}`, { scroll: false });
+  const returnTo = projectBackHref(searchParams.get('returnTo'));
+  const selectedTask = Number(searchParams.get('task')) || null;
+  const selectedParticipant = Number(searchParams.get('participant')) || null;
+  const setTab = (tab: Tab) => {
+    router.replace(buildProjectWorkspaceHref(id, searchParams, tab), { scroll: false });
+  };
   const confirmAction = async () => {
     if (!pendingAction) return;
     try {
@@ -108,7 +118,7 @@ export function ProjectDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/projects" className="inline-flex items-center gap-2 text-sm theme-muted">
+      <Link href={returnTo} className="inline-flex items-center gap-2 text-sm theme-muted">
         <ArrowLeft className="h-4 w-4" />
         Back to projects
       </Link>
@@ -216,11 +226,24 @@ export function ProjectDetailPage() {
                   </div>
                 ))}
               </div>
+              {task.curriculum_mappings.length ? (
+                <p className="mt-4 text-sm theme-muted">
+                  Outcome coverage: {task.curriculum_mappings.map((mapping) => {
+                    const snapshot = mapping.reference_snapshot as { code?: string } | undefined;
+                    return snapshot?.code ?? String(mapping.reference_id ?? 'Mapped outcome');
+                  }).join(', ')}
+                </p>
+              ) : null}
               <div className="mt-4 grid gap-2 md:grid-cols-2">
                 {task.criteria.map((criterion) => (
                   <div key={criterion.id} className="rounded-lg theme-surface-elevated p-3 text-sm">
                     <strong>{criterion.code}</strong> · {criterion.description} (
                     {criterion.maximum_marks})
+                    {criterion.curriculum_mappings.length ? (
+                      <p className="mt-1 text-xs theme-muted">
+                        Outcome: {criterion.curriculum_mappings.map((mapping) => mapping.reference_snapshot.code ?? mapping.reference_id).join(', ')}
+                      </p>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -307,13 +330,59 @@ export function ProjectDetailPage() {
           ))}
         </ListState>
       ) : null}
+      {activeTab === 'observations' ? (
+        <ListState query={related.observations} empty="No class observations recorded.">
+          {project.authority.can_administer ? (
+            <form
+              className="mb-4 space-y-3 rounded-lg border theme-border p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void resources.createClassObservation.mutateAsync({
+                  task: observationTask ? Number(observationTask) : undefined,
+                  comment: observationComment,
+                  observed_at: new Date().toISOString(),
+                }).then(() => setObservationComment(''));
+              }}
+            >
+              <h2 className="font-semibold theme-text">Class observation</h2>
+              <p className="text-sm theme-muted">Project or task context only. It is not copied into individual learner evidence.</p>
+              <Select
+                label="Project or task"
+                value={observationTask}
+                onChange={(event) => setObservationTask(event.target.value)}
+                options={[
+                  { value: '', label: 'Whole project' },
+                  ...(project.definition?.tasks ?? []).map((task) => ({ value: task.id, label: `${task.code}. ${task.title}` })),
+                ]}
+              />
+              <label className="block text-sm font-medium theme-text">Class observation
+                <textarea className="theme-input mt-1 min-h-24 w-full rounded-lg px-3 py-2" required value={observationComment} onChange={(event) => setObservationComment(event.target.value)} />
+              </label>
+              <Button type="submit" disabled={!observationComment.trim() || resources.createClassObservation.isPending}>Record observation</Button>
+            </form>
+          ) : null}
+          {(related.observations.data ?? []).map((item) => (
+            <Row
+              key={item.id}
+              title={item.task ? `Task ${item.task} class observation` : 'Project class observation'}
+              detail={`${item.comment} · ${item.author_name} · ${new Date(item.observed_at).toLocaleString()} · ${item.status}`}
+              icon={project.authority.can_administer && item.status === 'DRAFT' ? (
+                <Button size="sm" onClick={() => resources.finalizeClassObservation.mutate(item.id)}>Finalize</Button>
+              ) : null}
+            />
+          ))}
+        </ListState>
+      ) : null}
       {activeTab === 'evaluations' ? (
         <ListState query={related.evaluations} empty="No task evaluations recorded.">
           {(related.evaluations.data ?? []).map((item) => (
-            <Row
+            <div
               key={item.id}
+              className={selectedTask === item.task && selectedParticipant === item.participant ? 'rounded-lg px-2 ring-2 ring-blue-500' : ''}
+            >
+            <Row
               title={`Participant ${item.participant} · Task ${item.task}`}
-              detail={`${item.status} · ${item.derived_score}`}
+              detail={`${item.status} · ${item.derived_score} · Learner feedback: ${item.teacher_feedback || 'None'} · Projection: ${item.evidence_projection_status}${item.evidence_projection_warning ? ` (${item.evidence_projection_warning})` : ''}`}
               icon={
                 project.authority.can_evaluate && item.status !== 'FINALIZED' ? (
                   <Button size="sm" onClick={() => setScoringEvaluationId(item.id)}>
@@ -326,6 +395,7 @@ export function ProjectDetailPage() {
                 ) : null
               }
             />
+            </div>
           ))}
         </ListState>
       ) : null}

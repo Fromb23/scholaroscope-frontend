@@ -9,7 +9,11 @@ import { EntityLoadingState } from '@/app/components/ui/loading';
 import { buildPortfolioSourceRecordHref } from '@/app/core/components/portfolio/portfolioSourceNavigation';
 import { buildCanonicalLearnerSubjectReportHref } from '@/app/core/components/reports/reportNavigation';
 import { resolveLearnerError } from '@/app/core/errors';
-import type { PortfolioArtifact, PortfolioEvidence, PortfolioLearnerWorkPayload } from '@/app/core/types/portfolio';
+import type {
+  PortfolioArtifact,
+  PortfolioEvidence,
+  PortfolioLearnerWorkPayload,
+} from '@/app/core/types/portfolio';
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return 'Date not recorded';
@@ -31,17 +35,19 @@ function sourceLabel(value: string | undefined): string {
 }
 
 function isLearnerWorkPayload(value: unknown): value is PortfolioLearnerWorkPayload {
-  return Boolean(value && typeof value === 'object' && (
-    'text' in value
-    || 'status' in value
-    || 'submitted_at' in value
-    || 'attachments' in value
-  ));
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    ('text' in value || 'status' in value || 'submitted_at' in value || 'attachments' in value),
+  );
 }
 
 function readableStatus(value: string | null | undefined): string | null {
   if (!value) return null;
-  return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+  return value
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function AttachmentList({ attachments }: { attachments: PortfolioArtifact[] }) {
@@ -56,10 +62,18 @@ function AttachmentList({ attachments }: { attachments: PortfolioArtifact[] }) {
         const label = attachment.name ?? attachment.filename ?? `Attachment ${index + 1}`;
         const inaccessible = attachment.accessible === false || attachment.available === false;
         return (
-          <li key={`${attachment.id ?? index}-${label}`} className="flex items-center gap-2 text-sm">
+          <li
+            key={`${attachment.id ?? index}-${label}`}
+            className="flex items-center gap-2 text-sm"
+          >
             <Paperclip className="h-4 w-4 theme-muted" />
             {href && !inaccessible ? (
-              <a className="text-blue-600 hover:underline" href={href} target="_blank" rel="noreferrer">
+              <a
+                className="text-blue-600 hover:underline"
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+              >
                 {label}
               </a>
             ) : (
@@ -151,13 +165,16 @@ export function PortfolioEvidenceDetail({
   if (error) {
     return (
       <AppErrorBanner
-        error={resolveLearnerError({
-          status: errorStatus ?? undefined,
-          message: error,
-        }, {
-          action: 'load',
-          entityLabel: 'portfolio evidence',
-        })}
+        error={resolveLearnerError(
+          {
+            status: errorStatus ?? undefined,
+            message: error,
+          },
+          {
+            action: 'load',
+            entityLabel: 'portfolio evidence',
+          },
+        )}
         onDismiss={() => undefined}
       />
     );
@@ -172,6 +189,11 @@ export function PortfolioEvidenceDetail({
   }
 
   const competency = evidence.competency_judgement;
+  const projectProvenance =
+    evidence.source_type === 'PROJECT' && evidence.provenance ? evidence.provenance : null;
+  const criterionBreakdown = Array.isArray(projectProvenance?.criterion_breakdown)
+    ? (projectProvenance.criterion_breakdown as Array<Record<string, unknown>>)
+    : [];
   const sourceRoute = evidence.source_route ?? null;
   const sourceRecordHref = buildPortfolioSourceRecordHref({
     sourceHref: sourceRoute?.href,
@@ -179,18 +201,13 @@ export function PortfolioEvidenceDetail({
   });
   const cohortSubjectId = evidence.learning_area?.cohort_subject_id ?? null;
   const learnerSubjectHref = cohortSubjectId
-    ? buildCanonicalLearnerSubjectReportHref(
-        learnerId,
-        cohortSubjectId,
-        'curriculum-progress',
-        {
-          term: termId,
-          outcome: evidence.learning_outcome?.id ?? null,
-          evidence: evidence.evidence_record_id,
-          returnTo: currentPortfolioHref,
-          originKind: 'intent',
-        },
-      )
+    ? buildCanonicalLearnerSubjectReportHref(learnerId, cohortSubjectId, 'curriculum-progress', {
+        term: termId,
+        outcome: evidence.learning_outcome?.id ?? null,
+        evidence: evidence.evidence_record_id,
+        returnTo: currentPortfolioHref,
+        originKind: 'intent',
+      })
     : null;
 
   return (
@@ -206,7 +223,13 @@ export function PortfolioEvidenceDetail({
           <h2 className="mt-2 text-xl font-semibold theme-text">{evidence.title}</h2>
           <p className="mt-1 text-sm theme-muted">{formatDate(evidence.evidence_date)}</p>
         </div>
-        <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close evidence detail">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          aria-label="Close evidence detail"
+        >
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -221,12 +244,15 @@ export function PortfolioEvidenceDetail({
         {evidence.learning_outcome ? (
           <p className="text-sm theme-muted">
             Outcome: <span className="theme-text">{evidence.learning_outcome.code}</span>
-            {evidence.learning_outcome.description ? ` — ${evidence.learning_outcome.description}` : ''}
+            {evidence.learning_outcome.description
+              ? ` — ${evidence.learning_outcome.description}`
+              : ''}
           </p>
         ) : null}
         {evidence.responsible_teacher?.name ? (
           <p className="text-sm theme-muted">
-            Responsible teacher: <span className="theme-text">{evidence.responsible_teacher.name}</span>
+            Responsible teacher:{' '}
+            <span className="theme-text">{evidence.responsible_teacher.name}</span>
           </p>
         ) : null}
       </section>
@@ -235,7 +261,8 @@ export function PortfolioEvidenceDetail({
         <section className="space-y-2">
           <h3 className="text-sm font-semibold theme-text">Competency judgement</h3>
           <p className="text-sm theme-text">
-            {competency.level}{competency.label ? ` - ${competency.label}` : ''}
+            {competency.level}
+            {competency.label ? ` - ${competency.label}` : ''}
           </p>
         </section>
       ) : null}
@@ -246,6 +273,59 @@ export function PortfolioEvidenceDetail({
           <p className="whitespace-pre-wrap text-sm theme-text">
             {evidence.teacher_feedback ?? evidence.teacher_feedback_summary}
           </p>
+        </section>
+      ) : null}
+
+      {projectProvenance ? (
+        <section className="space-y-2">
+          <h3 className="text-sm font-semibold theme-text">Project evidence provenance</h3>
+          <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
+            <dt className="theme-muted">Project</dt>
+            <dd className="theme-text">
+              {String(projectProvenance.project_title ?? evidence.title)}
+            </dd>
+            <dt className="theme-muted">Task</dt>
+            <dd className="theme-text">
+              {String(projectProvenance.task_code ?? '')}
+              {projectProvenance.task_code ? ' · ' : ''}
+              {String(projectProvenance.task_title ?? '')}
+            </dd>
+            <dt className="theme-muted">Outcome marks</dt>
+            <dd className="theme-text">
+              {String(projectProvenance.outcome_awarded_marks ?? '—')} /{' '}
+              {String(projectProvenance.outcome_maximum_marks ?? '—')}
+            </dd>
+            <dt className="theme-muted">Task score</dt>
+            <dd className="theme-text">
+              {String(projectProvenance.awarded_task_score ?? '—')} /{' '}
+              {String(projectProvenance.task_maximum_marks ?? '—')}
+            </dd>
+            <dt className="theme-muted">Projection</dt>
+            <dd className="theme-text">
+              {String(projectProvenance.evidence_projection_status ?? 'Unknown')}
+            </dd>
+          </dl>
+          {criterionBreakdown.length ? (
+            <ul className="space-y-2 pt-1">
+              {criterionBreakdown.map((criterion, index) => (
+                <li
+                  key={String(criterion.criterion_id ?? index)}
+                  className="rounded-lg border theme-border p-3 text-sm"
+                >
+                  <p className="font-medium theme-text">
+                    {String(criterion.code ?? `Criterion ${index + 1}`)} ·{' '}
+                    {String(criterion.awarded_marks ?? '—')} /{' '}
+                    {String(criterion.maximum_marks ?? '—')}
+                  </p>
+                  {criterion.feedback ? (
+                    <p className="mt-1 whitespace-pre-wrap theme-muted">
+                      {String(criterion.feedback)}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
       ) : null}
 
@@ -267,7 +347,9 @@ export function PortfolioEvidenceDetail({
         ) : evidence.artifacts.length > 0 ? (
           <AttachmentList attachments={evidence.artifacts} />
         ) : (
-          <p className="text-sm theme-muted">No artifact is attached to this visible evidence record.</p>
+          <p className="text-sm theme-muted">
+            No artifact is attached to this visible evidence record.
+          </p>
         )}
       </section>
 
@@ -304,7 +386,6 @@ export function PortfolioEvidenceDetail({
           </ul>
         </section>
       ) : null}
-
     </Card>
   );
 }
