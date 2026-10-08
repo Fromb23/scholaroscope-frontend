@@ -11,6 +11,7 @@ const DOMAIN_LABELS: Record<ResolveAppErrorContext['domain'], string> = {
   schemes: 'scheme of work',
   assignments: 'assignment',
   assessments: 'assessment',
+  projects: 'project',
   reports: 'report',
   academic_setup: 'academic setup',
   cbc: 'CBC workflow',
@@ -48,7 +49,8 @@ function isTeacherWorkspaceBehavior(value?: string | null): boolean {
 function actorFor(context: ResolveAppErrorContext): string {
   if (isTeacherWorkspaceBehavior(context.workspaceBehavior)) return 'teacher';
   if (isTeacherWorkspaceBehavior(context.capabilities?.workspace_behavior)) return 'teacher';
-  if (context.capabilities?.can_teach === true && context.capabilities.can_manage_staff === false) return 'teacher';
+  if (context.capabilities?.can_teach === true && context.capabilities.can_manage_staff === false)
+    return 'teacher';
   if (context.role === 'SUPERADMIN') return 'superadmin';
   return 'user';
 }
@@ -62,19 +64,26 @@ function failedAction(context: ResolveAppErrorContext): string {
 }
 
 export function severityForKind(kind: AppErrorKind): AppErrorSeverity {
-  if (kind === 'report_not_ready' || kind === 'setup_required' || kind === 'workspace_boundary') return 'warning';
+  if (kind === 'report_not_ready' || kind === 'setup_required' || kind === 'workspace_boundary')
+    return 'warning';
   if (kind === 'validation') return 'warning';
   return 'error';
 }
 
 export function titleForKind(kind: AppErrorKind, context: ResolveAppErrorContext): string {
   const label = domainLabel(context);
-  if (context.domain === 'reports' && kind === 'report_not_ready') return 'This report is not ready yet.';
-  if (context.domain === 'sessions' && context.action === 'save') return 'We could not save this lesson record.';
-  if (context.domain === 'registration' && context.action === 'submit') return 'Registration could not be submitted.';
-  if (context.domain === 'instructors' && context.action === 'create') return 'Staff account was not created.';
-  if (context.domain === 'assignments' && context.action === 'publish') return 'This assignment cannot be published yet.';
-  if (context.domain === 'assessments' && kind === 'lifecycle_locked') return 'This assessment is already finalized.';
+  if (context.domain === 'reports' && kind === 'report_not_ready')
+    return 'This report is not ready yet.';
+  if (context.domain === 'sessions' && context.action === 'save')
+    return 'We could not save this lesson record.';
+  if (context.domain === 'registration' && context.action === 'submit')
+    return 'Registration could not be submitted.';
+  if (context.domain === 'instructors' && context.action === 'create')
+    return 'Staff account was not created.';
+  if (context.domain === 'assignments' && context.action === 'publish')
+    return 'This assignment cannot be published yet.';
+  if (context.domain === 'assessments' && kind === 'lifecycle_locked')
+    return 'This assessment is already finalized.';
 
   switch (kind) {
     case 'validation':
@@ -150,9 +159,10 @@ export function defaultMessageForKind(kind: AppErrorKind, context: ResolveAppErr
       return 'This record belongs to another workspace or is outside your current access. Switch workspace or ask an admin to review access.';
     case 'workspace_boundary':
       if (
-        isTeacherWorkspaceBehavior(context.workspaceBehavior)
-        || isTeacherWorkspaceBehavior(context.capabilities?.workspace_behavior)
-        || (context.capabilities?.can_teach === true && context.capabilities.can_manage_staff === false)
+        isTeacherWorkspaceBehavior(context.workspaceBehavior) ||
+        isTeacherWorkspaceBehavior(context.capabilities?.workspace_behavior) ||
+        (context.capabilities?.can_teach === true &&
+          context.capabilities.can_manage_staff === false)
       ) {
         return 'Freelance Teacher Workspaces are designed for one teacher. Use an institution workspace if you need staff or member management.';
       }
@@ -164,7 +174,10 @@ export function defaultMessageForKind(kind: AppErrorKind, context: ResolveAppErr
   }
 }
 
-export function actionLabelForKind(kind: AppErrorKind, context: ResolveAppErrorContext): string | undefined {
+export function actionLabelForKind(
+  kind: AppErrorKind,
+  context: ResolveAppErrorContext,
+): string | undefined {
   if (kind === 'network' || kind === 'server' || kind === 'report_not_ready') return 'Try again';
   if (kind === 'authentication' && context.action === 'login') return 'Check sign-in details';
   if (kind === 'validation') return 'Review fields';

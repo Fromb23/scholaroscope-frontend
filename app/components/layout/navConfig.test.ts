@@ -12,16 +12,20 @@ vi.mock('@/app/core/lib/workspaces', () => ({
   getWorkspaceManagementLabel: () => 'Workspace',
   isLearnerCenteredWorkspace: (orgType?: string | null) => orgType === 'LEARNER_WORKSPACE',
   isPersonalFreelancerWorkspace: (orgType?: string | null) => orgType === 'PERSONAL',
-  isSelfManagedWorkspace: (orgType?: string | null) => (
-    orgType === 'PERSONAL' || orgType === 'INDEPENDENT_TEACHER' || orgType === 'HOMESCHOOL'
-  ),
-  isSelfManagedTeachingWorkspace: ({ orgType, capabilities }: { orgType?: string | null; capabilities?: { can_teach?: boolean; workspace_behavior?: string | null } | null }) => (
-    capabilities?.workspace_behavior === 'FREELANCE_TEACHER'
-    || capabilities?.workspace_behavior === 'SELF_MANAGED'
-    || orgType === 'PERSONAL'
-    || orgType === 'INDEPENDENT_TEACHER'
-    || orgType === 'HOMESCHOOL'
-  ),
+  isSelfManagedWorkspace: (orgType?: string | null) =>
+    orgType === 'PERSONAL' || orgType === 'INDEPENDENT_TEACHER' || orgType === 'HOMESCHOOL',
+  isSelfManagedTeachingWorkspace: ({
+    orgType,
+    capabilities,
+  }: {
+    orgType?: string | null;
+    capabilities?: { can_teach?: boolean; workspace_behavior?: string | null } | null;
+  }) =>
+    capabilities?.workspace_behavior === 'FREELANCE_TEACHER' ||
+    capabilities?.workspace_behavior === 'SELF_MANAGED' ||
+    orgType === 'PERSONAL' ||
+    orgType === 'INDEPENDENT_TEACHER' ||
+    orgType === 'HOMESCHOOL',
 }));
 
 const pluginContext = {
@@ -95,7 +99,9 @@ function capabilitiesWithKeys(
 ): WorkspaceCapabilities {
   return {
     can_teach: false,
-    can_manage_academic_setup: keys.some((key) => key.startsWith('academic.') && key.endsWith('.manage')),
+    can_manage_academic_setup: keys.some(
+      (key) => key.startsWith('academic.') && key.endsWith('.manage'),
+    ),
     can_manage_learners: keys.includes('learners.manage'),
     can_manage_cohorts: keys.includes('academic.cohorts.manage'),
     can_manage_subjects: keys.includes('academic.subjects.manage'),
@@ -144,21 +150,24 @@ const broadManagementCapabilities = capabilitiesWithKeys(managementPermissionKey
   can_manage_staff: true,
 });
 
-const broadTeachingCapabilities = capabilitiesWithKeys([
-  'lessons.view',
-  'lessons.prepare',
-  'attendance.view',
-  'attendance.record',
-  'academic.cohorts.view',
-  'learners.view',
-  'assessments.view',
-  'assessments.create',
-  'reports.view',
-  'requests.create',
-], {
-  can_teach: true,
-  workspace_behavior: 'TEACHING',
-});
+const broadTeachingCapabilities = capabilitiesWithKeys(
+  [
+    'lessons.view',
+    'lessons.prepare',
+    'attendance.view',
+    'attendance.record',
+    'academic.cohorts.view',
+    'learners.view',
+    'assessments.view',
+    'assessments.create',
+    'reports.view',
+    'requests.create',
+  ],
+  {
+    can_teach: true,
+    workspace_behavior: 'TEACHING',
+  },
+);
 
 function normalizeTestCapabilities(
   capabilities: WorkspaceCapabilities | null | undefined,
@@ -245,10 +254,8 @@ function getInstructorNav(
 }
 
 function allNavHrefs(nav: ReturnType<typeof getAdminNav>): string[] {
-  const collect = (items = nav.primary): string[] => items.flatMap((item) => [
-    item.href,
-    ...collect(item.children ?? []),
-  ]);
+  const collect = (items = nav.primary): string[] =>
+    items.flatMap((item) => [item.href, ...collect(item.children ?? [])]);
   return [
     ...collect(nav.primary),
     ...collect(nav.secondary ?? []),
@@ -276,7 +283,9 @@ describe('admin navigation config', () => {
       'Report Policies',
       'Compute / Maintenance',
     ]);
-    expect(nav.primary.some((item) => item.name === 'Learners' && item.href === '/learners')).toBe(true);
+    expect(nav.primary.some((item) => item.name === 'Learners' && item.href === '/learners')).toBe(
+      true,
+    );
   });
 
   it('labels institution people management as Staff without changing the instructors route', () => {
@@ -285,7 +294,9 @@ describe('admin navigation config', () => {
 
     expect(staffItem?.name).toBe('Staff');
     expect(nav.primary.some((item) => item.name === 'Instructors')).toBe(false);
-    expect(nav.secondary?.find((item) => item.href === '/admin/instructors')?.name).toBe('Staff Activity');
+    expect(nav.secondary?.find((item) => item.href === '/admin/instructors')?.name).toBe(
+      'Staff Activity',
+    );
   });
 
   it('uses class-owned navigation for future self-managed workspace behavior', () => {
@@ -305,30 +316,39 @@ describe('admin navigation config', () => {
 
     expect(nav.primary.some((item) => item.name === 'My teaching record')).toBe(false);
     expect(nav.primary.some((item) => item.name === 'My lesson plans')).toBe(false);
-    expect(nav.primary.find((item) => item.name === 'Academic Setup')?.children?.find((item) => item.href === '/academic/cohorts')?.name).toBe('My classes');
+    expect(
+      nav.primary
+        .find((item) => item.name === 'Academic Setup')
+        ?.children?.find((item) => item.href === '/academic/cohorts')?.name,
+    ).toBe('My classes');
   });
 
   it('shows freelance teacher navigation for personal workspaces', () => {
-    const nav = getAdminNav(pluginContext, 'PERSONAL', {
-      complete: true,
-      current_step_label: null,
-      next_action: {
-        label: 'Open admin dashboard',
-        href: '/dashboard/admin',
+    const nav = getAdminNav(
+      pluginContext,
+      'PERSONAL',
+      {
+        complete: true,
+        current_step_label: null,
+        next_action: {
+          label: 'Open admin dashboard',
+          href: '/dashboard/admin',
+        },
       },
-    }, {
-      can_teach: true,
-      can_manage_academic_setup: true,
-      can_manage_learners: true,
-      can_manage_cohorts: true,
-      can_manage_subjects: true,
-      can_manage_assessments: true,
-      can_view_reports: true,
-      can_manage_staff: false,
-      is_workspace_owner: true,
-      workspace_mode: 'FREELANCE_TEACHER',
-      workspace_behavior: 'FREELANCE_TEACHER',
-    });
+      {
+        can_teach: true,
+        can_manage_academic_setup: true,
+        can_manage_learners: true,
+        can_manage_cohorts: true,
+        can_manage_subjects: true,
+        can_manage_assessments: true,
+        can_view_reports: true,
+        can_manage_staff: false,
+        is_workspace_owner: true,
+        workspace_mode: 'FREELANCE_TEACHER',
+        workspace_behavior: 'FREELANCE_TEACHER',
+      },
+    );
 
     expect(nav.primary.map((item) => item.name)).toEqual([
       'My teaching workspace',
@@ -336,7 +356,9 @@ describe('admin navigation config', () => {
       'Academic Setup',
     ]);
     expect(nav.primary.some((item) => item.name === 'My learners')).toBe(false);
-    expect(nav.primary.find((item) => item.name === 'Lesson preparations')?.href).toBe('/lesson-plans');
+    expect(nav.primary.find((item) => item.name === 'Lesson preparations')?.href).toBe(
+      '/lesson-plans',
+    );
     const academicSetup = nav.primary.find((item) => item.name === 'Academic Setup');
     expect(academicSetup?.children?.map((item) => item.name)).toEqual([
       'Curricula',
@@ -344,7 +366,9 @@ describe('admin navigation config', () => {
       'Terms',
       'My classes',
     ]);
-    expect(academicSetup?.children?.find((item) => item.href === '/academic/cohorts')?.name).toBe('My classes');
+    expect(academicSetup?.children?.find((item) => item.href === '/academic/cohorts')?.name).toBe(
+      'My classes',
+    );
     expect(nav.primary.filter((item) => item.href === '/academic/cohorts')).toHaveLength(0);
     expect(nav.primary.some((item) => item.href === '/reports/policies')).toBe(false);
     expect(nav.primary.some((item) => item.name === 'Instructors')).toBe(false);
@@ -362,26 +386,31 @@ describe('admin navigation config', () => {
   });
 
   it('prioritizes freelance post-setup mobile navigation around daily teaching', () => {
-    const nav = getAdminNav(pluginContext, 'PERSONAL', {
-      complete: true,
-      current_step_label: null,
-      next_action: {
-        label: 'Open admin dashboard',
-        href: '/dashboard/admin',
+    const nav = getAdminNav(
+      pluginContext,
+      'PERSONAL',
+      {
+        complete: true,
+        current_step_label: null,
+        next_action: {
+          label: 'Open admin dashboard',
+          href: '/dashboard/admin',
+        },
       },
-    }, {
-      can_teach: true,
-      can_manage_academic_setup: true,
-      can_manage_learners: true,
-      can_manage_cohorts: true,
-      can_manage_subjects: true,
-      can_manage_assessments: true,
-      can_view_reports: true,
-      can_manage_staff: false,
-      is_workspace_owner: true,
-      workspace_mode: 'FREELANCE_TEACHER',
-      workspace_behavior: 'FREELANCE_TEACHER',
-    });
+      {
+        can_teach: true,
+        can_manage_academic_setup: true,
+        can_manage_learners: true,
+        can_manage_cohorts: true,
+        can_manage_subjects: true,
+        can_manage_assessments: true,
+        can_view_reports: true,
+        can_manage_staff: false,
+        is_workspace_owner: true,
+        workspace_mode: 'FREELANCE_TEACHER',
+        workspace_behavior: 'FREELANCE_TEACHER',
+      },
+    );
 
     const mobileItems = resolveMobilePrimaryNav(nav);
 
@@ -406,22 +435,19 @@ describe('admin navigation config', () => {
   });
 
   it('keeps the self-managed owner combined shell stable across operating contexts', () => {
-    const capabilities = capabilitiesWithKeys(
-      [...managementPermissionKeys, 'lessons.prepare'],
-      {
-        can_teach: true,
-        can_manage_academic_setup: true,
-        can_manage_learners: true,
-        can_manage_cohorts: true,
-        can_manage_subjects: true,
-        can_manage_assessments: true,
-        can_view_reports: true,
-        can_manage_staff: false,
-        is_workspace_owner: true,
-        workspace_mode: 'FREELANCE_TEACHER',
-        workspace_behavior: 'FREELANCE_TEACHER',
-      },
-    );
+    const capabilities = capabilitiesWithKeys([...managementPermissionKeys, 'lessons.prepare'], {
+      can_teach: true,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: false,
+      is_workspace_owner: true,
+      workspace_mode: 'FREELANCE_TEACHER',
+      workspace_behavior: 'FREELANCE_TEACHER',
+    });
     const baseInput = {
       user: testUser(),
       orgType: 'PERSONAL' as const,
@@ -461,26 +487,31 @@ describe('admin navigation config', () => {
   });
 
   it('keeps personal workspaces in guided setup until schemes are ready', () => {
-    const nav = getAdminNav(pluginContext, 'PERSONAL', {
-      complete: false,
-      current_step_label: 'Set up schemes of work',
-      next_action: {
-        label: 'Set up schemes of work',
-        href: '/schemes?setup=1',
+    const nav = getAdminNav(
+      pluginContext,
+      'PERSONAL',
+      {
+        complete: false,
+        current_step_label: 'Set up schemes of work',
+        next_action: {
+          label: 'Set up schemes of work',
+          href: '/schemes?setup=1',
+        },
       },
-    }, {
-      can_teach: true,
-      can_manage_academic_setup: true,
-      can_manage_learners: true,
-      can_manage_cohorts: true,
-      can_manage_subjects: true,
-      can_manage_assessments: true,
-      can_view_reports: true,
-      can_manage_staff: false,
-      is_workspace_owner: true,
-      workspace_mode: 'FREELANCE_TEACHER',
-      workspace_behavior: 'FREELANCE_TEACHER',
-    });
+      {
+        can_teach: true,
+        can_manage_academic_setup: true,
+        can_manage_learners: true,
+        can_manage_cohorts: true,
+        can_manage_subjects: true,
+        can_manage_assessments: true,
+        can_view_reports: true,
+        can_manage_staff: false,
+        is_workspace_owner: true,
+        workspace_mode: 'FREELANCE_TEACHER',
+        workspace_behavior: 'FREELANCE_TEACHER',
+      },
+    );
 
     expect(nav.primary.map((item) => item.name)).toEqual([
       'My teaching workspace',
@@ -494,26 +525,31 @@ describe('admin navigation config', () => {
   });
 
   it('leads mobile navigation with setup while freelance setup is incomplete', () => {
-    const nav = getAdminNav(pluginContext, 'PERSONAL', {
-      complete: false,
-      current_step_label: 'Set up schemes of work',
-      next_action: {
-        label: 'Set up schemes of work',
-        href: '/schemes?setup=1',
+    const nav = getAdminNav(
+      pluginContext,
+      'PERSONAL',
+      {
+        complete: false,
+        current_step_label: 'Set up schemes of work',
+        next_action: {
+          label: 'Set up schemes of work',
+          href: '/schemes?setup=1',
+        },
       },
-    }, {
-      can_teach: true,
-      can_manage_academic_setup: true,
-      can_manage_learners: true,
-      can_manage_cohorts: true,
-      can_manage_subjects: true,
-      can_manage_assessments: true,
-      can_view_reports: true,
-      can_manage_staff: false,
-      is_workspace_owner: true,
-      workspace_mode: 'FREELANCE_TEACHER',
-      workspace_behavior: 'FREELANCE_TEACHER',
-    });
+      {
+        can_teach: true,
+        can_manage_academic_setup: true,
+        can_manage_learners: true,
+        can_manage_cohorts: true,
+        can_manage_subjects: true,
+        can_manage_assessments: true,
+        can_view_reports: true,
+        can_manage_staff: false,
+        is_workspace_owner: true,
+        workspace_mode: 'FREELANCE_TEACHER',
+        workspace_behavior: 'FREELANCE_TEACHER',
+      },
+    );
 
     expect(resolveMobilePrimaryNav(nav).map((item) => item.name)).toEqual([
       'Academic Setup',
@@ -543,10 +579,7 @@ describe('admin navigation config', () => {
       },
     });
 
-    expect(nav.primary.map((item) => item.name)).toEqual([
-      'Dashboard',
-      'Academic Setup',
-    ]);
+    expect(nav.primary.map((item) => item.name)).toEqual(['Dashboard', 'Academic Setup']);
     expect(nav.primary.at(-1)?.children?.map((item) => item.name)).toEqual([
       'Overview',
       'Set up academic year',
@@ -618,11 +651,18 @@ describe('admin navigation config', () => {
     });
 
     expect(withoutRevenue.primary.some((item) => item.href === '/revenue')).toBe(false);
-    expect(withRevenue.primary.find((item) => item.href === '/revenue')?.name).toBe('Revenue cycle');
+    expect(withRevenue.primary.find((item) => item.href === '/revenue')?.name).toBe(
+      'Revenue cycle',
+    );
   });
 
   it('does not expose unrelated management navigation for a learners-only manager', () => {
-    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys(['learners.manage']));
+    const nav = getAdminNav(
+      pluginContext,
+      'INSTITUTION',
+      null,
+      capabilitiesWithKeys(['learners.manage']),
+    );
     const hrefs = allNavHrefs(nav);
 
     expect(hrefs).toContain('/learners');
@@ -632,7 +672,12 @@ describe('admin navigation config', () => {
   });
 
   it('does not expose unrelated management navigation for a reports-only viewer', () => {
-    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys(['reports.view']));
+    const nav = getAdminNav(
+      pluginContext,
+      'INSTITUTION',
+      null,
+      capabilitiesWithKeys(['reports.view']),
+    );
     const hrefs = allNavHrefs(nav);
 
     expect(hrefs).toContain('/reports');
@@ -661,7 +706,12 @@ describe('admin navigation config', () => {
   });
 
   it('does not expose unrelated management navigation for a staff-only manager', () => {
-    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys(['workspace.members.manage']));
+    const nav = getAdminNav(
+      pluginContext,
+      'INSTITUTION',
+      null,
+      capabilitiesWithKeys(['workspace.members.manage']),
+    );
     const hrefs = allNavHrefs(nav);
 
     expect(hrefs).toContain('/admin/instructors');
@@ -671,7 +721,12 @@ describe('admin navigation config', () => {
   });
 
   it('filters academic setup children independently for subject-only viewers', () => {
-    const nav = getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys(['academic.subjects.view']));
+    const nav = getAdminNav(
+      pluginContext,
+      'INSTITUTION',
+      null,
+      capabilitiesWithKeys(['academic.subjects.view']),
+    );
     const hrefs = allNavHrefs(nav);
 
     expect(hrefs).toContain('/academic');
@@ -686,6 +741,27 @@ describe('admin navigation config', () => {
     const hrefs = allNavHrefs(nav);
 
     expect(hrefs).toEqual(['/dashboard/admin']);
+  });
+
+  it('discovers Projects from the server permission in either operating context', () => {
+    const management = getAdminNav(
+      pluginContext,
+      'INSTITUTION',
+      null,
+      capabilitiesWithKeys(['projects.view']),
+    );
+    const teaching = getInstructorNav(
+      pluginContext,
+      'TEACHING',
+      1,
+      capabilitiesWithKeys(['projects.view'], { can_teach: true }),
+    );
+
+    expect(allNavHrefs(management)).toContain('/projects');
+    expect(allNavHrefs(teaching)).toContain('/projects');
+    expect(
+      allNavHrefs(getAdminNav(pluginContext, 'INSTITUTION', null, capabilitiesWithKeys([]))),
+    ).not.toContain('/projects');
   });
 
   it('renames instructor dashboard navigation during midterm modes', () => {
@@ -723,26 +799,34 @@ describe('admin navigation config', () => {
   it('labels one distinct instructor cohort as My Class', () => {
     const nav = getInstructorNav(pluginContext, 'TEACHING', 1);
 
-    expect(nav.primary.some((item) => item.name === 'My Class' && item.href === '/academic/cohorts')).toBe(true);
+    expect(
+      nav.primary.some((item) => item.name === 'My Class' && item.href === '/academic/cohorts'),
+    ).toBe(true);
     expect(nav.primary.some((item) => item.name === 'My Teaching Load')).toBe(false);
   });
 
   it('labels zero or multiple distinct instructor cohorts as My Classes', () => {
-    expect(getInstructorNav(pluginContext, 'TEACHING', 0).primary.some((item) => (
-      item.name === 'My Classes' && item.href === '/academic/cohorts'
-    ))).toBe(true);
-    expect(getInstructorNav(pluginContext, 'TEACHING', 2).primary.some((item) => (
-      item.name === 'My Classes' && item.href === '/academic/cohorts'
-    ))).toBe(true);
+    expect(
+      getInstructorNav(pluginContext, 'TEACHING', 0).primary.some(
+        (item) => item.name === 'My Classes' && item.href === '/academic/cohorts',
+      ),
+    ).toBe(true);
+    expect(
+      getInstructorNav(pluginContext, 'TEACHING', 2).primary.some(
+        (item) => item.name === 'My Classes' && item.href === '/academic/cohorts',
+      ),
+    ).toBe(true);
   });
 
   it('hides instructor internal request navigation when governance marks it not applicable', () => {
-    const nav = getInstructorNav({
-      ...pluginContext,
-      capabilities: soloGovernanceCapabilities,
-    }, 'TEACHING');
+    const nav = getInstructorNav(
+      {
+        ...pluginContext,
+        capabilities: soloGovernanceCapabilities,
+      },
+      'TEACHING',
+    );
 
     expect(nav.secondary?.map((item) => item.name) ?? []).not.toContain('Submit Request');
   });
-
 });
