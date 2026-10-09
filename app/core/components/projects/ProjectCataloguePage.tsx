@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Badge } from '@/app/components/ui/Badge';
+import { ResponsiveActionSheet } from '@/app/components/ui/actions';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
@@ -15,18 +15,26 @@ import { AppErrorBanner } from '@/app/components/ui/errors';
 import { projectsAPI } from '@/app/core/api/projects';
 import { resolveAppError } from '@/app/core/errors';
 import { useProjectCatalogue, useProjectMutationInvalidation } from '@/app/core/hooks/useProjects';
-import type { ProjectDefinitionVersion } from '@/app/core/types/projects';
+import type { ProjectCatalogueAction, ProjectDefinitionVersion } from '@/app/core/types/projects';
+import { OfficialProjectRegistration } from './OfficialProjectRegistration';
+import { ProjectCatalogueCard } from './ProjectCatalogueCard';
 import { projectBackHref } from './projectNavigation';
 
 function CatalogueSection({
   title,
   description,
   rows,
+  returnTo,
+  onDetails,
+  onRegister,
   onDeploy,
 }: {
   title: string;
   description: string;
   rows: ProjectDefinitionVersion[];
+  returnTo: string;
+  onDetails: (definition: ProjectDefinitionVersion) => void;
+  onRegister: (definition: ProjectDefinitionVersion) => void;
   onDeploy: (definition: ProjectDefinitionVersion) => void;
 }) {
   return (
@@ -42,38 +50,14 @@ function CatalogueSection({
       ) : null}
       <div className="grid gap-4 xl:grid-cols-2">
         {rows.map((definition) => (
-          <Card key={definition.id} className="space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold theme-text">{definition.title}</h3>
-                <p className="text-sm theme-muted">
-                  {definition.subject_key} · {definition.level_key} · {definition.assessment_year}
-                </p>
-              </div>
-              <Badge>
-                {definition.catalogue_scope === 'PLATFORM_OFFICIAL'
-                  ? 'Official'
-                  : 'Organization project'}
-              </Badge>
-            </div>
-            <p className="text-sm theme-muted">{definition.summary || 'No summary supplied.'}</p>
-            <div className="flex flex-wrap gap-2">
-              <Badge>Version {definition.version}</Badge>
-              <Badge>{definition.maximum_marks} marks</Badge>
-              <Badge>{definition.tasks.length} tasks</Badge>
-              {definition.catalogue_scope === 'PLATFORM_OFFICIAL' ? (
-                <Badge>Read-only definition</Badge>
-              ) : null}
-            </div>
-            <p className="text-sm theme-muted">
-              {definition.eligible_cohort_subjects.length} server-authorized deployment target(s)
-            </p>
-            {definition.authority.can_deploy ? (
-              <Button size="sm" onClick={() => onDeploy(definition)}>
-                Create deployment
-              </Button>
-            ) : null}
-          </Card>
+          <ProjectCatalogueCard
+            key={definition.id}
+            definition={definition}
+            returnTo={returnTo}
+            onViewDetails={onDetails}
+            onRegister={onRegister}
+            onDeploy={onDeploy}
+          />
         ))}
       </div>
     </section>
@@ -86,6 +70,11 @@ export function ProjectCataloguePage() {
   const query = useProjectCatalogue();
   const invalidate = useProjectMutationInvalidation();
   const [selected, setSelected] = useState<ProjectDefinitionVersion | null>(null);
+  const [officialWorkflow, setOfficialWorkflow] = useState<{
+    definition: ProjectDefinitionVersion;
+    action: Extract<ProjectCatalogueAction, 'REGISTER' | 'DEPLOY'>;
+  } | null>(null);
+  const [details, setDetails] = useState<ProjectDefinitionVersion | null>(null);
   const [targetId, setTargetId] = useState('');
   const [scheduledStart, setScheduledStart] = useState('');
   const [scheduledEnd, setScheduledEnd] = useState('');
@@ -237,12 +226,18 @@ export function ProjectCataloguePage() {
         title="Eligible official projects"
         description="Authority-issued projects matched by the server to this school, subject, level, year and your scope."
         rows={official}
-        onDeploy={chooseDefinition}
+        returnTo={returnTo}
+        onDetails={setDetails}
+        onRegister={(definition) => setOfficialWorkflow({ definition, action: 'REGISTER' })}
+        onDeploy={(definition) => setOfficialWorkflow({ definition, action: 'DEPLOY' })}
       />
       <CatalogueSection
         title="Custom institutional projects"
         description="Projects owned by this organization and aligned to an eligible local teaching target."
         rows={custom}
+        returnTo={returnTo}
+        onDetails={setDetails}
+        onRegister={chooseDefinition}
         onDeploy={chooseDefinition}
       />
       {selected ? (
@@ -425,6 +420,44 @@ export function ProjectCataloguePage() {
             </div>
           </form>
         </Card>
+      ) : null}
+      {officialWorkflow ? (
+        <OfficialProjectRegistration
+          key={`${officialWorkflow.definition.id}-${officialWorkflow.action}`}
+          definition={officialWorkflow.definition}
+          action={officialWorkflow.action}
+          returnTo={returnTo}
+          onClose={() => setOfficialWorkflow(null)}
+          onEligibilityChanged={() => query.refetch()}
+        />
+      ) : null}
+      {details ? (
+        <ResponsiveActionSheet
+          open
+          onOpenChange={(open) => !open && setDetails(null)}
+          title={details.title}
+          description="Read-only project definition details"
+          size="lg"
+          footer={
+            <Button type="button" variant="secondary" onClick={() => setDetails(null)}>
+              Close
+            </Button>
+          }
+        >
+          <div className="space-y-4 text-sm">
+            <p className="theme-muted">{details.summary || 'No summary supplied.'}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <p><span className="theme-subtle">Authority:</span> <strong>{details.authority_key}</strong></p>
+              <p><span className="theme-subtle">Curriculum:</span> <strong>{details.curriculum_key}</strong></p>
+              <p><span className="theme-subtle">Subject:</span> <strong>{details.subject_key}</strong></p>
+              <p><span className="theme-subtle">Level:</span> <strong>{details.level_key}</strong></p>
+              <p><span className="theme-subtle">Assessment year:</span> <strong>{details.assessment_year}</strong></p>
+              <p><span className="theme-subtle">Version:</span> <strong>{details.version}</strong></p>
+              <p><span className="theme-subtle">Maximum marks:</span> <strong>{details.maximum_marks}</strong></p>
+              <p><span className="theme-subtle">Task count:</span> <strong>{details.task_count ?? details.tasks.length}</strong></p>
+            </div>
+          </div>
+        </ResponsiveActionSheet>
       ) : null}
     </div>
   );

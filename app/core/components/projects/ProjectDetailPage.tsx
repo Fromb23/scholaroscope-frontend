@@ -14,6 +14,7 @@ import { ResponsiveActionSheet } from '@/app/components/ui/actions';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { resolveAppError } from '@/app/core/errors';
 import { buildProjectWorkspaceHref, projectBackHref } from './projectNavigation';
+import { ProjectScheduleStatus } from './ProjectScheduleStatus';
 import {
   useProjectAction,
   useProjectDeployment,
@@ -179,24 +180,39 @@ export function ProjectDetailPage() {
       </div>
 
       {activeTab === 'overview' ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <p className="text-sm theme-subtle">Participants</p>
-            <p className="text-2xl font-bold theme-text">{project.participant_count}</p>
-          </Card>
-          <Card>
-            <p className="text-sm theme-subtle">Task completion</p>
-            <p className="text-2xl font-bold theme-text">
-              {project.progress.completed_task_count}/{project.progress.task_count}
-            </p>
-          </Card>
-          <Card>
-            <p className="text-sm theme-subtle">Evidence</p>
-            <p className="text-2xl font-bold theme-text">{project.progress.evidence_count}</p>
-          </Card>
-          <Card>
-            <p className="text-sm theme-subtle">Readiness</p>
-            <p className="text-lg font-bold theme-text">{label(project.readiness.state)}</p>
+        <div className="space-y-4">
+          <ProjectScheduleStatus schedule={project.schedule} />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Card>
+              <p className="text-sm theme-subtle">Learners</p>
+              <p className="text-2xl font-bold theme-text">{project.participant_count}</p>
+            </Card>
+            <Card>
+              <p className="text-sm theme-subtle">Tasks</p>
+              <p className="text-2xl font-bold theme-text">{project.progress.task_count}</p>
+            </Card>
+            <Card>
+              <p className="text-sm theme-subtle">Maximum marks</p>
+              <p className="text-2xl font-bold theme-text">{project.definition?.maximum_marks ?? '—'}</p>
+            </Card>
+            <Card>
+              <p className="text-sm theme-subtle">Project progress</p>
+              <p className="text-lg font-bold theme-text">
+                {project.progress.completed_task_count}/{project.progress.task_count} tasks
+              </p>
+            </Card>
+          </div>
+          <Card className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold theme-text">Official project identity</p>
+              <p className="text-sm theme-muted">
+                {project.definition?.authority_key} · {project.definition?.curriculum_key} · Version {project.definition?.version}
+              </p>
+              <p className="text-sm theme-muted">
+                Target: {project.cohort.name} — {project.subject.name} · Lead instructor: {project.administering_instructor_name}
+              </p>
+            </div>
+            <Badge>{project.definition?.status ?? project.status} definition</Badge>
           </Card>
         </div>
       ) : null}

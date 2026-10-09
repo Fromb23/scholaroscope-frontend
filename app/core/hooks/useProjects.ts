@@ -4,7 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import { projectsAPI, unwrapProjectList } from '@/app/core/api/projects';
 import { projectKeys } from '@/app/core/lib/queryKeys';
-import type { ProjectFilters } from '@/app/core/types/projects';
+import type {
+  ProjectFilters,
+  RegisterOfficialProjectPayload,
+} from '@/app/core/types/projects';
 
 function compact(value: Record<string, unknown>) {
   return Object.fromEntries(
@@ -110,6 +113,29 @@ export function useProjectCatalogue(filters: Record<string, unknown> = {}) {
     queryKey: projectKeys.catalogue(activeOrg?.id ?? null, normalized),
     queryFn: async () => unwrapProjectList(await projectsAPI.catalogue(normalized)),
     enabled: Boolean(activeOrg),
+  });
+}
+
+export function useRegisterOfficialProject(definitionVersion: number | null) {
+  const { activeOrg } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      payload,
+      idempotencyKey,
+    }: {
+      payload: RegisterOfficialProjectPayload;
+      idempotencyKey: string;
+    }) => projectsAPI.registerOfficialProject(definitionVersion as number, payload, idempotencyKey),
+    onSuccess: (response) => {
+      queryClient.setQueryData(
+        projectKeys.detail(activeOrg?.id ?? null, response.deployment.id),
+        response.deployment,
+      );
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
   });
 }
 
