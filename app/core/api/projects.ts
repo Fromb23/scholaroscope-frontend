@@ -12,6 +12,8 @@ import type {
   ProjectImportJob,
   ProjectParticipant,
   ProjectResultSummary,
+  RegisterOfficialProjectPayload,
+  RegisterOfficialProjectResponse,
   ProjectTaskEvaluation,
 } from '@/app/core/types/projects';
 
@@ -144,6 +146,18 @@ export const projectsAPI = {
       await apiClient.get<ProjectListResponse<ProjectDefinitionVersion>>('/project-catalogue/', {
         params,
       })
+    ).data,
+  registerOfficialProject: async (
+    definitionVersion: number,
+    payload: RegisterOfficialProjectPayload,
+    idempotencyKey: string,
+  ) =>
+    (
+      await apiClient.post<RegisterOfficialProjectResponse>(
+        `/project-catalogue/${definitionVersion}/register/`,
+        payload,
+        { headers: { 'Idempotency-Key': idempotencyKey } },
+      )
     ).data,
   curriculumMappings: async (definitionVersion: number, cohortSubject: number) =>
     (

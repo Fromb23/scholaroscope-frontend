@@ -15,6 +15,7 @@ import { resolveAppError } from '@/app/core/errors';
 import { useProjectDeployments } from '@/app/core/hooks/useProjects';
 import { useAuth } from '@/app/context/AuthContext';
 import { buildProjectDetailHref } from './projectNavigation';
+import { ProjectScheduleStatus } from './ProjectScheduleStatus';
 
 const statusOptions = [
   '',
@@ -34,6 +35,7 @@ export function ProjectsPage() {
   const router = useRouter();
   const { capabilities } = useAuth();
   const canCreateCustom = capabilities.authorization?.permission_keys.includes('projects.create') ?? false;
+  const canOpenCatalogue = capabilities.authorization?.permission_keys.includes('projects.catalogue.register') ?? false;
   const [status, setStatusState] = useState(searchParams.get('status') ?? '');
   const [subject, setSubjectState] = useState(searchParams.get('subject') ?? '');
   const [cohort, setCohortState] = useState(searchParams.get('cohort') ?? '');
@@ -87,12 +89,14 @@ export function ProjectsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/projects/catalogue?returnTo=${encodeURIComponent(returnTo)}`}>
-            <Button variant="secondary">
-              <BookOpen className="h-4 w-4" />
-              Catalogue
-            </Button>
-          </Link>
+          {canOpenCatalogue ? (
+            <Link href={`/projects/catalogue?returnTo=${encodeURIComponent(returnTo)}`}>
+              <Button variant="secondary">
+                <BookOpen className="h-4 w-4" />
+                Catalogue
+              </Button>
+            </Link>
+          ) : null}
           {canCreateCustom ? (
             <Link href={`/projects/imports?returnTo=${encodeURIComponent(returnTo)}`}>
               <Button variant="secondary">
@@ -199,6 +203,7 @@ export function ProjectsPage() {
               {project.scheduled_start} – {project.scheduled_end} ·{' '}
               {project.administering_instructor_name}
             </p>
+            <ProjectScheduleStatus schedule={project.schedule} compact />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap gap-1">
                 {project.authority.allowed_actions

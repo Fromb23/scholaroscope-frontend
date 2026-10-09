@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const catalogue = readFileSync('app/core/components/projects/ProjectCataloguePage.tsx', 'utf8');
+const catalogueCard = readFileSync('app/core/components/projects/ProjectCatalogueCard.tsx', 'utf8');
+const registration = readFileSync('app/core/components/projects/OfficialProjectRegistration.tsx', 'utf8');
+const projectsPage = readFileSync('app/core/components/projects/ProjectsPage.tsx', 'utf8');
 const imports = readFileSync('app/core/components/projects/ProjectImportsPage.tsx', 'utf8');
 const api = readFileSync('app/core/api/projects.ts', 'utf8');
 const hooks = readFileSync('app/core/hooks/useProjects.ts', 'utf8');
@@ -19,14 +22,14 @@ describe('Projects catalogue authority boundary', () => {
   });
 
   it('renders only catalogue rows and eligible targets returned by the server', () => {
-    expect(catalogue).toContain('definition.eligible_cohort_subjects');
+    expect(registration).toContain('definition.eligible_cohort_subjects');
     expect(catalogue).not.toMatch(/pathway|combination|CbcSubjectProfile/);
     expect(api).toContain("'/project-catalogue/'");
   });
 
   it('labels ownership and keeps official definitions read-only', () => {
-    expect(catalogue).toContain('Organization project');
-    expect(catalogue).toContain('Read-only definition');
+    expect(catalogueCard).toContain('Organization project');
+    expect(catalogueCard).toContain('Read-only definition');
   });
 
   it('creates deployments only from server-provided eligible cohort subjects', () => {
@@ -35,7 +38,23 @@ describe('Projects catalogue authority boundary', () => {
   });
 
   it('does not branch project rendering by role name', () => {
-    expect(`${catalogue}\n${imports}`).not.toMatch(/activeRole|role_slug|role\.slug|\bHOD\b|\bPRINCIPAL\b/);
+    expect(`${catalogue}\n${catalogueCard}\n${registration}\n${imports}`).not.toMatch(/activeRole|role_slug|role\.slug|\bHOD\b|\bPRINCIPAL\b/);
+  });
+
+  it('keeps operational project visibility deployment-backed', () => {
+    expect(projectsPage).toContain('useProjectDeployments');
+    expect(projectsPage).not.toContain('useProjectCatalogue');
+    expect(api).toContain("'/project-deployments/'");
+  });
+
+  it('uses the canonical atomic registration endpoint and server action values', () => {
+    expect(api).toContain('`/project-catalogue/${definitionVersion}/register/`');
+    expect(api).toContain("'Idempotency-Key': idempotencyKey");
+    expect(hooks).toContain('queryClient.setQueryData');
+    expect(hooks).toContain('queryClient.invalidateQueries({ queryKey: projectKeys.all })');
+    expect(catalogueCard).toContain("action === 'REGISTER'");
+    expect(catalogueCard).toContain("action === 'DEPLOY'");
+    expect(catalogueCard).toContain("action === 'VIEW_DEPLOYMENT'");
   });
 
   it('keys project queries by workspace and clears cached state on authority changes', () => {

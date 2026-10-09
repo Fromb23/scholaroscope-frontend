@@ -48,6 +48,19 @@ export interface ProjectCatalogueAuthority {
   can_verify_official: false;
 }
 
+export type ProjectCatalogueAction = 'REGISTER' | 'DEPLOY' | 'VIEW_DEPLOYMENT';
+
+export interface ProjectOfficialSchedule {
+  official_starts_at: string | null;
+  official_deadline_at: string | null;
+  is_fixed_window: boolean;
+}
+
+export interface ProjectDeploymentState {
+  state: 'NOT_DEPLOYED' | 'DEPLOYED';
+  deployments: Array<{ id: number; cohort_subject: number; status: ProjectDeploymentStatus }>;
+}
+
 export interface ProjectTaskStep {
   id: number;
   parent: number | null;
@@ -128,6 +141,32 @@ export interface ProjectDefinitionVersion {
   organization_adoption: ProjectAdoption | null;
   eligible_cohort_subjects: EligibleProjectTarget[];
   authority: ProjectCatalogueAuthority;
+  official_schedule: ProjectOfficialSchedule | null;
+  adoption_state: string;
+  deployment_state: ProjectDeploymentState;
+  available_actions: ProjectCatalogueAction[];
+  task_count: number;
+}
+
+export interface ProjectSchedule {
+  status:
+    | 'SCHEDULED'
+    | 'NORMAL'
+    | 'ATTENTION'
+    | 'URGENT'
+    | 'CRITICAL'
+    | 'DUE_TODAY'
+    | 'OVERDUE'
+    | 'CLOSED';
+  urgency: ProjectSchedule['status'];
+  timezone: string;
+  starts_at: string;
+  deadline_at: string;
+  total_duration_seconds: number;
+  elapsed_duration_seconds: number;
+  elapsed_percentage: number;
+  remaining_seconds: number;
+  remaining_calendar_days: number;
 }
 
 export interface ProjectDeploymentProgress {
@@ -150,6 +189,9 @@ export interface ProjectDeployment {
   administering_instructor_name: string;
   scheduled_start: string;
   scheduled_end: string;
+  starts_at: string | null;
+  deadline_at: string | null;
+  schedule: ProjectSchedule;
   submission_deadline: string | null;
   local_operational_instructions?: string;
   status: ProjectDeploymentStatus;
@@ -304,9 +346,27 @@ export interface CreateProjectDeploymentPayload {
   academic_year: number;
   scheduled_start: string;
   scheduled_end: string;
+  starts_at?: string;
+  deadline_at?: string;
   submission_deadline?: string;
   local_operational_instructions?: string;
   administering_instructor?: number;
+}
+export interface RegisterOfficialProjectPayload {
+  cohort_subject: number;
+  starts_at: string;
+  deadline_at: string;
+  administering_instructor?: number;
+  notes?: string;
+}
+export interface RegisterOfficialProjectResponse {
+  adoption: {
+    id: number;
+    definition_version: number;
+    status: string;
+    adopted_at: string | null;
+  };
+  deployment: ProjectDeployment;
 }
 export interface ProjectServerError {
   code?: string;
