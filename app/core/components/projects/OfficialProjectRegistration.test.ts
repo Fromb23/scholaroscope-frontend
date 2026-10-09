@@ -14,8 +14,8 @@ import {
   initialEligibleTarget,
 } from './OfficialProjectRegistration';
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
+  true;
 
 const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(async () => undefined),
@@ -40,12 +40,15 @@ vi.mock('@/app/components/ui/actions', () => ({
     description: string;
     children: React.ReactNode;
     footer: React.ReactNode;
-  }) => createElement('section', null,
-    createElement('h1', null, title),
-    createElement('p', null, description),
-    children,
-    footer,
-  ),
+  }) =>
+    createElement(
+      'section',
+      null,
+      createElement('h1', null, title),
+      createElement('p', null, description),
+      children,
+      footer,
+    ),
 }));
 
 vi.mock('@/app/components/ui/toast/useToast', () => ({
@@ -69,15 +72,37 @@ vi.mock('@/app/core/api/projects', () => ({
   projectsAPI: { createDeployment: vi.fn() },
 }));
 
-function target(id: number, grade: string, canDeploy: boolean): EligibleProjectTarget {
+const assignedInstructor = {
+  id: 17,
+  name: 'Assigned Teacher',
+  email: 'assigned@example.test',
+  eligible: true,
+};
+
+function target(
+  id: number,
+  grade: string,
+  canDeploy: boolean,
+  overrides: Partial<EligibleProjectTarget> = {},
+): EligibleProjectTarget {
   return {
     id,
     cohort: { id: id + 100, name: grade },
     subject: { id: 3, name: 'Computer Studies' },
     academic_year: 2026,
     can_deploy: canDeploy,
+    deployment_blockers: canDeploy
+      ? []
+      : [
+          {
+            code: 'project_administering_instructor_required',
+            message: 'Assign an instructor to this teaching target before deploying the project.',
+          },
+        ],
     eligible_instructors: [],
     requires_instructor_selection: false,
+    auto_selected_instructor: null,
+    ...overrides,
   };
 }
 
@@ -104,9 +129,9 @@ function definition(
 }
 
 function textContent(node: ReactTestInstance): string {
-  return node.children.map((child) => (
-    typeof child === 'string' ? child : textContent(child)
-  )).join('');
+  return node.children
+    .map((child) => (typeof child === 'string' ? child : textContent(child)))
+    .join('');
 }
 
 function button(root: ReactTestInstance, label: string): ReactTestInstance {
@@ -119,13 +144,15 @@ async function renderRegistration(
 ) {
   let renderer: ReactTestRenderer;
   await act(async () => {
-    renderer = create(createElement(OfficialProjectRegistration, {
-      definition: projectDefinition,
-      action,
-      returnTo: '/projects/catalogue',
-      onClose: vi.fn(),
-      onEligibilityChanged: mocks.onEligibilityChanged,
-    }));
+    renderer = create(
+      createElement(OfficialProjectRegistration, {
+        definition: projectDefinition,
+        action,
+        returnTo: '/projects/catalogue',
+        onClose: vi.fn(),
+        onEligibilityChanged: mocks.onEligibilityChanged,
+      }),
+    );
   });
   return renderer!;
 }
@@ -152,7 +179,9 @@ describe('official project registration contract', () => {
     mocks.onEligibilityChanged.mockClear();
     mocks.routerPush.mockClear();
     mocks.showToast.mockClear();
-    vi.mocked(projectsAPI.createDeployment).mockReset().mockResolvedValue({ id: 74 } as never);
+    vi.mocked(projectsAPI.createDeployment)
+      .mockReset()
+      .mockResolvedValue({ id: 74 } as never);
   });
 
   afterEach(async () => {
@@ -160,7 +189,7 @@ describe('official project registration contract', () => {
     renderer = null;
   });
 
-  it('keeps a non-deployable server target actionable and selected for REGISTER', async () => {
+  it('keeps a blocked server target visible for REGISTER but prevents deployment', async () => {
     const olympicTarget = target(847, 'Grade 10', false);
     expect(actionableTargets([olympicTarget], 'REGISTER')).toEqual([olympicTarget]);
     expect(initialEligibleTarget([olympicTarget], 'REGISTER')).toBe('847');
@@ -173,32 +202,30 @@ describe('official project registration contract', () => {
     expect(button(root, 'Review registration').props.disabled).toBe(true);
 
     await enterValidSchedule(root);
-    expect(button(root, 'Review registration').props.disabled).toBe(false);
-    await reviewAndSubmit(root, 'Register and deploy');
-
-    expect(mocks.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
-      payload: expect.objectContaining({ cohort_subject: 847 }),
-    }));
-    expect(mocks.mutateAsync.mock.calls[0][0].payload).not.toHaveProperty(
-      'administering_instructor',
+    expect(button(root, 'Review registration').props.disabled).toBe(true);
+    expect(textContent(root.findByProps({ role: 'alert' }))).toContain(
+      'Assign an instructor to this teaching target before deploying the project.',
     );
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
   });
 
-  it('keeps direct DEPLOY strict when the target cannot be deployed', async () => {
+  it('shows the server readiness blocker for direct DEPLOY', async () => {
     const unauthorizedTarget = target(847, 'Grade 10', false);
-    expect(actionableTargets([unauthorizedTarget], 'DEPLOY')).toEqual([]);
-    expect(initialEligibleTarget([unauthorizedTarget], 'DEPLOY')).toBe('');
+    expect(actionableTargets([unauthorizedTarget], 'DEPLOY')).toEqual([unauthorizedTarget]);
+    expect(initialEligibleTarget([unauthorizedTarget], 'DEPLOY')).toBe('847');
 
     renderer = await renderRegistration(definition([unauthorizedTarget], ['DEPLOY']), 'DEPLOY');
     const root = renderer.root;
-    expect(textContent(root.findByProps({ role: 'alert' }))).toContain('Eligibility changed');
+    expect(textContent(root.findByProps({ role: 'alert' }))).toContain(
+      'Assign an instructor to this teaching target before deploying the project.',
+    );
     expect(root.findAllByType('select')).toHaveLength(0);
     expect(button(root, 'Review registration').props.disabled).toBe(true);
     expect(projectsAPI.createDeployment).not.toHaveBeenCalled();
   });
 
   it('renders every REGISTER target, preserves an explicit selection, and submits its identifier', async () => {
-    const targets = [target(847, 'Grade 10', false), target(912, 'Grade 11', false)];
+    const targets = [target(847, 'Grade 10', true), target(912, 'Grade 11', true)];
     const initialDefinition = definition(targets, ['REGISTER']);
     renderer = await renderRegistration(initialDefinition, 'REGISTER');
     let root = renderer.root;
@@ -210,38 +237,46 @@ describe('official project registration contract', () => {
     await act(async () => targetSelect.props.onChange({ target: { value: '912' } }));
 
     await act(async () => {
-      renderer!.update(createElement(OfficialProjectRegistration, {
-        definition: definition([...targets], ['REGISTER']),
-        action: 'REGISTER',
-        returnTo: '/projects/catalogue',
-        onClose: vi.fn(),
-        onEligibilityChanged: mocks.onEligibilityChanged,
-      }));
+      renderer!.update(
+        createElement(OfficialProjectRegistration, {
+          definition: definition([...targets], ['REGISTER']),
+          action: 'REGISTER',
+          returnTo: '/projects/catalogue',
+          onClose: vi.fn(),
+          onEligibilityChanged: mocks.onEligibilityChanged,
+        }),
+      );
     });
     root = renderer.root;
     expect(root.findByType('select').props.value).toBe('912');
 
     await enterValidSchedule(root);
     await reviewAndSubmit(root, 'Register and deploy');
-    expect(mocks.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
-      payload: expect.objectContaining({ cohort_subject: 912 }),
-    }));
+    expect(mocks.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ cohort_subject: 912 }),
+      }),
+    );
   });
 
   it('clears stale selections and auto-selects a newly singular current target', async () => {
-    const first = target(847, 'Grade 10', false);
-    const second = target(912, 'Grade 11', false);
+    const first = target(847, 'Grade 10', true);
+    const second = target(912, 'Grade 11', true);
     renderer = await renderRegistration(definition([first, second], ['REGISTER']), 'REGISTER');
-    await act(async () => renderer!.root.findByType('select').props.onChange({ target: { value: '912' } }));
+    await act(async () =>
+      renderer!.root.findByType('select').props.onChange({ target: { value: '912' } }),
+    );
 
     await act(async () => {
-      renderer!.update(createElement(OfficialProjectRegistration, {
-        definition: definition([first], ['REGISTER']),
-        action: 'REGISTER',
-        returnTo: '/projects/catalogue',
-        onClose: vi.fn(),
-        onEligibilityChanged: mocks.onEligibilityChanged,
-      }));
+      renderer!.update(
+        createElement(OfficialProjectRegistration, {
+          definition: definition([first], ['REGISTER']),
+          action: 'REGISTER',
+          returnTo: '/projects/catalogue',
+          onClose: vi.fn(),
+          onEligibilityChanged: mocks.onEligibilityChanged,
+        }),
+      );
     });
 
     expect(renderer.root.findAllByType('select')).toHaveLength(0);
@@ -261,6 +296,85 @@ describe('official project registration contract', () => {
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
   });
 
+  it('shows the server auto-selected instructor as read-only confirmation', async () => {
+    const readyTarget = target(847, 'Grade 10', true, {
+      eligible_instructors: [assignedInstructor],
+      auto_selected_instructor: assignedInstructor,
+    });
+    renderer = await renderRegistration(definition([readyTarget], ['REGISTER']), 'REGISTER');
+    const root = renderer.root;
+
+    expect(textContent(root)).toContain('Assigned Teacher');
+    expect(textContent(root)).toContain(
+      'The only eligible active instructor will be assigned automatically.',
+    );
+    expect(root.findAllByType('select')).toHaveLength(0);
+
+    await enterValidSchedule(root);
+    await reviewAndSubmit(root, 'Register and deploy');
+    expect(mocks.mutateAsync.mock.calls[0][0].payload).not.toHaveProperty(
+      'administering_instructor',
+    );
+  });
+
+  it('requires one of the server candidates and submits only that instructor id', async () => {
+    const secondInstructor = {
+      id: 23,
+      name: 'Second Teacher',
+      email: 'second@example.test',
+      eligible: true,
+    };
+    const readyTarget = target(847, 'Grade 10', true, {
+      eligible_instructors: [assignedInstructor, secondInstructor],
+      requires_instructor_selection: true,
+    });
+    renderer = await renderRegistration(definition([readyTarget], ['REGISTER']), 'REGISTER');
+    const root = renderer.root;
+    const instructorSelect = root.findByType('select');
+
+    expect(textContent(instructorSelect)).toContain('Assigned Teacher');
+    expect(textContent(instructorSelect)).toContain('Second Teacher');
+    expect(textContent(instructorSelect)).not.toContain('Organization user');
+    await enterValidSchedule(root);
+    expect(button(root, 'Review registration').props.disabled).toBe(true);
+    await act(async () => instructorSelect.props.onChange({ target: { value: '23' } }));
+    await reviewAndSubmit(root, 'Register and deploy');
+
+    expect(mocks.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ administering_instructor: 23 }),
+      }),
+    );
+    expect(mocks.invalidate).toHaveBeenCalledOnce();
+    expect(mocks.routerPush).toHaveBeenCalledWith('/projects/73?returnTo=%2Fprojects%2Fcatalogue');
+  });
+
+  it('refreshes readiness when the server rejects a stale instructor selection', async () => {
+    const readyTarget = target(847, 'Grade 10', true, {
+      eligible_instructors: [assignedInstructor],
+      auto_selected_instructor: assignedInstructor,
+    });
+    mocks.mutateAsync.mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: {
+          error: {
+            code: 'project_administering_instructor_required',
+            message: 'Assign an instructor to this teaching target before deploying the project.',
+          },
+        },
+      },
+    });
+    renderer = await renderRegistration(definition([readyTarget], ['REGISTER']), 'REGISTER');
+
+    await enterValidSchedule(renderer.root);
+    await reviewAndSubmit(renderer.root, 'Register and deploy');
+
+    expect(mocks.onEligibilityChanged).toHaveBeenCalledOnce();
+    expect(mocks.showToast).toHaveBeenCalledWith(expect.objectContaining({ severity: 'warning' }));
+    expect(mocks.routerPush).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['project_target_not_eligible', 'Teaching target is no longer eligible.'],
     ['project_definition_not_published', 'Official project is no longer published.'],
@@ -270,6 +384,9 @@ describe('official project registration contract', () => {
     ['project_adoption_revoked', 'Institutional registration was revoked.'],
     ['project_cross_organization_target', 'Teaching target is outside this organization.'],
     ['project_deployment_transition_invalid', 'Project deployment is closed for this action.'],
+    ['project_administering_instructor_required', 'An assigned instructor is required.'],
+    ['project_administering_instructor_selection_required', 'Choose the lead instructor.'],
+    ['project_administering_instructor_invalid', 'Lead instructor is no longer eligible.'],
   ])('maps server domain error %s to useful copy', (code, title) => {
     const error = resolveAppError(
       { response: { status: 400, data: { error: { code, message: 'Server message' } } } },

@@ -37,8 +37,20 @@ export interface EligibleProjectTarget {
   subject: { id: number; name: string };
   academic_year: number;
   can_deploy: boolean;
-  eligible_instructors: Array<{ id: number; name: string; email: string }>;
+  deployment_blockers: Array<{ code: string; message: string }>;
+  eligible_instructors: Array<{
+    id: number;
+    name: string;
+    email: string;
+    eligible: boolean;
+  }>;
   requires_instructor_selection: boolean;
+  auto_selected_instructor: {
+    id: number;
+    name: string;
+    email: string;
+    eligible: boolean;
+  } | null;
 }
 
 export interface ProjectCatalogueAuthority {
