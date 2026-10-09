@@ -94,6 +94,22 @@ export function ProjectCataloguePage() {
     () => (query.data ?? []).filter((row) => row.catalogue_scope === 'ORGANIZATION_CUSTOM'),
     [query.data],
   );
+  const currentOfficialWorkflow = useMemo(() => {
+    if (!officialWorkflow) return null;
+    const currentDefinition = query.data?.find(
+      (definition) => definition.id === officialWorkflow.definition.id,
+    );
+    if (currentDefinition) return { ...officialWorkflow, definition: currentDefinition };
+    if (!query.data) return officialWorkflow;
+    return {
+      ...officialWorkflow,
+      definition: {
+        ...officialWorkflow.definition,
+        eligible_cohort_subjects: [],
+        available_actions: [],
+      },
+    };
+  }, [officialWorkflow, query.data]);
   const creation = useMutation({
     mutationFn: async () => {
       const target = selected?.eligible_cohort_subjects.find((row) => row.id === Number(targetId));
@@ -421,11 +437,11 @@ export function ProjectCataloguePage() {
           </form>
         </Card>
       ) : null}
-      {officialWorkflow ? (
+      {currentOfficialWorkflow ? (
         <OfficialProjectRegistration
-          key={`${officialWorkflow.definition.id}-${officialWorkflow.action}`}
-          definition={officialWorkflow.definition}
-          action={officialWorkflow.action}
+          key={`${currentOfficialWorkflow.definition.id}-${currentOfficialWorkflow.action}`}
+          definition={currentOfficialWorkflow.definition}
+          action={currentOfficialWorkflow.action}
           returnTo={returnTo}
           onClose={() => setOfficialWorkflow(null)}
           onEligibilityChanged={() => query.refetch()}
