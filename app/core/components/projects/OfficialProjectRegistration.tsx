@@ -44,9 +44,23 @@ function localDateTimeValue(value: string | null | undefined): string {
   return local.toISOString().slice(0, 16);
 }
 
-export function initialEligibleTarget(targets: EligibleProjectTarget[]): string {
-  const deployable = targets.filter((target) => target.can_deploy);
-  return deployable.length === 1 ? String(deployable[0].id) : '';
+type OfficialProjectWorkflowAction = Extract<ProjectCatalogueAction, 'REGISTER' | 'DEPLOY'>;
+
+export function actionableTargets(
+  targets: EligibleProjectTarget[],
+  action: OfficialProjectWorkflowAction,
+): EligibleProjectTarget[] {
+  return action === 'REGISTER'
+    ? targets
+    : targets.filter((target) => target.can_deploy);
+}
+
+export function initialEligibleTarget(
+  targets: EligibleProjectTarget[],
+  action: OfficialProjectWorkflowAction,
+): string {
+  const actionable = actionableTargets(targets, action);
+  return actionable.length === 1 ? String(actionable[0].id) : '';
 }
 
 export function buildRegistrationPayload(
@@ -75,7 +89,7 @@ export function OfficialProjectRegistration({
   onEligibilityChanged,
 }: {
   definition: ProjectDefinitionVersion;
-  action: Extract<ProjectCatalogueAction, 'REGISTER' | 'DEPLOY'>;
+  action: OfficialProjectWorkflowAction;
   returnTo: string;
   onClose: () => void;
   onEligibilityChanged: () => Promise<unknown>;
@@ -85,11 +99,13 @@ export function OfficialProjectRegistration({
   const { showToast } = useToast();
   const register = useRegisterOfficialProject(definition.id);
   const invalidate = useProjectMutationInvalidation();
-  const deployableTargets = useMemo(
-    () => definition.eligible_cohort_subjects.filter((target) => target.can_deploy),
-    [definition.eligible_cohort_subjects],
+  const eligibleTargets = useMemo(
+    () => actionableTargets(definition.eligible_cohort_subjects, action),
+    [action, definition.eligible_cohort_subjects],
   );
-  const [targetId, setTargetId] = useState(() => initialEligibleTarget(definition.eligible_cohort_subjects));
+  const [targetId, setTargetId] = useState(() => (
+    initialEligibleTarget(definition.eligible_cohort_subjects, action)
+  ));
   const schedule = definition.official_schedule;
   const [startsAt, setStartsAt] = useState(() => localDateTimeValue(schedule?.official_starts_at));
   const [deadlineAt, setDeadlineAt] = useState(() => localDateTimeValue(schedule?.official_deadline_at));
@@ -103,7 +119,7 @@ export function OfficialProjectRegistration({
       ? crypto.randomUUID()
       : `project-registration-${Date.now()}-${Math.random()}`,
   );
-  const selectedTarget = deployableTargets.find((target) => target.id === Number(targetId));
+  const selectedTarget = eligibleTargets.find((target) => target.id === Number(targetId));
   const requiresInstructor = Boolean(selectedTarget?.requires_instructor_selection);
   const fixedWindow = Boolean(schedule?.is_fixed_window);
   const error = register.error ?? directDeployError;
@@ -119,13 +135,41 @@ export function OfficialProjectRegistration({
     setInstructorId('');
   }, [targetId]);
 
+  useEffect(() => {
+    setInstructorId((currentInstructorId) => {
+      if (!selectedTarget?.requires_instructor_selection) return '';
+      if (selectedTarget.eligible_instructors.some(
+        (instructor) => instructor.id === Number(currentInstructorId),
+      )) {
+        return currentInstructorId;
+      }
+      return '';
+    });
+    if (!selectedTarget) setConfirming(false);
+  }, [selectedTarget]);
+
+  useEffect(() => {
+    setTargetId((currentTargetId) => {
+      if (eligibleTargets.length === 1) return String(eligibleTargets[0].id);
+      if (eligibleTargets.some((target) => target.id === Number(currentTargetId))) {
+        return currentTargetId;
+      }
+      return '';
+    });
+  }, [eligibleTargets]);
+
   const submit = async () => {
     if (!selectedTarget || !canContinue || submittingRef.current) return;
     submittingRef.current = true;
     setDirectDeployPending(true);
     setDirectDeployError(null);
     try {
-      const payload = buildRegistrationPayload(targetId, startsAt, deadlineAt, instructorId);
+      const payload = buildRegistrationPayload(
+        String(selectedTarget.id),
+        startsAt,
+        deadlineAt,
+        requiresInstructor ? instructorId : '',
+      );
       const deployment = action === 'REGISTER'
         ? (await register.mutateAsync({ payload, idempotencyKey: idempotencyKey.current })).deployment
         : await projectsAPI.createDeployment({
@@ -185,7 +229,7 @@ export function OfficialProjectRegistration({
               Review registration
             </Button>
           ) : (
-            <Button type="button" disabled={pending} onClick={() => void submit()}>
+            <Button type="button" disabled={pending || !canContinue} onClick={() => void submit()}>
               {pending ? 'Registering…' : action === 'REGISTER' ? 'Register and deploy' : 'Deploy project'}
             </Button>
           )}
@@ -209,20 +253,45 @@ export function OfficialProjectRegistration({
 
         {!confirming ? (
           <>
-            <Select
-              label="Eligible teaching target"
-              required
-              value={targetId}
-              onChange={(event) => setTargetId(event.target.value)}
-              helperText={deployableTargets.length === 1 ? 'The only server-authorized target is preselected.' : 'Choose one target returned by the server.'}
-              options={[
-                ...(deployableTargets.length === 1 ? [] : [{ value: '', label: 'Choose an eligible target' }]),
-                ...deployableTargets.map((target) => ({
-                  value: target.id,
-                  label: `${target.cohort.name} — ${target.subject.name}`,
-                })),
-              ]}
-            />
+            {eligibleTargets.length === 1 && selectedTarget ? (
+              <div className="rounded-lg border theme-border p-4 text-sm">
+                <p className="theme-subtle">Eligible teaching target</p>
+                <p className="mt-1 font-medium theme-text">
+                  {selectedTarget.cohort.name} — {selectedTarget.subject.name}
+                </p>
+                <p className="mt-1 text-xs theme-subtle">The only server-authorized target is preselected.</p>
+              </div>
+            ) : eligibleTargets.length > 1 ? (
+              <Select
+                label="Eligible teaching target"
+                required
+                value={targetId}
+                onChange={(event) => setTargetId(event.target.value)}
+                helperText="Choose one target returned by the server."
+                options={[
+                  { value: '', label: 'Choose an eligible target' },
+                  ...eligibleTargets.map((target) => ({
+                    value: target.id,
+                    label: `${target.cohort.name} — ${target.subject.name}`,
+                  })),
+                ]}
+              />
+            ) : (
+              <div role="alert" className="rounded-lg border border-[color:var(--color-danger)] p-4 text-sm">
+                <p className="font-medium theme-text">Eligibility changed</p>
+                <p className="mt-1 theme-muted">
+                  No eligible teaching targets are currently available for this action.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => void onEligibilityChanged()}
+                >
+                  Refresh catalogue
+                </Button>
+              </div>
+            )}
             {selectedTarget ? (
               <div className="rounded-lg theme-surface-muted p-4 text-sm theme-text">
                 <p className="flex items-center gap-2 font-medium"><Users className="h-4 w-4" aria-hidden="true" />Current instructors affected</p>
