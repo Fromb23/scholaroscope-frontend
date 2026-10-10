@@ -27,7 +27,15 @@ const deployment = (id: number, name: string, learners: number) =>
     participant_count: learners,
     administering_instructor_name: 'Assigned Teacher',
     status: 'PUBLISHED',
-    progress: { task_count: 3, completed_task_count: 1, evidence_count: 2, evaluation_count: 1 },
+    progress: {
+      task_count: 3,
+      completed_task_count: 1,
+      expected_participant_task_count: learners * 3,
+      evidence_coverage: { covered: 2, expected: learners * 3, percentage: 5 },
+      evaluation_coverage: { covered: 1, expected: learners * 3, percentage: 2 },
+      evidence_count: 2,
+      evaluation_count: 1,
+    },
     readiness: { state: 'READY', incomplete_required_checklist_items: [] },
     schedule: {
       status: 'NORMAL',
@@ -54,6 +62,11 @@ const workspace: ProjectWorkspaceSummary = {
   stream_count: 4,
   total_learner_count: 69,
   lifecycle_summary: { status_counts: { PUBLISHED: 4 }, is_uniform: true },
+  progress: {
+    completed_stream_task_count: 4,
+    expected_stream_task_count: 12,
+    percentage: 33.3,
+  },
   deployments: [
     deployment(11, 'Stream A', 15),
     deployment(12, 'Stream B', 18),
@@ -64,6 +77,11 @@ const workspace: ProjectWorkspaceSummary = {
 
 vi.mock('@/app/core/hooks/useProjects', () => ({
   useProjectWorkspace: () => ({ data: workspace, isLoading: false, error: null, refetch: vi.fn() }),
+  useMissingProjectStreams: () => ({ data: [], isLoading: false, error: null }),
+  useProjectWorkspaceMutations: () => ({
+    addMissingStreams: { isPending: false, mutateAsync: vi.fn() },
+    reopenLateEvidence: { isPending: false, mutateAsync: vi.fn() },
+  }),
 }));
 
 describe('ProjectStreamSelectionPage', () => {

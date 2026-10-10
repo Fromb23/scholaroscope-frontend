@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { Children, useState, type ReactNode } from 'react';
+import { Children, useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -29,8 +29,9 @@ import {
 import {
   ProjectCriteriaForm,
   ProjectEvaluationForm,
-  ProjectEvidenceForm,
 } from './ProjectWorkForms';
+import { ProjectEvidenceRecorder } from './ProjectEvidenceRecorder';
+import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
 
 const tabs = [
   'overview',
@@ -65,6 +66,7 @@ export function ProjectDetailPage() {
   const [pendingAction, setPendingAction] = useState<ProjectLifecycleAction | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [workAction, setWorkAction] = useState<'evidence' | 'evaluation' | null>(null);
+  const [evidenceTaskId, setEvidenceTaskId] = useState<number | null>(null);
   const [groupName, setGroupName] = useState('');
   const [scoringEvaluationId, setScoringEvaluationId] = useState<number | null>(null);
   const [observationTask, setObservationTask] = useState(searchParams.get('task') ?? '');
@@ -82,9 +84,28 @@ export function ProjectDetailPage() {
   const returnTo = projectBackHref(searchParams.get('returnTo'));
   const selectedTask = Number(searchParams.get('task')) || null;
   const selectedParticipant = Number(searchParams.get('participant')) || null;
+  const tasks = project?.definition?.tasks ?? [];
+  const requestedTaskIndex = tasks.findIndex((task) => task.id === selectedTask);
+  const selectedTaskIndex = requestedTaskIndex >= 0 ? requestedTaskIndex : 0;
+  const taskInView = tasks[selectedTaskIndex] ?? null;
+  const openTask = (taskId: number) => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set('tab', 'tasks');
+    next.set('task', String(taskId));
+    router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+  };
   const setTab = (tab: Tab) => {
+    if (tab === 'tasks' && taskInView) {
+      openTask(taskInView.id);
+      return;
+    }
     router.replace(buildProjectWorkspaceHref(id, searchParams, tab), { scroll: false });
   };
+  useEffect(() => {
+    if (activeTab === 'tasks' && !selectedTask && taskInView) openTask(taskInView.id);
+    // Route state is the source of truth; this only canonicalizes a task-less deep link.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedTask, taskInView?.id]);
   const confirmAction = async () => {
     if (!pendingAction) return;
     try {
@@ -135,16 +156,6 @@ export function ProjectDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {project.authority.can_manage ? (
-            <Button variant="secondary" size="sm" onClick={() => setTab('participants')}>
-              Manage participants
-            </Button>
-          ) : null}
-          {project.authority.can_record_evidence ? (
-            <Button variant="secondary" size="sm" onClick={() => setWorkAction('evidence')}>
-              Record evidence
-            </Button>
-          ) : null}
           {canShowProjectEvaluationControls(project.authority) ? (
             <Button variant="secondary" size="sm" onClick={() => setWorkAction('evaluation')}>
               Evaluate criteria
@@ -219,7 +230,23 @@ export function ProjectDetailPage() {
 
       {activeTab === 'tasks' ? (
         <div className="space-y-4">
-          {project.definition?.tasks.map((task) => (
+          {taskInView ? (
+            <ProjectTaskWorkspace
+              project={project}
+              task={taskInView}
+              taskIndex={selectedTaskIndex}
+              onPrevious={() => openTask(tasks[selectedTaskIndex - 1].id)}
+              onNext={() => openTask(tasks[selectedTaskIndex + 1].id)}
+              onRecordEvidence={() => {
+                resources.recordEvidenceBatch.reset();
+                setEvidenceTaskId(taskInView.id);
+                setWorkAction('evidence');
+              }}
+            />
+          ) : (
+            <Card><p className="theme-muted">No tasks are available for this project.</p></Card>
+          )}
+          {false && project!.definition?.tasks.map((task) => (
             <Card key={task.id}>
               <div className="flex justify-between gap-3">
                 <div>
@@ -274,41 +301,13 @@ export function ProjectDetailPage() {
               key={item.id}
               title={item.learner_name}
               detail={`${item.status}${item.is_late_addition ? ' · Late addition' : ''}`}
-              icon={
-                project.authority.can_manage && item.status === 'ACTIVE' ? (
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => resources.withdrawParticipant.mutate(item.id)}
-                  >
-                    Withdraw
-                  </Button>
-                ) : null
-              }
             />
           ))}
-          {project.authority.can_manage
-            ? (related.eligible.data ?? []).map((item) => (
-                <Row
-                  key={`eligible-${item.subject_enrollment}`}
-                  title={item.learner_name}
-                  detail="Eligible late participant"
-                  icon={
-                    <Button
-                      size="sm"
-                      onClick={() => resources.addParticipant.mutate(item.subject_enrollment)}
-                    >
-                      Add
-                    </Button>
-                  }
-                />
-              ))
-            : null}
         </ListState>
       ) : null}
       {activeTab === 'groups' ? (
         <ListState query={related.groups} empty="No groups created.">
-          {project.authority.can_manage ? (
+          {project.authority.can_manage_groups ? (
             <form
               className="mb-4 flex gap-2"
               onSubmit={(event) => {
@@ -521,15 +520,26 @@ export function ProjectDetailPage() {
       </ResponsiveActionSheet>
       <ResponsiveActionSheet
         open={Boolean(workAction)}
-        onOpenChange={(open) => !open && setWorkAction(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            resources.recordEvidenceBatch.reset();
+            resources.createEvaluation.reset();
+            setEvidenceTaskId(null);
+            setWorkAction(null);
+          }
+        }}
         title={workAction === 'evidence' ? 'Record project evidence' : 'Create task evaluation'}
         description="The server validates project scope, responsibility and lifecycle before saving."
         size="lg"
       >
-        {resources.recordEvidence.error || resources.createEvaluation.error ? (
+        {(workAction === 'evidence'
+          ? resources.recordEvidenceBatch.error
+          : resources.createEvaluation.error) ? (
           <AppErrorBanner
             error={resolveAppError(
-              resources.recordEvidence.error ?? resources.createEvaluation.error,
+              workAction === 'evidence'
+                ? resources.recordEvidenceBatch.error
+                : resources.createEvaluation.error,
               {
                 domain: 'projects',
                 action: 'create',
@@ -539,15 +549,20 @@ export function ProjectDetailPage() {
             className="mb-4"
           />
         ) : null}
-        {workAction === 'evidence' ? (
-          <ProjectEvidenceForm
+        {workAction === 'evidence' && evidenceTaskId ? (
+          <ProjectEvidenceRecorder
             project={project}
+            task={tasks.find((task) => task.id === evidenceTaskId)!}
             participants={related.participants.data ?? []}
             groups={related.groups.data ?? []}
-            pending={resources.recordEvidence.isPending}
-            onCancel={() => setWorkAction(null)}
+            pending={resources.recordEvidenceBatch.isPending}
+            onScopeChange={() => resources.recordEvidenceBatch.reset()}
+            onCancel={() => {
+              resources.recordEvidenceBatch.reset();
+              setWorkAction(null);
+            }}
             onSubmit={async (payload) => {
-              await resources.recordEvidence.mutateAsync(payload);
+              await resources.recordEvidenceBatch.mutateAsync(payload);
               setWorkAction(null);
               setTab('evidence');
             }}

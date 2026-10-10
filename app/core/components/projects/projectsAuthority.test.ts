@@ -14,12 +14,15 @@ function authority(overrides: Partial<ProjectAuthority> = {}): ProjectAuthority 
     can_start: false,
     can_complete: false,
     can_administer: false,
+    can_manage_groups: false,
     can_record_evidence: false,
     can_evaluate: false,
     can_finalize: false,
     can_update_checklist: false,
     can_cancel: false,
     can_export: false,
+    can_reconcile_streams: false,
+    can_reopen_for_late_evidence: false,
     allowed_actions: ['view'],
     blocked_reason_codes: {},
     ...overrides,
@@ -103,5 +106,22 @@ describe('Projects authority rendering', () => {
     const api = readFileSync('app/core/api/projects.ts', 'utf8');
     expect(api).toContain("'/project-deployments/'");
     expect(api).not.toMatch(/organization.*projects|allProjects|filterUnauthorized/i);
+  });
+
+  it('keeps participants read-only and removes public mutation endpoints', () => {
+    const detail = readFileSync('app/core/components/projects/ProjectDetailPage.tsx', 'utf8');
+    const api = readFileSync('app/core/api/projects.ts', 'utf8');
+    expect(detail).not.toContain('Manage participants');
+    expect(detail).not.toContain('withdrawParticipant');
+    expect(api).not.toMatch(/eligible-late-participants|participants\/add-late|participants\/withdraw/);
+  });
+
+  it('binds evidence recording to the task workspace', () => {
+    const detail = readFileSync('app/core/components/projects/ProjectDetailPage.tsx', 'utf8');
+    const recorder = readFileSync('app/core/components/projects/ProjectEvidenceRecorder.tsx', 'utf8');
+    expect(detail).toContain('ProjectTaskWorkspace');
+    expect(detail).toContain('setEvidenceTaskId(taskInView.id)');
+    expect(recorder).not.toContain('label="Task"');
+    expect(recorder).toContain('Record<number, Draft>');
   });
 });

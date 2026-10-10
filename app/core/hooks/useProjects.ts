@@ -52,6 +52,19 @@ export function useProjectDeployment(id: number | null) {
   });
 }
 
+export function useProjectGroup(deploymentId: number | null, groupId: number | null) {
+  const { activeOrg } = useAuth();
+  return useQuery({
+    queryKey: projectKeys.related(activeOrg?.id ?? null, deploymentId, `group-${groupId}`),
+    queryFn: async () => {
+      const group = await projectsAPI.getGroup(groupId as number);
+      if (group.deployment !== deploymentId) throw new Error('Project group scope mismatch');
+      return group;
+    },
+    enabled: Boolean(activeOrg && deploymentId && groupId),
+  });
+}
+
 export function useProjectRelated(id: number | null) {
   const { activeOrg } = useAuth();
   const organizationId = activeOrg?.id ?? null;
@@ -86,11 +99,6 @@ export function useProjectRelated(id: number | null) {
     queryFn: () => projectsAPI.checklist(id as number),
     enabled,
   });
-  const eligible = useQuery({
-    queryKey: projectKeys.related(organizationId, id, 'eligible'),
-    queryFn: () => projectsAPI.eligibleLateParticipants(id as number),
-    enabled,
-  });
   const observations = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'class-observations'),
     queryFn: async () => unwrapProjectList(await projectsAPI.classObservations(id as number)),
@@ -103,7 +111,6 @@ export function useProjectRelated(id: number | null) {
     evaluations,
     results,
     checklist,
-    eligible,
     observations,
   };
 }
@@ -185,16 +192,6 @@ export function useProjectResourceMutations(deploymentId: number) {
   const invalidate = useProjectMutationInvalidation();
   const options = { onSettled: () => invalidate() };
   return {
-    addParticipant: useMutation({
-      mutationFn: (subjectEnrollment: number) =>
-        projectsAPI.addLateParticipant(deploymentId, subjectEnrollment),
-      ...options,
-    }),
-    withdrawParticipant: useMutation({
-      mutationFn: (participant: number) =>
-        projectsAPI.withdrawParticipant(deploymentId, participant),
-      ...options,
-    }),
     createGroup: useMutation({
       mutationFn: (name: string) => projectsAPI.createGroup(deploymentId, name),
       ...options,
@@ -207,6 +204,11 @@ export function useProjectResourceMutations(deploymentId: number) {
     recordEvidence: useMutation({
       mutationFn: (payload: Record<string, unknown>) =>
         projectsAPI.recordEvidence({ deployment: deploymentId, ...payload }),
+      ...options,
+    }),
+    recordEvidenceBatch: useMutation({
+      mutationFn: ({ task, items }: { task: number; items: Array<Record<string, unknown>> }) =>
+        projectsAPI.recordEvidenceBatch({ deployment: deploymentId, task, items }),
       ...options,
     }),
     createEvaluation: useMutation({
@@ -240,6 +242,31 @@ export function useProjectResourceMutations(deploymentId: number) {
     finalizeClassObservation: useMutation({
       mutationFn: (observation: number) => projectsAPI.finalizeClassObservation(observation),
       ...options,
+    }),
+  };
+}
+
+export function useMissingProjectStreams(definitionVersion: number | null) {
+  const { activeOrg } = useAuth();
+  return useQuery({
+    queryKey: projectKeys.related(activeOrg?.id ?? null, definitionVersion, 'missing-streams'),
+    queryFn: () => projectsAPI.missingStreams(definitionVersion as number),
+    enabled: Boolean(activeOrg && definitionVersion),
+  });
+}
+
+export function useProjectWorkspaceMutations(definitionVersion: number) {
+  const invalidate = useProjectMutationInvalidation();
+  return {
+    addMissingStreams: useMutation({
+      mutationFn: (targets: Array<{ cohort_subject: number; administering_instructor?: number }>) =>
+        projectsAPI.addMissingStreams(definitionVersion, targets, crypto.randomUUID()),
+      onSettled: () => invalidate(),
+    }),
+    reopenLateEvidence: useMutation({
+      mutationFn: (payload: { deployments: number[]; closes_at: string; reason: string }) =>
+        projectsAPI.reopenLateEvidence(definitionVersion, payload),
+      onSettled: () => invalidate(),
     }),
   };
 }
