@@ -38,6 +38,23 @@ export function ProjectStreamSelectionPage() {
   const mutations = useProjectWorkspaceMutations(definitionVersion);
   const backHref = projectBackHref(searchParams.get('returnTo'));
   const selectionHref = `/projects/definitions/${definitionVersion}`;
+  const previewRows = missing.data ?? [];
+  const actionableRows = previewRows.filter(
+    (row) => row.eligible && !row.already_registered && row.cohort_subject !== null,
+  );
+  const togglePreview = () => {
+    if (!showMissing) {
+      setSelectedMissing(
+        Object.fromEntries(
+          actionableRows.map((row) => [
+            row.cohort_subject as number,
+            row.auto_selected_instructor?.id,
+          ]),
+        ),
+      );
+    }
+    setShowMissing((visible) => !visible);
+  };
 
   if (query.isLoading) return <LoadingSpinner message="Loading authorized streams…" />;
   if (query.error) {
@@ -119,28 +136,40 @@ export function ProjectStreamSelectionPage() {
           onAction={() => void missing.refetch()}
         />
       ) : null}
-      {canReconcile && (missing.data?.length ?? 0) > 0 ? (
+      {canReconcile && previewRows.length > 0 ? (
         <Card className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <p className="font-medium theme-text">
-              {missing.data?.length} streams have not been set up
+              {actionableRows.length} eligible {actionableRows.length === 1 ? 'stream' : 'streams'}{' '}
+              to reconcile
             </p>
-            <Button onClick={() => setShowMissing((value) => !value)}>Add missing streams</Button>
+            <Button onClick={togglePreview}>
+              Preview stream reconciliation
+            </Button>
           </div>
           {showMissing ? (
             <div className="space-y-3">
-              {missing.data?.map((row) => (
+              {previewRows.map((row) => (
                 <label
-                  key={row.cohort_subject}
+                  key={`${row.cohort_id}-${row.cohort_subject ?? 'unregistered'}`}
                   className="grid gap-2 rounded-lg border theme-border p-3 sm:grid-cols-[auto_1fr_14rem]"
                 >
                   <input
                     type="checkbox"
-                    disabled={!row.eligible_instructors.length}
-                    checked={Object.hasOwn(selectedMissing, row.cohort_subject)}
+                    disabled={
+                      row.cohort_subject === null ||
+                      !row.eligible ||
+                      row.already_registered ||
+                      !row.eligible_instructors.length
+                    }
+                    checked={
+                      row.cohort_subject !== null &&
+                      Object.hasOwn(selectedMissing, row.cohort_subject)
+                    }
                     onChange={(event) =>
                       setSelectedMissing((current) => {
                         const next = { ...current };
+                        if (row.cohort_subject === null) return next;
                         if (event.target.checked)
                           next[row.cohort_subject] = row.auto_selected_instructor?.id;
                         else delete next[row.cohort_subject];
@@ -150,16 +179,24 @@ export function ProjectStreamSelectionPage() {
                   />
                   <span>
                     <strong className="theme-text">{row.stream_name}</strong>
+                    <span className="block text-sm theme-muted">
+                      {row.subject_name} · {row.participant_count} participating learners
+                    </span>
                     <span className="block text-sm theme-muted">{row.message}</span>
+                    {row.warnings.map((warning) => (
+                      <span key={warning.code} className="block text-sm text-amber-700">
+                        {warning.message}
+                      </span>
+                    ))}
                   </span>
-                  {row.requires_instructor_selection ? (
+                  {row.eligible && !row.already_registered && row.requires_instructor_selection ? (
                     <Select
                       aria-label={`Teacher for ${row.stream_name}`}
-                      value={selectedMissing[row.cohort_subject] ?? ''}
+                      value={selectedMissing[row.cohort_subject ?? 0] ?? ''}
                       onChange={(event) =>
                         setSelectedMissing((current) => ({
                           ...current,
-                          [row.cohort_subject]: Number(event.target.value),
+                          [row.cohort_subject ?? 0]: Number(event.target.value),
                         }))
                       }
                       options={[
@@ -172,7 +209,9 @@ export function ProjectStreamSelectionPage() {
                     />
                   ) : (
                     <span className="text-sm theme-muted">
-                      {row.auto_selected_instructor?.name ?? 'Needs attention'}
+                      {row.already_registered
+                        ? 'Already registered'
+                        : row.auto_selected_instructor?.name ?? 'Needs attention'}
                     </span>
                   )}
                 </label>
@@ -184,7 +223,7 @@ export function ProjectStreamSelectionPage() {
                     !Object.keys(selectedMissing).length ||
                     Object.entries(selectedMissing).some(
                       ([id, teacher]) =>
-                        missing.data?.find((row) => row.cohort_subject === Number(id))
+                        previewRows.find((row) => row.cohort_subject === Number(id))
                           ?.requires_instructor_selection && !teacher,
                     )
                   }
@@ -204,14 +243,14 @@ export function ProjectStreamSelectionPage() {
                 >
                   {mutations.addMissingStreams.isPending
                     ? 'Adding streams…'
-                    : `Add ${Object.keys(selectedMissing).length} streams`}
+                    : `Reconcile ${Object.keys(selectedMissing).length} streams`}
                 </Button>
               </div>
             </div>
           ) : null}
         </Card>
       ) : null}
-      {canReconcile && !missing.isLoading && !missing.error && (missing.data?.length ?? 0) === 0 ? (
+      {canReconcile && !missing.isLoading && !missing.error && previewRows.length === 0 ? (
         <Card>
           <p className="font-medium theme-text">All eligible streams are set up</p>
           <p className="mt-1 text-sm theme-muted">

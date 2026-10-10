@@ -120,8 +120,10 @@ describe('ProjectStreamSelectionPage', () => {
   it('lets an authorized administrator select and reconcile three missing streams', async () => {
     missingRows = ['Stream B', 'Stream C', 'Stream D'].map((streamName, index) => ({
       cohort_subject: 201 + index,
+      cohort_id: 101 + index,
       stream_name: streamName,
       subject_name: 'Computer Studies',
+      participant_count: 25,
       eligible_instructors: [
         { id: 31, name: 'Assigned Teacher', email: 'teacher@example.test', eligible: true },
       ],
@@ -132,6 +134,11 @@ describe('ProjectStreamSelectionPage', () => {
         eligible: true,
       },
       requires_instructor_selection: false,
+      eligible: true,
+      already_registered: false,
+      deployment_id: null,
+      reason_code: null,
+      warnings: [],
       ready: true,
       message: 'Ready',
     }));
@@ -141,19 +148,70 @@ describe('ProjectStreamSelectionPage', () => {
     });
     const button = (label: string) =>
       renderer!.root.findAllByType('button').find((node) => node.children.join('') === label)!;
-    act(() => button('Add missing streams').props.onClick());
+    act(() => button('Preview stream reconciliation').props.onClick());
     const checkboxes = renderer!.root
       .findAllByType('input')
       .filter((node) => node.props.type === 'checkbox');
     expect(checkboxes).toHaveLength(3);
-    for (const checkbox of checkboxes) {
-      act(() => checkbox.props.onChange({ target: { checked: true } }));
-    }
-    await act(async () => button('Add 3 streams').props.onClick());
+    expect(checkboxes.every((checkbox) => checkbox.props.checked)).toBe(true);
+    expect(JSON.stringify(renderer!.toJSON())).toContain('participating learners');
+    expect(JSON.stringify(renderer!.toJSON())).toContain('Assigned Teacher');
+    await act(async () => button('Reconcile 3 streams').props.onClick());
     expect(addMissingStreams).toHaveBeenCalledWith([
       { cohort_subject: 201, administering_instructor: 31 },
       { cohort_subject: 202, administering_instructor: 31 },
       { cohort_subject: 203, administering_instructor: 31 },
     ]);
+  });
+
+  it('renders already-registered and configuration-error states without making them selectable', () => {
+    missingRows = [
+      {
+        cohort_subject: 301,
+        cohort_id: 201,
+        stream_name: 'White SS',
+        subject_name: 'Computer Studies',
+        participant_count: 25,
+        eligible_instructors: [],
+        auto_selected_instructor: null,
+        requires_instructor_selection: false,
+        eligible: true,
+        already_registered: true,
+        deployment_id: 91,
+        reason_code: null,
+        warnings: [],
+        ready: false,
+        message: 'Already registered',
+      },
+      {
+        cohort_subject: null,
+        cohort_id: 202,
+        stream_name: 'Blue SS',
+        subject_name: 'Computer Studies',
+        participant_count: 0,
+        eligible_instructors: [],
+        auto_selected_instructor: null,
+        requires_instructor_selection: false,
+        eligible: false,
+        already_registered: false,
+        deployment_id: null,
+        reason_code: 'no_matching_cohort_subject',
+        warnings: [],
+        ready: false,
+        message: 'The stream has no active registration for the project subject.',
+      },
+    ];
+    let renderer: ReactTestRenderer;
+    act(() => {
+      renderer = create(<ProjectStreamSelectionPage />);
+    });
+    const preview = renderer!.root
+      .findAllByType('button')
+      .find((node) => node.children.join('') === 'Preview stream reconciliation')!;
+    act(() => preview.props.onClick());
+    const output = JSON.stringify(renderer!.toJSON());
+    expect(output).toContain('Already registered');
+    expect(output).toContain('no active registration');
+    expect(renderer!.root.findAllByProps({ type: 'checkbox' }).every((row) => row.props.disabled)).toBe(true);
   });
 });
