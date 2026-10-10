@@ -16,14 +16,23 @@ export interface ProjectAuthority {
   can_start: boolean;
   can_complete: boolean;
   can_administer: boolean;
+  can_manage_groups: boolean;
   can_record_evidence: boolean;
   can_evaluate: boolean;
   can_finalize: boolean;
   can_update_checklist: boolean;
   can_cancel: boolean;
   can_export: boolean;
+  can_reconcile_streams: boolean;
+  can_reopen_for_late_evidence: boolean;
   allowed_actions: string[];
   blocked_reason_codes: Record<string, string>;
+  evidence_window?: {
+    original_deadline_at: string | null;
+    accepted_under_reopening: boolean;
+    reopening_id: number | null;
+    closes_at: string | null;
+  };
 }
 
 export type ProjectCatalogueScope =
@@ -187,8 +196,16 @@ export interface ProjectSchedule {
 export interface ProjectDeploymentProgress {
   task_count: number;
   completed_task_count: number;
+  expected_participant_task_count: number;
+  evidence_coverage: ProjectCoverage;
+  evaluation_coverage: ProjectCoverage;
   evidence_count: number;
   evaluation_count: number;
+}
+export interface ProjectCoverage {
+  covered: number;
+  expected: number;
+  percentage: number;
 }
 export interface ProjectDeployment {
   id: number;
@@ -225,6 +242,9 @@ export interface ProjectDeployment {
     started_at: string | null;
     submitted_at: string | null;
     finalized_at: string | null;
+    can_record_evidence: boolean;
+    evidence_coverage: ProjectCoverage;
+    evaluation_coverage: ProjectCoverage;
   }>;
   administration?: {
     id: number;
@@ -259,7 +279,33 @@ export interface ProjectWorkspaceSummary {
     status_counts: Partial<Record<ProjectDeploymentStatus, number>>;
     is_uniform: boolean;
   };
+  progress: {
+    completed_stream_task_count: number;
+    expected_stream_task_count: number;
+    percentage: number;
+  };
   deployments: ProjectDeployment[];
+}
+
+export interface ProjectMissingStream {
+  cohort_subject: number;
+  stream_name: string;
+  subject_name: string;
+  eligible_instructors: Array<{
+    id: number;
+    name: string;
+    email: string;
+    eligible: boolean;
+  }>;
+  auto_selected_instructor: {
+    id: number;
+    name: string;
+    email: string;
+    eligible: boolean;
+  } | null;
+  requires_instructor_selection: boolean;
+  ready: boolean;
+  message: string;
 }
 
 export interface ProjectParticipant {
@@ -282,6 +328,7 @@ export interface ProjectGroup {
     id: number;
     participant: number;
     learner: number;
+    learner_name: string;
     role: string;
     participation_status: string;
   }>;
@@ -298,6 +345,11 @@ export interface ProjectEvidence {
   structured_observation: Record<string, unknown>;
   submitted_at: string;
   observed_at: string;
+  is_late_submission: boolean;
+  original_deadline_at: string | null;
+  accepted_under_reopening: boolean;
+  reopening: number | null;
+  attributed_participants: number[];
   content_hash: string;
   status: string;
   locked_at: string | null;

@@ -10,6 +10,7 @@ import type {
   ProjectFilters,
   ProjectGroup,
   ProjectImportJob,
+  ProjectMissingStream,
   ProjectParticipant,
   ProjectWorkspaceSummary,
   ProjectResultSummary,
@@ -30,6 +31,39 @@ export const projectsAPI = {
   getWorkspace: async (definitionVersion: number) =>
     (await apiClient.get<ProjectWorkspaceSummary>(`/project-workspaces/${definitionVersion}/`))
       .data,
+  missingStreams: async (definitionVersion: number) =>
+    (
+      await apiClient.get<ProjectMissingStream[]>(
+        `/project-workspaces/${definitionVersion}/missing-streams/`,
+      )
+    ).data,
+  addMissingStreams: async (
+    definitionVersion: number,
+    targets: Array<{ cohort_subject: number; administering_instructor?: number }>,
+    idempotencyKey: string,
+  ) =>
+    (
+      await apiClient.post<RegisterOfficialProjectResponse>(
+        `/project-workspaces/${definitionVersion}/add-missing-streams/`,
+        { targets },
+        { headers: { 'Idempotency-Key': idempotencyKey } },
+      )
+    ).data,
+  reopenLateEvidence: async (
+    definitionVersion: number,
+    payload: { deployments: number[]; closes_at: string; reason: string },
+  ) =>
+    (
+      await apiClient.post<
+        Array<{
+          id: number;
+          deployment: number;
+          reopened_at: string;
+          closes_at: string;
+          reason: string;
+        }>
+      >(`/project-workspaces/${definitionVersion}/reopen-late-evidence/`, payload)
+    ).data,
   listDeployments: async (params?: ProjectFilters) =>
     (
       await apiClient.get<ProjectListResponse<ProjectDeployment>>('/project-deployments/', {
@@ -49,26 +83,6 @@ export const projectsAPI = {
       .data,
   participants: async (id: number) =>
     (await apiClient.get<ProjectParticipant[]>(`/project-deployments/${id}/participants/`)).data,
-  eligibleLateParticipants: async (id: number) =>
-    (
-      await apiClient.get<
-        Array<{ subject_enrollment: number; learner: number; learner_name: string }>
-      >(`/project-deployments/${id}/eligible-late-participants/`)
-    ).data,
-  addLateParticipant: async (id: number, subjectEnrollment: number) =>
-    (
-      await apiClient.post<ProjectParticipant>(
-        `/project-deployments/${id}/participants/add-late/`,
-        { subject_enrollment: subjectEnrollment },
-      )
-    ).data,
-  withdrawParticipant: async (id: number, participant: number) =>
-    (
-      await apiClient.post<ProjectParticipant>(
-        `/project-deployments/${id}/participants/withdraw/`,
-        { participant },
-      )
-    ).data,
   checklist: async (id: number) =>
     (
       await apiClient.get<ProjectChecklistItem[]>(
@@ -91,6 +105,8 @@ export const projectsAPI = {
         params: { deployment },
       })
     ).data,
+  getGroup: async (id: number) =>
+    (await apiClient.get<ProjectGroup>(`/project-groups/${id}/`)).data,
   createGroup: async (deployment: number, name: string) =>
     (await apiClient.post<ProjectGroup>('/project-groups/', { deployment, name })).data,
   addGroupMember: async (group: number, participant: number, role = '') =>
@@ -103,6 +119,11 @@ export const projectsAPI = {
     ).data,
   recordEvidence: async (payload: Record<string, unknown>) =>
     (await apiClient.post<ProjectEvidence>('/project-evidence/', payload)).data,
+  recordEvidenceBatch: async (payload: {
+    deployment: number;
+    task: number;
+    items: Array<Record<string, unknown>>;
+  }) => (await apiClient.post<ProjectEvidence[]>('/project-evidence/batch/', payload)).data,
   evaluations: async (deployment: number) =>
     (
       await apiClient.get<ProjectListResponse<ProjectTaskEvaluation>>(

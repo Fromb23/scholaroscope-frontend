@@ -193,8 +193,8 @@ export function ProjectsPage() {
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <Metric label="Learners across streams" value={project.total_learner_count} />
               <Metric
-                label="Tasks across streams"
-                value={`${project.deployments.reduce((sum, row) => sum + row.progress.completed_task_count, 0)}/${project.deployments.reduce((sum, row) => sum + row.progress.task_count, 0)}`}
+                label="Overall project progress"
+                value={`${project.progress.completed_stream_task_count}/${project.progress.expected_stream_task_count}`}
               />
               <Metric
                 label="Evidence"
@@ -210,6 +210,10 @@ export function ProjectsPage() {
                   0,
                 )}
               />
+            </div>
+            <div>
+              <div className="flex justify-between text-sm theme-muted"><span>Overall project progress</span><span>{project.progress.percentage}%</span></div>
+              <div className="mt-1 h-2 overflow-hidden rounded bg-gray-200"><div className="h-full bg-blue-600" style={{ width: `${project.progress.percentage}%` }} /></div>
             </div>
             <p className="text-sm theme-muted">
               Lifecycle by stream:{' '}
