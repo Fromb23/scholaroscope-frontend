@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveAppError } from '@/app/core/errors';
 import { projectKeys } from '@/app/core/lib/queryKeys';
 import type { ProjectAuthority } from '@/app/core/types/projects';
-import { canShowProjectEvaluationControls, getProjectLifecycleActions } from './projectAuthority';
+import { getProjectLifecycleActions } from './projectAuthority';
 
 function authority(overrides: Partial<ProjectAuthority> = {}): ProjectAuthority {
   return {
@@ -36,11 +36,6 @@ describe('Projects authority rendering', () => {
       /activeRole|active_role|role\.slug|role_slug|\bADMIN\b|\bINSTRUCTOR\b/,
     );
     expect(source).toContain('project.authority.can_supervise');
-  });
-
-  it('never displays evaluation controls without server can_evaluate', () => {
-    expect(canShowProjectEvaluationControls(authority())).toBe(false);
-    expect(canShowProjectEvaluationControls(authority({ can_evaluate: true }))).toBe(true);
   });
 
   it('keeps a supervisor read-only when mutation flags are absent', () => {
@@ -113,15 +108,36 @@ describe('Projects authority rendering', () => {
     const api = readFileSync('app/core/api/projects.ts', 'utf8');
     expect(detail).not.toContain('Manage participants');
     expect(detail).not.toContain('withdrawParticipant');
-    expect(api).not.toMatch(/eligible-late-participants|participants\/add-late|participants\/withdraw/);
+    expect(api).not.toMatch(
+      /eligible-late-participants|participants\/add-late|participants\/withdraw/,
+    );
   });
 
   it('binds evidence recording to the task workspace', () => {
     const detail = readFileSync('app/core/components/projects/ProjectDetailPage.tsx', 'utf8');
-    const recorder = readFileSync('app/core/components/projects/ProjectEvidenceRecorder.tsx', 'utf8');
+    const recorder = readFileSync(
+      'app/core/components/projects/ProjectEvidenceRecorder.tsx',
+      'utf8',
+    );
     expect(detail).toContain('ProjectTaskWorkspace');
     expect(detail).toContain('setEvidenceTaskId(taskInView.id)');
     expect(recorder).not.toContain('label="Task"');
     expect(recorder).toContain('Record<number, Draft>');
+  });
+
+  it('binds activation and evaluation to the task workspace', () => {
+    const detail = readFileSync('app/core/components/projects/ProjectDetailPage.tsx', 'utf8');
+    const api = readFileSync('app/core/api/projects.ts', 'utf8');
+    const hooks = readFileSync('app/core/hooks/useProjects.ts', 'utf8');
+    const forms = readFileSync('app/core/components/projects/ProjectWorkForms.tsx', 'utf8');
+    expect(api).toContain('activateTask');
+    expect(api).toContain('/activate-task/');
+    expect(hooks).toContain("refetchType: 'active'");
+    expect(detail).not.toContain('Evaluate criteria');
+    expect(detail).toContain('ProjectTaskEvaluationEditor');
+    expect(detail).toContain('onStartTask');
+    expect(detail).toContain("next.set('task', String(taskId))");
+    expect(forms).not.toContain('ProjectEvaluationForm');
+    expect(forms).not.toContain('Select task');
   });
 });

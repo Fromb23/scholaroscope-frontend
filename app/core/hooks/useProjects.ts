@@ -189,9 +189,20 @@ export function useProjectMutationInvalidation() {
 }
 
 export function useProjectResourceMutations(deploymentId: number) {
+  const { activeOrg } = useAuth();
+  const queryClient = useQueryClient();
   const invalidate = useProjectMutationInvalidation();
   const options = { onSettled: () => invalidate() };
   return {
+    activateTask: useMutation({
+      mutationFn: (taskId: number) => projectsAPI.activateTask(deploymentId, taskId),
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: projectKeys.detail(activeOrg?.id ?? null, deploymentId),
+          refetchType: 'active',
+        });
+      },
+    }),
     createGroup: useMutation({
       mutationFn: (name: string) => projectsAPI.createGroup(deploymentId, name),
       ...options,

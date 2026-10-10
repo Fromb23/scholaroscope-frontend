@@ -2,183 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/app/components/ui/Button';
-import { Select } from '@/app/components/ui/Select';
-import type {
-  ProjectDeployment,
-  ProjectGroup,
-  ProjectParticipant,
-  ProjectTaskEvaluation,
-} from '@/app/core/types/projects';
-
-interface FormProps {
-  project: ProjectDeployment;
-  participants: ProjectParticipant[];
-  groups: ProjectGroup[];
-  pending: boolean;
-  onCancel: () => void;
-  onSubmit: (payload: Record<string, unknown>) => Promise<void>;
-}
-
-function taskOptions(project: ProjectDeployment) {
-  return [
-    { value: '', label: 'Select task' },
-    ...(project.definition?.tasks ?? []).map((task) => ({
-      value: task.id,
-      label: `${task.code}. ${task.title}`,
-    })),
-  ];
-}
-
-export function ProjectEvidenceForm({
-  project,
-  participants,
-  groups,
-  pending,
-  onCancel,
-  onSubmit,
-}: FormProps) {
-  const [task, setTask] = useState('');
-  const [participant, setParticipant] = useState('');
-  const [group, setGroup] = useState('');
-  const [evidenceType, setEvidenceType] = useState('TEACHER_OBSERVATION');
-  const [observation, setObservation] = useState('');
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    return void onSubmit({
-      task: Number(task),
-      participant: participant ? Number(participant) : undefined,
-      group: group ? Number(group) : undefined,
-      evidence_type: evidenceType,
-      observed_at: new Date().toISOString(),
-      structured_observation: { note: observation },
-    }).catch(() => undefined);
-  };
-  return (
-    <form className="space-y-4" onSubmit={submit}>
-      <Select
-        label="Task"
-        required
-        value={task}
-        onChange={(event) => setTask(event.target.value)}
-        options={taskOptions(project)}
-      />
-      <Select
-        label="Participant"
-        value={participant}
-        onChange={(event) => {
-          setParticipant(event.target.value);
-          if (event.target.value) setGroup('');
-        }}
-        options={[
-          { value: '', label: 'No individual participant' },
-          ...participants.map((item) => ({ value: item.id, label: item.learner_name })),
-        ]}
-      />
-      <Select
-        label="Group"
-        value={group}
-        onChange={(event) => {
-          setGroup(event.target.value);
-          if (event.target.value) setParticipant('');
-        }}
-        options={[
-          { value: '', label: 'No group' },
-          ...groups.map((item) => ({ value: item.id, label: item.name })),
-        ]}
-      />
-      <Select
-        label="Evidence type"
-        required
-        value={evidenceType}
-        onChange={(event) => setEvidenceType(event.target.value)}
-        options={[
-          'TEACHER_OBSERVATION',
-          'INDIVIDUAL_CONTRIBUTION',
-          'LIVE_DEMONSTRATION',
-          'DOCUMENT',
-          'OTHER_FILE',
-        ].map((value) => ({ value, label: value.replaceAll('_', ' ') }))}
-      />
-      <label className="block text-sm font-medium theme-text">
-        Observation
-        <textarea
-          className="theme-input mt-1 min-h-28 w-full rounded-lg px-4 py-2"
-          required
-          value={observation}
-          onChange={(event) => setObservation(event.target.value)}
-        />
-      </label>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={pending || !task || !observation.trim()}>
-          {pending ? 'Recording…' : 'Record evidence'}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-export function ProjectEvaluationForm({
-  project,
-  participants,
-  pending,
-  onCancel,
-  onSubmit,
-}: FormProps) {
-  const [task, setTask] = useState('');
-  const [participant, setParticipant] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    return void onSubmit({
-      task: Number(task),
-      participant: Number(participant),
-      observed_at: new Date().toISOString(),
-      teacher_feedback: feedback,
-    }).catch(() => undefined);
-  };
-  return (
-    <form className="space-y-4" onSubmit={submit}>
-      <Select
-        label="Task"
-        required
-        value={task}
-        onChange={(event) => setTask(event.target.value)}
-        options={taskOptions(project)}
-      />
-      <Select
-        label="Participant"
-        required
-        value={participant}
-        onChange={(event) => setParticipant(event.target.value)}
-        options={[
-          { value: '', label: 'Select participant' },
-          ...participants
-            .filter((item) => item.status === 'ACTIVE')
-            .map((item) => ({ value: item.id, label: item.learner_name })),
-        ]}
-      />
-      <label className="block text-sm font-medium theme-text">
-        Learner feedback
-        <textarea
-          className="theme-input mt-1 min-h-28 w-full rounded-lg px-4 py-2"
-          value={feedback}
-          onChange={(event) => setFeedback(event.target.value)}
-        />
-      </label>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={pending || !task || !participant}>
-          {pending ? 'Creating…' : 'Create evaluation'}
-        </Button>
-      </div>
-    </form>
-  );
-}
+import type { ProjectDeployment, ProjectTaskEvaluation } from '@/app/core/types/projects';
 
 export function ProjectCriteriaForm({
   project,
@@ -191,7 +15,9 @@ export function ProjectCriteriaForm({
   evaluation: ProjectTaskEvaluation;
   pending: boolean;
   onCancel: () => void;
-  onSubmit: (scores: Array<{ criterion: number; awarded_marks: string; feedback?: string }>) => Promise<void>;
+  onSubmit: (
+    scores: Array<{ criterion: number; awarded_marks: string; feedback?: string }>,
+  ) => Promise<void>;
 }) {
   const task = project.definition?.tasks.find((item) => item.id === evaluation.task);
   const [scores, setScores] = useState<Record<number, string>>(() =>
@@ -200,9 +26,7 @@ export function ProjectCriteriaForm({
     ),
   );
   const [feedback, setFeedback] = useState<Record<number, string>>(() =>
-    Object.fromEntries(
-      evaluation.criterion_scores.map((item) => [item.criterion, item.feedback]),
-    ),
+    Object.fromEntries(evaluation.criterion_scores.map((item) => [item.criterion, item.feedback])),
   );
   const criteria = task?.criteria ?? [];
   const submit = (event: FormEvent) => {

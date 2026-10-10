@@ -21,16 +21,10 @@ import {
   useProjectRelated,
   useProjectResourceMutations,
 } from '@/app/core/hooks/useProjects';
-import {
-  canShowProjectEvaluationControls,
-  getProjectLifecycleActions,
-  type ProjectLifecycleAction,
-} from './projectAuthority';
-import {
-  ProjectCriteriaForm,
-  ProjectEvaluationForm,
-} from './ProjectWorkForms';
+import { getProjectLifecycleActions, type ProjectLifecycleAction } from './projectAuthority';
+import { ProjectCriteriaForm } from './ProjectWorkForms';
 import { ProjectEvidenceRecorder } from './ProjectEvidenceRecorder';
+import { ProjectTaskEvaluationEditor } from './ProjectTaskEvaluationEditor';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
 
 const tabs = [
@@ -67,6 +61,7 @@ export function ProjectDetailPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [workAction, setWorkAction] = useState<'evidence' | 'evaluation' | null>(null);
   const [evidenceTaskId, setEvidenceTaskId] = useState<number | null>(null);
+  const [evaluationTaskId, setEvaluationTaskId] = useState<number | null>(null);
   const [groupName, setGroupName] = useState('');
   const [scoringEvaluationId, setScoringEvaluationId] = useState<number | null>(null);
   const [observationTask, setObservationTask] = useState(searchParams.get('task') ?? '');
@@ -156,11 +151,6 @@ export function ProjectDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canShowProjectEvaluationControls(project.authority) ? (
-            <Button variant="secondary" size="sm" onClick={() => setWorkAction('evaluation')}>
-              Evaluate criteria
-            </Button>
-          ) : null}
           {lifecycleActions.map((action) => (
             <Button
               key={action}
@@ -204,7 +194,9 @@ export function ProjectDetailPage() {
             </Card>
             <Card>
               <p className="text-sm theme-subtle">Maximum marks</p>
-              <p className="text-2xl font-bold theme-text">{project.definition?.maximum_marks ?? '—'}</p>
+              <p className="text-2xl font-bold theme-text">
+                {project.definition?.maximum_marks ?? '—'}
+              </p>
             </Card>
             <Card>
               <p className="text-sm theme-subtle">Project progress</p>
@@ -217,10 +209,12 @@ export function ProjectDetailPage() {
             <div>
               <p className="font-semibold theme-text">Official project identity</p>
               <p className="text-sm theme-muted">
-                {project.definition?.authority_key} · {project.definition?.curriculum_key} · Version {project.definition?.version}
+                {project.definition?.authority_key} · {project.definition?.curriculum_key} · Version{' '}
+                {project.definition?.version}
               </p>
               <p className="text-sm theme-muted">
-                Target: {project.cohort.name} — {project.subject.name} · Lead instructor: {project.administering_instructor_name}
+                Target: {project.cohort.name} — {project.subject.name} · Lead instructor:{' '}
+                {project.administering_instructor_name}
               </p>
             </div>
             <Badge>{project.definition?.status ?? project.status} definition</Badge>
@@ -231,67 +225,42 @@ export function ProjectDetailPage() {
       {activeTab === 'tasks' ? (
         <div className="space-y-4">
           {taskInView ? (
-            <ProjectTaskWorkspace
-              project={project}
-              task={taskInView}
-              taskIndex={selectedTaskIndex}
-              onPrevious={() => openTask(tasks[selectedTaskIndex - 1].id)}
-              onNext={() => openTask(tasks[selectedTaskIndex + 1].id)}
-              onRecordEvidence={() => {
-                resources.recordEvidenceBatch.reset();
-                setEvidenceTaskId(taskInView.id);
-                setWorkAction('evidence');
-              }}
-            />
-          ) : (
-            <Card><p className="theme-muted">No tasks are available for this project.</p></Card>
-          )}
-          {false && project!.definition?.tasks.map((task) => (
-            <Card key={task.id}>
-              <div className="flex justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold theme-text">
-                    {task.code}. {task.title}
-                  </h2>
-                  <p className="mt-2 whitespace-pre-wrap text-sm theme-muted">
-                    {task.instructions}
-                  </p>
-                </div>
-                <Badge>{task.maximum_marks} marks</Badge>
-              </div>
-              <div className="mt-4 space-y-2">
-                {task.steps.map((step) => (
-                  <div key={step.id} className="rounded-lg border theme-border p-3">
-                    <p className="font-medium theme-text">
-                      {step.number} {step.title}
-                    </p>
-                    <p className="text-sm theme-muted">{step.instructions}</p>
-                  </div>
-                ))}
-              </div>
-              {task.curriculum_mappings.length ? (
-                <p className="mt-4 text-sm theme-muted">
-                  Outcome coverage: {task.curriculum_mappings.map((mapping) => {
-                    const snapshot = mapping.reference_snapshot as { code?: string } | undefined;
-                    return snapshot?.code ?? String(mapping.reference_id ?? 'Mapped outcome');
-                  }).join(', ')}
-                </p>
+            <>
+              {resources.activateTask.error ? (
+                <AppErrorBanner
+                  error={resolveAppError(resources.activateTask.error, {
+                    domain: 'projects',
+                    action: 'update',
+                    entityLabel: 'task',
+                  })}
+                />
               ) : null}
-              <div className="mt-4 grid gap-2 md:grid-cols-2">
-                {task.criteria.map((criterion) => (
-                  <div key={criterion.id} className="rounded-lg theme-surface-elevated p-3 text-sm">
-                    <strong>{criterion.code}</strong> · {criterion.description} (
-                    {criterion.maximum_marks})
-                    {criterion.curriculum_mappings.length ? (
-                      <p className="mt-1 text-xs theme-muted">
-                        Outcome: {criterion.curriculum_mappings.map((mapping) => mapping.reference_snapshot.code ?? mapping.reference_id).join(', ')}
-                      </p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
+              <ProjectTaskWorkspace
+                project={project}
+                task={taskInView}
+                taskIndex={selectedTaskIndex}
+                onPrevious={() => openTask(tasks[selectedTaskIndex - 1].id)}
+                onNext={() => openTask(tasks[selectedTaskIndex + 1].id)}
+                activating={resources.activateTask.isPending}
+                onStartTask={() => void resources.activateTask.mutateAsync(taskInView.id)}
+                onRecordEvidence={() => {
+                  resources.recordEvidenceBatch.reset();
+                  setEvidenceTaskId(taskInView.id);
+                  setWorkAction('evidence');
+                }}
+                onEvaluate={() => {
+                  resources.createEvaluation.reset();
+                  resources.recordCriterionScore.reset();
+                  setEvaluationTaskId(taskInView.id);
+                  setWorkAction('evaluation');
+                }}
+              />
+            </>
+          ) : (
+            <Card>
+              <p className="theme-muted">No tasks are available for this project.</p>
             </Card>
-          ))}
+          )}
         </div>
       ) : null}
       {activeTab === 'participants' ? (
@@ -352,38 +321,65 @@ export function ProjectDetailPage() {
               className="mb-4 space-y-3 rounded-lg border theme-border p-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                void resources.createClassObservation.mutateAsync({
-                  task: observationTask ? Number(observationTask) : undefined,
-                  comment: observationComment,
-                  observed_at: new Date().toISOString(),
-                }).then(() => setObservationComment(''));
+                void resources.createClassObservation
+                  .mutateAsync({
+                    task: observationTask ? Number(observationTask) : undefined,
+                    comment: observationComment,
+                    observed_at: new Date().toISOString(),
+                  })
+                  .then(() => setObservationComment(''));
               }}
             >
               <h2 className="font-semibold theme-text">Class observation</h2>
-              <p className="text-sm theme-muted">Project or task context only. It is not copied into individual learner evidence.</p>
+              <p className="text-sm theme-muted">
+                Project or task context only. It is not copied into individual learner evidence.
+              </p>
               <Select
                 label="Project or task"
                 value={observationTask}
                 onChange={(event) => setObservationTask(event.target.value)}
                 options={[
                   { value: '', label: 'Whole project' },
-                  ...(project.definition?.tasks ?? []).map((task) => ({ value: task.id, label: `${task.code}. ${task.title}` })),
+                  ...(project.definition?.tasks ?? []).map((task) => ({
+                    value: task.id,
+                    label: `${task.code}. ${task.title}`,
+                  })),
                 ]}
               />
-              <label className="block text-sm font-medium theme-text">Class observation
-                <textarea className="theme-input mt-1 min-h-24 w-full rounded-lg px-3 py-2" required value={observationComment} onChange={(event) => setObservationComment(event.target.value)} />
+              <label className="block text-sm font-medium theme-text">
+                Class observation
+                <textarea
+                  className="theme-input mt-1 min-h-24 w-full rounded-lg px-3 py-2"
+                  required
+                  value={observationComment}
+                  onChange={(event) => setObservationComment(event.target.value)}
+                />
               </label>
-              <Button type="submit" disabled={!observationComment.trim() || resources.createClassObservation.isPending}>Record observation</Button>
+              <Button
+                type="submit"
+                disabled={!observationComment.trim() || resources.createClassObservation.isPending}
+              >
+                Record observation
+              </Button>
             </form>
           ) : null}
           {(related.observations.data ?? []).map((item) => (
             <Row
               key={item.id}
-              title={item.task ? `Task ${item.task} class observation` : 'Project class observation'}
+              title={
+                item.task ? `Task ${item.task} class observation` : 'Project class observation'
+              }
               detail={`${item.comment} · ${item.author_name} · ${new Date(item.observed_at).toLocaleString()} · ${item.status}`}
-              icon={project.authority.can_administer && item.status === 'DRAFT' ? (
-                <Button size="sm" onClick={() => resources.finalizeClassObservation.mutate(item.id)}>Finalize</Button>
-              ) : null}
+              icon={
+                project.authority.can_administer && item.status === 'DRAFT' ? (
+                  <Button
+                    size="sm"
+                    onClick={() => resources.finalizeClassObservation.mutate(item.id)}
+                  >
+                    Finalize
+                  </Button>
+                ) : null
+              }
             />
           ))}
         </ListState>
@@ -393,23 +389,27 @@ export function ProjectDetailPage() {
           {(related.evaluations.data ?? []).map((item) => (
             <div
               key={item.id}
-              className={selectedTask === item.task && selectedParticipant === item.participant ? 'rounded-lg px-2 ring-2 ring-blue-500' : ''}
-            >
-            <Row
-              title={`Participant ${item.participant} · Task ${item.task}`}
-              detail={`${item.status} · ${item.derived_score} · Learner feedback: ${item.teacher_feedback || 'None'} · Projection: ${item.evidence_projection_status}${item.evidence_projection_warning ? ` (${item.evidence_projection_warning})` : ''}`}
-              icon={
-                project.authority.can_evaluate && item.status !== 'FINALIZED' ? (
-                  <Button size="sm" onClick={() => setScoringEvaluationId(item.id)}>
-                    Score criteria
-                  </Button>
-                ) : project.authority.can_finalize && item.status !== 'FINALIZED' ? (
-                  <Button size="sm" onClick={() => resources.finalizeEvaluation.mutate(item.id)}>
-                    Finalize
-                  </Button>
-                ) : null
+              className={
+                selectedTask === item.task && selectedParticipant === item.participant
+                  ? 'rounded-lg px-2 ring-2 ring-blue-500'
+                  : ''
               }
-            />
+            >
+              <Row
+                title={`Participant ${item.participant} · Task ${item.task}`}
+                detail={`${item.status} · ${item.derived_score} · Learner feedback: ${item.teacher_feedback || 'None'} · Projection: ${item.evidence_projection_status}${item.evidence_projection_warning ? ` (${item.evidence_projection_warning})` : ''}`}
+                icon={
+                  project.authority.can_evaluate && item.status !== 'FINALIZED' ? (
+                    <Button size="sm" onClick={() => setScoringEvaluationId(item.id)}>
+                      Score criteria
+                    </Button>
+                  ) : project.authority.can_finalize && item.status !== 'FINALIZED' ? (
+                    <Button size="sm" onClick={() => resources.finalizeEvaluation.mutate(item.id)}>
+                      Finalize
+                    </Button>
+                  ) : null
+                }
+              />
             </div>
           ))}
         </ListState>
@@ -524,7 +524,9 @@ export function ProjectDetailPage() {
           if (!open) {
             resources.recordEvidenceBatch.reset();
             resources.createEvaluation.reset();
+            resources.recordCriterionScore.reset();
             setEvidenceTaskId(null);
+            setEvaluationTaskId(null);
             setWorkAction(null);
           }
         }}
@@ -532,14 +534,16 @@ export function ProjectDetailPage() {
         description="The server validates project scope, responsibility and lifecycle before saving."
         size="lg"
       >
-        {(workAction === 'evidence'
-          ? resources.recordEvidenceBatch.error
-          : resources.createEvaluation.error) ? (
+        {(
+          workAction === 'evidence'
+            ? resources.recordEvidenceBatch.error
+            : (resources.createEvaluation.error ?? resources.recordCriterionScore.error)
+        ) ? (
           <AppErrorBanner
             error={resolveAppError(
               workAction === 'evidence'
                 ? resources.recordEvidenceBatch.error
-                : resources.createEvaluation.error,
+                : (resources.createEvaluation.error ?? resources.recordCriterionScore.error),
               {
                 domain: 'projects',
                 action: 'create',
@@ -568,15 +572,30 @@ export function ProjectDetailPage() {
             }}
           />
         ) : null}
-        {workAction === 'evaluation' ? (
-          <ProjectEvaluationForm
-            project={project}
+        {workAction === 'evaluation' && evaluationTaskId ? (
+          <ProjectTaskEvaluationEditor
+            deploymentId={project.id}
+            task={tasks.find((task) => task.id === evaluationTaskId)!}
             participants={related.participants.data ?? []}
             groups={related.groups.data ?? []}
-            pending={resources.createEvaluation.isPending}
+            pending={
+              resources.createEvaluation.isPending || resources.recordCriterionScore.isPending
+            }
             onCancel={() => setWorkAction(null)}
-            onSubmit={async (payload) => {
-              await resources.createEvaluation.mutateAsync(payload);
+            onSubmit={async (payloads) => {
+              for (const payload of payloads) {
+                const { criterion_scores: scores, ...evaluationPayload } = payload;
+                const evaluation = await resources.createEvaluation.mutateAsync(evaluationPayload);
+                for (const score of scores as Array<{
+                  criterion: number;
+                  awarded_marks: string;
+                }>) {
+                  await resources.recordCriterionScore.mutateAsync({
+                    evaluation: evaluation.id,
+                    ...score,
+                  });
+                }
+              }
               setWorkAction(null);
               setTab('evaluations');
             }}

@@ -1,4 +1,4 @@
-import type { ProjectAuthority, ProjectDeployment } from '@/app/core/types/projects';
+import type { ProjectDeployment } from '@/app/core/types/projects';
 
 export type ProjectLifecycleAction = 'publish' | 'start' | 'complete' | 'finalize' | 'cancel';
 
@@ -12,8 +12,4 @@ export function getProjectLifecycleActions(
   if (project.authority.can_finalize) actions.push('finalize');
   if (project.authority.can_cancel) actions.push('cancel');
   return actions;
-}
-
-export function canShowProjectEvaluationControls(authority: ProjectAuthority): boolean {
-  return authority.can_evaluate;
 }
