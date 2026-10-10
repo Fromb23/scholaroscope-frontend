@@ -242,6 +242,13 @@ export interface ProjectDeployment {
     started_at: string | null;
     submitted_at: string | null;
     finalized_at: string | null;
+    authority: {
+      can_activate: boolean;
+      can_record_evidence: boolean;
+      can_evaluate: boolean;
+      blocked_reason_codes: Record<string, string>;
+    };
+    blocked_reason_codes: Record<string, string>;
     can_record_evidence: boolean;
     evidence_coverage: ProjectCoverage;
     evaluation_coverage: ProjectCoverage;
@@ -283,6 +290,10 @@ export interface ProjectWorkspaceSummary {
     completed_stream_task_count: number;
     expected_stream_task_count: number;
     percentage: number;
+  };
+  authority: {
+    can_reconcile_streams: boolean;
+    can_reopen_late_evidence: boolean;
   };
   deployments: ProjectDeployment[];
 }

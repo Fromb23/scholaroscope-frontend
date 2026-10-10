@@ -72,6 +72,13 @@ export const projectsAPI = {
     ).data,
   getDeployment: async (id: number) =>
     (await apiClient.get<ProjectDeployment>(`/project-deployments/${id}/`)).data,
+  activateTask: async (deploymentId: number, taskId: number) =>
+    (
+      await apiClient.post<{ id: number; task: number; status: string }>(
+        `/project-deployments/${deploymentId}/activate-task/`,
+        { task: taskId },
+      )
+    ).data,
   createDeployment: async (payload: CreateProjectDeploymentPayload) =>
     (await apiClient.post<ProjectDeployment>('/project-deployments/', payload)).data,
   deploymentAction: async (

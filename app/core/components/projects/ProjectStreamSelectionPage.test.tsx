@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectDeployment, ProjectWorkspaceSummary } from '@/app/core/types/projects';
 import { ProjectStreamSelectionPage } from './ProjectStreamSelectionPage';
 
@@ -67,6 +67,7 @@ const workspace: ProjectWorkspaceSummary = {
     expected_stream_task_count: 12,
     percentage: 33.3,
   },
+  authority: { can_reconcile_streams: true, can_reopen_late_evidence: true },
   deployments: [
     deployment(11, 'Stream A', 15),
     deployment(12, 'Stream B', 18),
@@ -75,16 +76,29 @@ const workspace: ProjectWorkspaceSummary = {
   ],
 };
 
+let missingRows: Array<Record<string, unknown>> = [];
+const addMissingStreams = vi.fn().mockResolvedValue(undefined);
+
 vi.mock('@/app/core/hooks/useProjects', () => ({
   useProjectWorkspace: () => ({ data: workspace, isLoading: false, error: null, refetch: vi.fn() }),
-  useMissingProjectStreams: () => ({ data: [], isLoading: false, error: null }),
+  useMissingProjectStreams: () => ({
+    data: missingRows,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
   useProjectWorkspaceMutations: () => ({
-    addMissingStreams: { isPending: false, mutateAsync: vi.fn() },
+    addMissingStreams: { isPending: false, error: null, mutateAsync: addMissingStreams },
     reopenLateEvidence: { isPending: false, mutateAsync: vi.fn() },
   }),
 }));
 
 describe('ProjectStreamSelectionPage', () => {
+  beforeEach(() => {
+    missingRows = [];
+    addMissingStreams.mockClear();
+  });
+
   it('renders each authorized deployment as an independent stream workspace link', () => {
     let renderer: ReactTestRenderer;
     act(() => {
@@ -100,5 +114,46 @@ describe('ProjectStreamSelectionPage', () => {
     const output = JSON.stringify(renderer!.toJSON());
     expect(output).toContain('learners across streams');
     expect(output).toContain('"69"');
+    expect(output).toContain('All eligible streams are set up');
+  });
+
+  it('lets an authorized administrator select and reconcile three missing streams', async () => {
+    missingRows = ['Stream B', 'Stream C', 'Stream D'].map((streamName, index) => ({
+      cohort_subject: 201 + index,
+      stream_name: streamName,
+      subject_name: 'Computer Studies',
+      eligible_instructors: [
+        { id: 31, name: 'Assigned Teacher', email: 'teacher@example.test', eligible: true },
+      ],
+      auto_selected_instructor: {
+        id: 31,
+        name: 'Assigned Teacher',
+        email: 'teacher@example.test',
+        eligible: true,
+      },
+      requires_instructor_selection: false,
+      ready: true,
+      message: 'Ready',
+    }));
+    let renderer: ReactTestRenderer;
+    act(() => {
+      renderer = create(<ProjectStreamSelectionPage />);
+    });
+    const button = (label: string) =>
+      renderer!.root.findAllByType('button').find((node) => node.children.join('') === label)!;
+    act(() => button('Add missing streams').props.onClick());
+    const checkboxes = renderer!.root
+      .findAllByType('input')
+      .filter((node) => node.props.type === 'checkbox');
+    expect(checkboxes).toHaveLength(3);
+    for (const checkbox of checkboxes) {
+      act(() => checkbox.props.onChange({ target: { checked: true } }));
+    }
+    await act(async () => button('Add 3 streams').props.onClick());
+    expect(addMissingStreams).toHaveBeenCalledWith([
+      { cohort_subject: 201, administering_instructor: 31 },
+      { cohort_subject: 202, administering_instructor: 31 },
+      { cohort_subject: 203, administering_instructor: 31 },
+    ]);
   });
 });
