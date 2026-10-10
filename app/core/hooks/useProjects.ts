@@ -4,10 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import { projectsAPI, unwrapProjectList } from '@/app/core/api/projects';
 import { projectKeys } from '@/app/core/lib/queryKeys';
-import type {
-  ProjectFilters,
-  RegisterOfficialProjectPayload,
-} from '@/app/core/types/projects';
+import type { ProjectFilters, RegisterOfficialProjectPayload } from '@/app/core/types/projects';
 
 function compact(value: Record<string, unknown>) {
   return Object.fromEntries(
@@ -23,6 +20,26 @@ export function useProjectDeployments(filters: ProjectFilters = {}) {
     queryFn: async () => unwrapProjectList(await projectsAPI.listDeployments(normalized)),
     enabled: Boolean(activeOrg),
     staleTime: 30_000,
+  });
+}
+
+export function useProjectWorkspaces(filters: Record<string, unknown> = {}) {
+  const { activeOrg } = useAuth();
+  const normalized = compact(filters);
+  return useQuery({
+    queryKey: projectKeys.workspaces(activeOrg?.id ?? null, normalized),
+    queryFn: async () => unwrapProjectList(await projectsAPI.listWorkspaces(normalized)),
+    enabled: Boolean(activeOrg),
+    staleTime: 30_000,
+  });
+}
+
+export function useProjectWorkspace(definitionVersion: number | null) {
+  const { activeOrg } = useAuth();
+  return useQuery({
+    queryKey: projectKeys.workspace(activeOrg?.id ?? null, definitionVersion),
+    queryFn: () => projectsAPI.getWorkspace(definitionVersion as number),
+    enabled: Boolean(activeOrg && definitionVersion),
   });
 }
 
@@ -79,7 +96,16 @@ export function useProjectRelated(id: number | null) {
     queryFn: async () => unwrapProjectList(await projectsAPI.classObservations(id as number)),
     enabled,
   });
-  return { participants, groups, evidence, evaluations, results, checklist, eligible, observations };
+  return {
+    participants,
+    groups,
+    evidence,
+    evaluations,
+    results,
+    checklist,
+    eligible,
+    observations,
+  };
 }
 
 export function useProjectAction(deploymentId: number) {
@@ -128,10 +154,12 @@ export function useRegisterOfficialProject(definitionVersion: number | null) {
       idempotencyKey: string;
     }) => projectsAPI.registerOfficialProject(definitionVersion as number, payload, idempotencyKey),
     onSuccess: (response) => {
-      queryClient.setQueryData(
-        projectKeys.detail(activeOrg?.id ?? null, response.deployment.id),
-        response.deployment,
-      );
+      response.deployments.forEach((deployment) => {
+        queryClient.setQueryData(
+          projectKeys.detail(activeOrg?.id ?? null, deployment.id),
+          deployment,
+        );
+      });
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: projectKeys.all });

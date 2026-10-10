@@ -36,6 +36,9 @@ export interface EligibleProjectTarget {
   cohort: { id: number; name: string };
   subject: { id: number; name: string };
   academic_year: number;
+  deployment_exists: boolean;
+  deployment_id: number | null;
+  deployment_status: ProjectDeploymentStatus | null;
   can_deploy: boolean;
   deployment_blockers: Array<{ code: string; message: string }>;
   eligible_instructors: Array<{
@@ -60,7 +63,7 @@ export interface ProjectCatalogueAuthority {
   can_verify_official: false;
 }
 
-export type ProjectCatalogueAction = 'REGISTER' | 'DEPLOY' | 'VIEW_DEPLOYMENT';
+export type ProjectCatalogueAction = 'REGISTER' | 'DEPLOY' | 'VIEW_PROJECT' | 'VIEW_DEPLOYMENT';
 
 export interface ProjectOfficialSchedule {
   official_starts_at: string | null;
@@ -69,7 +72,7 @@ export interface ProjectOfficialSchedule {
 }
 
 export interface ProjectDeploymentState {
-  state: 'NOT_DEPLOYED' | 'DEPLOYED';
+  state: 'NOT_DEPLOYED' | 'PARTIALLY_DEPLOYED' | 'FULLY_DEPLOYED';
   deployments: Array<{ id: number; cohort_subject: number; status: ProjectDeploymentStatus }>;
 }
 
@@ -237,6 +240,28 @@ export interface ProjectDeployment {
   authority: ProjectAuthority;
 }
 
+export interface ProjectWorkspaceSummary {
+  definition_version: number;
+  title: string;
+  subject: { id: number | null; name: string; code: string };
+  level_key: string;
+  pathway_key: string | null;
+  assessment_year: number;
+  adoption: {
+    id: number;
+    status: string;
+    decision: string;
+    adopted_at: string | null;
+  } | null;
+  stream_count: number;
+  total_learner_count: number;
+  lifecycle_summary: {
+    status_counts: Partial<Record<ProjectDeploymentStatus, number>>;
+    is_uniform: boolean;
+  };
+  deployments: ProjectDeployment[];
+}
+
 export interface ProjectParticipant {
   id: number;
   deployment: number;
@@ -365,10 +390,12 @@ export interface CreateProjectDeploymentPayload {
   administering_instructor?: number;
 }
 export interface RegisterOfficialProjectPayload {
-  cohort_subject: number;
+  targets: Array<{
+    cohort_subject: number;
+    administering_instructor?: number;
+  }>;
   starts_at: string;
   deadline_at: string;
-  administering_instructor?: number;
   notes?: string;
 }
 export interface RegisterOfficialProjectResponse {
@@ -378,7 +405,8 @@ export interface RegisterOfficialProjectResponse {
     status: string;
     adopted_at: string | null;
   };
-  deployment: ProjectDeployment;
+  deployments: ProjectDeployment[];
+  deployment?: ProjectDeployment;
 }
 export interface ProjectServerError {
   code?: string;

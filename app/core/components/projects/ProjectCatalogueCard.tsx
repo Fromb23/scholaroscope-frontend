@@ -3,11 +3,8 @@ import { Eye, Rocket, School } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import type {
-  ProjectCatalogueAction,
-  ProjectDefinitionVersion,
-} from '@/app/core/types/projects';
-import { buildProjectDetailHref } from './projectNavigation';
+import type { ProjectCatalogueAction, ProjectDefinitionVersion } from '@/app/core/types/projects';
+import { buildProjectDefinitionHref } from './projectNavigation';
 
 export function eligibleTargetLabel(count: number): string {
   return `${count} eligible teaching ${count === 1 ? 'target' : 'targets'}`;
@@ -16,8 +13,15 @@ export function eligibleTargetLabel(count: number): string {
 export function primaryCatalogueAction(
   definition: ProjectDefinitionVersion,
 ): ProjectCatalogueAction | null {
-  return definition.available_actions.find((action) =>
-    action === 'REGISTER' || action === 'DEPLOY' || action === 'VIEW_DEPLOYMENT') ?? null;
+  return (
+    definition.available_actions.find(
+      (action) =>
+        action === 'REGISTER' ||
+        action === 'DEPLOY' ||
+        action === 'VIEW_PROJECT' ||
+        action === 'VIEW_DEPLOYMENT',
+    ) ?? null
+  );
 }
 
 export function ProjectCatalogueCard({
@@ -33,8 +37,6 @@ export function ProjectCatalogueCard({
   onRegister: (definition: ProjectDefinitionVersion) => void;
   onDeploy: (definition: ProjectDefinitionVersion) => void;
 }) {
-  const action = primaryCatalogueAction(definition);
-  const deployment = definition.deployment_state.deployments[0];
   return (
     <Card className="space-y-4">
       <div className="flex items-start justify-between gap-3">
@@ -45,9 +47,7 @@ export function ProjectCatalogueCard({
           </p>
         </div>
         <Badge>
-          {definition.catalogue_scope === 'PLATFORM_OFFICIAL'
-            ? 'Official'
-            : 'Organization project'}
+          {definition.catalogue_scope === 'PLATFORM_OFFICIAL' ? 'Official' : 'Organization project'}
         </Badge>
       </div>
       <p className="text-sm theme-muted">{definition.summary || 'No summary supplied.'}</p>
@@ -74,7 +74,7 @@ export function ProjectCatalogueCard({
           <Eye className="h-4 w-4" aria-hidden="true" />
           View details
         </Button>
-        {action === 'REGISTER' ? (
+        {definition.available_actions.includes('REGISTER') ? (
           <Button
             type="button"
             size="sm"
@@ -85,7 +85,7 @@ export function ProjectCatalogueCard({
             Register project
           </Button>
         ) : null}
-        {action === 'DEPLOY' ? (
+        {definition.available_actions.includes('DEPLOY') ? (
           <Button
             type="button"
             size="sm"
@@ -96,9 +96,14 @@ export function ProjectCatalogueCard({
             Deploy project
           </Button>
         ) : null}
-        {action === 'VIEW_DEPLOYMENT' && deployment ? (
-          <Link href={buildProjectDetailHref(deployment.id, returnTo)}>
-            <Button type="button" size="sm" aria-label={`View deployed project ${definition.title}`}>
+        {definition.available_actions.includes('VIEW_PROJECT') ||
+        definition.available_actions.includes('VIEW_DEPLOYMENT') ? (
+          <Link href={buildProjectDefinitionHref(definition.id, returnTo)}>
+            <Button
+              type="button"
+              size="sm"
+              aria-label={`View deployed project ${definition.title}`}
+            >
               View deployed project
             </Button>
           </Link>

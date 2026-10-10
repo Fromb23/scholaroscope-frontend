@@ -11,6 +11,7 @@ import type {
   ProjectGroup,
   ProjectImportJob,
   ProjectParticipant,
+  ProjectWorkspaceSummary,
   ProjectResultSummary,
   RegisterOfficialProjectPayload,
   RegisterOfficialProjectResponse,
@@ -20,6 +21,15 @@ import type {
 export type ProjectListResponse<T> = T[] | PaginatedResponse<T>;
 
 export const projectsAPI = {
+  listWorkspaces: async (params?: Record<string, unknown>) =>
+    (
+      await apiClient.get<ProjectListResponse<ProjectWorkspaceSummary>>('/project-workspaces/', {
+        params,
+      })
+    ).data,
+  getWorkspace: async (definitionVersion: number) =>
+    (await apiClient.get<ProjectWorkspaceSummary>(`/project-workspaces/${definitionVersion}/`))
+      .data,
   listDeployments: async (params?: ProjectFilters) =>
     (
       await apiClient.get<ProjectListResponse<ProjectDeployment>>('/project-deployments/', {
@@ -136,11 +146,8 @@ export const projectsAPI = {
   }) =>
     (await apiClient.post<ProjectClassObservation>('/project-class-observations/', payload)).data,
   finalizeClassObservation: async (id: number) =>
-    (
-      await apiClient.post<ProjectClassObservation>(
-        `/project-class-observations/${id}/finalize/`,
-      )
-    ).data,
+    (await apiClient.post<ProjectClassObservation>(`/project-class-observations/${id}/finalize/`))
+      .data,
   catalogue: async (params?: Record<string, unknown>) =>
     (
       await apiClient.get<ProjectListResponse<ProjectDefinitionVersion>>('/project-catalogue/', {
