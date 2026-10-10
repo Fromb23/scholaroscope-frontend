@@ -299,9 +299,11 @@ export interface ProjectWorkspaceSummary {
 }
 
 export interface ProjectMissingStream {
-  cohort_subject: number;
+  cohort_subject: number | null;
+  cohort_id: number;
   stream_name: string;
   subject_name: string;
+  participant_count: number;
   eligible_instructors: Array<{
     id: number;
     name: string;
@@ -315,6 +317,11 @@ export interface ProjectMissingStream {
     eligible: boolean;
   } | null;
   requires_instructor_selection: boolean;
+  eligible: boolean;
+  already_registered: boolean;
+  deployment_id: number | null;
+  reason_code: string | null;
+  warnings: Array<{ code: string; message: string }>;
   ready: boolean;
   message: string;
 }

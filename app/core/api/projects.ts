@@ -35,6 +35,7 @@ export const projectsAPI = {
     (
       await apiClient.get<ProjectMissingStream[]>(
         `/project-workspaces/${definitionVersion}/missing-streams/`,
+        { params: { include_all: true } },
       )
     ).data,
   addMissingStreams: async (
@@ -43,7 +44,11 @@ export const projectsAPI = {
     idempotencyKey: string,
   ) =>
     (
-      await apiClient.post<RegisterOfficialProjectResponse>(
+      await apiClient.post<RegisterOfficialProjectResponse & {
+        added: Array<{ cohort_subject: number; deployment: number; reason: string }>;
+        skipped: Array<{ cohort_subject: number; deployment: number; reason: string }>;
+        failed: Array<{ cohort_subject: number | null; reason: string }>;
+      }>(
         `/project-workspaces/${definitionVersion}/add-missing-streams/`,
         { targets },
         { headers: { 'Idempotency-Key': idempotencyKey } },
