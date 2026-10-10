@@ -6,6 +6,15 @@ export function buildProjectDetailHref(deploymentId: number, returnTo: string): 
   return `/projects/${deploymentId}?${params.toString()}`;
 }
 
+export function buildProjectDefinitionHref(
+  definitionVersionId: number,
+  returnTo = '/projects',
+): string {
+  const safeReturnTo = parseAppDestination(returnTo) ?? '/projects';
+  const params = new URLSearchParams({ returnTo: safeReturnTo });
+  return `/projects/definitions/${definitionVersionId}?${params.toString()}`;
+}
+
 export function buildProjectWorkspaceHref(
   deploymentId: number,
   currentSearch: string | URLSearchParams,

@@ -108,6 +108,10 @@ export const assignmentKeys = {
 
 export const projectKeys = {
   all: ['projects'] as const,
+  workspaces: (organizationId: number | null, filters: Record<string, unknown>) =>
+    ['projects', organizationId, 'workspaces', filters] as const,
+  workspace: (organizationId: number | null, definitionVersion: number | null) =>
+    ['projects', organizationId, 'workspace', definitionVersion] as const,
   deployments: (organizationId: number | null, filters: Record<string, unknown>) =>
     ['projects', organizationId, 'deployments', filters] as const,
   detail: (organizationId: number | null, deploymentId: number | null) =>
