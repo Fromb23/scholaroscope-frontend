@@ -46,6 +46,17 @@ describe('AssignmentCreateModal attachment slots', () => {
     expect(modalSource).toContain('canManageReportPolicySetup');
   });
 
+  it('sends official-report intent explicitly and leaves practice work available', () => {
+    const modalSource = source();
+
+    expect(modalSource).toContain('counts_in_official_reports: reportCounting');
+    expect(modalSource).toContain(
+      'if (reportCounting && termId && (policyGuidanceLoading || policyGuidanceError))',
+    );
+    expect(modalSource).toContain('/reports/policies?returnTo=');
+    expect(modalSource).not.toContain("policyGuidanceCode === 'policy_required'");
+  });
+
   it('prevents a known missing-term submission before creating an API payload', () => {
     const modalSource = source();
 

@@ -80,6 +80,12 @@ describe('ProjectEvidenceRecorder', () => {
     );
     act(() => button('Previous learner').props.onClick());
     expect(renderer!.root.findByType('textarea').props.value).toBe('First learner evidence');
+    act(() =>
+      renderer!.root
+        .findAllByType('select')
+        .find((node) => node.props['aria-label'] === 'Evidence submission scope')!
+        .props.onChange({ target: { value: 'all' } }),
+    );
     await act(async () =>
       renderer!.root.findByType('form').props.onSubmit({ preventDefault: vi.fn() }),
     );
@@ -117,7 +123,118 @@ describe('ProjectEvidenceRecorder', () => {
       .findAllByType('button')
       .find((node) => node.children.join('') === 'Group')!;
     act(() => groupButton.props.onClick());
-    expect(renderer!.root.findByType('a').props.href).toBe('/projects/4/groups/22');
+    expect(renderer!.root.findByType('a').props.href).toContain('/projects/4/groups/22?returnTo=');
+    expect(decodeURIComponent(renderer!.root.findByType('a').props.href)).toContain(
+      '/projects/4?tab=tasks&task=7&action=evidence&scope=group&group=22',
+    );
     expect(JSON.stringify(renderer!.toJSON())).not.toContain('Participant');
+  });
+
+  it('submits either the current group or every explicitly prepared group', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const groups = [
+      { id: 21, name: 'Group One', members: [] },
+      { id: 22, name: 'Group Two', members: [] },
+    ] as unknown as ProjectGroup[];
+    let renderer: ReactTestRenderer;
+    act(() => {
+      renderer = create(
+        <ProjectEvidenceRecorder
+          project={project}
+          task={task}
+          participants={participants}
+          groups={groups}
+          pending={false}
+          onCancel={vi.fn()}
+          onScopeChange={vi.fn()}
+          onSubmit={onSubmit}
+        />,
+      );
+    });
+    const button = (label: string) =>
+      renderer!.root.findAllByType('button').find((node) => node.children.join('') === label)!;
+    act(() => button('Group').props.onClick());
+    act(() =>
+      renderer!.root.findByType('textarea').props.onChange({ target: { value: 'First group' } }),
+    );
+    await act(async () =>
+      renderer!.root.findByType('form').props.onSubmit({ preventDefault: vi.fn() }),
+    );
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ items: [expect.objectContaining({ group: 21 })] }),
+    );
+
+    act(() => button('Next group').props.onClick());
+    act(() =>
+      renderer!.root.findByType('textarea').props.onChange({ target: { value: 'Second group' } }),
+    );
+    act(() =>
+      renderer!.root
+        .findAllByType('select')
+        .find((node) => node.props['aria-label'] === 'Evidence submission scope')!
+        .props.onChange({ target: { value: 'all' } }),
+    );
+    await act(async () =>
+      renderer!.root.findByType('form').props.onSubmit({ preventDefault: vi.fn() }),
+    );
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({ group: 21 }),
+          expect.objectContaining({ group: 22 }),
+        ],
+      }),
+    );
+  });
+
+  it('renders item-specific backend batch failures on the matching group', async () => {
+    const onSubmit = vi.fn().mockRejectedValue({
+      response: {
+        data: {
+          error: {
+            code: 'project_evidence_batch_invalid',
+            context: {
+              items: [
+                {
+                  index: 0,
+                  group: 22,
+                  code: 'project_group_empty',
+                  message: 'Add active learners to this group before recording evidence.',
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+    let renderer: ReactTestRenderer;
+    act(() => {
+      renderer = create(
+        <ProjectEvidenceRecorder
+          project={project}
+          task={task}
+          participants={participants}
+          groups={[{ id: 22, name: 'Group One', members: [] } as unknown as ProjectGroup]}
+          pending={false}
+          onCancel={vi.fn()}
+          onScopeChange={vi.fn()}
+          onSubmit={onSubmit}
+        />,
+      );
+    });
+    const groupButton = renderer!.root
+      .findAllByType('button')
+      .find((node) => node.children.join('') === 'Group')!;
+    act(() => groupButton.props.onClick());
+    act(() =>
+      renderer!.root.findByType('textarea').props.onChange({ target: { value: 'Observation' } }),
+    );
+    await act(async () =>
+      renderer!.root.findByType('form').props.onSubmit({ preventDefault: vi.fn() }),
+    );
+    const output = JSON.stringify(renderer!.toJSON());
+    expect(output).toContain('Group One');
+    expect(output).toContain('project_group_empty');
+    expect(output).toContain('Add active learners to this group');
   });
 });

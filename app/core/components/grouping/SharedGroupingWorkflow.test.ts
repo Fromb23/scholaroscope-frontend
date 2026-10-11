@@ -70,13 +70,20 @@ describe('shared Project and Assignment grouping workflow', () => {
   it('turns random preview results into an unsaved editable draft', () => {
     const draft = draftGroupsFromRandomPreview([
       {
+        id: 41,
         client_id: 'preview-1',
         name: 'Team 1',
         notes: '',
         members: [{ id: 9, full_name: 'Nine', admission_number: 'A9' }],
       },
     ]);
-    expect(draft).toEqual([{ clientId: 'preview-1', name: 'Team 1', notes: '', studentIds: [9] }]);
+    expect(draft).toEqual([{ id: 41, clientId: 'preview-1', name: 'Team 1', notes: '', studentIds: [9] }]);
+  });
+
+  it('renders dependency-locked rosters as inspectable and read only', () => {
+    expect(builder).toContain('data.lock.is_locked');
+    expect(builder).toContain('data.lock.lock_reason');
+    expect(builder).toContain('group-derived evaluation(s) depend on this roster');
   });
 
   it('saves atomically, invalidates origin data, and returns to the validated origin', () => {

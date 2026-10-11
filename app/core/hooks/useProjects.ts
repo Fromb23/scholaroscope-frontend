@@ -84,6 +84,12 @@ export function useProjectRelated(id: number | null) {
     queryFn: async () => unwrapProjectList(await projectsAPI.evidence(id as number)),
     enabled,
   });
+  const evidenceTypes = useQuery({
+    queryKey: projectKeys.related(organizationId, id, 'evidence-type-contract'),
+    queryFn: projectsAPI.evidenceTypeContract,
+    enabled,
+    staleTime: 5 * 60_000,
+  });
   const evaluations = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'evaluations'),
     queryFn: async () => unwrapProjectList(await projectsAPI.evaluations(id as number)),
@@ -108,6 +114,7 @@ export function useProjectRelated(id: number | null) {
     participants,
     groups,
     evidence,
+    evidenceTypes,
     evaluations,
     results,
     checklist,

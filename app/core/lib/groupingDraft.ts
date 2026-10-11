@@ -16,6 +16,7 @@ export function moveDraftLearner(
 
 export function draftGroupsFromRandomPreview(
   groups: Array<{
+    id?: number | null;
     client_id: string;
     name: string;
     notes: string;
@@ -23,6 +24,7 @@ export function draftGroupsFromRandomPreview(
   }>,
 ): GroupingDraftGroup[] {
   return groups.map((group) => ({
+    ...(group.id ? { id: group.id } : {}),
     clientId: group.client_id,
     name: group.name,
     notes: group.notes,

@@ -60,9 +60,18 @@ export function ProjectDetailPage() {
   const resources = useProjectResourceMutations(id);
   const [pendingAction, setPendingAction] = useState<ProjectLifecycleAction | null>(null);
   const [cancelReason, setCancelReason] = useState('');
-  const [workAction, setWorkAction] = useState<'evidence' | 'evaluation' | null>(null);
-  const [evidenceTaskId, setEvidenceTaskId] = useState<number | null>(null);
-  const [evaluationTaskId, setEvaluationTaskId] = useState<number | null>(null);
+  const initialWorkAction =
+    searchParams.get('action') === 'evidence' || searchParams.get('action') === 'evaluation'
+      ? (searchParams.get('action') as 'evidence' | 'evaluation')
+      : null;
+  const initialWorkTask = Number(searchParams.get('task')) || null;
+  const [workAction, setWorkAction] = useState<'evidence' | 'evaluation' | null>(initialWorkAction);
+  const [evidenceTaskId, setEvidenceTaskId] = useState<number | null>(
+    initialWorkAction === 'evidence' ? initialWorkTask : null,
+  );
+  const [evaluationTaskId, setEvaluationTaskId] = useState<number | null>(
+    initialWorkAction === 'evaluation' ? initialWorkTask : null,
+  );
   const [scoringEvaluationId, setScoringEvaluationId] = useState<number | null>(null);
   const [observationTask, setObservationTask] = useState(searchParams.get('task') ?? '');
   const [observationComment, setObservationComment] = useState('');
@@ -89,12 +98,32 @@ export function ProjectDetailPage() {
     next.set('task', String(taskId));
     router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
   };
+  const openTaskAction = (taskId: number, action: 'evidence' | 'evaluation') => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('returnTo');
+    next.set('tab', 'tasks');
+    next.set('task', String(taskId));
+    next.set('action', action);
+    router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+  };
   const setTab = (tab: Tab) => {
     if (tab === 'tasks' && taskInView) {
       openTask(taskInView.id);
       return;
     }
-    router.replace(buildProjectWorkspaceHref(id, searchParams, tab), { scroll: false });
+    const next = new URLSearchParams(searchParams.toString());
+    if (tab !== 'tasks') {
+      for (const key of ['action', 'scope', 'group', 'participant']) next.delete(key);
+    }
+    router.replace(buildProjectWorkspaceHref(id, next, tab), { scroll: false });
+  };
+  const closeTaskAction = () => {
+    const next = new URLSearchParams(searchParams.toString());
+    for (const key of ['action', 'scope', 'group', 'participant']) next.delete(key);
+    router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+    setEvidenceTaskId(null);
+    setEvaluationTaskId(null);
+    setWorkAction(null);
   };
   useEffect(() => {
     if (activeTab === 'tasks' && !selectedTask && taskInView) openTask(taskInView.id);
@@ -247,12 +276,14 @@ export function ProjectDetailPage() {
                   resources.recordEvidenceBatch.reset();
                   setEvidenceTaskId(taskInView.id);
                   setWorkAction('evidence');
+                  openTaskAction(taskInView.id, 'evidence');
                 }}
                 onEvaluate={() => {
                   resources.createEvaluation.reset();
                   resources.recordCriterionScore.reset();
                   setEvaluationTaskId(taskInView.id);
                   setWorkAction('evaluation');
+                  openTaskAction(taskInView.id, 'evaluation');
                 }}
               />
             </>
@@ -497,9 +528,7 @@ export function ProjectDetailPage() {
             resources.recordEvidenceBatch.reset();
             resources.createEvaluation.reset();
             resources.recordCriterionScore.reset();
-            setEvidenceTaskId(null);
-            setEvaluationTaskId(null);
-            setWorkAction(null);
+            closeTaskAction();
           }
         }}
         title={workAction === 'evidence' ? 'Record project evidence' : 'Create task evaluation'}
@@ -531,11 +560,12 @@ export function ProjectDetailPage() {
             task={tasks.find((task) => task.id === evidenceTaskId)!}
             participants={related.participants.data ?? []}
             groups={related.groups.data ?? []}
+            evidenceTypes={related.evidenceTypes.data}
             pending={resources.recordEvidenceBatch.isPending}
             onScopeChange={() => resources.recordEvidenceBatch.reset()}
             onCancel={() => {
               resources.recordEvidenceBatch.reset();
-              setWorkAction(null);
+              closeTaskAction();
             }}
             onSubmit={async (payload) => {
               await resources.recordEvidenceBatch.mutateAsync(payload);
@@ -553,7 +583,7 @@ export function ProjectDetailPage() {
             pending={
               resources.createEvaluation.isPending || resources.recordCriterionScore.isPending
             }
-            onCancel={() => setWorkAction(null)}
+            onCancel={closeTaskAction}
             onSubmit={async (payloads) => {
               for (const payload of payloads) {
                 const { criterion_scores: scores, ...evaluationPayload } = payload;

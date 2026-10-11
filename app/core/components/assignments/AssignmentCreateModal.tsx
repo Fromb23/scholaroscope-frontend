@@ -220,7 +220,7 @@ export function AssignmentCreateModal({
     const policySetupHref = useMemo(() => {
         const query = searchParams.toString();
         const returnTo = query ? `${pathname}?${query}` : pathname;
-        return `/reports/policies/cbc?returnTo=${encodeURIComponent(returnTo)}`;
+        return `/reports/policies?returnTo=${encodeURIComponent(returnTo)}`;
     }, [pathname, searchParams]);
 
     const sortedSubjects = useMemo(() => (
@@ -277,7 +277,8 @@ export function AssignmentCreateModal({
             String(assignment?.curriculum_context?.task_type ?? 'ASSIGNMENT').toUpperCase() as AssignmentTaskType
         );
         setReportCounting(Boolean(
-            assignment?.curriculum_context?.report_counting
+            assignment?.counts_in_official_reports
+            ?? assignment?.curriculum_context?.report_counting
             ?? assignment?.curriculum_context?.counts_for_reports
             ?? false
         ));
@@ -318,7 +319,6 @@ export function AssignmentCreateModal({
     const selectedSubject = useMemo(() => (
         sortedSubjects.find((subject) => String(subject.id) === cohortSubjectId) ?? null
     ), [cohortSubjectId, sortedSubjects]);
-    const isCbcPolicyContext = selectedSubject?.curriculum_type === 'CBE' || selectedSubject?.curriculum_type === 'CBC';
     const taskTypeOptions = useMemo(() => {
         if (!policyGuidance) {
             return BASE_TASK_TYPE_OPTIONS;
@@ -335,7 +335,7 @@ export function AssignmentCreateModal({
     const policyDisabledReason = policyGuidance?.disabled_reason ?? policyGuidance?.blocked_reason ?? policyGuidanceCode ?? null;
     const policyUserMessage = policyGuidance?.user_message ?? policyGuidance?.message ?? null;
     const assignmentPracticeOnly = policyGuidance?.reporting_mode === 'practice_only';
-    const officialAssignmentBlocked = policyDisabledReason === 'assignment_not_counted_by_policy'
+    const officialAssignmentBlocked = policyDisabledReason === 'assignment_report_policy_incompatible'
         || Boolean(policyGuidanceError?.includes('does not count assignments'));
     const termFieldError = formError?.kind === 'validation'
         && !termId
@@ -369,7 +369,7 @@ export function AssignmentCreateModal({
     }, [selectedTaskTypeAllowed]);
 
     useEffect(() => {
-        if (!isOpen || !isCbcPolicyContext || !termId || !cohortSubjectId) {
+        if (!isOpen || !selectedSubject || !termId || !cohortSubjectId) {
             setPolicyGuidance(null);
             setPolicyGuidanceError(null);
             setPolicyGuidanceCode(undefined);
@@ -435,9 +435,9 @@ export function AssignmentCreateModal({
     }, [
         cohortSubjectId,
         canManageReportPolicySetup,
-        isCbcPolicyContext,
         isOpen,
         reportCounting,
+        selectedSubject,
         taskType,
         termId,
     ]);
@@ -530,7 +530,7 @@ export function AssignmentCreateModal({
             return;
         }
 
-        if (isCbcPolicyContext && termId && (policyGuidanceLoading || policyGuidanceError)) {
+        if (reportCounting && termId && (policyGuidanceLoading || policyGuidanceError)) {
             setFormError(makeAssignmentValidationError(
                 policyGuidanceError ?? 'Wait for active policy guidance before saving the assignment.',
             ));
@@ -603,7 +603,11 @@ export function AssignmentCreateModal({
                 const payload: AssignmentUpdatePayload = {
                     ...mutablePayload,
                     ...(assignment.status === 'DRAFT'
-                        ? { cohort_subject: Number(cohortSubjectId) }
+                        ? {
+                            cohort_subject: Number(cohortSubjectId),
+                            term: Number(termId),
+                            counts_in_official_reports: reportCounting,
+                        }
                         : {}),
                 };
                 savedAssignment = await updateMutation.mutateAsync({
@@ -614,6 +618,8 @@ export function AssignmentCreateModal({
                 const payload: AssignmentCreatePayload = {
                     ...mutablePayload,
                     cohort_subject: Number(cohortSubjectId),
+                    term: Number(termId),
+                    counts_in_official_reports: reportCounting,
                     created_from_session: resolvedLinkedSessionId,
                     recipient_mode: deliveryMode === 'INDIVIDUAL' && publishNow
                         ? toAssignmentRecipientMode(audienceChoice)
@@ -642,17 +648,17 @@ export function AssignmentCreateModal({
     const submitDisabledReason = useMemo(() => {
         if (saving) return null;
         if (sortedSubjects.length === 0) return 'Select an assigned subject group before creating an assignment.';
-        if (isCbcPolicyContext && Boolean(termId) && policyGuidanceLoading) {
+        if (reportCounting && Boolean(termId) && policyGuidanceLoading) {
             return 'Loading active policy guidance.';
         }
-        if (isCbcPolicyContext && Boolean(termId) && policyGuidanceError) {
+        if (reportCounting && Boolean(termId) && policyGuidanceError) {
             return policyGuidanceError;
         }
         return null;
     }, [
-        isCbcPolicyContext,
         policyGuidanceError,
         policyGuidanceLoading,
+        reportCounting,
         saving,
         sortedSubjects.length,
         termId,
@@ -788,7 +794,7 @@ export function AssignmentCreateModal({
                     </label>
                 </div>
 
-                {isCbcPolicyContext && termId && cohortSubjectId ? (
+                {selectedSubject && termId && cohortSubjectId ? (
                     <div className={`rounded-lg border px-4 py-3 text-sm ${
                         policyGuidanceError
                             ? 'border-red-200 bg-red-50 text-red-700'
@@ -813,7 +819,7 @@ export function AssignmentCreateModal({
                                         ))}
                                     </ul>
                                 ) : null}
-                                {canManageReportPolicySetup && policyGuidanceCode === 'policy_required' ? (
+                                {canManageReportPolicySetup && policyGuidanceCode?.startsWith('assignment_report_policy_') ? (
                                     <Link href={policySetupHref} className="mt-3 inline-flex">
                                         <Button type="button" variant="secondary" size="sm">
                                             Open policy setup
