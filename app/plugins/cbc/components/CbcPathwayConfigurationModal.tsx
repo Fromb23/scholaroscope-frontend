@@ -38,12 +38,14 @@ export function CbcPathwayConfigurationModal({
     const [value, setValue] = useState<CbcPathwayConfigurationValue>(buildInitialValue(cohort));
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [conflictingSubjects, setConflictingSubjects] = useState<string[]>([]);
 
     useEffect(() => {
         if (!isOpen) return;
         setValue(buildInitialValue(cohort));
         setSaving(false);
         setError(null);
+        setConflictingSubjects([]);
     }, [cohort, isOpen]);
 
     const handleSave = async () => {
@@ -59,6 +61,7 @@ export function CbcPathwayConfigurationModal({
 
         setSaving(true);
         setError(null);
+        setConflictingSubjects([]);
 
         try {
             const profile = await cbcPathwayAPI.configureCohortProfile(cohort.id, {
@@ -69,7 +72,28 @@ export function CbcPathwayConfigurationModal({
             await onConfigured?.(profile);
             onClose();
         } catch (err) {
-            setError(resolveErrorMessage(err as ApiError, 'Failed to configure CBC pathway.'));
+            const apiError = err as ApiError;
+            const data = apiError.response?.data;
+            const structured = data && typeof data === 'object' && !Array.isArray(data) && 'error' in data
+                ? data.error
+                : undefined;
+            const incompatible = structured
+                && typeof structured === 'object'
+                && !Array.isArray(structured)
+                ? structured.context?.incompatible_subjects
+                : undefined;
+            if (Array.isArray(incompatible)) {
+                setConflictingSubjects(
+                    incompatible
+                        .map((item) => (
+                            item && typeof item === 'object' && 'subject_name' in item
+                                ? String(item.subject_name)
+                                : ''
+                        ))
+                        .filter(Boolean),
+                );
+            }
+            setError(resolveErrorMessage(apiError, 'Failed to configure CBC pathway.'));
         } finally {
             setSaving(false);
         }
@@ -99,6 +123,18 @@ export function CbcPathwayConfigurationModal({
                         message={error}
                         onDismiss={() => setError(null)}
                     />
+                ) : null}
+
+                {conflictingSubjects.length > 0 ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        <p className="font-semibold">Resolve these cohort subjects before changing the pathway:</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-5">
+                            {conflictingSubjects.map((subjectName) => (
+                                <li key={subjectName}>{subjectName}</li>
+                            ))}
+                        </ul>
+                        <p className="mt-2">No subjects were removed and the existing pathway remains unchanged.</p>
+                    </div>
                 ) : null}
 
                 <CbcPathwayConfigurationFields

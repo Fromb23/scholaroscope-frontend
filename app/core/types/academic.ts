@@ -680,6 +680,15 @@ export interface Cohort {
   setup_incomplete_reason?: string | null;
   valid_class_subject_count?: number;
   invalid_class_subject_count?: number;
+  curriculum_setup?: {
+    status: 'DRAFT' | 'CONFIGURED' | 'ACTIVE' | 'NOT_APPLICABLE';
+    configured: boolean;
+    locked: boolean;
+    active_learner_count: number;
+    blocking_reasons: Array<{ code: string; message: string; [key: string]: unknown }>;
+  };
+  configuration_status?: 'DRAFT' | 'CONFIGURED' | 'ACTIVE' | 'NOT_APPLICABLE';
+  active_learner_count?: number;
   created_at: string;
 }
 
