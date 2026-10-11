@@ -1,0 +1,431 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Plus, Save, Shuffle, Trash2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@/app/components/ui/Button';
+import { Card } from '@/app/components/ui/Card';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { Input } from '@/app/components/ui/Input';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { Select } from '@/app/components/ui/Select';
+import { AppErrorBanner } from '@/app/components/ui/errors';
+import { parseAppDestination } from '@/app/core/auth/navigation';
+import { resolveAppError } from '@/app/core/errors';
+import { resolveErrorMessage } from '@/app/core/errors';
+import { useGroupingContext, useGroupingMutations } from '@/app/core/hooks/useGrouping';
+import { draftGroupsFromRandomPreview, moveDraftLearner } from '@/app/core/lib/groupingDraft';
+import type {
+  GroupingContextType,
+  GroupingDraftGroup,
+  GroupingLearner,
+} from '@/app/core/types/grouping';
+
+let nextClientGroup = 1;
+
+function fromServerGroup(group: {
+  id: number;
+  name: string;
+  notes: string;
+  members: GroupingLearner[];
+}): GroupingDraftGroup {
+  return {
+    id: group.id,
+    clientId: `server-${group.id}`,
+    name: group.name,
+    notes: group.notes,
+    studentIds: group.members.map((learner) => learner.id),
+  };
+}
+
+function createDraftGroup(index: number): GroupingDraftGroup {
+  return {
+    clientId: `new-${nextClientGroup++}`,
+    name: `Group ${index + 1}`,
+    notes: '',
+    studentIds: [],
+  };
+}
+
+export function SharedGroupBuilderPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const rawType = searchParams.get('context');
+  const type: GroupingContextType | null =
+    rawType === 'project' || rawType === 'assignment' ? rawType : null;
+  const id = Number(searchParams.get('id'));
+  const valid = Boolean(type && Number.isInteger(id) && id > 0);
+  const fallback = type === 'project' && id > 0 ? `/projects/${id}?tab=groups` : '/assignments';
+  const returnTo = parseAppDestination(searchParams.get('returnTo')) ?? fallback;
+  const query = useGroupingContext(type ?? 'project', id, valid);
+  const mutations = useGroupingMutations(type ?? 'project', id);
+  const [groups, setGroups] = useState<GroupingDraftGroup[]>([]);
+  const [mode, setMode] = useState<'BY_GROUP_COUNT' | 'BY_MEMBERS_PER_GROUP'>('BY_GROUP_COUNT');
+  const [amount, setAmount] = useState('4');
+  const [namePrefix, setNamePrefix] = useState('Group');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setGroups((query.data?.group_set?.groups ?? []).map(fromServerGroup));
+  }, [query.data?.context.id, query.data?.group_set?.groups, query.data?.group_set?.revision]);
+
+  const learnerById = useMemo(
+    () => new Map((query.data?.eligible_learners ?? []).map((learner) => [learner.id, learner])),
+    [query.data?.eligible_learners],
+  );
+  const assignedIds = useMemo(() => new Set(groups.flatMap((group) => group.studentIds)), [groups]);
+  const unassigned = (query.data?.eligible_learners ?? []).filter(
+    (learner) => !assignedIds.has(learner.id),
+  );
+
+  const moveLearner = (studentId: number, targetClientId: string | null) => {
+    setGroups((current) => moveDraftLearner(current, studentId, targetClientId));
+    setError(null);
+  };
+
+  const previewRandom = async () => {
+    setError(null);
+    const numericAmount = Number(amount);
+    if (!Number.isInteger(numericAmount) || numericAmount < 1) {
+      setError('Enter a positive whole number for the group count or size.');
+      return;
+    }
+    try {
+      const preview = await mutations.preview.mutateAsync({
+        mode,
+        name_prefix: namePrefix,
+        ...(mode === 'BY_GROUP_COUNT'
+          ? { group_count: numericAmount }
+          : { members_per_group: numericAmount }),
+      });
+      setGroups(draftGroupsFromRandomPreview(preview.groups));
+    } catch (previewError) {
+      setError(resolveErrorMessage(previewError, 'Random distribution could not be previewed.'));
+    }
+  };
+
+  const save = async () => {
+    setError(null);
+    if (groups.some((group) => !group.name.trim())) {
+      setError('Every group needs a name before saving.');
+      return;
+    }
+    try {
+      await mutations.save.mutateAsync({
+        revision: query.data?.group_set?.revision ?? 0,
+        groups: groups.map((group) => ({
+          ...(group.id ? { id: group.id } : {}),
+          name: group.name.trim(),
+          notes: group.notes.trim(),
+          student_ids: group.studentIds,
+        })),
+      });
+      await mutations.invalidateOrigin();
+      router.push(returnTo);
+      router.refresh();
+    } catch (saveError) {
+      setError(resolveErrorMessage(saveError, 'The complete roster could not be saved.'));
+    }
+  };
+
+  if (!valid) {
+    return (
+      <ErrorBanner
+        message="This group builder link is invalid."
+        onDismiss={() => router.push('/')}
+      />
+    );
+  }
+  if (query.isLoading) return <LoadingSpinner message="Loading eligible learners and roster…" />;
+  if (query.error || !query.data) {
+    return (
+      <AppErrorBanner
+        error={resolveAppError(query.error, {
+          domain: type === 'project' ? 'projects' : 'assignments',
+          action: 'load',
+        })}
+        onAction={() => void query.refetch()}
+      />
+    );
+  }
+  const data = query.data;
+  if (!data.capabilities.can_manage) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" onClick={() => router.push(returnTo)}>
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        <ErrorBanner
+          message="You may inspect this roster, but only an eligible subject instructor can change it."
+          onDismiss={() => router.push(returnTo)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Button variant="ghost" onClick={() => router.push(returnTo)}>
+        <ArrowLeft className="h-4 w-4" />
+        Cancel and return
+      </Button>
+      <div>
+        <h1 className="text-2xl font-bold theme-text">Group builder</h1>
+        <p className="theme-muted">
+          {data.context.title} · {data.context.population_label}
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <p className="text-sm theme-muted">Eligible</p>
+          <p className="text-2xl font-bold theme-text">{data.counts.eligible}</p>
+        </Card>
+        <Card>
+          <p className="text-sm theme-muted">Assigned in draft</p>
+          <p className="text-2xl font-bold theme-text">{assignedIds.size}</p>
+        </Card>
+        <Card>
+          <p className="text-sm theme-muted">Unassigned in draft</p>
+          <p className="text-2xl font-bold theme-text">{unassigned.length}</p>
+        </Card>
+      </div>
+
+      {data.legacy.status === 'FAILED' ? (
+        <Card className="border-[color:var(--color-danger)]">
+          <h2 className="font-semibold theme-text">Legacy reconciliation failed</h2>
+          <p className="text-sm theme-muted">
+            {data.group_set?.reconciliation_error ||
+              'The historical roster needs review before changes can be saved.'}
+          </p>
+        </Card>
+      ) : data.legacy.status === 'NEEDS_RECONCILIATION' ? (
+        <Card className="space-y-3 border-[color:var(--color-warning)]">
+          <div>
+            <h2 className="font-semibold theme-text">Legacy group — needs reconciliation</h2>
+            <p className="text-sm theme-muted">
+              Historical groups and memberships will be linked without deleting their original
+              records.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            disabled={mutations.reconcile.isPending}
+            onClick={() =>
+              void mutations.reconcile.mutateAsync().catch((reconcileError) => {
+                setError(
+                  resolveErrorMessage(reconcileError, 'Legacy groups could not be reconciled.'),
+                );
+              })
+            }
+          >
+            {mutations.reconcile.isPending ? 'Reconciling…' : 'Reconcile legacy groups'}
+          </Button>
+        </Card>
+      ) : null}
+
+      {error ? <ErrorBanner message={error} onDismiss={() => setError(null)} /> : null}
+
+      {data.eligible_learners.length === 0 ? (
+        <Card>
+          <p className="py-8 text-center theme-muted">
+            This cohort has no active eligible learners to group.
+          </p>
+        </Card>
+      ) : (
+        <>
+          <Card className="space-y-4">
+            <h2 className="font-semibold theme-text">Random distribution preview</h2>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Select
+                label="Distribution method"
+                value={mode}
+                onChange={(event) => setMode(event.target.value as typeof mode)}
+                options={[
+                  { value: 'BY_GROUP_COUNT', label: 'Number of groups' },
+                  { value: 'BY_MEMBERS_PER_GROUP', label: 'Learners per group' },
+                ]}
+              />
+              <Input
+                label={mode === 'BY_GROUP_COUNT' ? 'Group count' : 'Group size'}
+                type="number"
+                min="1"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+              />
+              <Input
+                label="Group name prefix"
+                value={namePrefix}
+                onChange={(event) => setNamePrefix(event.target.value)}
+              />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => void previewRandom()}
+              disabled={mutations.preview.isPending}
+            >
+              <Shuffle className="h-4 w-4" />
+              {mutations.preview.isPending ? 'Building preview…' : 'Preview random distribution'}
+            </Button>
+          </Card>
+
+          <div className="grid gap-5 lg:grid-cols-[minmax(15rem,0.7fr)_minmax(0,1.3fr)]">
+            <Card className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h2 className="font-semibold theme-text">Unassigned learners</h2>
+                  <p className="text-sm theme-muted">{unassigned.length} remaining</p>
+                </div>
+              </div>
+              {unassigned.length ? (
+                unassigned.map((learner) => (
+                  <div
+                    key={learner.id}
+                    className="space-y-2 border-b theme-border pb-3 last:border-0"
+                  >
+                    <div>
+                      <p className="text-sm font-medium theme-text">{learner.full_name}</p>
+                      <p className="text-xs theme-muted">{learner.admission_number}</p>
+                    </div>
+                    <Select
+                      aria-label={`Assign ${learner.full_name}`}
+                      value=""
+                      onChange={(event) => moveLearner(learner.id, event.target.value)}
+                      options={[
+                        { value: '', label: 'Choose group' },
+                        ...groups.map((group) => ({ value: group.clientId, label: group.name })),
+                      ]}
+                    />
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm theme-muted">Every eligible learner is assigned.</p>
+              )}
+            </Card>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold theme-text">Draft groups</h2>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setGroups((current) => [...current, createDraftGroup(current.length)])
+                  }
+                >
+                  <Plus className="h-4 w-4" />
+                  Add group
+                </Button>
+              </div>
+              {groups.length === 0 ? (
+                <Card>
+                  <p className="py-8 text-center theme-muted">
+                    Add a group manually or preview a random distribution.
+                  </p>
+                </Card>
+              ) : (
+                groups.map((group) => (
+                  <Card key={group.clientId} className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-2">
+                        <Input
+                          label="Group name"
+                          value={group.name}
+                          onChange={(event) =>
+                            setGroups((current) =>
+                              current.map((item) =>
+                                item.clientId === group.clientId
+                                  ? { ...item, name: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                        <Input
+                          label="Notes"
+                          value={group.notes}
+                          onChange={(event) =>
+                            setGroups((current) =>
+                              current.map((item) =>
+                                item.clientId === group.clientId
+                                  ? { ...item, notes: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Remove ${group.name}`}
+                        onClick={() =>
+                          setGroups((current) =>
+                            current.filter((item) => item.clientId !== group.clientId),
+                          )
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {group.studentIds.length ? (
+                        group.studentIds.map((studentId) => {
+                          const learner = learnerById.get(studentId);
+                          if (!learner) return null;
+                          return (
+                            <div
+                              key={studentId}
+                              className="grid gap-2 border-t theme-border pt-3 sm:grid-cols-[1fr_14rem] sm:items-center"
+                            >
+                              <div>
+                                <p className="text-sm font-medium theme-text">
+                                  {learner.full_name}
+                                </p>
+                                <p className="text-xs theme-muted">{learner.admission_number}</p>
+                              </div>
+                              <Select
+                                aria-label={`Move ${learner.full_name}`}
+                                value={group.clientId}
+                                onChange={(event) =>
+                                  moveLearner(studentId, event.target.value || null)
+                                }
+                                options={[
+                                  { value: '', label: 'Move to unassigned' },
+                                  ...groups.map((candidate) => ({
+                                    value: candidate.clientId,
+                                    label: candidate.name,
+                                  })),
+                                ]}
+                              />
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-sm theme-muted">No learners assigned.</p>
+                      )}
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="sticky bottom-4 flex justify-end gap-3 rounded-xl border theme-border theme-surface-elevated p-3 shadow-lg">
+        <Button variant="secondary" onClick={() => router.push(returnTo)}>
+          Cancel
+        </Button>
+        <Button
+          onClick={() => void save()}
+          disabled={mutations.save.isPending || data.eligible_learners.length === 0}
+        >
+          <Save className="h-4 w-4" />
+          {mutations.save.isPending ? 'Saving roster…' : 'Save complete roster'}
+        </Button>
+      </div>
+    </div>
+  );
+}
