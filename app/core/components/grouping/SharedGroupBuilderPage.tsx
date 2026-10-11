@@ -64,10 +64,14 @@ export function SharedGroupBuilderPage() {
   const [amount, setAmount] = useState('4');
   const [namePrefix, setNamePrefix] = useState('Group');
   const [error, setError] = useState<string | null>(null);
+  const [draftRevision, setDraftRevision] = useState(0);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
+    if (isDirty) return;
     setGroups((query.data?.group_set?.groups ?? []).map(fromServerGroup));
-  }, [query.data?.context.id, query.data?.group_set?.groups, query.data?.group_set?.revision]);
+    setDraftRevision(query.data?.group_set?.revision ?? 0);
+  }, [isDirty, query.data?.context.id, query.data?.group_set?.groups, query.data?.group_set?.revision]);
 
   const learnerById = useMemo(
     () => new Map((query.data?.eligible_learners ?? []).map((learner) => [learner.id, learner])),
@@ -80,6 +84,7 @@ export function SharedGroupBuilderPage() {
 
   const moveLearner = (studentId: number, targetClientId: string | null) => {
     setGroups((current) => moveDraftLearner(current, studentId, targetClientId));
+    setIsDirty(true);
     setError(null);
   };
 
@@ -99,6 +104,8 @@ export function SharedGroupBuilderPage() {
           : { members_per_group: numericAmount }),
       });
       setGroups(draftGroupsFromRandomPreview(preview.groups));
+      setDraftRevision(preview.revision);
+      setIsDirty(true);
     } catch (previewError) {
       setError(resolveErrorMessage(previewError, 'Random distribution could not be previewed.'));
     }
@@ -112,7 +119,7 @@ export function SharedGroupBuilderPage() {
     }
     try {
       await mutations.save.mutateAsync({
-        revision: query.data?.group_set?.revision ?? 0,
+        revision: draftRevision,
         groups: groups.map((group) => ({
           ...(group.id ? { id: group.id } : {}),
           name: group.name.trim(),
@@ -149,17 +156,44 @@ export function SharedGroupBuilderPage() {
     );
   }
   const data = query.data;
-  if (!data.capabilities.can_manage) {
+  if (!data.capabilities.can_manage || data.lock.is_locked) {
     return (
       <div className="space-y-4">
         <Button variant="ghost" onClick={() => router.push(returnTo)}>
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
-        <ErrorBanner
-          message="You may inspect this roster, but only an eligible subject instructor can change it."
-          onDismiss={() => router.push(returnTo)}
-        />
+        <Card className="border-[color:var(--color-warning)]">
+          <h1 className="text-xl font-semibold theme-text">{data.context.title} roster</h1>
+          <p className="mt-1 text-sm theme-muted">
+            {data.lock.is_locked
+              ? data.lock.lock_reason
+              : 'You may inspect this roster, but only an eligible subject instructor can change it.'}
+          </p>
+          {data.lock.is_locked ? (
+            <p className="mt-2 text-xs theme-subtle">
+              {data.lock.evidence_count} evidence record(s) and {data.lock.evaluation_count}{' '}
+              group-derived evaluation(s) depend on this roster.
+            </p>
+          ) : null}
+        </Card>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {(data.group_set?.groups ?? []).map((group) => (
+            <Card key={group.id} className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-semibold theme-text">{group.name}</h2>
+                <span className="text-xs theme-muted">{group.members.length} members</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {group.members.map((learner) => (
+                  <span key={learner.id} className="rounded-full border theme-border px-2 py-1 text-xs theme-text">
+                    {learner.full_name}
+                  </span>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -171,7 +205,12 @@ export function SharedGroupBuilderPage() {
         Cancel and return
       </Button>
       <div>
-        <h1 className="text-2xl font-bold theme-text">Group builder</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-bold theme-text">Group builder</h1>
+          <span className={`rounded-full px-2 py-1 text-xs ${isDirty ? 'bg-amber-100 text-amber-800' : 'theme-surface-muted theme-muted'}`}>
+            {isDirty ? 'Unsaved roster changes' : `Roster revision ${draftRevision}`}
+          </span>
+        </div>
         <p className="theme-muted">
           {data.context.title} · {data.context.population_label}
         </p>
@@ -311,7 +350,10 @@ export function SharedGroupBuilderPage() {
                   variant="secondary"
                   size="sm"
                   onClick={() =>
-                    setGroups((current) => [...current, createDraftGroup(current.length)])
+                    {
+                      setGroups((current) => [...current, createDraftGroup(current.length)]);
+                      setIsDirty(true);
+                    }
                   }
                 >
                   <Plus className="h-4 w-4" />
@@ -333,26 +375,32 @@ export function SharedGroupBuilderPage() {
                           label="Group name"
                           value={group.name}
                           onChange={(event) =>
-                            setGroups((current) =>
-                              current.map((item) =>
-                                item.clientId === group.clientId
-                                  ? { ...item, name: event.target.value }
-                                  : item,
-                              ),
-                            )
+                            {
+                              setGroups((current) =>
+                                current.map((item) =>
+                                  item.clientId === group.clientId
+                                    ? { ...item, name: event.target.value }
+                                    : item,
+                                ),
+                              );
+                              setIsDirty(true);
+                            }
                           }
                         />
                         <Input
                           label="Notes"
                           value={group.notes}
                           onChange={(event) =>
-                            setGroups((current) =>
-                              current.map((item) =>
-                                item.clientId === group.clientId
-                                  ? { ...item, notes: event.target.value }
-                                  : item,
-                              ),
-                            )
+                            {
+                              setGroups((current) =>
+                                current.map((item) =>
+                                  item.clientId === group.clientId
+                                    ? { ...item, notes: event.target.value }
+                                    : item,
+                                ),
+                              );
+                              setIsDirty(true);
+                            }
                           }
                         />
                       </div>
@@ -361,9 +409,12 @@ export function SharedGroupBuilderPage() {
                         size="sm"
                         aria-label={`Remove ${group.name}`}
                         onClick={() =>
-                          setGroups((current) =>
-                            current.filter((item) => item.clientId !== group.clientId),
-                          )
+                          {
+                            setGroups((current) =>
+                              current.filter((item) => item.clientId !== group.clientId),
+                            );
+                            setIsDirty(true);
+                          }
                         }
                       >
                         <Trash2 className="h-4 w-4" />

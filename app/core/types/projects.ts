@@ -350,6 +350,16 @@ export interface ProjectGroup {
     role: string;
     participation_status: string;
   }>;
+  historical_members: Array<{
+    id: number;
+    participant: number;
+    learner: number;
+    learner_name: string;
+    role: string;
+    participation_status: string;
+    left_at: string | null;
+    is_historical: true;
+  }>;
 }
 export interface ProjectEvidence {
   id: number;
@@ -375,6 +385,10 @@ export interface ProjectEvidence {
   provenance: Record<string, unknown>;
   supersedes: number | null;
 }
+export type ProjectEvidenceTypeContract = Record<
+  'individual' | 'group',
+  Array<{ value: string; label: string }>
+>;
 export interface ProjectCriterionScore {
   id: number;
   criterion: number;

@@ -7,6 +7,7 @@ import type {
   ProjectDefinitionVersion,
   ProjectDeployment,
   ProjectEvidence,
+  ProjectEvidenceTypeContract,
   ProjectFilters,
   ProjectGroup,
   ProjectImportJob,
@@ -129,6 +130,8 @@ export const projectsAPI = {
         params: { deployment },
       })
     ).data,
+  evidenceTypeContract: async () =>
+    (await apiClient.get<ProjectEvidenceTypeContract>('/project-evidence/type-contract/')).data,
   recordEvidence: async (payload: Record<string, unknown>) =>
     (await apiClient.post<ProjectEvidence>('/project-evidence/', payload)).data,
   recordEvidenceBatch: async (payload: {

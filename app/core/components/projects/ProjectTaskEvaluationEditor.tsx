@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Button } from '@/app/components/ui/Button';
 import type { ProjectGroup, ProjectParticipant, ProjectTask } from '@/app/core/types/projects';
 
@@ -10,12 +10,28 @@ type EvaluationDraft = { feedback: string; scores: Record<number, string> };
 export type TaskEvaluationPayload = {
   task: number;
   participant: number;
+  source_group?: number;
   observed_at: string;
   teacher_feedback: string;
   criterion_scores: Array<{ criterion: number; awarded_marks: string }>;
 };
 
 const emptyDraft = (): EvaluationDraft => ({ feedback: '', scores: {} });
+
+function replaceEvaluationRoute(
+  deploymentId: number,
+  update: (params: URLSearchParams) => void,
+) {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  params.delete('returnTo');
+  update(params);
+  window.history.replaceState(
+    window.history.state,
+    '',
+    `/projects/${deploymentId}?${params.toString()}`,
+  );
+}
 
 export function ProjectTaskEvaluationEditor({
   deploymentId,
@@ -46,16 +62,24 @@ export function ProjectTaskEvaluationEditor({
     () =>
       groups.filter((group) =>
         group.members.some(
-          (member) =>
-            member.participation_status === 'ACTIVE' &&
-            activeParticipantIds.has(member.participant),
+          (member) => activeParticipantIds.has(member.participant),
         ),
       ),
     [activeParticipantIds, groups],
   );
-  const [scope, setScope] = useState<EvaluationScope>('individual');
+  const routeScope =
+    typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('scope');
+  const [scope, setScope] = useState<EvaluationScope>(routeScope === 'group' ? 'group' : 'individual');
   const [participantIndex, setParticipantIndex] = useState(0);
-  const [groupIndex, setGroupIndex] = useState(0);
+  const [groupIndex, setGroupIndex] = useState(() => {
+    const requestedGroup = Number(
+      typeof window === 'undefined'
+        ? null
+        : new URLSearchParams(window.location.search).get('group'),
+    );
+    const requestedIndex = availableGroups.findIndex((group) => group.id === requestedGroup);
+    return requestedIndex >= 0 ? requestedIndex : 0;
+  });
   const [participantDrafts, setParticipantDrafts] = useState<Record<number, EvaluationDraft>>({});
   const [groupDrafts, setGroupDrafts] = useState<Record<number, EvaluationDraft>>({});
   const targets = scope === 'individual' ? activeParticipants : availableGroups;
@@ -70,6 +94,13 @@ export function ProjectTaskEvaluationEditor({
     task.criteria.some((criterion) => !value.scores[criterion.id]),
   );
 
+  useEffect(() => {
+    if (scope !== 'group' || !availableGroups.length || typeof window === 'undefined') return;
+    const requestedGroup = Number(new URLSearchParams(window.location.search).get('group'));
+    const requestedIndex = availableGroups.findIndex((group) => group.id === requestedGroup);
+    if (requestedIndex >= 0) setGroupIndex(requestedIndex);
+  }, [availableGroups, scope]);
+
   const updateDraft = (change: Partial<EvaluationDraft>) => {
     if (!target) return;
     const update = (current: Record<number, EvaluationDraft>) => ({
@@ -82,7 +113,17 @@ export function ProjectTaskEvaluationEditor({
 
   const move = (offset: number) => {
     if (scope === 'individual') setParticipantIndex((value) => value + offset);
-    else setGroupIndex((value) => value + offset);
+    else {
+      const nextIndex = groupIndex + offset;
+      setGroupIndex(nextIndex);
+      const nextGroup = availableGroups[nextIndex];
+      if (nextGroup) {
+        replaceEvaluationRoute(deploymentId, (params) => {
+          params.set('scope', 'group');
+          params.set('group', String(nextGroup.id));
+        });
+      }
+    }
   };
 
   const buildPayloads = () => {
@@ -94,15 +135,14 @@ export function ProjectTaskEvaluationEditor({
           ? [Number(targetId)]
           : (availableGroups.find((group) => group.id === Number(targetId))?.members ?? [])
               .filter(
-                (member) =>
-                  member.participation_status === 'ACTIVE' &&
-                  activeParticipantIds.has(member.participant),
+                (member) => activeParticipantIds.has(member.participant),
               )
               .map((member) => member.participant);
       for (const participant of participantIds) {
         payloads.set(participant, {
           task: task.id,
           participant,
+          ...(scope === 'group' ? { source_group: Number(targetId) } : {}),
           observed_at: observedAt,
           teacher_feedback: value.feedback.trim(),
           criterion_scores: task.criteria.map((criterion) => ({
@@ -162,14 +202,28 @@ export function ProjectTaskEvaluationEditor({
           <Button
             type="button"
             variant={scope === 'individual' ? 'primary' : 'secondary'}
-            onClick={() => setScope('individual')}
+            onClick={() => {
+              setScope('individual');
+              replaceEvaluationRoute(deploymentId, (params) => {
+                params.set('scope', 'individual');
+                params.delete('group');
+              });
+            }}
           >
             Individual learners
           </Button>
           <Button
             type="button"
             variant={scope === 'group' ? 'primary' : 'secondary'}
-            onClick={() => setScope('group')}
+            onClick={() => {
+              setScope('group');
+              replaceEvaluationRoute(deploymentId, (params) => {
+                params.set('scope', 'group');
+                if (availableGroups[groupIndex]) {
+                  params.set('group', String(availableGroups[groupIndex].id));
+                }
+              });
+            }}
           >
             Groups
           </Button>
@@ -185,7 +239,9 @@ export function ProjectTaskEvaluationEditor({
             {scope === 'group' ? (
               <Link
                 className="text-sm text-blue-600 hover:underline"
-                href={`/projects/${deploymentId}/groups/${target.id}`}
+                href={`/projects/${deploymentId}/groups/${target.id}?${new URLSearchParams({
+                  returnTo: `/projects/${deploymentId}?tab=tasks&task=${task.id}&action=evaluation&scope=group&group=${target.id}`,
+                }).toString()}`}
               >
                 View group members
               </Link>

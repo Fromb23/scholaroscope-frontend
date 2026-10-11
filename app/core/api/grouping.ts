@@ -27,12 +27,14 @@ export const groupingAPI = {
     (
       await apiClient.post<{
         groups: Array<{
+          id?: number | null;
           client_id: string;
           name: string;
           notes: string;
           members: GroupingLearner[];
         }>;
         eligible_count: number;
+        revision: number;
       }>(`${base(type, id)}/random-preview/`, payload)
     ).data,
   save: async (

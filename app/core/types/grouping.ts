@@ -48,6 +48,13 @@ export interface GroupingContextResponse {
     empty_group_count: number;
     label: string;
   };
+  lock: {
+    is_locked: boolean;
+    lock_reason_code: string | null;
+    lock_reason: string | null;
+    evidence_count: number;
+    evaluation_count: number;
+  };
 }
 
 export interface GroupingDraftGroup {

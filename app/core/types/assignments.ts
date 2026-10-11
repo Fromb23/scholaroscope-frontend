@@ -197,6 +197,10 @@ export interface Assignment {
     lesson_plan: number | null;
     lesson_plan_title: string | null;
     curriculum_context: AssignmentCurriculumContext;
+    counts_in_official_reports: boolean;
+    report_policy_snapshot: Record<string, unknown>;
+    official_reporting_blocked_code: string;
+    official_reporting_blocked_message: string;
     created_by: number | null;
     published_at: string | null;
     closed_at: string | null;
@@ -221,6 +225,7 @@ export interface Assignment {
 
 export interface AssignmentCreatePayload extends ClientMutationFields {
     cohort_subject: number;
+    term: number;
     title: string;
     instructions?: string;
     starts_at?: string | null;
@@ -238,6 +243,7 @@ export interface AssignmentCreatePayload extends ClientMutationFields {
     requires_attachments?: boolean;
     attachment_policy?: AssignmentAttachmentPolicy;
     attachment_slots?: AssignmentAttachmentSlot[];
+    counts_in_official_reports?: boolean;
 }
 
 export interface PrepareAssignmentFromLessonPlanPayload extends ClientMutationFields {
@@ -334,6 +340,7 @@ export interface AssignmentTeachingTodayResponse {
 
 export interface AssignmentUpdatePayload {
     cohort_subject?: number;
+    term?: number;
     title?: string;
     instructions?: string;
     starts_at?: string | null;
@@ -348,6 +355,7 @@ export interface AssignmentUpdatePayload {
     requires_attachments?: boolean;
     attachment_policy?: AssignmentAttachmentPolicy;
     attachment_slots?: AssignmentAttachmentSlot[];
+    counts_in_official_reports?: boolean;
     attachment_requirements_waived?: boolean;
     attachment_waiver_reason?: string;
 }
