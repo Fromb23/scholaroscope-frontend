@@ -19,10 +19,17 @@ describe('cohort class learner links', () => {
   });
 
   it('keeps internal request actions behind backend workspace governance', () => {
-    expect(source).toContain('supportsInternalRequests');
+    expect(source).toContain('shouldShowInternalRequestActions');
     expect(source).toContain('showInternalRequestActions');
-    expect(source).toContain('{showInternalRequestActions ? <TableHead>Requests</TableHead> : null}');
+    expect(source).toContain('canManagePlacement || showInternalRequestActions');
     expect(source).toContain('Create learner');
     expect(source).toContain('Request add learner');
+  });
+
+  it('renders direct placement routes separately for placement administrators', () => {
+    expect(source).toContain("permission_keys?.includes('learners.manage_placement')");
+    expect(source).toContain('/transfer?');
+    expect(source).toContain('/unenroll?');
+    expect(source).toContain('returnTo: rosterReturnTo');
   });
 });

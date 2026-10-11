@@ -207,7 +207,7 @@ export function useStudent(id: number) {
   const transfer = (data: TransferFormData) =>
     withAction(() => learnersAPI.transferStudent(id, data));
 
-  const unenroll = (cohortId: number, data: { end_reason: string; effective_to: string; notes: string }) =>
+  const unenroll = (cohortId: number, data: { end_reason: string; effective_to: string; reason: string; notes: string; idempotency_key: string }) =>
     withAction(() => learnersAPI.unenrollStudent(id, cohortId, data));
 
   const deleteStudent = () =>

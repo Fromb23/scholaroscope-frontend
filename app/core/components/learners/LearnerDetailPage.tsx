@@ -28,7 +28,7 @@ import { DataTable, Column } from '@/app/components/ui/Table';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import {
-    StatusModal, EnrollModal, TransferLearnerModal, UnenrollModal, DeleteStudentModal,
+    StatusModal, EnrollModal, DeleteStudentModal,
 } from '@/app/core/components/learners/LearnerModals';
 import { LearnerAssessmentPickerModal } from '@/app/core/components/learners/LearnerAssessmentPickerModal';
 import { LearnerIdentityHeader } from '@/app/core/components/learners/LearnerIdentityHeader';
@@ -43,6 +43,7 @@ import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
+import { isWorkspaceAdministrator, shouldShowInternalRequestActions } from '@/app/core/lib/workspaceGovernance';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success', GRADUATED: 'info', TRANSFERRED: 'warning',
@@ -197,15 +198,13 @@ export default function LearnerDetailPage() {
     const {
         student, loading, error,
         actionLoading, actionError, setActionError,
-        updateStatus, reenroll, transfer, unenroll, deleteStudent,
+        updateStatus, reenroll, deleteStudent,
         checkDeleteEligibility, withdraw, graduate, archiveStudent,
     } = useStudent(studentId);
     useSemanticPageTitle(error ? 'Learner not found' : student?.full_name ?? 'Learner');
 
     const [statusOpen, setStatusOpen] = useState(false);
     const [enrollOpen, setEnrollOpen] = useState(false);
-    const [transferOpen, setTransferOpen] = useState(false);
-    const [unenrollTarget, setUnenrollTarget] = useState<StudentCohortEnrollment | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [assessmentPickerOpen, setAssessmentPickerOpen] = useState(false);
     const [sectionState, setSectionState] = useState<Record<LearnerSectionKey, boolean>>(DEFAULT_SECTION_STATE);
@@ -222,6 +221,20 @@ export default function LearnerDetailPage() {
     const managementStudent = isManagementStudentDetail(student) ? student : null;
     const canEdit = !!user && Boolean(managementStudent) && hasCapability(null, 'EDIT_LEARNER', capabilities);
     const canManage = !!user && Boolean(managementStudent) && hasCapability(null, 'MANAGE_ENROLLMENT', capabilities);
+    const canManagePlacement = !!user && Boolean(managementStudent) && Boolean(
+        capabilities.authorization?.permission_keys?.includes('learners.manage_placement')
+        || capabilities.can_manage_learner_placement
+    );
+    const showInternalRequestActions = shouldShowInternalRequestActions(capabilities);
+    const placementConfigurationError = isWorkspaceAdministrator(capabilities) && !canManagePlacement;
+    useEffect(() => {
+        if (placementConfigurationError) {
+            console.error('authorization_inconsistency', {
+                permission: 'learners.manage_placement',
+                learnerId: studentId,
+            });
+        }
+    }, [placementConfigurationError, studentId]);
     const canManageSubjectParticipation = Boolean(managementStudent) && Boolean(capabilities.can_manage_learners);
     const canUseDangerZone = canManageSubjectParticipation;
     const canGenerateOverviewReport = !!user && capabilities.can_view_reports;
@@ -231,7 +244,7 @@ export default function LearnerDetailPage() {
     const { data: attendanceData } = useStudentAttendanceHistory(
         sectionState.attendance ? studentId : null,
     );
-    const { cohorts } = useCohorts(undefined, { enabled: canManage && enrollOpen });
+    const { cohorts } = useCohorts(undefined, { enabled: canManagePlacement && enrollOpen });
     const {
         scopes: reportScopes,
         loading: reportScopesLoading,
@@ -322,6 +335,12 @@ export default function LearnerDetailPage() {
         () => buildLearnerDetailHref(studentId, searchParams),
         [searchParams, studentId],
     );
+    const transferHref = currentCohortId
+        ? `/learners/${studentId}/transfer?${new URLSearchParams({
+            fromCohort: String(currentCohortId),
+            returnTo: learnerReturnTo,
+        }).toString()}`
+        : null;
     const learnerApprovalReference = useMemo(() => ({
         student_id: studentId,
         learner_id: studentId,
@@ -516,6 +535,12 @@ export default function LearnerDetailPage() {
         await deleteStudent();
         router.push(backHref);
     };
+    const openUnenrollWorkflow = (row: StudentCohortEnrollment) => {
+        router.push(`/learners/${studentId}/unenroll?${new URLSearchParams({
+            fromCohort: String(row.cohort),
+            returnTo: learnerReturnTo,
+        }).toString()}`);
+    };
 
     const activeColumns: Column<StudentCohortEnrollment>[] = [
         {
@@ -543,11 +568,11 @@ export default function LearnerDetailPage() {
             key: 'enrolled_date', header: 'Enrolled', sortable: true,
             render: row => new Date(row.enrolled_date).toLocaleDateString(),
         },
-        ...(canManage ? [{
+        ...(canManagePlacement ? [{
             key: 'actions' as keyof StudentCohortEnrollment,
             header: 'Actions',
             render: (row: StudentCohortEnrollment) => (
-                <Button size="sm" variant="ghost" onClick={() => setUnenrollTarget(row)}>
+                <Button size="sm" variant="ghost" onClick={() => openUnenrollWorkflow(row)}>
                     <UserMinus className="h-4 w-4 text-red-600" />
                 </Button>
             ),
@@ -613,17 +638,17 @@ export default function LearnerDetailPage() {
     const historySummary = hasHistory
         ? `${historyEnrollments.length} historical enrollment${historyEnrollments.length === 1 ? '' : 's'}`
         : 'No enrollment history';
-    const cohortLifecycleItems = canManage
+    const cohortLifecycleItems = canManagePlacement
         ? [
             ...(hasActivePrimaryCohort ? [
                 {
-                    label: 'Transfer Learner',
-                    onSelect: () => setTransferOpen(true),
+                    label: 'Move to another cohort',
+                    onSelect: () => transferHref ? router.push(transferHref) : undefined,
                     icon: <ArrowRightLeft className="h-4 w-4" />,
                 },
                 {
                     label: 'Unenroll Learner',
-                    onSelect: () => currentEnrollment ? setUnenrollTarget(currentEnrollment) : undefined,
+                    onSelect: () => currentEnrollment ? openUnenrollWorkflow(currentEnrollment) : undefined,
                     disabled: !currentEnrollment,
                     icon: <UserMinus className="h-4 w-4" />,
                 },
@@ -787,7 +812,7 @@ export default function LearnerDetailPage() {
                 </div>
             </Card>
 
-            {!canManage ? (
+            {!canManagePlacement && showInternalRequestActions ? (
                 <Card>
                     <div className="space-y-3">
                         <h2 className="text-lg font-semibold text-gray-900">Requests</h2>
@@ -795,20 +820,20 @@ export default function LearnerDetailPage() {
                             <ContextualApprovalRequestButton
                                 intent={{
                                     actionKey: 'STUDENT_STATUS_UPDATE',
-                                    title: `Request learner transfer for ${student.full_name}`,
+                                    title: `Request transfer out of organization for ${student.full_name}`,
                                     targetType: 'learner',
                                     targetId: studentId,
                                     returnTo: learnerReturnTo,
                                     requestKey: buildContextualRequestKey(['learner', studentId, 'transfer']),
                                     referenceData: {
                                         ...learnerApprovalReference,
-                                        contextual_action: 'transfer',
+                                        contextual_action: 'transfer_out_of_organization',
                                         status: 'TRANSFERRED',
                                     },
                                 }}
                             >
                                 <ArrowRightLeft className="h-4 w-4" />
-                                Ask admin to transfer
+                                Ask admin to transfer out of organization
                             </ContextualApprovalRequestButton>
                             <ContextualApprovalRequestButton
                                 intent={{
@@ -865,6 +890,12 @@ export default function LearnerDetailPage() {
                             </ContextualApprovalRequestButton>
                         </div>
                     </div>
+                </Card>
+            ) : null}
+            {placementConfigurationError ? (
+                <Card className="border border-red-200">
+                    <p className="text-sm font-medium text-red-700">Administrator configuration error</p>
+                    <p className="mt-1 text-sm text-red-600">This Workspace Administrator is missing learners.manage_placement. Ask a platform operator to reconcile the canonical administrator role.</p>
                 </Card>
             ) : null}
 
@@ -931,11 +962,11 @@ export default function LearnerDetailPage() {
                 onToggle={() => toggleSection('enrollments')}
             >
                 <div className="space-y-4">
-                    {canManage ? (
+                    {canManagePlacement ? (
                         <div className="flex justify-end">
                             {hasActivePrimaryCohort ? (
-                                <Button size="sm" onClick={() => setTransferOpen(true)}>
-                                    <ArrowRightLeft className="mr-2 h-4 w-4" />Transfer Learner
+                                <Button size="sm" onClick={() => transferHref ? router.push(transferHref) : undefined}>
+                                    <ArrowRightLeft className="mr-2 h-4 w-4" />Move to another cohort
                                 </Button>
                             ) : (
                                 <Button size="sm" onClick={() => setEnrollOpen(true)}>
@@ -969,8 +1000,8 @@ export default function LearnerDetailPage() {
                                                     Enrolled {new Date(row.enrolled_date).toLocaleDateString()}
                                                 </p>
                                             </div>
-                                            {canManage ? (
-                                                <Button size="sm" variant="ghost" onClick={() => setUnenrollTarget(row)}>
+                                            {canManagePlacement ? (
+                                                <Button size="sm" variant="ghost" onClick={() => openUnenrollWorkflow(row)}>
                                                     <UserMinus className="h-4 w-4 text-red-600" />
                                                 </Button>
                                             ) : null}
@@ -1292,10 +1323,10 @@ export default function LearnerDetailPage() {
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {canManage && hasActivePrimaryCohort ? (
-                                <Button variant="secondary" onClick={() => setTransferOpen(true)} disabled={actionLoading}>
+                            {canManagePlacement && hasActivePrimaryCohort ? (
+                                <Button variant="secondary" onClick={() => transferHref ? router.push(transferHref) : undefined} disabled={actionLoading}>
                                     <ArrowRightLeft className="h-4 w-4" />
-                                    Transfer Learner
+                                    Move to another cohort
                                 </Button>
                             ) : null}
                             <Button variant="secondary" onClick={() => withdraw()} disabled={actionLoading}>
@@ -1367,24 +1398,6 @@ export default function LearnerDetailPage() {
                 onClose={() => setEnrollOpen(false)}
                 onSubmit={reenroll}
                 availableCohorts={availableCohorts}
-                activeSubjectNames={activeSubjectNames}
-                loading={actionLoading}
-            />
-            <TransferLearnerModal
-                isOpen={transferOpen}
-                onClose={() => setTransferOpen(false)}
-                onSubmit={transfer}
-                currentEnrollment={currentEnrollment}
-                availableCohorts={availableCohorts}
-                activeSubjectNames={activeSubjectNames}
-                loading={actionLoading}
-            />
-            <UnenrollModal
-                isOpen={!!unenrollTarget}
-                onClose={() => setUnenrollTarget(null)}
-                onSubmit={data => unenroll(unenrollTarget!.cohort, data)}
-                enrollment={unenrollTarget}
-                studentName={student.full_name}
                 activeSubjectNames={activeSubjectNames}
                 loading={actionLoading}
             />

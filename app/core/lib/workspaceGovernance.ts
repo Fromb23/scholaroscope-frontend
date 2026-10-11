@@ -31,6 +31,22 @@ export function supportsInternalRequests(capabilities?: WorkspaceCapabilities | 
   return governance ? governance.supports_internal_requests : true;
 }
 
+export function isWorkspaceAdministrator(capabilities?: WorkspaceCapabilities | null): boolean {
+  return Boolean(
+    capabilities?.authorization?.roles?.some(
+      (role) => role.is_workspace_admin === true,
+    ),
+  );
+}
+
+export function canSubmitInternalAdminRequest(
+  capabilities?: WorkspaceCapabilities | null,
+): boolean {
+  return supportsInternalRequests(capabilities) && !isWorkspaceAdministrator(capabilities);
+}
+
+export const shouldShowInternalRequestActions = canSubmitInternalAdminRequest;
+
 export function supportsInternalApprovals(capabilities?: WorkspaceCapabilities | null): boolean {
   const governance = getWorkspaceGovernance(capabilities);
   return governance ? governance.supports_internal_approvals : true;

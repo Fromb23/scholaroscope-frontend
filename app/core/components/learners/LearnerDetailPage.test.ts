@@ -20,7 +20,7 @@ describe('LearnerDetailPage instructor-safe loading', () => {
   it('does not call management cohort hooks for ordinary instructor rendering', () => {
     const pageSource = source();
 
-    expect(pageSource).toContain('useCohorts(undefined, { enabled: canManage && enrollOpen })');
+    expect(pageSource).toContain('useCohorts(undefined, { enabled: canManagePlacement && enrollOpen })');
     expect(pageSource).toContain('canManageSubjectParticipation && sectionState.subjectParticipation ? currentCohortId : null');
     expect(pageSource).toContain('Subject enrollment changes require learner-management permission');
   });

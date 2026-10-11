@@ -20,13 +20,6 @@ const END_REASONS = [
     { value: 'PROMOTED', label: 'Promoted to Next Level' },
 ];
 
-const TRANSFER_REASONS = [
-    { value: 'COHORT_MOVE', label: 'Move to Correct Cohort' },
-    { value: 'PROMOTION', label: 'Promotion' },
-    { value: 'ADMIN_CORRECTION', label: 'Administrative Correction' },
-    { value: 'OTHER', label: 'Other' },
-];
-
 function todayIso(): string {
     return new Date().toISOString().slice(0, 10);
 }
@@ -226,100 +219,6 @@ export function EnrollModal({
 }
 
 // ── Transfer Modal ────────────────────────────────────────────────────────
-
-interface TransferLearnerModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSubmit: (data: { new_cohort: number; effective_from: string; notes: string }) => Promise<void>;
-    currentEnrollment: StudentCohortEnrollment | null;
-    availableCohorts: { id: number; name: string; level: string }[];
-    activeSubjectNames: string[];
-    loading: boolean;
-}
-
-export function TransferLearnerModal({
-    isOpen,
-    onClose,
-    onSubmit,
-    currentEnrollment,
-    availableCohorts,
-    activeSubjectNames,
-    loading,
-}: TransferLearnerModalProps) {
-    const [cohortId, setCohortId] = useState('');
-    const [effectiveFrom, setEffectiveFrom] = useState(todayIso());
-    const [reason, setReason] = useState('');
-    const [notes, setNotes] = useState('');
-
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        await onSubmit({
-            new_cohort: Number(cohortId),
-            effective_from: effectiveFrom,
-            notes: [reason, notes].filter(Boolean).join(' - '),
-        });
-        setCohortId('');
-        setEffectiveFrom(todayIso());
-        setReason('');
-        setNotes('');
-        onClose();
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Transfer Learner">
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <ImpactSummary
-                    currentCohort={currentEnrollment?.cohort_name}
-                    subjectNames={activeSubjectNames}
-                    attendanceText="The current cohort and subject enrollments will close before the new primary cohort opens. Historical reports keep their old scope."
-                />
-                <Select
-                    label="New Primary Cohort"
-                    value={cohortId}
-                    onChange={e => setCohortId(e.target.value)}
-                    required
-                    options={[
-                        { value: '', label: 'Select cohort' },
-                        ...availableCohorts.map(c => ({
-                            value: String(c.id),
-                            label: `${c.name} - ${c.level}`,
-                        })),
-                    ]}
-                />
-                <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Effective Date</label>
-                    <input
-                        type="date"
-                        value={effectiveFrom}
-                        onChange={e => setEffectiveFrom(e.target.value)}
-                        required
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-                <Select
-                    label="Reason"
-                    value={reason}
-                    onChange={e => setReason(e.target.value)}
-                    required
-                    options={[{ value: '', label: 'Select a reason' }, ...TRANSFER_REASONS]}
-                />
-                <textarea
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    rows={3}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Additional notes (optional)"
-                />
-                <div className="flex justify-end gap-2 pt-2">
-                    <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button type="submit" disabled={loading || !cohortId || !effectiveFrom || !reason}>
-                        {loading ? 'Transferring...' : 'Transfer Learner'}
-                    </Button>
-                </div>
-            </form>
-        </Modal>
-    );
-}
 
 // ── Unenroll Modal ────────────────────────────────────────────────────────
 

@@ -64,6 +64,7 @@ export interface WorkspaceCapabilities {
   can_teach: boolean;
   can_manage_academic_setup: boolean;
   can_manage_learners: boolean;
+  can_manage_learner_placement?: boolean;
   can_manage_cohorts: boolean;
   can_manage_subjects: boolean;
   can_request_curriculum_import?: boolean;

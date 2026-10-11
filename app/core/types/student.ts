@@ -22,6 +22,8 @@ export interface StudentCohortEnrollment {
   cohort_level: string;
   curriculum_name: string;
   curriculum_type: string;
+  academic_year?: string;
+  pathway?: string | null;
   enrolled_date: string;
   effective_from?: string;
   effective_to?: string | null;
@@ -191,7 +193,33 @@ export interface EnrollmentFormData {
 export interface TransferFormData {
   new_cohort: number;
   effective_from: string;
+  reason: string;
   notes?: string;
+  optional_subject_ids?: number[];
+  idempotency_key: string;
+}
+
+export interface EligibleTransferCohort {
+  id: number;
+  name: string;
+  level: string;
+  stream: string;
+  curriculum: string;
+  curriculum_type: string;
+  academic_year: string;
+  pathway?: string | null;
+  setup_ready: boolean;
+  setup_status?: string;
+}
+
+export interface TransferPreview {
+  source_enrollment: { id: number; cohort_id: number; cohort_name: string };
+  source_subjects_closing: Array<{ id: number; cohort_subject_id: number; name: string }>;
+  required_subjects: Array<{ cohort_subject_id: number; name: string }>;
+  optional_subjects: Array<{ cohort_subject_id: number; name: string; selected: boolean }>;
+  subjects_not_carried: string[];
+  historical_records_preserved: boolean;
+  impact_notice: string;
 }
 
 export interface LearnerDeleteEligibility {

@@ -34,7 +34,7 @@ import {
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { useAuth } from '@/app/context/AuthContext';
-import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
+import { shouldShowInternalRequestActions } from '@/app/core/lib/workspaceGovernance';
 import { learnersAPI } from '@/app/core/api/learners';
 import { downloadBlob } from '@/app/core/api/downloads';
 import { AppErrorBanner } from '@/app/components/ui/errors';
@@ -158,7 +158,12 @@ export function CohortStudentsPage() {
         cohortId,
         returnTo: `/academic/cohorts/${cohortId}`,
     });
-    const showInternalRequestActions = supportsInternalRequests(capabilities);
+    const showInternalRequestActions = shouldShowInternalRequestActions(capabilities);
+    const canManagePlacement = Boolean(
+        capabilities.authorization?.permission_keys?.includes('learners.manage_placement')
+        || capabilities.can_manage_learner_placement
+    );
+    const rosterReturnTo = `/academic/cohorts/${cohortId}/students`;
 
     return (
         <div className="mx-auto max-w-6xl space-y-6">
@@ -270,7 +275,7 @@ export function CohortStudentsPage() {
                                     <TableHead>Learner</TableHead>
                                     <TableHead>Contact</TableHead>
                                     <TableHead>Status</TableHead>
-                                    {showInternalRequestActions ? <TableHead>Requests</TableHead> : null}
+                                    {canManagePlacement || showInternalRequestActions ? <TableHead>Placement actions</TableHead> : null}
                                 </tr>
                             </TableHeader>
                             <TableBody>
@@ -293,7 +298,21 @@ export function CohortStudentsPage() {
                                                 {getLearnerStatus(student)}
                                             </Badge>
                                         </TableCell>
-                                        {showInternalRequestActions ? (
+                                        {canManagePlacement ? (
+                                            <TableCell>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <Link href={`/learners/${student.id}/unenroll?${new URLSearchParams({ fromCohort: String(cohortId), returnTo: rosterReturnTo }).toString()}`}>
+                                                        <Button variant="ghost" size="sm"><UserMinus className="h-4 w-4" />Unenrol</Button>
+                                                    </Link>
+                                                    <Link href={`/learners/${student.id}/transfer?${new URLSearchParams({ fromCohort: String(cohortId), returnTo: rosterReturnTo }).toString()}`}>
+                                                        <Button variant="ghost" size="sm"><ArrowRightLeft className="h-4 w-4" />Transfer between cohorts</Button>
+                                                    </Link>
+                                                    <Link href={`/learners/${student.id}/transfer?${new URLSearchParams({ fromCohort: String(cohortId), returnTo: rosterReturnTo, mode: 'correction' }).toString()}`}>
+                                                        <Button variant="ghost" size="sm">Fix placement</Button>
+                                                    </Link>
+                                                </div>
+                                            </TableCell>
+                                        ) : showInternalRequestActions ? (
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-2">
                                                     <ContextualApprovalRequestButton

@@ -14,6 +14,8 @@ import {
   EnrollmentFormData,
   LearnerDeleteEligibility,
   LearnerLifecyclePayload,
+  EligibleTransferCohort,
+  TransferPreview,
 } from '../types/student';
 
 export const learnersAPI = {
@@ -156,7 +158,28 @@ export const learnersAPI = {
 
   // Transfer student
   transferStudent: async (id: number, transferData: TransferFormData) => {
-    const { data } = await apiClient.post(`/students/${id}/transfer/`, transferData);
+    const { data } = await apiClient.post(`/students/${id}/transfer/`, transferData, {
+      headers: { 'Idempotency-Key': transferData.idempotency_key },
+    });
+    return data;
+  },
+
+  getEligibleTransferCohorts: async (id: number): Promise<EligibleTransferCohort[]> => {
+    const { data } = await apiClient.get<{ results: EligibleTransferCohort[] }>(
+      `/students/${id}/eligible-transfer-cohorts/`,
+    );
+    return data.results;
+  },
+
+  previewTransfer: async (
+    id: number,
+    newCohort: number,
+    optionalSubjectIds: number[] = [],
+  ): Promise<TransferPreview> => {
+    const { data } = await apiClient.post<TransferPreview>(
+      `/students/${id}/transfer-preview/`,
+      { new_cohort: newCohort, optional_subject_ids: optionalSubjectIds },
+    );
     return data;
   },
 
@@ -229,7 +252,9 @@ export const learnersAPI = {
     data: {
       end_reason: string;
       effective_to: string;
+      reason: string;
       notes?: string;
+      idempotency_key: string;
     }
   ) => {
     const response = await apiClient.post(
@@ -238,8 +263,11 @@ export const learnersAPI = {
         cohort_id: cohortId,
         end_reason: data.end_reason,
         effective_to: data.effective_to,
+        reason: data.reason,
+        idempotency_key: data.idempotency_key,
         notes: data.notes || ''
-      }
+      },
+      { headers: { 'Idempotency-Key': data.idempotency_key } },
     );
     return response.data;
   },

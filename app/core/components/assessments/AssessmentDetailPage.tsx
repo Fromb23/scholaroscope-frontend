@@ -32,7 +32,7 @@ import { useAssessmentDetailPage } from '@/app/core/hooks/assessments/useAssessm
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { useAuth } from '@/app/context/AuthContext';
-import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
+import { shouldShowInternalRequestActions } from '@/app/core/lib/workspaceGovernance';
 import {
     AssessmentGovernance,
     isLearnerAssessmentDetail,
@@ -41,7 +41,7 @@ import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider'
 
 export function AssessmentDetailPage() {
     const { capabilities } = useAuth();
-    const showInternalRequestActions = supportsInternalRequests(capabilities);
+    const showInternalRequestActions = shouldShowInternalRequestActions(capabilities);
     const {
         assessmentId,
         assessment,
