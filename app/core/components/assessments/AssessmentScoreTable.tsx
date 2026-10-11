@@ -10,6 +10,8 @@ import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { buildLearnerAssessmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
+import { useAuth } from '@/app/context/AuthContext';
+import { shouldShowInternalRequestActions } from '@/app/core/lib/workspaceGovernance';
 import {
     AssessmentScore,
     AssessmentDetail,
@@ -56,6 +58,8 @@ const STATUS_OPTIONS = [
 export function AssessmentScoreTable({
     assessment, scores, draft, loading, readOnly, participationByStudentId, onScoreChange,
 }: Props) {
+    const { capabilities } = useAuth();
+    const showRequestActions = readOnly && shouldShowInternalRequestActions(capabilities);
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const returnTo = useMemo(() => {
@@ -289,7 +293,7 @@ export function AssessmentScoreTable({
         render: row => renderCommentsInput(row),
     });
 
-    if (readOnly) {
+    if (showRequestActions) {
         columns.push({
             key: 'id',
             header: 'Requests',
@@ -384,7 +388,7 @@ export function AssessmentScoreTable({
                                     {renderCommentsInput(row)}
                                 </div>
 
-                                {readOnly ? (
+                                {showRequestActions ? (
                                     <ContextualApprovalRequestButton
                                         intent={{
                                             actionKey: 'RESOURCE_REQUEST',

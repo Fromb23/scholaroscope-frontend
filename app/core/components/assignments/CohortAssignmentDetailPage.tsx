@@ -88,6 +88,7 @@ import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { hasPermission } from '@/app/utils/permissions';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
+import { shouldShowInternalRequestActions } from '@/app/core/lib/workspaceGovernance';
 
 type DetailTab =
   | 'overview'
@@ -1171,7 +1172,7 @@ export default function CohortAssignmentDetailPage() {
         <div className="theme-success-surface rounded-lg px-4 py-3 text-sm">{successMessage}</div>
       ) : null}
 
-      <Card>
+      {shouldShowInternalRequestActions(capabilities) ? <Card>
         <div className="flex flex-wrap gap-2">
           {lifecycleAllowedActions.has('ADD_LEARNERS') ? (
             <ContextualApprovalRequestButton
@@ -1287,7 +1288,7 @@ export default function CohortAssignmentDetailPage() {
             Request response correction
           </ContextualApprovalRequestButton>
         </div>
-      </Card>
+      </Card> : null}
 
       {canManageAssignments ? (
         lifecycleQuery.loading ? (

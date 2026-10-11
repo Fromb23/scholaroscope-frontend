@@ -89,6 +89,7 @@ import {
     resolveOperationalDetailBack,
 } from '@/app/core/lib/operationalDetailNavigation';
 import { reportAuthorityModeForOperatingContext } from '@/app/core/components/reports/reportIntent';
+import { shouldShowInternalRequestActions as actorCanRequestAdmin } from '@/app/core/lib/workspaceGovernance';
 
 function SessionDetailSkeleton() {
     return (
@@ -459,6 +460,7 @@ export function SessionDetailPage() {
     const showInternalRequestActions = Boolean(
         viewerActions?.can_submit_admin_request === true
         && concreteRequestActions.some(Boolean)
+        && actorCanRequestAdmin(capabilities)
     );
     const canEditAttendance = canAdvanceTeachingWorkflow && isInProgress && !isHistorical;
     const midtermBreakPausesNormalStart = todayMode?.mode === 'MIDTERM_BREAK'

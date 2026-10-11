@@ -12,6 +12,8 @@ import {
     type RequestPriority,
 } from '@/app/core/lib/approvalIntents';
 import { useApprovalIntent } from '@/app/core/hooks/useApprovalIntent';
+import { useAuth } from '@/app/context/AuthContext';
+import { isWorkspaceAdministrator } from '@/app/core/lib/workspaceGovernance';
 
 const PRIORITY_OPTIONS: Array<{ value: RequestPriority; label: string }> = [
     { value: 'LOW', label: 'Low' },
@@ -192,8 +194,19 @@ export function ContextualApprovalRequestButton({
     disabled?: boolean;
     onSubmitted?: (request: ApprovalRequest) => void;
 }) {
+    const { capabilities } = useAuth();
     const approvalIntent = useApprovalIntent();
     const [feedbackRequest, setFeedbackRequest] = useState<ApprovalRequest | null>(null);
+
+    const internalAction = ![
+        'BUG_REPORT',
+        'FEATURE_REQUEST',
+        'PLAN_UPGRADE',
+    ].includes(intent.actionKey);
+
+    if (internalAction && isWorkspaceAdministrator(capabilities)) {
+        return null;
+    }
 
     const open = () => {
         const currentRoute = getCurrentApprovalRoute();

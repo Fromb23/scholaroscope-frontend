@@ -5,7 +5,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Users, UserPlus, UserMinus, X } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
-import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
+import { shouldShowInternalRequestActions } from '@/app/core/lib/workspaceGovernance';
 import {
     bulkEnrollCohortSubjectLearners,
     bulkUnenrollCohortSubjectLearners,
@@ -74,7 +74,7 @@ export default function CohortSubjectLearnersPage() {
     const queryClient = useQueryClient();
     const { user, activeOperatingContext, activeOrg, capabilities, loading: authLoading } = useAuth();
     const instructorView = activeOperatingContext === 'MY_TEACHING' && capabilities.can_teach;
-    const showInternalRequestActions = supportsInternalRequests(capabilities);
+    const showInternalRequestActions = shouldShowInternalRequestActions(capabilities);
     const canManageLearners = Boolean(user && capabilities.can_manage_learners);
     const instructorAccess = useInstructorCohortAccess({ enabled: instructorView });
 

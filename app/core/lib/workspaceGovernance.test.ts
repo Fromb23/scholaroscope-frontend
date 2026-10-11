@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WorkspaceCapabilities } from '@/app/core/types/auth';
-import { canUseAnnouncements } from '@/app/core/lib/workspaceGovernance';
+import {
+  canSubmitInternalAdminRequest,
+  canUseAnnouncements,
+  isWorkspaceAdministrator,
+} from '@/app/core/lib/workspaceGovernance';
 
 function capabilities(
   enabled: boolean,
@@ -47,5 +51,19 @@ describe('announcement capability authority', () => {
 
   it('keeps an explicit product denial authoritative', () => {
     expect(canUseAnnouncements(capabilities(false))).toBe(false);
+  });
+});
+
+describe('internal workspace request authority', () => {
+  it('never lets a Workspace Administrator request the same workspace admin', () => {
+    const value = capabilities(true);
+    value.authorization!.roles = [{ id: 1, name: 'Workspace Administrator', is_workspace_admin: true }];
+
+    expect(isWorkspaceAdministrator(value)).toBe(true);
+    expect(canSubmitInternalAdminRequest(value)).toBe(false);
+  });
+
+  it('retains internal request actions for non-admin request-capable actors', () => {
+    expect(canSubmitInternalAdminRequest(capabilities(true))).toBe(true);
   });
 });
