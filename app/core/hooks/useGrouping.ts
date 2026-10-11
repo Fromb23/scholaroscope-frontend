@@ -37,6 +37,11 @@ export function useGroupingMutations(type: GroupingContextType, id: number) {
         groupingAPI.save(type, id, payload),
       onSuccess: update,
     }),
+    correctRoster: useMutation({
+      mutationFn: (payload: Parameters<typeof groupingAPI.correctRoster>[2]) =>
+        groupingAPI.correctRoster(type, id, payload),
+      onSuccess: update,
+    }),
     reconcile: useMutation({
       mutationFn: () => groupingAPI.reconcile(type, id, false),
       onSuccess: (result) => update(result.grouping),

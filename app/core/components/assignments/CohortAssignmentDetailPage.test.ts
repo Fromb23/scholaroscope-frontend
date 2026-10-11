@@ -44,8 +44,10 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
       /canChangeActiveAssignment\s*&&\s*activeWorkflow === 'review'/,
     );
     expect(pageSource).toMatch(
-      /canChangeActiveAssignment\s*&&\s*activeWorkflow === 'record'/,
+      /canRecordAssignmentResponse\s*&&\s*activeWorkflow === 'record'/,
     );
+    expect(pageSource).toContain("assignment.status === 'PUBLISHED'");
+    expect(pageSource).toContain('Issue this assignment before recording responses.');
   });
 
   it('passes lesson-origin metadata when deleting a draft assignment', () => {
@@ -110,5 +112,16 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     expect(pageSource).toContain('Review pending');
     expect(pageSource).toContain('Apply review to all pending');
     expect(pageSource).toContain('bulkReviewMutation.mutateAsync');
+  });
+
+  it('drives group workflows and the records toggle independently from URL state', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain("searchParams.get('records') === '1'");
+    expect(pageSource).toContain("workflow: 'record'");
+    expect(pageSource).toContain("tab: 'group-submissions'");
+    expect(pageSource).toContain('records: true');
+    expect(pageSource).toContain('advancedDetailsOpen ? (');
+    expect(pageSource).not.toContain('advancedDetailsOpen || (isGroupAssignment && activeWorkflow)');
   });
 });

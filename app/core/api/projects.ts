@@ -117,6 +117,12 @@ export const projectsAPI = {
       await apiClient.get<ProjectListResponse<ProjectGroup>>('/project-groups/', {
         params: { deployment },
       })
+      ).data,
+  historicalGroups: async (deployment: number) =>
+    (
+      await apiClient.get<ProjectListResponse<ProjectGroup>>('/project-groups/', {
+        params: { deployment, include_history: true },
+      })
     ).data,
   getGroup: async (id: number) =>
     (await apiClient.get<ProjectGroup>(`/project-groups/${id}/`)).data,

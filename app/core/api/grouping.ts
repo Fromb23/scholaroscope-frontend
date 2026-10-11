@@ -46,6 +46,21 @@ export const groupingAPI = {
     },
   ) =>
     (await apiClient.put<GroupingContextResponse>(`${base(type, id)}/allocation/`, payload)).data,
+  correctRoster: async (
+    type: GroupingContextType,
+    id: number,
+    payload: {
+      revision: number;
+      reason: string;
+      groups: Array<{ id?: number; name: string; notes?: string; student_ids: number[] }>;
+    },
+  ) =>
+    (
+      await apiClient.post<GroupingContextResponse>(
+        `${base(type, id)}/roster-correction/`,
+        payload,
+      )
+    ).data,
   reconcile: async (type: GroupingContextType, id: number, dryRun = false) =>
     (
       await apiClient.post<{

@@ -79,6 +79,14 @@ export function useProjectRelated(id: number | null) {
     queryFn: async () => unwrapProjectList(await projectsAPI.groups(id as number)),
     enabled,
   });
+  const historicalGroups = useQuery({
+    queryKey: projectKeys.related(organizationId, id, 'historical-groups'),
+    queryFn: async () => {
+      const rows = unwrapProjectList(await projectsAPI.historicalGroups(id as number));
+      return rows.filter((group) => group.lifecycle_state === 'HISTORICAL');
+    },
+    enabled,
+  });
   const evidence = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'evidence'),
     queryFn: async () => unwrapProjectList(await projectsAPI.evidence(id as number)),
@@ -113,6 +121,7 @@ export function useProjectRelated(id: number | null) {
   return {
     participants,
     groups,
+    historicalGroups,
     evidence,
     evidenceTypes,
     evaluations,

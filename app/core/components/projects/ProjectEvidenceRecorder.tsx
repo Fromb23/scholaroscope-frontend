@@ -288,7 +288,7 @@ export function ProjectEvidenceRecorder({
                 <Link
                   className="text-sm text-blue-600 hover:underline"
                   href={`/projects/${project.id}/groups/${current.id}?${new URLSearchParams({
-                    returnTo: `/projects/${project.id}?tab=tasks&task=${task.id}&action=evidence&scope=group&group=${current.id}`,
+                    returnTo: `/projects/${project.id}?tab=tasks&task=${task.id}&scope=group&group=${current.id}&section=evidence`,
                   }).toString()}`}
                 >
                   View group members
