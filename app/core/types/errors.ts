@@ -14,6 +14,7 @@ export interface ApiStructuredError {
     code?: string;
     message?: string;
     next_action?: string;
+    context?: Record<string, unknown>;
 }
 
 export type ApiErrorResponseData =

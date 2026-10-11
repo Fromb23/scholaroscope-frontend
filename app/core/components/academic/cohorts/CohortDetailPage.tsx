@@ -12,6 +12,7 @@ import {
     GraduationCap,
     LineChart,
     Settings2,
+    Info,
     Users,
     Calendar,
 } from 'lucide-react';
@@ -51,6 +52,7 @@ import {
     shouldShowCohortSubjectTeachingActions,
 } from '@/app/core/components/academic/cohorts/cohortSubjectActions';
 import type { CohortSubject } from '@/app/core/types/academic';
+import { renderCohortCurriculumSetupModal } from '@/app/core/registry/cohortCurriculumSetupModal';
 
 interface MetadataItemProps {
     label: string;
@@ -180,6 +182,9 @@ function CbcSeniorSetupSection({
     combinationName,
     subjectCount,
     onManageSubjects,
+    onConfigurePathway,
+    activeLearnerCount,
+    locked,
 }: {
     ready: boolean;
     hasCBCPlugin: boolean;
@@ -191,6 +196,9 @@ function CbcSeniorSetupSection({
     combinationName?: string;
     subjectCount: number;
     onManageSubjects: () => void;
+    onConfigurePathway: () => void;
+    activeLearnerCount: number;
+    locked: boolean;
 }) {
     return (
         <section className="space-y-4">
@@ -216,9 +224,12 @@ function CbcSeniorSetupSection({
                             </div>
 
                             {!pathwayName ? (
-                                <p className="text-sm text-gray-600">
-                                    Choose the class pathway and the subjects this class will offer.
-                                </p>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-semibold text-amber-800">Pathway setup required</p>
+                                    <p className="text-sm text-gray-600">
+                                        This senior-school cohort must be assigned to a pathway before subjects or learners can be registered.
+                                    </p>
+                                </div>
                             ) : !ready ? (
                                 <p className="text-sm text-gray-600">
                                     This class belongs to {pathwayName}. Add the subjects this class will learn.
@@ -231,6 +242,15 @@ function CbcSeniorSetupSection({
 
                             {pathwayName ? (
                                 <p className="text-sm font-medium text-gray-900">This class follows {pathwayName}.</p>
+                            ) : null}
+
+                            <p className="text-sm text-gray-700">Active learners: {activeLearnerCount}</p>
+
+                            {locked ? (
+                                <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800">
+                                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <p>This cohort has active learners. Its pathway is locked for the current academic year. Pathway changes can be made during year-end rollover while historical academic records remain unchanged.</p>
+                                </div>
                             ) : null}
 
                             {pathwayName || trackName || combinationCode || combinationName ? (
@@ -274,9 +294,14 @@ function CbcSeniorSetupSection({
 
                     {canConfigure && hasCBCPlugin ? (
                         <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
-                            <Button onClick={onManageSubjects}>
-                                {manageSubjectsLabel}
-                            </Button>
+                            {!pathwayName ? (
+                                <Button onClick={onConfigurePathway}>Configure pathway</Button>
+                            ) : (
+                                <>
+                                    {!locked ? <Button variant="secondary" onClick={onConfigurePathway}>Edit pathway setup</Button> : null}
+                                    {ready ? <Button onClick={onManageSubjects}>{manageSubjectsLabel}</Button> : null}
+                                </>
+                            )}
                         </div>
                     ) : null}
                 </div>
@@ -410,6 +435,7 @@ export default function CohortHubPage() {
     const { hasPlugin, loading: pluginsLoading, getPluginCapabilityState } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
     const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
+    const [pathwayConfigurationOpen, setPathwayConfigurationOpen] = useState(false);
     const setupMode = searchParams.get('setup') === '1';
     const rawReturnTo = searchParams.get('returnTo');
     const safeReturnTo = isSafeNextPath(rawReturnTo)
@@ -457,7 +483,8 @@ export default function CohortHubPage() {
             || (isTeachingActor && instructorAccess.cohortIds.includes(cohortId))
             || (isPersonalTeachingWorkspace && capabilities.is_workspace_owner);
     const canManageInstructors = Boolean(capabilities.can_manage_staff) && !isPersonalTeachingWorkspace;
-    const canLinkSubjects = Boolean(
+    const canManageCohortSetup = hasPermission(capabilities, 'academic.cohorts.manage_setup');
+    const canLinkStandardSubjects = Boolean(
         capabilities.can_manage_academic_setup
         || hasPermission(capabilities, 'academic.cohorts.manage')
         || hasPermission(capabilities, 'academic.subjects.manage')
@@ -481,6 +508,9 @@ export default function CohortHubPage() {
     const isCbcSeniorCohort = isCbcSeniorSchoolEntity(cohort);
     const isCbcLowerLevel = Boolean(isCBC && !isCbcSeniorCohort);
     const hasCbcProfile = hasCbcPathwayProfile(cohort);
+    const canLinkSubjects = isCbcSeniorCohort
+        ? canManageCohortSetup && hasCbcProfile
+        : canLinkStandardSubjects;
     const canViewCohortLearners = Boolean(
         capabilities.can_manage_learners
         || hasPermission(capabilities, 'learners.view')
@@ -496,9 +526,15 @@ export default function CohortHubPage() {
         })
         : [];
     const learnerCount = enrolledStudentsQuery.data?.students.length ?? 0;
+    const activeLearnerCount = cohort?.active_learner_count ?? learnerCount;
+    const pathwayLocked = Boolean(cohort?.curriculum_setup?.locked || activeLearnerCount > 0);
     const subjectCount = cohortSubjects.length;
     const isClassSetupReady = subjectCount > 0;
-    const isCbcSetupReady = isCbcSeniorCohort && hasCbcProfile && subjectCount > 0;
+    const isCbcSetupReady = Boolean(
+        isCbcSeniorCohort
+        && hasCbcProfile
+        && (cohort?.curriculum_setup?.configured ?? true)
+    );
     const cohortSetupReady = isCbcSeniorCohort ? isCbcSetupReady : isClassSetupReady;
     const assignedInstructorCount = Object.values(subjectParticipationQuery.summaries)
         .filter((summary) => summary.instructorState === 'assigned')
@@ -816,7 +852,13 @@ export default function CohortHubPage() {
                     <MetadataItem label="Curriculum" value={curriculumName} />
                     <MetadataItem label="Level" value={getAcademicLevelLabel(cohort.level, cohort.curriculum_type)} />
                     <MetadataItem label="Stream" value={cohort.stream || '—'} />
-                    <MetadataItem label="Learners" value={learnerCountLabel} />
+                    {isCbcSeniorCohort ? <MetadataItem label="Pathway" value={cohort.cbc_profile?.pathway_name ?? 'Not configured'} /> : null}
+                    {isCbcSeniorCohort && cohort.cbc_profile?.track_name ? <MetadataItem label="Track" value={cohort.cbc_profile.track_name} /> : null}
+                    {isCbcSeniorCohort && (cohort.cbc_profile?.combination_name || cohort.cbc_profile?.combination_code) ? (
+                        <MetadataItem label="Combination" value={cohort.cbc_profile?.combination_name ?? cohort.cbc_profile?.combination_code ?? '—'} />
+                    ) : null}
+                    {isCbcSeniorCohort ? <MetadataItem label="Configuration" value={cohort.configuration_status ?? (hasCbcProfile ? 'CONFIGURED' : 'DRAFT')} /> : null}
+                    <MetadataItem label={isCbcSeniorCohort ? 'Active learners' : 'Learners'} value={isCbcSeniorCohort ? String(activeLearnerCount) : learnerCountLabel} />
                 </dl>
             </Card>
 
@@ -837,7 +879,7 @@ export default function CohortHubPage() {
                 <CbcSeniorSetupSection
                     ready={isCbcSetupReady}
                     hasCBCPlugin={hasCBCPlugin}
-                    canConfigure={canLinkSubjects}
+                    canConfigure={canManageCohortSetup}
                     manageSubjectsLabel={classSubjectsLabel}
                     pathwayName={cohort.cbc_profile?.pathway_name}
                     trackName={cohort.cbc_profile?.track_name ?? undefined}
@@ -845,6 +887,9 @@ export default function CohortHubPage() {
                     combinationName={cohort.cbc_profile?.combination_name ?? undefined}
                     subjectCount={subjectCount}
                     onManageSubjects={openAssignSubjects}
+                    onConfigurePathway={() => setPathwayConfigurationOpen(true)}
+                    activeLearnerCount={activeLearnerCount}
+                    locked={pathwayLocked}
                 />
             ) : (
                 <StandardClassSetupSection
@@ -1104,6 +1149,14 @@ export default function CohortHubPage() {
                     returnTo={cohortSubjectSetupReturnTo}
                     onSubjectsChanged={handleCohortSubjectsChanged}
                 />
+            ) : null}
+            {isCbcSeniorCohort && canManageCohortSetup && !pathwayLocked ? (
+                renderCohortCurriculumSetupModal({
+                    isOpen: pathwayConfigurationOpen,
+                    cohort,
+                    onClose: () => setPathwayConfigurationOpen(false),
+                    onConfigured: handleCohortSubjectsChanged,
+                })
             ) : null}
         </div>
     );
