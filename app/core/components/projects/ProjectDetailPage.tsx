@@ -26,6 +26,7 @@ import { ProjectCriteriaForm } from './ProjectWorkForms';
 import { ProjectEvidenceRecorder } from './ProjectEvidenceRecorder';
 import { ProjectTaskEvaluationEditor } from './ProjectTaskEvaluationEditor';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
+import { GroupRosterSummary } from '@/app/core/components/grouping/GroupRosterSummary';
 
 const tabs = [
   'overview',
@@ -62,7 +63,6 @@ export function ProjectDetailPage() {
   const [workAction, setWorkAction] = useState<'evidence' | 'evaluation' | null>(null);
   const [evidenceTaskId, setEvidenceTaskId] = useState<number | null>(null);
   const [evaluationTaskId, setEvaluationTaskId] = useState<number | null>(null);
-  const [groupName, setGroupName] = useState('');
   const [scoringEvaluationId, setScoringEvaluationId] = useState<number | null>(null);
   const [observationTask, setObservationTask] = useState(searchParams.get('task') ?? '');
   const [observationComment, setObservationComment] = useState('');
@@ -274,35 +274,7 @@ export function ProjectDetailPage() {
           ))}
         </ListState>
       ) : null}
-      {activeTab === 'groups' ? (
-        <ListState query={related.groups} empty="No groups created.">
-          {project.authority.can_manage_groups ? (
-            <form
-              className="mb-4 flex gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (groupName.trim())
-                  resources.createGroup.mutate(groupName.trim(), {
-                    onSuccess: () => setGroupName(''),
-                  });
-              }}
-            >
-              <Input
-                aria-label="Group name"
-                placeholder="New group name"
-                value={groupName}
-                onChange={(event) => setGroupName(event.target.value)}
-              />
-              <Button type="submit" disabled={!groupName.trim() || resources.createGroup.isPending}>
-                Create group
-              </Button>
-            </form>
-          ) : null}
-          {(related.groups.data ?? []).map((item) => (
-            <Row key={item.id} title={item.name} detail={`${item.members.length} members`} />
-          ))}
-        </ListState>
-      ) : null}
+      {activeTab === 'groups' ? <GroupRosterSummary type="project" id={project.id} /> : null}
       {activeTab === 'evidence' ? (
         <ListState query={related.evidence} empty="No evidence recorded.">
           {(related.evidence.data ?? []).map((item) => (
