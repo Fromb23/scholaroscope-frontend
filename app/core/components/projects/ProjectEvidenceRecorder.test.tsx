@@ -125,7 +125,7 @@ describe('ProjectEvidenceRecorder', () => {
     act(() => groupButton.props.onClick());
     expect(renderer!.root.findByType('a').props.href).toContain('/projects/4/groups/22?returnTo=');
     expect(decodeURIComponent(renderer!.root.findByType('a').props.href)).toContain(
-      '/projects/4?tab=tasks&task=7&action=evidence&scope=group&group=22',
+      '/projects/4?tab=tasks&task=7&scope=group&group=22&section=evidence',
     );
     expect(JSON.stringify(renderer!.toJSON())).not.toContain('Participant');
   });

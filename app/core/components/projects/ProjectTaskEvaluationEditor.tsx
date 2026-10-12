@@ -61,7 +61,7 @@ export function ProjectTaskEvaluationEditor({
   const availableGroups = useMemo(
     () =>
       groups.filter((group) =>
-        group.members.some(
+        [...group.members, ...(group.historical_members ?? [])].some(
           (member) => activeParticipantIds.has(member.participant),
         ),
       ),
@@ -70,7 +70,17 @@ export function ProjectTaskEvaluationEditor({
   const routeScope =
     typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('scope');
   const [scope, setScope] = useState<EvaluationScope>(routeScope === 'group' ? 'group' : 'individual');
-  const [participantIndex, setParticipantIndex] = useState(0);
+  const [participantIndex, setParticipantIndex] = useState(() => {
+    const requestedParticipant = Number(
+      typeof window === 'undefined'
+        ? null
+        : new URLSearchParams(window.location.search).get('participant'),
+    );
+    const requestedIndex = activeParticipants.findIndex(
+      (participant) => participant.id === requestedParticipant,
+    );
+    return requestedIndex >= 0 ? requestedIndex : 0;
+  });
   const [groupIndex, setGroupIndex] = useState(() => {
     const requestedGroup = Number(
       typeof window === 'undefined'
@@ -112,8 +122,18 @@ export function ProjectTaskEvaluationEditor({
   };
 
   const move = (offset: number) => {
-    if (scope === 'individual') setParticipantIndex((value) => value + offset);
-    else {
+    if (scope === 'individual') {
+      const nextIndex = participantIndex + offset;
+      setParticipantIndex(nextIndex);
+      const nextParticipant = activeParticipants[nextIndex];
+      if (nextParticipant) {
+        replaceEvaluationRoute(deploymentId, (params) => {
+          params.set('scope', 'individual');
+          params.set('participant', String(nextParticipant.id));
+          params.delete('group');
+        });
+      }
+    } else {
       const nextIndex = groupIndex + offset;
       setGroupIndex(nextIndex);
       const nextGroup = availableGroups[nextIndex];
@@ -133,7 +153,11 @@ export function ProjectTaskEvaluationEditor({
       const participantIds =
         scope === 'individual'
           ? [Number(targetId)]
-          : (availableGroups.find((group) => group.id === Number(targetId))?.members ?? [])
+          : [
+              ...(availableGroups.find((group) => group.id === Number(targetId))?.members ?? []),
+              ...(availableGroups.find((group) => group.id === Number(targetId))
+                ?.historical_members ?? []),
+            ]
               .filter(
                 (member) => activeParticipantIds.has(member.participant),
               )
@@ -240,7 +264,7 @@ export function ProjectTaskEvaluationEditor({
               <Link
                 className="text-sm text-blue-600 hover:underline"
                 href={`/projects/${deploymentId}/groups/${target.id}?${new URLSearchParams({
-                  returnTo: `/projects/${deploymentId}?tab=tasks&task=${task.id}&action=evaluation&scope=group&group=${target.id}`,
+                  returnTo: `/projects/${deploymentId}?tab=tasks&task=${task.id}&scope=group&group=${target.id}&section=evaluation`,
                 }).toString()}`}
               >
                 View group members

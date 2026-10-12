@@ -54,6 +54,7 @@ export interface GroupingContextResponse {
     lock_reason: string | null;
     evidence_count: number;
     evaluation_count: number;
+    dependencies: Array<Record<string, number | string>>;
   };
 }
 

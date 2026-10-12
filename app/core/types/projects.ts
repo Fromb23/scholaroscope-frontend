@@ -197,6 +197,7 @@ export interface ProjectDeploymentProgress {
   task_count: number;
   completed_task_count: number;
   expected_participant_task_count: number;
+  coverage_basis: 'task_roster_groups_x_tasks' | 'active_learners_x_tasks';
   evidence_coverage: ProjectCoverage;
   evaluation_coverage: ProjectCoverage;
   evidence_count: number;
@@ -242,6 +243,8 @@ export interface ProjectDeployment {
     started_at: string | null;
     submitted_at: string | null;
     finalized_at: string | null;
+    group_set_revision: number | null;
+    eligible_group_ids: number[];
     authority: {
       can_activate: boolean;
       can_record_evidence: boolean;
@@ -252,6 +255,7 @@ export interface ProjectDeployment {
     can_record_evidence: boolean;
     evidence_coverage: ProjectCoverage;
     evaluation_coverage: ProjectCoverage;
+    coverage_basis: 'task_roster_groups' | 'active_learners';
   }>;
   administration?: {
     id: number;
@@ -342,6 +346,13 @@ export interface ProjectGroup {
   deployment: number;
   name: string;
   created_at: string;
+  lifecycle_state: 'ACTIVE' | 'HISTORICAL';
+  group_set_revision: number | null;
+  dependency_state: {
+    is_locked: boolean;
+    evidence_count: number;
+    evaluation_count: number;
+  };
   members: Array<{
     id: number;
     participant: number;
@@ -400,6 +411,7 @@ export interface ProjectTaskEvaluation {
   deployment: number;
   task: number;
   participant: number;
+  source_group: number | null;
   evaluator: number;
   status: string;
   teacher_feedback: string;

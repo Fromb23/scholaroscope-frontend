@@ -92,4 +92,11 @@ describe('shared Project and Assignment grouping workflow', () => {
     expect(builder).toContain('router.push(returnTo)');
     expect(builder).toContain("parseAppDestination(searchParams.get('returnTo'))");
   });
+
+  it('exposes a reasoned audited correction without bypassing the ordinary lock', () => {
+    expect(builder).toContain('Start audited roster correction');
+    expect(builder).toContain('Correction reason');
+    expect(builder).toContain('mutations.correctRoster.mutateAsync');
+    expect(builder).toContain('Save audited correction');
+  });
 });

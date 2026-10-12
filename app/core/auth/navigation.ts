@@ -1,10 +1,9 @@
 const MAX_APP_DESTINATION_LENGTH = 2048;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 const DANGEROUS_SCHEME = /^(?:javascript|data|file|https?):/i;
-// Bound the useful report -> detail -> record trail. Construction utilities
-// strip carried origins for ordinary drill-downs, and this parser prevents an
-// exceptional bounded trail from growing indefinitely.
-const MAX_RETURN_TO_DEPTH = 2;
+// Permit one bounded origin carried by an internal destination, while rejecting
+// recursively nested return chains that grow across repeated drill-downs.
+const MAX_RETURN_TO_DEPTH = 1;
 
 function appOrigin(): string {
   return typeof window !== 'undefined' ? window.location.origin : 'http://localhost';

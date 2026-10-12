@@ -207,7 +207,6 @@ export default function CohortAssignmentDetailPage() {
   const [deletionOpen, setDeletionOpen] = useState(false);
   const [deletionError, setDeletionError] = useState<AppError | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [advancedDetailsOpen, setAdvancedDetailsOpen] = useState(false);
   const [workflowDirty, setWorkflowDirty] = useState(false);
   const responseWorkflowRef = useRef<HTMLDivElement | null>(null);
   const reviewWorkflowRef = useRef<HTMLDivElement | null>(null);
@@ -300,12 +299,14 @@ export default function CohortAssignmentDetailPage() {
   const canOpenLearnerReports = reportSurface !== 'none';
   const activeWorkflow = parseWorkflow(searchParams.get('workflow'));
   const unitParam = searchParams.get('unit');
+  const advancedDetailsOpen = searchParams.get('records') === '1';
 
   const updateWorkspaceUrl = useCallback(
     (updates: {
       workflow?: AssignmentWorkflow | null;
       unit?: string | null;
       tab?: DetailTab | null;
+      records?: boolean;
     }) => {
       const params = new URLSearchParams(searchParams.toString());
       if ('workflow' in updates) {
@@ -319,6 +320,10 @@ export default function CohortAssignmentDetailPage() {
       if ('tab' in updates) {
         if (updates.tab) params.set('tab', updates.tab);
         else params.delete('tab');
+      }
+      if ('records' in updates) {
+        if (updates.records) params.set('records', '1');
+        else params.delete('records');
       }
       const query = params.toString();
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
@@ -696,6 +701,7 @@ export default function CohortAssignmentDetailPage() {
   }
 
   const canChangeActiveAssignment = canManageAssignments && assignment.status !== 'ARCHIVED';
+  const canRecordAssignmentResponse = canManageAssignments && assignment.status === 'PUBLISHED';
   const assignmentAttachmentSlots = assignment.attachment_slots ?? [];
   const buildAssignmentLearnerReportHref = (learnerId: number) =>
     buildLearnerAssignmentReportHref(learnerId, {
@@ -844,6 +850,10 @@ export default function CohortAssignmentDetailPage() {
   };
 
   const openRecordResponsePanel = () => {
+    if (!canRecordAssignmentResponse) {
+      setActionError('Issue this assignment before recording responses.');
+      return;
+    }
     if (isGroupAssignment) {
       updateWorkspaceUrl({
         workflow: 'record',
@@ -853,8 +863,8 @@ export default function CohortAssignmentDetailPage() {
             ? groupUnitValue(groupWorkUnits[0].id)
             : null,
         tab: 'group-submissions',
+        records: true,
       });
-      setAdvancedDetailsOpen(true);
       scrollWorkflowPanel(responseWorkflowRef);
       return;
     }
@@ -882,8 +892,8 @@ export default function CohortAssignmentDetailPage() {
         workflow: 'review',
         unit: nextReviewGroup ? groupUnitValue(nextReviewGroup.id) : null,
         tab: 'group-evaluations',
+        records: true,
       });
-      setAdvancedDetailsOpen(true);
       scrollWorkflowPanel(reviewWorkflowRef);
       return;
     }
@@ -1020,8 +1030,7 @@ export default function CohortAssignmentDetailPage() {
         break;
       case 'MANAGE_GROUPS':
       case 'MARK_PARTICIPATION':
-        setActiveTab('groups');
-        setAdvancedDetailsOpen(true);
+        updateWorkspaceUrl({ tab: 'groups', records: true });
         break;
       case 'ADD_LEARNERS':
         openPublishModal('add_learners');
@@ -1033,12 +1042,13 @@ export default function CohortAssignmentDetailPage() {
         openReviewWorkflow();
         break;
       case 'RECORD_EVIDENCE':
-        setActiveTab(isGroupAssignment ? 'group-evaluations' : 'evaluations');
-        setAdvancedDetailsOpen(true);
+        updateWorkspaceUrl({
+          tab: isGroupAssignment ? 'group-evaluations' : 'evaluations',
+          records: true,
+        });
         break;
       case 'VIEW_RECORD':
-        setActiveTab('overview');
-        setAdvancedDetailsOpen(true);
+        updateWorkspaceUrl({ tab: 'overview', records: true });
         break;
       case 'FINISH_LEARNER_WORK':
       case 'STORE_RECORD':
@@ -1404,6 +1414,14 @@ export default function CohortAssignmentDetailPage() {
         )}
       </StatStrip>
 
+      {assignment.status === 'DRAFT' && canManageAssignments ? (
+        <Card className="theme-info-surface">
+          <p className="text-sm font-medium theme-text">
+            Issue this assignment before recording responses.
+          </p>
+        </Card>
+      ) : null}
+
       {showSessionScopeNote ? (
         <Card className="theme-info-surface">
           <div className="space-y-1">
@@ -1456,7 +1474,7 @@ export default function CohortAssignmentDetailPage() {
         </Card>
       ) : null}
 
-      {canChangeActiveAssignment &&
+      {canRecordAssignmentResponse &&
       activeWorkflow === 'record' &&
       !isGroupAssignment &&
       !useWorkflowSheet ? (
@@ -1482,7 +1500,7 @@ export default function CohortAssignmentDetailPage() {
               if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
             }}
             pending={submissionsQuery.loading || recipientsQuery.loading}
-            readOnly={!canChangeActiveAssignment}
+            readOnly={!canRecordAssignmentResponse}
             onDirtyChange={setWorkflowDirty}
           />
         </div>
@@ -1576,7 +1594,11 @@ export default function CohortAssignmentDetailPage() {
 
       <ResponsiveActionSheet
         open={Boolean(
-          canChangeActiveAssignment && activeWorkflow && !isGroupAssignment && useWorkflowSheet,
+          canChangeActiveAssignment &&
+            activeWorkflow &&
+            (activeWorkflow !== 'record' || canRecordAssignmentResponse) &&
+            !isGroupAssignment &&
+            useWorkflowSheet,
         )}
         onClose={closeActiveWorkflow}
         title={activeWorkflow === 'record' ? 'Record learner response' : 'Review learner response'}
@@ -1612,7 +1634,7 @@ export default function CohortAssignmentDetailPage() {
               if (next) updateWorkspaceUrl({ unit: individualUnitValue(next.student) });
             }}
             pending={submissionsQuery.loading || recipientsQuery.loading}
-            readOnly={!canChangeActiveAssignment}
+            readOnly={!canRecordAssignmentResponse}
             onDirtyChange={setWorkflowDirty}
             embedded
           />
@@ -1678,14 +1700,14 @@ export default function CohortAssignmentDetailPage() {
             type="button"
             variant="secondary"
             className="w-full sm:w-auto"
-            onClick={() => setAdvancedDetailsOpen((open) => !open)}
+            onClick={() => updateWorkspaceUrl({ records: !advancedDetailsOpen })}
           >
             {advancedDetailsOpen ? 'Hide assignment records' : 'Show assignment records'}
           </Button>
         </div>
       </Card>
 
-      {advancedDetailsOpen || (isGroupAssignment && activeWorkflow) ? (
+      {advancedDetailsOpen ? (
         <>
           <Card>
             <div className="flex flex-wrap gap-2">
@@ -2200,7 +2222,7 @@ export default function CohortAssignmentDetailPage() {
                 if (next) updateWorkspaceUrl({ unit: groupUnitValue(next.id) });
               }}
               pending={groupsQuery.loading}
-              readOnly={!canChangeActiveAssignment}
+              readOnly={!canRecordAssignmentResponse}
             />
           ) : null}
 

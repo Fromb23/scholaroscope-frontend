@@ -60,9 +60,10 @@ export function ProjectDetailPage() {
   const resources = useProjectResourceMutations(id);
   const [pendingAction, setPendingAction] = useState<ProjectLifecycleAction | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const requestedWorkSection = searchParams.get('section') ?? searchParams.get('action');
   const initialWorkAction =
-    searchParams.get('action') === 'evidence' || searchParams.get('action') === 'evaluation'
-      ? (searchParams.get('action') as 'evidence' | 'evaluation')
+    requestedWorkSection === 'evidence' || requestedWorkSection === 'evaluation'
+      ? (requestedWorkSection as 'evidence' | 'evaluation')
       : null;
   const initialWorkTask = Number(searchParams.get('task')) || null;
   const [workAction, setWorkAction] = useState<'evidence' | 'evaluation' | null>(initialWorkAction);
@@ -75,6 +76,7 @@ export function ProjectDetailPage() {
   const [scoringEvaluationId, setScoringEvaluationId] = useState<number | null>(null);
   const [observationTask, setObservationTask] = useState(searchParams.get('task') ?? '');
   const [observationComment, setObservationComment] = useState('');
+  const observationOpen = searchParams.get('section') === 'observation';
   const project = deploymentQuery.data;
   const error = mutation.error
     ? resolveAppError(mutation.error, {
@@ -88,22 +90,81 @@ export function ProjectDetailPage() {
   const returnTo = projectBackHref(searchParams.get('returnTo'));
   const selectedTask = Number(searchParams.get('task')) || null;
   const selectedParticipant = Number(searchParams.get('participant')) || null;
+  const selectedGroup = Number(searchParams.get('group')) || null;
+  const selectedScope = searchParams.get('scope') === 'individual' ? 'individual' : 'group';
   const tasks = project?.definition?.tasks ?? [];
   const requestedTaskIndex = tasks.findIndex((task) => task.id === selectedTask);
   const selectedTaskIndex = requestedTaskIndex >= 0 ? requestedTaskIndex : 0;
   const taskInView = tasks[selectedTaskIndex] ?? null;
+  const currentGroups = related.groups.data ?? [];
+  const allGroups = [...currentGroups, ...(related.historicalGroups.data ?? [])].filter(
+    (group, index, rows) => rows.findIndex((candidate) => candidate.id === group.id) === index,
+  );
+  const taskExecution = project?.task_executions?.find((row) => row.task === taskInView?.id);
+  const taskGroups = taskExecution?.eligible_group_ids?.length
+    ? allGroups.filter((group) => taskExecution.eligible_group_ids.includes(group.id))
+    : currentGroups;
+  const activeParticipants = (related.participants.data ?? []).filter(
+    (participant) => participant.status === 'ACTIVE',
+  );
+  const scopeTargets = selectedScope === 'group' ? taskGroups : activeParticipants;
+  const requestedTargetIndex = scopeTargets.findIndex((target) =>
+    selectedScope === 'group'
+      ? target.id === selectedGroup
+      : target.id === selectedParticipant,
+  );
+  const selectedTargetIndex = requestedTargetIndex >= 0 ? requestedTargetIndex : 0;
+  const selectedTarget = scopeTargets[selectedTargetIndex] ?? null;
+  const selectedTaskEvidence = (related.evidence.data ?? []).filter((item) => {
+    if (item.task !== taskInView?.id || !selectedTarget) return false;
+    if (selectedScope === 'group') return item.group === selectedTarget.id;
+    const participant = activeParticipants.find((row) => row.id === selectedTarget.id);
+    return Boolean(
+      participant &&
+        (item.learner === participant.learner ||
+          item.attributed_participants.includes(participant.id)),
+    );
+  });
+  const selectedTaskEvaluations = (related.evaluations.data ?? []).filter((item) => {
+    if (item.task !== taskInView?.id || !selectedTarget) return false;
+    return selectedScope === 'group'
+      ? item.source_group === selectedTarget.id
+      : item.participant === selectedTarget.id;
+  });
+  const selectScopeTarget = (index: number) => {
+    const target = scopeTargets[index];
+    if (!target) return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.set('scope', selectedScope);
+    next.delete(selectedScope === 'group' ? 'participant' : 'group');
+    next.set(selectedScope === 'group' ? 'group' : 'participant', String(target.id));
+    router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+  };
   const openTask = (taskId: number) => {
     const next = new URLSearchParams(searchParams.toString());
     next.set('tab', 'tasks');
     next.set('task', String(taskId));
+    const execution = project?.task_executions?.find((row) => row.task === taskId);
+    if (
+      next.get('scope') === 'group' &&
+      execution?.eligible_group_ids.length &&
+      !execution.eligible_group_ids.includes(Number(next.get('group')))
+    ) {
+      next.set('group', String(execution.eligible_group_ids[0]));
+    }
     router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
   };
   const openTaskAction = (taskId: number, action: 'evidence' | 'evaluation') => {
     const next = new URLSearchParams(searchParams.toString());
-    next.delete('returnTo');
     next.set('tab', 'tasks');
     next.set('task', String(taskId));
     next.set('action', action);
+    next.set('section', action);
+    next.set('scope', selectedScope);
+    if (selectedTarget) {
+      next.set(selectedScope === 'group' ? 'group' : 'participant', String(selectedTarget.id));
+      next.delete(selectedScope === 'group' ? 'participant' : 'group');
+    }
     router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
   };
   const setTab = (tab: Tab) => {
@@ -113,13 +174,13 @@ export function ProjectDetailPage() {
     }
     const next = new URLSearchParams(searchParams.toString());
     if (tab !== 'tasks') {
-      for (const key of ['action', 'scope', 'group', 'participant']) next.delete(key);
+      for (const key of ['action', 'section', 'scope', 'group', 'participant']) next.delete(key);
     }
     router.replace(buildProjectWorkspaceHref(id, next, tab), { scroll: false });
   };
   const closeTaskAction = () => {
     const next = new URLSearchParams(searchParams.toString());
-    for (const key of ['action', 'scope', 'group', 'participant']) next.delete(key);
+    for (const key of ['action', 'section']) next.delete(key);
     router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
     setEvidenceTaskId(null);
     setEvaluationTaskId(null);
@@ -130,6 +191,11 @@ export function ProjectDetailPage() {
     // Route state is the source of truth; this only canonicalizes a task-less deep link.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedTask, taskInView?.id]);
+  useEffect(() => {
+    setWorkAction(initialWorkAction);
+    setEvidenceTaskId(initialWorkAction === 'evidence' ? initialWorkTask : null);
+    setEvaluationTaskId(initialWorkAction === 'evaluation' ? initialWorkTask : null);
+  }, [initialWorkAction, initialWorkTask]);
   const confirmAction = async () => {
     if (!pendingAction) return;
     try {
@@ -212,6 +278,29 @@ export function ProjectDetailPage() {
       {activeTab === 'overview' ? (
         <div className="space-y-4">
           <ProjectScheduleStatus schedule={project.schedule} />
+          {project.authority.can_administer ? (
+            <Card className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold theme-text">Project class observation</p>
+                <p className="text-sm theme-muted">
+                  Describe how the whole stream handled this project. This does not become learner
+                  evidence.
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setObservationTask('');
+                  const next = new URLSearchParams(searchParams.toString());
+                  next.set('tab', 'overview');
+                  next.delete('task');
+                  next.set('section', 'observation');
+                  router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+                }}
+              >
+                Record project class observation
+              </Button>
+            </Card>
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card>
               <p className="text-sm theme-subtle">Learners</p>
@@ -285,6 +374,36 @@ export function ProjectDetailPage() {
                   setWorkAction('evaluation');
                   openTaskAction(taskInView.id, 'evaluation');
                 }}
+                onRecordTaskObservation={() => {
+                  setObservationTask(String(taskInView.id));
+                  const next = new URLSearchParams(searchParams.toString());
+                  next.set('tab', 'tasks');
+                  next.set('task', String(taskInView.id));
+                  next.set('section', 'observation');
+                  router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+                }}
+                scope={selectedScope}
+                onScopeChange={(scope) => {
+                  const next = new URLSearchParams(searchParams.toString());
+                  next.set('scope', scope);
+                  next.delete(scope === 'group' ? 'participant' : 'group');
+                  const first = scope === 'group' ? taskGroups[0] : activeParticipants[0];
+                  if (first) next.set(scope === 'group' ? 'group' : 'participant', String(first.id));
+                  router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+                }}
+                selectedTargetName={
+                  selectedTarget
+                    ? 'name' in selectedTarget
+                      ? selectedTarget.name
+                      : selectedTarget.learner_name
+                    : null
+                }
+                targetIndex={selectedTargetIndex}
+                targetCount={scopeTargets.length}
+                onPreviousTarget={() => selectScopeTarget(selectedTargetIndex - 1)}
+                onNextTarget={() => selectScopeTarget(selectedTargetIndex + 1)}
+                evidence={selectedTaskEvidence}
+                evaluations={selectedTaskEvaluations}
               />
             </>
           ) : (
@@ -305,67 +424,42 @@ export function ProjectDetailPage() {
           ))}
         </ListState>
       ) : null}
-      {activeTab === 'groups' ? <GroupRosterSummary type="project" id={project.id} /> : null}
+      {activeTab === 'groups' ? (
+        <div className="space-y-4">
+          <GroupRosterSummary type="project" id={project.id} />
+          {(related.historicalGroups.data ?? []).length ? (
+            <Card className="space-y-3">
+              <div>
+                <h2 className="font-semibold theme-text">Group history / audit</h2>
+                <p className="text-sm theme-muted">
+                  Superseded groups remain read-only so older evidence and captured membership stay
+                  traceable.
+                </p>
+              </div>
+              {(related.historicalGroups.data ?? []).map((group) => (
+                <Row
+                  key={group.id}
+                  title={`${group.name} · Historical`}
+                  detail={`${group.historical_members.length + group.members.length} captured members · ${group.dependency_state.evidence_count} evidence · ${group.dependency_state.evaluation_count} evaluations`}
+                />
+              ))}
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
       {activeTab === 'evidence' ? (
         <ListState query={related.evidence} empty="No evidence recorded.">
           {(related.evidence.data ?? []).map((item) => (
             <Row
               key={item.id}
               title={label(item.evidence_type)}
-              detail={`Task ${item.task} · ${new Date(item.observed_at).toLocaleString()}`}
+              detail={`${tasks.find((task) => task.id === item.task)?.title ?? `Task ${item.task}`} · ${item.group ? `Group: ${allGroups.find((group) => group.id === item.group)?.name ?? item.group}` : `Learner: ${activeParticipants.find((participant) => participant.learner === item.learner)?.learner_name ?? item.learner}`} · ${project.subject.name} · ${new Date(item.observed_at).toLocaleString()}`}
             />
           ))}
         </ListState>
       ) : null}
       {activeTab === 'observations' ? (
         <ListState query={related.observations} empty="No class observations recorded.">
-          {project.authority.can_administer ? (
-            <form
-              className="mb-4 space-y-3 rounded-lg border theme-border p-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void resources.createClassObservation
-                  .mutateAsync({
-                    task: observationTask ? Number(observationTask) : undefined,
-                    comment: observationComment,
-                    observed_at: new Date().toISOString(),
-                  })
-                  .then(() => setObservationComment(''));
-              }}
-            >
-              <h2 className="font-semibold theme-text">Class observation</h2>
-              <p className="text-sm theme-muted">
-                Project or task context only. It is not copied into individual learner evidence.
-              </p>
-              <Select
-                label="Project or task"
-                value={observationTask}
-                onChange={(event) => setObservationTask(event.target.value)}
-                options={[
-                  { value: '', label: 'Whole project' },
-                  ...(project.definition?.tasks ?? []).map((task) => ({
-                    value: task.id,
-                    label: `${task.code}. ${task.title}`,
-                  })),
-                ]}
-              />
-              <label className="block text-sm font-medium theme-text">
-                Class observation
-                <textarea
-                  className="theme-input mt-1 min-h-24 w-full rounded-lg px-3 py-2"
-                  required
-                  value={observationComment}
-                  onChange={(event) => setObservationComment(event.target.value)}
-                />
-              </label>
-              <Button
-                type="submit"
-                disabled={!observationComment.trim() || resources.createClassObservation.isPending}
-              >
-                Record observation
-              </Button>
-            </form>
-          ) : null}
           {(related.observations.data ?? []).map((item) => (
             <Row
               key={item.id}
@@ -373,16 +467,6 @@ export function ProjectDetailPage() {
                 item.task ? `Task ${item.task} class observation` : 'Project class observation'
               }
               detail={`${item.comment} · ${item.author_name} · ${new Date(item.observed_at).toLocaleString()} · ${item.status}`}
-              icon={
-                project.authority.can_administer && item.status === 'DRAFT' ? (
-                  <Button
-                    size="sm"
-                    onClick={() => resources.finalizeClassObservation.mutate(item.id)}
-                  >
-                    Finalize
-                  </Button>
-                ) : null
-              }
             />
           ))}
         </ListState>
@@ -399,8 +483,8 @@ export function ProjectDetailPage() {
               }
             >
               <Row
-                title={`Participant ${item.participant} · Task ${item.task}`}
-                detail={`${item.status} · ${item.derived_score} · Learner feedback: ${item.teacher_feedback || 'None'} · Projection: ${item.evidence_projection_status}${item.evidence_projection_warning ? ` (${item.evidence_projection_warning})` : ''}`}
+                title={`${activeParticipants.find((participant) => participant.id === item.participant)?.learner_name ?? `Participant ${item.participant}`} · ${tasks.find((task) => task.id === item.task)?.title ?? `Task ${item.task}`}`}
+                detail={`${item.source_group ? `Group: ${allGroups.find((group) => group.id === item.source_group)?.name ?? item.source_group} · ` : 'Individual · '}${project.subject.name} · ${item.status} · ${item.derived_score} · Learner feedback: ${item.teacher_feedback || 'None'} · Projection: ${item.evidence_projection_status}${item.evidence_projection_warning ? ` (${item.evidence_projection_warning})` : ''}`}
                 icon={
                   project.authority.can_evaluate && item.status !== 'FINALIZED' ? (
                     <Button size="sm" onClick={() => setScoringEvaluationId(item.id)}>
@@ -470,6 +554,65 @@ export function ProjectDetailPage() {
           </div>
         </Card>
       ) : null}
+
+      <ResponsiveActionSheet
+        open={observationOpen && project.authority.can_administer}
+        onOpenChange={(open) => {
+          if (open) return;
+          const next = new URLSearchParams(searchParams.toString());
+          next.delete('section');
+          router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+        }}
+        title={observationTask ? 'Record task class observation' : 'Record project class observation'}
+        description="This class-level observation stays in project context and does not become learner or group evidence."
+      >
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void resources.createClassObservation
+              .mutateAsync({
+                task: observationTask ? Number(observationTask) : undefined,
+                comment: observationComment,
+                observed_at: new Date().toISOString(),
+              })
+              .then(() => {
+                setObservationComment('');
+                const next = new URLSearchParams(searchParams.toString());
+                next.delete('section');
+                router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+              });
+          }}
+        >
+          <Select
+            label="Project or task"
+            value={observationTask}
+            onChange={(event) => setObservationTask(event.target.value)}
+            options={[
+              { value: '', label: 'Whole project' },
+              ...(project.definition?.tasks ?? []).map((task) => ({
+                value: task.id,
+                label: `${task.code}. ${task.title}`,
+              })),
+            ]}
+          />
+          <label className="block text-sm font-medium theme-text">
+            Class observation
+            <textarea
+              className="theme-input mt-1 min-h-24 w-full rounded-lg px-3 py-2"
+              required
+              value={observationComment}
+              onChange={(event) => setObservationComment(event.target.value)}
+            />
+          </label>
+          <Button
+            type="submit"
+            disabled={!observationComment.trim() || resources.createClassObservation.isPending}
+          >
+            Record observation
+          </Button>
+        </form>
+      </ResponsiveActionSheet>
 
       <ResponsiveActionSheet
         open={Boolean(pendingAction)}
@@ -559,7 +702,7 @@ export function ProjectDetailPage() {
             project={project}
             task={tasks.find((task) => task.id === evidenceTaskId)!}
             participants={related.participants.data ?? []}
-            groups={related.groups.data ?? []}
+            groups={taskGroups}
             evidenceTypes={related.evidenceTypes.data}
             pending={resources.recordEvidenceBatch.isPending}
             onScopeChange={() => resources.recordEvidenceBatch.reset()}
@@ -570,7 +713,7 @@ export function ProjectDetailPage() {
             onSubmit={async (payload) => {
               await resources.recordEvidenceBatch.mutateAsync(payload);
               setWorkAction(null);
-              setTab('evidence');
+              closeTaskAction();
             }}
           />
         ) : null}
@@ -579,7 +722,7 @@ export function ProjectDetailPage() {
             deploymentId={project.id}
             task={tasks.find((task) => task.id === evaluationTaskId)!}
             participants={related.participants.data ?? []}
-            groups={related.groups.data ?? []}
+            groups={taskGroups}
             pending={
               resources.createEvaluation.isPending || resources.recordCriterionScore.isPending
             }
@@ -599,7 +742,7 @@ export function ProjectDetailPage() {
                 }
               }
               setWorkAction(null);
-              setTab('evaluations');
+              closeTaskAction();
             }}
           />
         ) : null}

@@ -66,6 +66,8 @@ export function SharedGroupBuilderPage() {
   const [error, setError] = useState<string | null>(null);
   const [draftRevision, setDraftRevision] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
+  const [correctionMode, setCorrectionMode] = useState(false);
+  const [correctionReason, setCorrectionReason] = useState('');
 
   useEffect(() => {
     if (isDirty) return;
@@ -118,7 +120,7 @@ export function SharedGroupBuilderPage() {
       return;
     }
     try {
-      await mutations.save.mutateAsync({
+      const payload = {
         revision: draftRevision,
         groups: groups.map((group) => ({
           ...(group.id ? { id: group.id } : {}),
@@ -126,7 +128,19 @@ export function SharedGroupBuilderPage() {
           notes: group.notes.trim(),
           student_ids: group.studentIds,
         })),
-      });
+      };
+      if (correctionMode) {
+        if (!correctionReason.trim()) {
+          setError('Explain why this audited roster correction is required.');
+          return;
+        }
+        await mutations.correctRoster.mutateAsync({
+          ...payload,
+          reason: correctionReason.trim(),
+        });
+      } else {
+        await mutations.save.mutateAsync(payload);
+      }
       await mutations.invalidateOrigin();
       router.push(returnTo);
       router.refresh();
@@ -156,7 +170,7 @@ export function SharedGroupBuilderPage() {
     );
   }
   const data = query.data;
-  if (!data.capabilities.can_manage || data.lock.is_locked) {
+  if (!data.capabilities.can_manage || (data.lock.is_locked && !correctionMode)) {
     return (
       <div className="space-y-4">
         <Button variant="ghost" onClick={() => router.push(returnTo)}>
@@ -171,10 +185,17 @@ export function SharedGroupBuilderPage() {
               : 'You may inspect this roster, but only an eligible subject instructor can change it.'}
           </p>
           {data.lock.is_locked ? (
-            <p className="mt-2 text-xs theme-subtle">
-              {data.lock.evidence_count} evidence record(s) and {data.lock.evaluation_count}{' '}
-              group-derived evaluation(s) depend on this roster.
-            </p>
+            <div className="mt-3 space-y-3">
+              <p className="text-xs theme-subtle">
+                {data.lock.evidence_count} evidence record(s) and {data.lock.evaluation_count}{' '}
+                group-derived evaluation(s) depend on this roster.
+              </p>
+              {type === 'project' && data.capabilities.can_manage ? (
+                <Button onClick={() => setCorrectionMode(true)}>
+                  Start audited roster correction
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </Card>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -195,6 +216,7 @@ export function SharedGroupBuilderPage() {
           ))}
         </div>
       </div>
+
     );
   }
 
@@ -215,6 +237,22 @@ export function SharedGroupBuilderPage() {
           {data.context.title} · {data.context.population_label}
         </p>
       </div>
+
+      {correctionMode ? (
+        <Card className="space-y-3 border-[color:var(--color-warning)]">
+          <h2 className="font-semibold theme-text">Audited roster correction</h2>
+          <p className="text-sm theme-muted">
+            Existing evidence, evaluations and captured membership remain unchanged. This roster
+            revision applies to subsequent project tasks.
+          </p>
+          <Input
+            label="Correction reason"
+            required
+            value={correctionReason}
+            onChange={(event) => setCorrectionReason(event.target.value)}
+          />
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
@@ -274,7 +312,7 @@ export function SharedGroupBuilderPage() {
         </Card>
       ) : (
         <>
-          <Card className="space-y-4">
+          {!correctionMode ? <Card className="space-y-4">
             <h2 className="font-semibold theme-text">Random distribution preview</h2>
             <div className="grid gap-4 md:grid-cols-3">
               <Select
@@ -307,7 +345,7 @@ export function SharedGroupBuilderPage() {
               <Shuffle className="h-4 w-4" />
               {mutations.preview.isPending ? 'Building preview…' : 'Preview random distribution'}
             </Button>
-          </Card>
+          </Card> : null}
 
           <div className="grid gap-5 lg:grid-cols-[minmax(15rem,0.7fr)_minmax(0,1.3fr)]">
             <Card className="space-y-3">
@@ -471,10 +509,19 @@ export function SharedGroupBuilderPage() {
         </Button>
         <Button
           onClick={() => void save()}
-          disabled={mutations.save.isPending || data.eligible_learners.length === 0}
+          disabled={
+            mutations.save.isPending ||
+            mutations.correctRoster.isPending ||
+            data.eligible_learners.length === 0 ||
+            (correctionMode && !correctionReason.trim())
+          }
         >
           <Save className="h-4 w-4" />
-          {mutations.save.isPending ? 'Saving roster…' : 'Save complete roster'}
+          {mutations.save.isPending || mutations.correctRoster.isPending
+            ? 'Saving roster…'
+            : correctionMode
+              ? 'Save audited correction'
+              : 'Save complete roster'}
         </Button>
       </div>
     </div>

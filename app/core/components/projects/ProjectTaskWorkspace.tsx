@@ -1,7 +1,12 @@
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import type { ProjectDeployment, ProjectTask } from '@/app/core/types/projects';
+import type {
+  ProjectDeployment,
+  ProjectEvidence,
+  ProjectTask,
+  ProjectTaskEvaluation,
+} from '@/app/core/types/projects';
 
 function OutcomeList({ mappings }: { mappings: Array<Record<string, unknown>> }) {
   if (!mappings.length) return null;
@@ -39,6 +44,16 @@ export function ProjectTaskWorkspace({
   onRecordEvidence,
   onStartTask,
   onEvaluate,
+  onRecordTaskObservation = () => undefined,
+  scope = 'group',
+  onScopeChange = () => undefined,
+  selectedTargetName = null,
+  targetIndex = 0,
+  targetCount = 0,
+  onPreviousTarget = () => undefined,
+  onNextTarget = () => undefined,
+  evidence = [],
+  evaluations = [],
   activating = false,
 }: {
   project: ProjectDeployment;
@@ -49,6 +64,16 @@ export function ProjectTaskWorkspace({
   onRecordEvidence: () => void;
   onStartTask: () => void;
   onEvaluate: () => void;
+  onRecordTaskObservation?: () => void;
+  scope?: 'group' | 'individual';
+  onScopeChange?: (scope: 'group' | 'individual') => void;
+  selectedTargetName?: string | null;
+  targetIndex?: number;
+  targetCount?: number;
+  onPreviousTarget?: () => void;
+  onNextTarget?: () => void;
+  evidence?: ProjectEvidence[];
+  evaluations?: ProjectTaskEvaluation[];
   activating?: boolean;
 }) {
   const tasks = project.definition?.tasks ?? [];
@@ -108,6 +133,69 @@ export function ProjectTaskWorkspace({
         </div>
       ) : null}
       <OutcomeList mappings={task.curriculum_mappings} />
+      <div className="space-y-3 rounded-lg border theme-border p-4">
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant={scope === 'group' ? 'primary' : 'secondary'}
+            onClick={() => onScopeChange('group')}
+          >
+            Group scope
+          </Button>
+          <Button
+            size="sm"
+            variant={scope === 'individual' ? 'primary' : 'secondary'}
+            onClick={() => onScopeChange('individual')}
+          >
+            Individual scope
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">
+              Current {scope} scope
+            </p>
+            <p className="font-semibold theme-text">
+              {selectedTargetName ?? `No active ${scope === 'group' ? 'group' : 'learner'}`}
+            </p>
+          </div>
+          {targetCount ? (
+            <span className="text-sm theme-muted">
+              {targetIndex + 1} of {targetCount}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" disabled={targetIndex <= 0} onClick={onPreviousTarget}>
+            Previous {scope === 'group' ? 'group' : 'learner'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={targetIndex + 1 >= targetCount}
+            onClick={onNextTarget}
+          >
+            Next {scope === 'group' ? 'group' : 'learner'}
+          </Button>
+          <Button
+            size="sm"
+            disabled={!selectedTargetName || !authority?.can_record_evidence}
+            onClick={onRecordEvidence}
+          >
+            Record {scope === 'group' ? 'group' : 'learner'} observation
+          </Button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Coverage label="Evidence for selection" coverage={{ covered: evidence.length, expected: 1, percentage: evidence.length ? 100 : 0 }} />
+          <Coverage label="Evaluation state" coverage={{ covered: evaluations.length, expected: 1, percentage: evaluations.length ? 100 : 0 }} />
+          <div className="text-sm">
+            <p className="theme-muted">Resulting performance</p>
+            <p className="font-medium theme-text">
+              {evaluations.find((item) => item.status === 'FINALIZED')?.derived_score ?? 'Pending'}
+            </p>
+          </div>
+        </div>
+      </div>
       <div className="space-y-2">
         <h3 className="font-semibold theme-text">Criteria and scoring guide</h3>
         {task.criteria.map((criterion) => (
@@ -138,6 +226,15 @@ export function ProjectTaskWorkspace({
             {canWriteState && !structurallyDenied('record_evidence') ? (
               <Button disabled={!authority?.can_record_evidence} onClick={onRecordEvidence}>
                 Record evidence
+              </Button>
+            ) : null}
+            {canWriteState && !structurallyDenied('record_evidence') ? (
+              <Button
+                variant="secondary"
+                disabled={!authority?.can_record_evidence}
+                onClick={onRecordTaskObservation}
+              >
+                Record task class observation
               </Button>
             ) : null}
             {canWriteState && !structurallyDenied('evaluate') ? (
