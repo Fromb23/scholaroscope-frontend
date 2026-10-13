@@ -6,6 +6,18 @@ const source = () =>
   readFileSync(join(process.cwd(), 'app/core/components/projects/ProjectDetailPage.tsx'), 'utf8');
 
 describe('ProjectDetailPage task hierarchy', () => {
+  it('sets one stable semantic title across project workspace tabs', () => {
+    const page = source();
+    expect(page).toContain('useSemanticPageTitle(');
+    expect(page).toContain('getProjectWorkspacePageTitle({');
+    expect(page).toContain('deploymentQuery.isSuccess');
+    expect(page).toContain('project?.id === id');
+    expect(page).toContain('cohortName: project?.cohort?.name');
+    expect(page.indexOf('useSemanticPageTitle(')).toBeLessThan(
+      page.indexOf('if (deploymentQuery.isLoading)'),
+    );
+  });
+
   it('keeps task, scope and target in routed workflow state', () => {
     const page = source();
     expect(page).toContain("next.set('task', String(taskId))");

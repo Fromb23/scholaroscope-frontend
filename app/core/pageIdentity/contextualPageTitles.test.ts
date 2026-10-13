@@ -5,6 +5,7 @@ import {
   getCohortsPageTitle,
   getLearnersPageTitle,
   getProjectStreamsPageTitle,
+  getProjectWorkspacePageTitle,
 } from './contextualPageTitles';
 import { formatDocumentTitle } from './pageIdentity';
 
@@ -22,6 +23,35 @@ describe('contextual page titles', () => {
     expect(formatDocumentTitle(getProjectStreamsPageTitle('Community Garden'))).toBe(
       'Community Garden | Scholaroscope',
     );
+  });
+
+  it('uses authorized project and cohort identity for project workspaces', () => {
+    expect(
+      formatDocumentTitle(
+        getProjectWorkspacePageTitle({
+          accessConfirmed: true,
+          projectTitle: 'Community Garden',
+          cohortName: 'Grade 7 Yellow',
+        }),
+      ),
+    ).toBe('Community Garden — Grade 7 Yellow | Scholaroscope');
+    expect(
+      formatDocumentTitle(
+        getProjectWorkspacePageTitle({
+          accessConfirmed: true,
+          projectTitle: 'Community Garden',
+        }),
+      ),
+    ).toBe('Community Garden | Scholaroscope');
+    expect(
+      formatDocumentTitle(
+        getProjectWorkspacePageTitle({
+          accessConfirmed: false,
+          projectTitle: 'Stale private project',
+          cohortName: 'Secret cohort',
+        }),
+      ),
+    ).toBe('Project | Scholaroscope');
   });
 
   it('includes assignment context only after access is confirmed', () => {

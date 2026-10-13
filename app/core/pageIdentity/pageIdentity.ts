@@ -76,6 +76,7 @@ const dynamicFallbackRoutes: PageIdentityRoute[] = [
   { pattern: /^\/lesson-plans\/[^/]+$/, descriptor: { pageKind: 'lesson_plans.detail', displayLabel: 'Lesson Plan' } },
   { pattern: /^\/admin\/instructors\/[^/]+\/progress$/, descriptor: { pageKind: 'instructors.progress', displayLabel: 'Staff Teaching' } },
   { pattern: /^\/projects\/definitions\/[^/]+$/, descriptor: { pageKind: 'projects.streams', displayLabel: 'Project Streams' } },
+  { pattern: /^\/projects\/\d+$/, descriptor: { pageKind: 'projects.detail', displayLabel: 'Project' } },
 ];
 
 export function resolvePageIdentity(pathname: string): PageIdentityDescriptor {
