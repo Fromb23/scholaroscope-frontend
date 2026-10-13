@@ -34,6 +34,7 @@ const staticRoutes: PageIdentityRoute[] = [
   { pattern: /^\/login$/, descriptor: { pageKind: 'auth.login', displayLabel: 'Log in' } },
   { pattern: /^\/register$/, descriptor: { pageKind: 'auth.register', displayLabel: 'Create account' } },
   { pattern: /^\/forgot-password$/, descriptor: { pageKind: 'auth.forgot_password', displayLabel: 'Reset password' } },
+  { pattern: /^\/admin\/instructors$/, descriptor: { pageKind: 'instructors.list', displayLabel: 'Staff' } },
   { pattern: /^\/dashboard\/instructor$/, descriptor: { pageKind: 'dashboard.instructor', displayLabel: 'Teaching Today' } },
   { pattern: /^\/dashboard\/admin$/, descriptor: { pageKind: 'dashboard.admin', displayLabel: 'Admin Dashboard' } },
   { pattern: /^\/dashboard$/, descriptor: { pageKind: 'dashboard', displayLabel: 'Dashboard' } },
@@ -52,6 +53,7 @@ const staticRoutes: PageIdentityRoute[] = [
   { pattern: /^\/academic\/curricula$/, descriptor: { pageKind: 'curricula.list', displayLabel: 'Curricula' } },
   { pattern: /^\/learners$/, descriptor: { pageKind: 'learners.list', displayLabel: 'Learners' } },
   { pattern: /^\/learners\/new$/, descriptor: { pageKind: 'learners.new', displayLabel: 'New Learner' } },
+  { pattern: /^\/projects$/, descriptor: { pageKind: 'projects.list', displayLabel: 'Projects' } },
   { pattern: /^\/reports$/, descriptor: { pageKind: 'reports.home', displayLabel: 'Reports' } },
   { pattern: /^\/reports\/students$/, descriptor: { pageKind: 'reports.students', displayLabel: 'Learner Reports' } },
   { pattern: /^\/reports\/cohorts$/, descriptor: { pageKind: 'reports.cohorts', displayLabel: 'Class Reports' } },
@@ -63,7 +65,9 @@ const staticRoutes: PageIdentityRoute[] = [
 ];
 
 const dynamicFallbackRoutes: PageIdentityRoute[] = [
+  { pattern: /^\/reset-password\/[^/]+\/[^/]+$/, descriptor: { pageKind: 'auth.reset_password', displayLabel: 'Reset Password' } },
   { pattern: /^\/assessments\/[^/]+$/, descriptor: { pageKind: 'assessments.detail', displayLabel: 'Assessment' } },
+  { pattern: /^\/academic\/cohorts\/[^/]+\/assignments$/, descriptor: { pageKind: 'assignments.cohort', displayLabel: 'Assignments' } },
   { pattern: /^\/academic\/cohorts\/[^/]+$/, descriptor: { pageKind: 'cohorts.detail', displayLabel: 'Class' } },
   { pattern: /^\/academic\/cohorts\/[^/]+\/assignments\/[^/]+$/, descriptor: { pageKind: 'assignments.detail', displayLabel: 'Assignment' } },
   { pattern: /^\/learners\/[^/]+$/, descriptor: { pageKind: 'learners.detail', displayLabel: 'Learner' } },
@@ -71,6 +75,7 @@ const dynamicFallbackRoutes: PageIdentityRoute[] = [
   { pattern: /^\/sessions\/[^/]+$/, descriptor: { pageKind: 'sessions.detail', displayLabel: 'Lesson' } },
   { pattern: /^\/lesson-plans\/[^/]+$/, descriptor: { pageKind: 'lesson_plans.detail', displayLabel: 'Lesson Plan' } },
   { pattern: /^\/admin\/instructors\/[^/]+\/progress$/, descriptor: { pageKind: 'instructors.progress', displayLabel: 'Staff Teaching' } },
+  { pattern: /^\/projects\/definitions\/[^/]+$/, descriptor: { pageKind: 'projects.streams', displayLabel: 'Project Streams' } },
 ];
 
 export function resolvePageIdentity(pathname: string): PageIdentityDescriptor {

@@ -45,12 +45,14 @@ import type { Cohort } from '@/app/core/types/academic';
 import { getCurriculumBridgeName, getCurriculumOptionLabel } from '@/app/core/lib/curriculumBridge';
 import { useRegisteredCohortQuickAction } from '@/app/core/registry/cohortQuickActions';
 import { buildAcademicYearOptions, parseOptionalNumber } from '@/app/core/components/academic/cohorts/cohortsPageShared';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 
 type CohortWithIndex = Record<string, unknown> & Cohort;
 
 export function AdminCohortsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    useSemanticPageTitle('Cohorts');
     const setupMode = searchParams.get('setup') === '1';
     const blockedNotice = searchParams.get('blocked') === '1';
     const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });

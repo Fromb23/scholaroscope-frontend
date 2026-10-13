@@ -16,24 +16,33 @@ interface PageTitleContextValue {
   setTitleOverride: (title: string | null) => void;
 }
 
+interface PathScopedTitleOverride {
+  pathname: string;
+  title: string;
+}
+
 const PageTitleContext = createContext<PageTitleContextValue | null>(null);
 
 export function PageTitleProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [titleOverride, setTitleOverride] = useState<string | null>(null);
-
-  useEffect(() => {
-    setTitleOverride(null);
-  }, [pathname]);
+  const [titleOverride, setPathScopedTitleOverride] = useState<PathScopedTitleOverride | null>(null);
 
   const fallbackTitle = resolvePageIdentity(pathname).displayLabel;
-  const documentTitle = formatDocumentTitle(titleOverride ?? fallbackTitle);
+  const activeTitleOverride = titleOverride?.pathname === pathname ? titleOverride.title : null;
+  const documentTitle = formatDocumentTitle(activeTitleOverride ?? fallbackTitle);
 
   useEffect(() => {
     document.title = documentTitle;
   }, [documentTitle]);
 
-  const value = useMemo<PageTitleContextValue>(() => ({ setTitleOverride }), []);
+  const value = useMemo<PageTitleContextValue>(() => ({
+    setTitleOverride: (title) => {
+      setPathScopedTitleOverride((current) => {
+        if (title) return { pathname, title };
+        return current?.pathname === pathname ? null : current;
+      });
+    },
+  }), [pathname]);
 
   return (
     <PageTitleContext.Provider value={value}>

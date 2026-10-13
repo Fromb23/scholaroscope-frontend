@@ -39,6 +39,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { canRenderInstitutionReportOverview } from '@/app/core/components/reports/reportAccessPolicy';
 import { buildInstructorReportHref } from '@/app/core/components/reports/reportNavigation';
 import { parseAppDestination } from '@/app/core/auth/navigation';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 
 type ViewMode = 'table' | 'grid';
 
@@ -311,6 +312,7 @@ export function InstructorManagementPage() {
     const searchParams = useSearchParams();
     const { user, activeOrg, capabilities } = useAuth();
     const { instructors, pagination, loading, error, refetch, createInstructor } = useInstructors();
+    useSemanticPageTitle('Staff');
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');

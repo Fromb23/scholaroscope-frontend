@@ -15,6 +15,7 @@ import { resolveAppError } from '@/app/core/errors';
 import { useProjectWorkspaces } from '@/app/core/hooks/useProjects';
 import { useAuth } from '@/app/context/AuthContext';
 import { buildProjectDefinitionHref } from './projectNavigation';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 
 const statusOptions = [
   '',
@@ -33,6 +34,7 @@ export function ProjectsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { capabilities } = useAuth();
+  useSemanticPageTitle('Projects');
   const canCreateCustom =
     capabilities.authorization?.permission_keys.includes('projects.create') ?? false;
   const canOpenCatalogue =

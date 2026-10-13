@@ -24,6 +24,8 @@ import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
+import { getLearnersPageTitle } from '@/app/core/pageIdentity/contextualPageTitles';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success',
@@ -462,7 +464,8 @@ function LearnersPageInner() {
         },
     ];
 
-    const pageTitle = teachingSurface ? 'My Learners' : 'Learners';
+    const pageTitle = getLearnersPageTitle(teachingSurface);
+    useSemanticPageTitle(pageTitle);
     const pageDescription = teachingSurface
         ? 'Track learners in your assigned classes and follow up where support is needed.'
         : 'Generate a cohort learner list, then refine the loaded rows locally.';

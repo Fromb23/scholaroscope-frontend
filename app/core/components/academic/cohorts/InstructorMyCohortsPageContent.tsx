@@ -27,6 +27,9 @@ import {
     useInstructorMyCohorts,
 } from '@/app/core/hooks/useInstructorMyCohorts';
 import { getInstructorClassesLabel } from '@/app/components/layout/navConfig';
+import { useAuth } from '@/app/context/AuthContext';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
+import { getCohortsPageTitle } from '@/app/core/pageIdentity/contextualPageTitles';
 import {
     buildAcademicYearOptions,
     getInstructorAcademicYearFilterNotice,
@@ -34,6 +37,7 @@ import {
 } from '@/app/core/components/academic/cohorts/cohortsPageShared';
 
 export function InstructorMyCohortsPageContent() {
+    const { activeOperatingContext } = useAuth();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [filters, updateFilters] = usePersistedFilters('/academic/cohorts', {
@@ -155,6 +159,7 @@ export function InstructorMyCohortsPageContent() {
         [filteredGroups]
     );
     const classLabel = getInstructorClassesLabel(cohortSubjectGroups.length);
+    useSemanticPageTitle(getCohortsPageTitle(activeOperatingContext, classLabel));
     const currentYearCohortCount = useMemo(
         () => filteredGroups.filter((group) => group.is_current_year).length,
         [filteredGroups]
