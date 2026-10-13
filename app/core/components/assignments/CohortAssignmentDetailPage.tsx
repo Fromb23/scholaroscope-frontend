@@ -2,7 +2,7 @@
 
 import { resolveAssignmentError, resolveErrorMessage, type AppError } from '@/app/core/errors';
 
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookOpen, ClipboardList, Clock, FileCheck2, Users } from 'lucide-react';
@@ -97,7 +97,7 @@ type DetailTab =
   | 'evaluations'
   | 'groups'
   | 'group-submissions'
-  | 'group-evaluations';
+  | 'group-work';
 
 type AssignmentWorkflow = 'record' | 'review';
 
@@ -108,10 +108,11 @@ const DETAIL_TABS: DetailTab[] = [
   'evaluations',
   'groups',
   'group-submissions',
-  'group-evaluations',
+  'group-work',
 ];
 
 function parseDetailTab(value: string | null): DetailTab {
+  if (value === 'group-evaluations') return 'group-work';
   return DETAIL_TABS.includes(value as DetailTab) ? (value as DetailTab) : 'overview';
 }
 
@@ -520,8 +521,10 @@ export default function CohortAssignmentDetailPage() {
         ? [
             { value: 'overview', label: 'Overview' },
             { value: 'groups', label: 'Groups' },
-            { value: 'group-submissions', label: 'Group Submissions' },
-            { value: 'group-evaluations', label: 'Group Evaluations' },
+            ...(assignment?.group_workflow_mode === 'LEARNER_SUBMISSION'
+              ? [{ value: 'group-submissions' as DetailTab, label: 'Group responses' }]
+              : []),
+            { value: 'group-work', label: 'Review group work' },
           ]
         : [
             { value: 'overview', label: 'Overview' },
@@ -529,7 +532,7 @@ export default function CohortAssignmentDetailPage() {
             { value: 'submissions', label: 'Submissions' },
             { value: 'evaluations', label: 'Evaluations' },
           ],
-    [isGroupAssignment],
+    [assignment?.group_workflow_mode, isGroupAssignment],
   );
 
   useEffect(() => {
@@ -664,6 +667,17 @@ export default function CohortAssignmentDetailPage() {
     setWorkflowDirty(false);
   }, [activeWorkflow, unitParam]);
 
+  useEffect(() => {
+    if (isGroupAssignment || !activeWorkflow) return;
+    const panel = activeWorkflow === 'record' ? responseWorkflowRef.current : reviewWorkflowRef.current;
+    if (!panel) return;
+    const frame = window.requestAnimationFrame(() => {
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      panel.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeWorkflow, isGroupAssignment, selectedRecordRecipient?.student, selectedReviewSubmission?.id]);
+
   if (!isValidRoute) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -700,8 +714,9 @@ export default function CohortAssignmentDetailPage() {
     );
   }
 
-  const canChangeActiveAssignment = canManageAssignments && assignment.status !== 'ARCHIVED';
-  const canRecordAssignmentResponse = canManageAssignments && assignment.status === 'PUBLISHED';
+  const isAssignedInstructor = isTeachingActor && user?.id === assignment.instructor;
+  const canChangeActiveAssignment = isAssignedInstructor && assignment.status !== 'ARCHIVED';
+  const canRecordAssignmentResponse = isAssignedInstructor && assignment.status === 'PUBLISHED';
   const assignmentAttachmentSlots = assignment.attachment_slots ?? [];
   const buildAssignmentLearnerReportHref = (learnerId: number) =>
     buildLearnerAssignmentReportHref(learnerId, {
@@ -829,15 +844,6 @@ export default function CohortAssignmentDetailPage() {
     }
   };
 
-  const scrollWorkflowPanel = (panelRef: RefObject<HTMLDivElement | null>) => {
-    window.setTimeout(() => {
-      panelRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }, 80);
-  };
-
   const refetchAssignmentWorkflowData = async () => {
     await Promise.all([
       refetchAssignment(),
@@ -855,6 +861,10 @@ export default function CohortAssignmentDetailPage() {
       return;
     }
     if (isGroupAssignment) {
+      if (assignment.group_workflow_mode !== 'LEARNER_SUBMISSION') {
+        openReviewWorkflow();
+        return;
+      }
       updateWorkspaceUrl({
         workflow: 'record',
         unit: selectedGroup
@@ -865,7 +875,6 @@ export default function CohortAssignmentDetailPage() {
         tab: 'group-submissions',
         records: true,
       });
-      scrollWorkflowPanel(responseWorkflowRef);
       return;
     }
 
@@ -876,7 +885,6 @@ export default function CohortAssignmentDetailPage() {
       unit: selectedRecordRecipient ? individualUnitValue(selectedRecordRecipient.student) : null,
       tab: 'submissions',
     });
-    scrollWorkflowPanel(responseWorkflowRef);
   };
 
   const openReviewWorkflow = (submissionId?: number | null) => {
@@ -891,10 +899,9 @@ export default function CohortAssignmentDetailPage() {
       updateWorkspaceUrl({
         workflow: 'review',
         unit: nextReviewGroup ? groupUnitValue(nextReviewGroup.id) : null,
-        tab: 'group-evaluations',
+        tab: 'group-work',
         records: true,
       });
-      scrollWorkflowPanel(reviewWorkflowRef);
       return;
     }
 
@@ -909,7 +916,6 @@ export default function CohortAssignmentDetailPage() {
       unit: nextSubmission ? individualUnitValue(nextSubmission.student) : null,
       tab: 'evaluations',
     });
-    scrollWorkflowPanel(reviewWorkflowRef);
   };
 
   const handleResponseSaved = async () => {
@@ -1043,7 +1049,7 @@ export default function CohortAssignmentDetailPage() {
         break;
       case 'RECORD_EVIDENCE':
         updateWorkspaceUrl({
-          tab: isGroupAssignment ? 'group-evaluations' : 'evaluations',
+          tab: isGroupAssignment ? 'group-work' : 'evaluations',
           records: true,
         });
         break;
@@ -1478,7 +1484,7 @@ export default function CohortAssignmentDetailPage() {
       activeWorkflow === 'record' &&
       !isGroupAssignment &&
       !useWorkflowSheet ? (
-        <div ref={responseWorkflowRef}>
+        <div ref={responseWorkflowRef} tabIndex={-1} className="scroll-mt-28">
           <AssignmentRecordResponsePanel
             assignment={assignment}
             activeRecipient={selectedRecordRecipient}
@@ -1511,7 +1517,7 @@ export default function CohortAssignmentDetailPage() {
       selectedReviewSubmission &&
       !isGroupAssignment &&
       !useWorkflowSheet ? (
-        <div ref={reviewWorkflowRef}>
+        <div ref={reviewWorkflowRef} tabIndex={-1} className="scroll-mt-28">
           <Card className="theme-info-surface space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
@@ -2197,7 +2203,7 @@ export default function CohortAssignmentDetailPage() {
             />
           ) : null}
 
-          {activeTab === 'group-submissions' && isGroupAssignment ? (
+          {activeTab === 'group-submissions' && isGroupAssignment && assignment.group_workflow_mode === 'LEARNER_SUBMISSION' ? (
             <AssignmentGroupSubmissionsPanel
               assignment={assignment}
               groups={groupsQuery.groups}
@@ -2226,7 +2232,7 @@ export default function CohortAssignmentDetailPage() {
             />
           ) : null}
 
-          {activeTab === 'group-evaluations' && isGroupAssignment ? (
+          {activeTab === 'group-work' && isGroupAssignment ? (
             <AssignmentGroupEvaluationsPanel
               assignment={assignment}
               groups={groupsQuery.groups}
@@ -2245,7 +2251,7 @@ export default function CohortAssignmentDetailPage() {
               }}
               onSaved={async () => {
                 await refetchAssignmentWorkflowData();
-                setSuccessMessage('Group response reviewed.');
+                setSuccessMessage('Group work review saved.');
               }}
               onSaveAndNext={async () => {
                 const next = groupWorkUnits[groupWorkUnitIndex + 1];
@@ -2253,6 +2259,7 @@ export default function CohortAssignmentDetailPage() {
               }}
               pending={groupsQuery.loading}
               readOnly={!canChangeActiveAssignment}
+              focusToken={activeWorkflow === 'review' ? `${unitParam ?? ''}:${activeTab}` : null}
             />
           ) : null}
         </>

@@ -4,6 +4,7 @@ import type { OperationalScope } from '@/app/core/lib/academicScope';
 
 export type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
 export type AssignmentDeliveryMode = 'INDIVIDUAL' | 'GROUP';
+export type AssignmentGroupWorkflowMode = 'INSTRUCTOR_RECORDED' | 'LEARNER_SUBMISSION';
 export type AssignmentEvaluationType = 'NUMERIC' | 'RUBRIC' | 'DESCRIPTIVE' | 'COMPETENCY';
 export type AssignmentAttachmentPolicy = 'NONE' | 'OPTIONAL' | 'REQUIRED';
 export type AssignmentEvidenceStatus = 'PENDING' | 'CREATED' | 'BLOCKED' | 'SKIPPED';
@@ -67,6 +68,7 @@ export interface AssignmentLifecycleSummary {
     recipients_count: number;
     submissions_count: number;
     pending_review_count: number;
+    awaiting_submission_count?: number;
     missing_count: number;
     groups_count: number;
     group_members_count: number;
@@ -93,6 +95,7 @@ export interface AssignmentLifecycleState {
     warnings: string[];
     allowed_actions: AssignmentLifecycleAction[];
     summary: AssignmentLifecycleSummary;
+    workflow_mode?: 'INDIVIDUAL' | AssignmentGroupWorkflowMode;
     deletion?: AssignmentDeletionState;
 }
 
@@ -182,6 +185,7 @@ export interface Assignment {
     due_at: string | null;
     status: AssignmentStatus;
     delivery_mode: AssignmentDeliveryMode;
+    group_workflow_mode?: AssignmentGroupWorkflowMode;
     evaluation_type: AssignmentEvaluationType;
     rubric_scale: number | null;
     rubric_scale_name: string | null;
@@ -217,6 +221,8 @@ export interface Assignment {
     group_count: number;
     group_submission_count: number;
     group_evaluation_count: number;
+    pending_review_count?: number;
+    awaiting_submission_count?: number;
     /** Present only on the learner-safe assignment representation. */
     my_recipient?: AssignmentRecipient | null;
     my_submission?: AssignmentSubmission | null;
@@ -744,6 +750,7 @@ export interface AssignmentGroupSubmission {
     submitted_at: string;
     text_response: string;
     attachment_metadata: unknown[];
+    source: 'HISTORICAL_UNKNOWN' | 'LEARNER_SUBMITTED' | 'INSTRUCTOR_RECORDED' | 'SYSTEM_COMPATIBILITY';
     status: AssignmentGroupSubmissionStatus;
     is_current?: boolean;
     created_at: string;
@@ -800,6 +807,7 @@ export interface AssignmentGroupEvaluation {
     rubric_level_label: string | null;
     narrative: string;
     competency_state: string | null;
+    review_status: 'DRAFT' | 'COMPLETED';
     projection_mode: AssignmentEvidenceProjectionMode;
     is_current?: boolean;
     member_overrides?: AssignmentGroupMemberEvaluationOverride[];
@@ -830,6 +838,29 @@ export interface AssignmentGroupEvaluationUpdatePayload {
     competency_state?: string | null;
     projection_mode?: AssignmentEvidenceProjectionMode;
     member_overrides?: AssignmentGroupMemberEvaluationOverridePayload[];
+}
+
+export interface AssignmentGroupWorkReviewPayload extends ClientMutationFields {
+    action: 'SAVE_DRAFT' | 'COMPLETE';
+    evaluation_type?: AssignmentEvaluationType;
+    numeric_score?: number | null;
+    rubric_level?: number | null;
+    narrative?: string;
+    competency_state?: string | null;
+    projection_mode?: AssignmentEvidenceProjectionMode;
+    member_overrides?: AssignmentGroupMemberEvaluationOverridePayload[];
+    participation?: Array<{
+        group_member: number;
+        participation_status: AssignmentGroupMemberParticipationStatus;
+        participation_note?: string;
+    }>;
+}
+
+export interface AssignmentGroupWorkReviewResult {
+    group: AssignmentGroup;
+    submitted_group_work: AssignmentGroupSubmission | null;
+    evaluation: AssignmentGroupEvaluation | null;
+    created_compatibility_record: boolean;
 }
 
 export interface AssignmentBulkReviewPayload extends ClientMutationFields {

@@ -27,6 +27,7 @@ import { ProjectEvidenceRecorder } from './ProjectEvidenceRecorder';
 import { ProjectTaskEvaluationEditor } from './ProjectTaskEvaluationEditor';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
 import { GroupRosterSummary } from '@/app/core/components/grouping/GroupRosterSummary';
+import type { ProjectClassObservation, ProjectTask } from '@/app/core/types/projects';
 
 const tabs = [
   'overview',
@@ -253,7 +254,9 @@ export function ProjectDetailPage() {
               size="sm"
               onClick={() => setPendingAction(action)}
             >
-              {label(action)}
+              {action === 'complete' ? (
+                <><CheckCircle2 className="mr-2 h-4 w-4" />Complete project</>
+              ) : label(action)}
             </Button>
           ))}
         </div>
@@ -460,15 +463,11 @@ export function ProjectDetailPage() {
       ) : null}
       {activeTab === 'observations' ? (
         <ListState query={related.observations} empty="No class observations recorded.">
-          {(related.observations.data ?? []).map((item) => (
-            <Row
-              key={item.id}
-              title={
-                item.task ? `Task ${item.task} class observation` : 'Project class observation'
-              }
-              detail={`${item.comment} · ${item.author_name} · ${new Date(item.observed_at).toLocaleString()} · ${item.status}`}
-            />
-          ))}
+          <GroupedProjectObservations
+            observations={related.observations.data ?? []}
+            tasks={tasks}
+            deploymentId={id}
+          />
         </ListState>
       ) : null}
       {activeTab === 'evaluations' ? (
@@ -483,12 +482,16 @@ export function ProjectDetailPage() {
               }
             >
               <Row
-                title={`${activeParticipants.find((participant) => participant.id === item.participant)?.learner_name ?? `Participant ${item.participant}`} · ${tasks.find((task) => task.id === item.task)?.title ?? `Task ${item.task}`}`}
-                detail={`${item.source_group ? `Group: ${allGroups.find((group) => group.id === item.source_group)?.name ?? item.source_group} · ` : 'Individual · '}${project.subject.name} · ${item.status} · ${item.derived_score} · Learner feedback: ${item.teacher_feedback || 'None'} · Projection: ${item.evidence_projection_status}${item.evidence_projection_warning ? ` (${item.evidence_projection_warning})` : ''}`}
+                title={`${activeParticipants.find((participant) => participant.id === item.participant)?.learner_name ?? 'Learner name unavailable'} · ${tasks.find((task) => task.id === item.task)?.title ?? 'Task title unavailable'}`}
+                detail={`${item.source_group ? `Group: ${allGroups.find((group) => group.id === item.source_group)?.name ?? 'Group name unavailable'} · ` : 'Individual · '}${project.subject.name} · ${item.status} · ${item.derived_score} · Learner feedback: ${item.teacher_feedback || 'None'} · Projection: ${item.evidence_projection_status}${item.evidence_projection_warning ? ` (${item.evidence_projection_warning})` : ''}`}
                 icon={
-                  project.authority.can_evaluate && item.status !== 'FINALIZED' ? (
+                  project.authority.can_evaluate ? (
                     <Button size="sm" onClick={() => setScoringEvaluationId(item.id)}>
-                      Score criteria
+                      {item.status === 'FINALIZED'
+                        ? 'Review evaluation'
+                        : item.criterion_scores.length
+                          ? 'Continue evaluation'
+                          : 'Evaluate learner'}
                     </Button>
                   ) : project.authority.can_finalize && item.status !== 'FINALIZED' ? (
                     <Button size="sm" onClick={() => resources.finalizeEvaluation.mutate(item.id)}>
@@ -640,7 +643,7 @@ export function ProjectDetailPage() {
             <Button
               variant={pendingAction === 'cancel' ? 'danger' : 'primary'}
               onClick={() => void confirmAction()}
-              disabled={mutation.isPending || (pendingAction === 'cancel' && !cancelReason.trim())}
+              disabled={mutation.isPending || (pendingAction === 'cancel' && !cancelReason.trim()) || (pendingAction === 'complete' && project.completion_readiness?.ready === false)}
             >
               {mutation.isPending ? 'Working…' : 'Confirm'}
             </Button>
@@ -656,6 +659,25 @@ export function ProjectDetailPage() {
               value={cancelReason}
               onChange={(event) => setCancelReason(event.target.value)}
             />
+          ) : pendingAction === 'complete' && project.completion_readiness ? (
+            <div className="space-y-3 text-sm theme-muted">
+              <p className="font-semibold theme-text">Completion readiness</p>
+              <ul className="list-disc space-y-1 pl-5">
+                <li>Completed tasks: {project.completion_readiness.completed_tasks}/{project.completion_readiness.total_tasks}</li>
+                <li>Outstanding evidence: {project.completion_readiness.outstanding_evidence}</li>
+                <li>Pending evaluations: {project.completion_readiness.pending_evaluations}</li>
+                <li>Draft class observations: {project.completion_readiness.draft_class_observations}</li>
+                <li>Groups or learners without required work: {project.completion_readiness.missing_required_work}</li>
+                <li>Deadline state: {project.completion_readiness.deadline_state}</li>
+              </ul>
+              {project.completion_readiness.blockers.map((blocker) => (
+                <p key={blocker} className="text-[color:var(--color-danger)]">{blocker}</p>
+              ))}
+              <div>
+                <p className="font-medium theme-text">Consequences of completion</p>
+                {project.completion_readiness.consequences.map((consequence) => <p key={consequence}>• {consequence}</p>)}
+              </div>
+            </div>
           ) : (
             <p className="text-sm theme-muted">
               Current state: <strong>{project.status}</strong>. The result will be refreshed from
@@ -790,6 +812,25 @@ export function ProjectDetailPage() {
       </ResponsiveActionSheet>
     </div>
   );
+}
+
+function GroupedProjectObservations({ observations, tasks, deploymentId }: { observations: ProjectClassObservation[]; tasks: ProjectTask[]; deploymentId: number }) {
+  const group = (title: string, items: ProjectClassObservation[], taskId?: number) => {
+    const drafts = items.filter((item) => item.status === 'DRAFT').length;
+    const finalized = items.filter((item) => item.status === 'FINALIZED').length;
+    const latest = [...items].sort((left, right) => right.observed_at.localeCompare(left.observed_at))[0];
+    return <section key={title} className="space-y-3 rounded-lg border theme-border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h3 className="font-semibold theme-text">{title}</h3><p className="text-xs theme-muted">{items.length} observations · {drafts} draft · {finalized} finalized · Latest {latest ? new Date(latest.observed_at).toLocaleString() : '—'}</p></div>
+        {taskId ? <Link className="theme-link text-sm" href={`/projects/${deploymentId}?tab=tasks&task=${taskId}`}>Open task workspace</Link> : null}
+      </div>
+      {items.length ? items.map((item) => <details key={item.id} className="rounded-lg border theme-border px-3 py-2">
+        <summary className="cursor-pointer text-sm theme-text">{item.comment.slice(0, 120)}{item.comment.length > 120 ? '…' : ''}</summary>
+        <div className="mt-2 space-y-1 text-sm theme-muted"><p>{item.comment}</p><p>Author: {item.author_name} · Status: {item.status}</p><p>Created: {new Date(item.created_at).toLocaleString()} · Observed: {new Date(item.observed_at).toLocaleString()}{item.finalized_at ? ` · Finalized: ${new Date(item.finalized_at).toLocaleString()}` : ''}</p>{item.supersedes ? <p>Amends observation #{item.supersedes}: {item.amendment_reason}</p> : null}{item.amendment_count ? <p>Superseded by {item.amendment_count} amendment(s).</p> : null}</div>
+      </details>) : <p className="text-sm theme-muted">No observations.</p>}
+    </section>;
+  };
+  return <div className="space-y-6">{group('Project observations', observations.filter((item) => !item.task))}<section className="space-y-3"><h2 className="text-lg font-semibold theme-text">Observations by task</h2>{tasks.map((task, index) => group(`Task ${index + 1} — ${task.title}`, observations.filter((item) => item.task === task.id), task.id))}</section></div>;
 }
 
 function Row({ title, detail, icon }: { title: string; detail: string; icon?: ReactNode }) {

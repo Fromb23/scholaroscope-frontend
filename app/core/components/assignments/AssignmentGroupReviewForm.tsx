@@ -1,635 +1,194 @@
 'use client';
 
-import { resolveErrorMessage } from '@/app/core/errors';
-
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
-import {
-    useCreateAssignmentGroupEvaluation,
-    useUpdateAssignmentGroupEvaluation,
-} from '@/app/core/hooks/useAssignments';
-import { hasCBCOutcome } from '@/app/core/components/assignments/assignmentUtils';
+import { resolveAssignmentError } from '@/app/core/errors';
+import { useSaveAssignmentGroupWorkReview } from '@/app/core/hooks/useAssignments';
 import type { RubricLevel } from '@/app/core/types/assessment';
 import type {
-    Assignment,
-    AssignmentEvidenceProjectionMode,
-    AssignmentEvaluationType,
-    AssignmentGroup,
-    AssignmentGroupEvaluation,
-    AssignmentGroupEvaluationCreatePayload,
-    AssignmentGroupEvaluationUpdatePayload,
-    AssignmentGroupMember,
-    AssignmentGroupMemberEvaluationOverridePayload,
-    AssignmentGroupSubmission,
+  Assignment,
+  AssignmentEvidenceProjectionMode,
+  AssignmentGroup,
+  AssignmentGroupEvaluation,
+  AssignmentGroupMemberParticipationStatus,
+  AssignmentGroupMemberEvaluationOverridePayload,
+  AssignmentGroupWorkReviewPayload,
 } from '@/app/core/types/assignments';
 
-interface AssignmentGroupReviewFormProps {
-    assignment: Assignment;
-    group: AssignmentGroup;
-    submission: AssignmentGroupSubmission;
-    evaluation?: AssignmentGroupEvaluation | null;
-    rubricLevels?: RubricLevel[];
-    onSaved?: () => void | Promise<void>;
-    onSaveAndNext?: () => void | Promise<void>;
-    pending?: boolean;
-    readOnly?: boolean;
+interface Props {
+  assignment: Assignment;
+  group: AssignmentGroup;
+  evaluation?: AssignmentGroupEvaluation | null;
+  rubricLevels?: RubricLevel[];
+  onSaved?: () => void | Promise<void>;
+  onSaveAndNext?: () => void | Promise<void>;
+  pending?: boolean;
+  readOnly?: boolean;
 }
 
-interface OverrideDraft {
-    enabled: boolean;
-    numericScore: string;
-    rubricLevel: string;
-    narrative: string;
-    competencyState: string;
-}
+type FieldName = 'numeric_score' | 'rubric_level' | 'competency_state' | 'narrative' | 'member_overrides';
+type FieldErrors = Partial<Record<FieldName, string>>;
 
-const PROJECTION_MODE_OPTIONS: Array<{ value: AssignmentEvidenceProjectionMode; label: string }> = [
-    { value: 'APPLY_TO_ALL_MEMBERS', label: 'Apply to all members' },
-    { value: 'APPLY_WITH_OVERRIDES', label: 'Apply with individual overrides' },
-    { value: 'RECORD_ONLY', label: 'Record only, no competency evidence' },
-];
-
-const textareaClassName = [
-    'theme-focus-ring theme-input theme-surface-elevated w-full rounded-lg px-4 py-3',
-    'placeholder:text-[color:var(--color-text-subtle)]',
-].join(' ');
-
-function buildRubricOptions(rubricLevels: RubricLevel[]) {
-    return [
-        { value: '', label: 'Select rubric level' },
-        ...rubricLevels.map((level) => ({
-            value: String(level.id),
-            label: `${level.label} (${level.code})`,
-        })),
-    ];
-}
-
-function buildCompetencyOptions() {
-    return [
-        { value: '', label: 'Select competency state' },
-        { value: 'EMERGING', label: 'Emerging' },
-        { value: 'MEETING', label: 'Meeting expectation' },
-        { value: 'EXCEEDING', label: 'Exceeding expectation' },
-        { value: 'NOT_EVIDENCED', label: 'Not evidenced' },
-    ];
-}
-
-function isParticipatingMember(member: AssignmentGroupMember) {
-    return member.participation_status === 'PARTICIPATED';
-}
-
-function buildInitialOverrideDrafts(
-    members: AssignmentGroupMember[],
-    evaluation?: AssignmentGroupEvaluation | null,
-): Record<number, OverrideDraft> {
-    const overridesByStudentId = new Map(
-        (evaluation?.member_overrides ?? []).map((override) => [override.student, override])
-    );
-
-    return Object.fromEntries(members.map((member) => {
-        const override = overridesByStudentId.get(member.student);
-
-        return [
-            member.student,
-            {
-                enabled: Boolean(override),
-                numericScore: override?.numeric_score != null ? String(override.numeric_score) : '',
-                rubricLevel: override?.rubric_level != null ? String(override.rubric_level) : '',
-                narrative: override?.narrative ?? '',
-                competencyState: override?.competency_state ?? '',
-            },
-        ];
-    }));
-}
+const participationOptions = [
+  'PARTICIPATED', 'ABSENT', 'DID_NOT_PARTICIPATE', 'EXCUSED', 'LATE_ADDED',
+].map((value) => ({ value, label: value.replaceAll('_', ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase()) }));
 
 export function AssignmentGroupReviewForm({
-    assignment,
-    group,
-    submission,
-    evaluation = null,
-    rubricLevels = [],
-    onSaved,
-    onSaveAndNext,
-    pending = false,
-    readOnly = false,
-}: AssignmentGroupReviewFormProps) {
-    const createMutation = useCreateAssignmentGroupEvaluation();
-    const updateMutation = useUpdateAssignmentGroupEvaluation();
-    const groupMembers = useMemo(() => group.members ?? [], [group.members]);
-    const [localEvaluation, setLocalEvaluation] = useState<AssignmentGroupEvaluation | null>(evaluation);
-    const [numericScore, setNumericScore] = useState('');
-    const [rubricLevel, setRubricLevel] = useState('');
-    const [narrative, setNarrative] = useState('');
-    const [competencyState, setCompetencyState] = useState('');
-    const [projectionMode, setProjectionMode] = useState<AssignmentEvidenceProjectionMode>('APPLY_TO_ALL_MEMBERS');
-    const [overrideDrafts, setOverrideDrafts] = useState<Record<number, OverrideDraft>>({});
-    const [formError, setFormError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  assignment, group, evaluation = null, rubricLevels = [], onSaved, onSaveAndNext,
+  pending = false, readOnly = false,
+}: Props) {
+  const mutation = useSaveAssignmentGroupWorkReview();
+  const [numericScore, setNumericScore] = useState('');
+  const [rubricLevel, setRubricLevel] = useState('');
+  const [competencyState, setCompetencyState] = useState('');
+  const [narrative, setNarrative] = useState('');
+  const [projectionMode, setProjectionMode] = useState<AssignmentEvidenceProjectionMode>('APPLY_TO_ALL_MEMBERS');
+  const [participation, setParticipation] = useState<Record<number, AssignmentGroupMemberParticipationStatus>>({});
+  const [overrides, setOverrides] = useState<Record<number, { enabled: boolean; value: string }>>({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const fieldRefs = useRef<Partial<Record<FieldName, HTMLElement | null>>>({});
 
-    useEffect(() => {
-        setLocalEvaluation((previous) => {
-            if (!evaluation) {
-                return null;
-            }
+  useEffect(() => {
+    setNumericScore(evaluation?.numeric_score == null ? '' : String(evaluation.numeric_score));
+    setRubricLevel(evaluation?.rubric_level == null ? '' : String(evaluation.rubric_level));
+    setCompetencyState(evaluation?.competency_state ?? '');
+    setNarrative(evaluation?.narrative ?? '');
+    setProjectionMode(evaluation?.projection_mode ?? 'APPLY_TO_ALL_MEMBERS');
+    setParticipation(Object.fromEntries((group.members ?? []).map((member) => [member.id, member.participation_status])));
+    const existing = new Map((evaluation?.member_overrides ?? []).map((item) => [item.student, item]));
+    setOverrides(Object.fromEntries((group.members ?? []).map((member) => {
+      const item = existing.get(member.student);
+      const value = assignment.evaluation_type === 'RUBRIC' ? item?.rubric_level : assignment.evaluation_type === 'NUMERIC' ? item?.numeric_score : assignment.evaluation_type === 'COMPETENCY' ? item?.competency_state : item?.narrative;
+      return [member.id, { enabled: Boolean(item), value: value == null ? '' : String(value) }];
+    })));
+    setFieldErrors({});
+    setActionMessage(null);
+  }, [assignment.evaluation_type, evaluation, group]);
 
-            if (previous?.id === evaluation.id) {
-                return {
-                    ...evaluation,
-                    evidence_created: previous.evidence_created ?? evaluation.evidence_created,
-                    evidence_record_ids: previous.evidence_record_ids ?? evaluation.evidence_record_ids,
-                    evidence_status: previous.evidence_status ?? evaluation.evidence_status,
-                    evidence_warning: previous.evidence_warning ?? evaluation.evidence_warning,
-                };
-            }
+  const clearFieldError = (field: FieldName) => {
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+    setActionMessage(null);
+  };
 
-            return evaluation;
-        });
-    }, [evaluation]);
+  const focusFirstError = (errors: FieldErrors) => {
+    const order: FieldName[] = ['rubric_level', 'numeric_score', 'competency_state', 'narrative', 'member_overrides'];
+    const first = order.find((field) => errors[field]);
+    if (!first) return;
+    const element = fieldRefs.current[first];
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    element?.focus({ preventScroll: true });
+  };
 
-    useEffect(() => {
-        const activeEvaluation = evaluation ?? localEvaluation;
+  const validate = (): FieldErrors => {
+    if (assignment.evaluation_type === 'RUBRIC' && !rubricLevel) return { rubric_level: 'Select a rubric level.' };
+    if (assignment.evaluation_type === 'NUMERIC' && !numericScore) return { numeric_score: 'Enter a numeric score.' };
+    if (assignment.evaluation_type === 'COMPETENCY' && !competencyState) return { competency_state: 'Select a competency state.' };
+    if (assignment.evaluation_type === 'DESCRIPTIVE' && !narrative.trim()) return { narrative: 'Enter narrative feedback.' };
+    if (projectionMode === 'APPLY_WITH_OVERRIDES' && Object.values(overrides).some((item) => item.enabled && !item.value.trim())) return { member_overrides: 'Enter a value for each enabled member override.' };
+    return {};
+  };
 
-        setNumericScore(activeEvaluation?.numeric_score != null ? String(activeEvaluation.numeric_score) : '');
-        setRubricLevel(activeEvaluation?.rubric_level != null ? String(activeEvaluation.rubric_level) : '');
-        setNarrative(activeEvaluation?.narrative ?? '');
-        setCompetencyState(activeEvaluation?.competency_state ?? '');
-        setProjectionMode(activeEvaluation?.projection_mode ?? 'APPLY_TO_ALL_MEMBERS');
-        setOverrideDrafts(buildInitialOverrideDrafts(groupMembers, activeEvaluation));
-        setFormError(null);
-        setSuccessMessage(null);
-    // Only reset form state when upstream data changes.
-    // Local mutation updates keep the current form values in place.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [evaluation, groupMembers]);
+  const overridePayloads = useMemo(() => (group.members ?? []).flatMap<AssignmentGroupMemberEvaluationOverridePayload>((member) => {
+    const item = overrides[member.id];
+    if (projectionMode !== 'APPLY_WITH_OVERRIDES' || !item?.enabled) return [];
+    const value = item.value.trim();
+    return [{ student_id: member.student, ...(assignment.evaluation_type === 'RUBRIC' ? { rubric_level: Number(value) } : assignment.evaluation_type === 'NUMERIC' ? { numeric_score: Number(value) } : assignment.evaluation_type === 'COMPETENCY' ? { competency_state: value } : { narrative: value }) }];
+  }), [assignment.evaluation_type, group.members, overrides, projectionMode]);
 
-    const activeEvaluation = localEvaluation ?? evaluation;
-    const saving = pending || createMutation.isPending || updateMutation.isPending;
-    const evaluationType = assignment.evaluation_type;
-    const cbcEnabled = hasCBCOutcome(assignment);
-    const evidenceCreated = Boolean(activeEvaluation?.evidence_created);
-    const evidenceBlocked = activeEvaluation?.evidence_status === 'BLOCKED';
+  const payload = useMemo<Omit<AssignmentGroupWorkReviewPayload, 'action'>>(() => ({
+    evaluation_type: assignment.evaluation_type,
+    numeric_score: numericScore ? Number(numericScore) : null,
+    rubric_level: rubricLevel ? Number(rubricLevel) : null,
+    competency_state: competencyState || null,
+    narrative: narrative.trim(),
+    projection_mode: projectionMode,
+    member_overrides: overridePayloads,
+    participation: (group.members ?? []).map((member) => ({
+      group_member: member.id,
+      participation_status: participation[member.id] ?? member.participation_status,
+      participation_note: member.participation_note ?? '',
+    })),
+  }), [assignment.evaluation_type, competencyState, group.members, narrative, numericScore, overridePayloads, participation, projectionMode, rubricLevel]);
 
-    const validateBasePayload = (): Omit<AssignmentGroupEvaluationCreatePayload, 'group_submission'> | null => {
-        setFormError(null);
+  const save = async (action: 'SAVE_DRAFT' | 'COMPLETE', advance = false) => {
+    setActionMessage(null);
+    if (action === 'COMPLETE') {
+      const errors = validate();
+      if (Object.keys(errors).length) {
+        setFieldErrors(errors);
+        setActionMessage(`Review incomplete — ${Object.values(errors)[0]?.toLowerCase()}`);
+        focusFirstError(errors);
+        return;
+      }
+    }
+    try {
+      await mutation.mutateAsync({ groupId: group.id, data: { ...payload, action } });
+      setFieldErrors({});
+      setActionMessage(action === 'SAVE_DRAFT' ? 'Draft saved.' : 'Review completed.');
+      await onSaved?.();
+      if (advance) await onSaveAndNext?.();
+    } catch (error) {
+      const resolved = resolveAssignmentError(error, { action: 'review', entityLabel: 'group review', channel: 'inline' });
+      const mapped = Object.fromEntries(
+        Object.entries(resolved.fieldErrors ?? {})
+          .filter(([field]) => ['rubric_level', 'numeric_score', 'competency_state', 'narrative', 'member_overrides'].includes(field))
+          .map(([field, messages]) => [field, messages[0]])
+      ) as FieldErrors;
+      setFieldErrors(mapped);
+      setActionMessage(Object.keys(mapped).length ? `Review incomplete — ${Object.values(mapped)[0]?.toLowerCase()}` : resolved.message);
+      focusFirstError(mapped);
+    }
+  };
 
-        if (evaluationType === 'NUMERIC') {
-            if (!numericScore) {
-                setFormError('Numeric score is required for this assignment.');
-                return null;
-            }
-
-            return {
-                evaluation_type: evaluationType,
-                numeric_score: Number(numericScore),
-                narrative: narrative.trim(),
-                projection_mode: projectionMode,
-            };
-        }
-
-        if (evaluationType === 'RUBRIC') {
-            if (!rubricLevel) {
-                setFormError('Select a rubric level before saving the review.');
-                return null;
-            }
-
-            return {
-                evaluation_type: evaluationType,
-                rubric_level: Number(rubricLevel),
-                narrative: narrative.trim(),
-                projection_mode: projectionMode,
-            };
-        }
-
-        if (evaluationType === 'DESCRIPTIVE') {
-            if (!narrative.trim()) {
-                setFormError('Narrative feedback is required for descriptive assignments.');
-                return null;
-            }
-
-            return {
-                evaluation_type: evaluationType,
-                narrative: narrative.trim(),
-                projection_mode: projectionMode,
-            };
-        }
-
-        if (!competencyState) {
-            setFormError('Select a competency state before saving the review.');
-            return null;
-        }
-
-        return {
-            evaluation_type: evaluationType as AssignmentEvaluationType,
-            competency_state: competencyState,
-            narrative: narrative.trim(),
-            projection_mode: projectionMode,
-        };
-    };
-
-    const buildOverridePayloads = useMemo(() => {
-        if (projectionMode !== 'APPLY_WITH_OVERRIDES') {
-            return [] as AssignmentGroupMemberEvaluationOverridePayload[];
-        }
-
-        return groupMembers.flatMap((member) => {
-            if (!isParticipatingMember(member)) {
-                return [];
-            }
-
-            const draft = overrideDrafts[member.student];
-            if (!draft?.enabled) {
-                return [];
-            }
-
-            const payload: AssignmentGroupMemberEvaluationOverridePayload = {
-                student_id: member.student,
-            };
-
-            if (draft.numericScore) {
-                payload.numeric_score = Number(draft.numericScore);
-            }
-            if (draft.rubricLevel) {
-                payload.rubric_level = Number(draft.rubricLevel);
-            }
-            if (draft.narrative.trim()) {
-                payload.narrative = draft.narrative.trim();
-            }
-            if (draft.competencyState) {
-                payload.competency_state = draft.competencyState;
-            }
-
-            return [payload];
-        });
-    }, [groupMembers, overrideDrafts, projectionMode]);
-
-    const handleSave = async (advance = false) => {
-        const basePayload = validateBasePayload();
-        if (!basePayload) return;
-
-        const payload = {
-            ...basePayload,
-            ...(projectionMode === 'APPLY_WITH_OVERRIDES'
-                ? { member_overrides: buildOverridePayloads }
-                : {}),
-        };
-
-        try {
-            if (activeEvaluation) {
-                const updated = await updateMutation.mutateAsync({
-                    id: activeEvaluation.id,
-                    data: payload as AssignmentGroupEvaluationUpdatePayload,
-                });
-                setLocalEvaluation((previous) => ({
-                    ...(previous ?? updated),
-                    ...updated,
-                    evidence_created: previous?.evidence_created ?? updated.evidence_created,
-                    evidence_record_ids: previous?.evidence_record_ids ?? updated.evidence_record_ids,
-                    evidence_status: previous?.evidence_status ?? updated.evidence_status,
-                    evidence_warning: previous?.evidence_warning ?? updated.evidence_warning,
-                }));
-                setSuccessMessage('Group review updated.');
-                await onSaved?.();
-                if (advance) {
-                    await onSaveAndNext?.();
-                }
-                return;
-            }
-
-            const created = await createMutation.mutateAsync({
-                group_submission: submission.id,
-                ...payload,
-            } as AssignmentGroupEvaluationCreatePayload);
-            setLocalEvaluation(created);
-            setSuccessMessage('Group review saved.');
-            await onSaved?.();
-            if (advance) {
-                await onSaveAndNext?.();
-            }
-        } catch (err) {
-            setFormError(resolveErrorMessage(err, 'Failed to save group review.'));
-        }
-    };
-
-    const updateOverrideDraft = (
-        studentId: number,
-        field: keyof OverrideDraft,
-        value: string | boolean
-    ) => {
-        setOverrideDrafts((previous) => ({
-            ...previous,
-            [studentId]: {
-                ...(previous[studentId] ?? {
-                    enabled: false,
-                    numericScore: '',
-                    rubricLevel: '',
-                    narrative: '',
-                    competencyState: '',
-                }),
-                [field]: value,
-            },
-        }));
-    };
-
-    return (
-        <div className="space-y-4 rounded-lg border theme-border p-4">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                    <h3 className="text-sm font-semibold theme-text">Group Review</h3>
-                    <p className="text-sm theme-muted">
-                        Record teacher review for {submission.group_name} using the assignment&apos;s evaluation mode.
-                    </p>
-                </div>
-                {activeEvaluation?.evaluated_at ? (
-                    <span className="text-xs theme-subtle">
-                        Reviewed {new Date(activeEvaluation.evaluated_at).toLocaleString()}
-                    </span>
-                ) : null}
-            </div>
-
-            {formError ? (
-                <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
-            ) : null}
-
-            {successMessage ? (
-                <div className="theme-success-surface rounded-lg px-4 py-3 text-sm">
-                    {successMessage}
-                </div>
-            ) : null}
-
-            {evaluationType === 'NUMERIC' ? (
-                <Input
-                    label="Numeric Score"
-                    type="number"
-                    min="0"
-                    max={assignment.total_marks ?? undefined}
-                    value={numericScore}
-                    disabled={readOnly || saving}
-                    onChange={(event) => setNumericScore(event.target.value)}
-                />
-            ) : null}
-
-            {evaluationType === 'RUBRIC' ? (
-                <Select
-                    label="Rubric Level"
-                    value={rubricLevel}
-                    disabled={readOnly || saving}
-                    onChange={(event) => setRubricLevel(event.target.value)}
-                    options={buildRubricOptions(rubricLevels)}
-                />
-            ) : null}
-
-            {evaluationType === 'COMPETENCY' ? (
-                <Select
-                    label="Competency State"
-                    value={competencyState}
-                    disabled={readOnly || saving}
-                    onChange={(event) => setCompetencyState(event.target.value)}
-                    options={buildCompetencyOptions()}
-                />
-            ) : null}
-
-            <div className="space-y-2">
-                <label className="block text-sm font-medium theme-text">
-                    {evaluationType === 'DESCRIPTIVE' ? 'Narrative Feedback' : 'Review Notes'}
-                </label>
-                <textarea
-                    value={narrative}
-                    disabled={readOnly || saving}
-                    onChange={(event) => setNarrative(event.target.value)}
-                    rows={4}
-                    placeholder="Add feedback for the group."
-                    className={textareaClassName}
-                />
-            </div>
-
-            <Select
-                label="Evidence Projection"
-                value={projectionMode}
-                disabled={readOnly || saving}
-                onChange={(event) => setProjectionMode(event.target.value as AssignmentEvidenceProjectionMode)}
-                options={PROJECTION_MODE_OPTIONS}
-            />
-
-            <div className="space-y-3 rounded-lg border theme-border theme-surface-muted p-4">
-                <div className="space-y-1">
-                    <div className="text-sm font-medium theme-text">Group participation</div>
-                    <p className="text-sm theme-muted">
-                        This group score applies only to learners marked as participated.
-                    </p>
-                </div>
-
-                {groupMembers.length === 0 ? (
-                    <p className="text-sm theme-muted">Add group members before recording a group review.</p>
-                ) : (
-                    <div className="space-y-2">
-                        {groupMembers.map((member) => (
-                            <div
-                                key={member.id}
-                                className="flex flex-col gap-2 rounded-lg border theme-border theme-surface-elevated px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
-                            >
-                                <div className="min-w-0">
-                                    <div className="text-sm font-medium theme-text">{member.student_name}</div>
-                                    <div className="text-xs theme-subtle">{member.admission_number}</div>
-                                    {member.participation_note ? (
-                                        <div className="mt-1 text-xs theme-muted">{member.participation_note}</div>
-                                    ) : null}
-                                </div>
-                                <div className="text-left sm:text-right">
-                                    <div className="text-xs font-medium theme-subtle">
-                                        {member.participation_status_display}
-                                    </div>
-                                    <div className="text-xs theme-muted">
-                                        {isParticipatingMember(member)
-                                            ? 'Receives group evidence'
-                                            : 'Does not receive group evidence'}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {projectionMode === 'APPLY_WITH_OVERRIDES' ? (
-                <div className="space-y-3 rounded-lg border theme-border theme-surface-muted p-4">
-                    <div className="space-y-1">
-                        <div className="text-sm font-medium theme-text">Individual member overrides</div>
-                        <p className="text-sm theme-muted">
-                            Adjust scores or notes only for members who need a different record from the group result.
-                        </p>
-                    </div>
-
-                    <div className="theme-info-surface rounded-lg px-4 py-3 text-sm">
-                        This group score applies only to learners marked as participated.
-                    </div>
-
-                    {groupMembers.length === 0 ? (
-                        <p className="text-sm theme-muted">
-                            Add group members before using individual overrides.
-                        </p>
-                    ) : (
-                        <div className="space-y-3">
-                            {groupMembers.map((member) => {
-                                const draft = overrideDrafts[member.student] ?? {
-                                    enabled: false,
-                                    numericScore: '',
-                                    rubricLevel: '',
-                                    narrative: '',
-                                    competencyState: '',
-                                };
-
-                                return (
-                                    <div key={member.id} className="rounded-lg border theme-border theme-surface-elevated p-4">
-                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                            <label className="flex items-start gap-3">
-                                                {isParticipatingMember(member) ? (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={draft.enabled}
-                                                        disabled={readOnly || saving}
-                                                        onChange={(event) => updateOverrideDraft(member.student, 'enabled', event.target.checked)}
-                                                        className="theme-checkbox mt-1 h-4 w-4 rounded theme-border"
-                                                    />
-                                                ) : (
-                                                    <span className="mt-1 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium theme-subtle">
-                                                        Skip
-                                                    </span>
-                                                )}
-                                                <div className="flex-1">
-                                                    <div className="text-sm font-medium theme-text">
-                                                        {member.student_name}
-                                                    </div>
-                                                    <div className="text-xs theme-subtle">
-                                                        {member.admission_number}
-                                                    </div>
-                                                </div>
-                                            </label>
-
-                                            <div className="space-y-1 text-left sm:text-right">
-                                                <div className="text-xs font-medium theme-subtle">
-                                                    {member.participation_status_display}
-                                                </div>
-                                                {!isParticipatingMember(member) ? (
-                                                    <div className="text-xs theme-muted">
-                                                        This learner will not receive group evidence.
-                                                    </div>
-                                                ) : null}
-                                                {member.participation_note ? (
-                                                    <div className="text-xs theme-subtle">
-                                                        {member.participation_note}
-                                                    </div>
-                                                ) : null}
-                                            </div>
-                                        </div>
-
-                                        {isParticipatingMember(member) && draft.enabled ? (
-                                            <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                                {evaluationType === 'NUMERIC' ? (
-                                                    <Input
-                                                        label="Override Score"
-                                                        type="number"
-                                                        min="0"
-                                                        max={assignment.total_marks ?? undefined}
-                                                        value={draft.numericScore}
-                                                        disabled={readOnly || saving}
-                                                        onChange={(event) => updateOverrideDraft(member.student, 'numericScore', event.target.value)}
-                                                    />
-                                                ) : null}
-
-                                                {evaluationType === 'RUBRIC' ? (
-                                                    <Select
-                                                        label="Override Rubric Level"
-                                                        value={draft.rubricLevel}
-                                                        disabled={readOnly || saving}
-                                                        onChange={(event) => updateOverrideDraft(member.student, 'rubricLevel', event.target.value)}
-                                                        options={buildRubricOptions(rubricLevels)}
-                                                    />
-                                                ) : null}
-
-                                                {evaluationType === 'COMPETENCY' ? (
-                                                    <Select
-                                                        label="Override Competency State"
-                                                        value={draft.competencyState}
-                                                        disabled={readOnly || saving}
-                                                        onChange={(event) => updateOverrideDraft(member.student, 'competencyState', event.target.value)}
-                                                        options={buildCompetencyOptions()}
-                                                    />
-                                                ) : null}
-
-                                                <div className="space-y-2 md:col-span-2">
-                                                    <label className="block text-sm font-medium theme-text">
-                                                        Override Notes
-                                                    </label>
-                                                    <textarea
-                                                        value={draft.narrative}
-                                                        disabled={readOnly || saving}
-                                                        onChange={(event) => updateOverrideDraft(member.student, 'narrative', event.target.value)}
-                                                        rows={3}
-                                                        placeholder="Add learner-specific notes."
-                                                        className={textareaClassName}
-                                                    />
-                                                </div>
-
-                                                <label className="flex items-start gap-3 rounded-lg border theme-border px-4 py-3 text-sm theme-muted md:col-span-2">
-                                                    <span>
-                                                        Overrides adjust feedback and scores for participating learners only.
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            ) : null}
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                {cbcEnabled && activeEvaluation?.projection_mode === 'RECORD_ONLY' ? (
-                    <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted sm:mr-auto">
-                        Evidence bridge disabled because this evaluation is record-only.
-                    </div>
-                ) : null}
-
-                {cbcEnabled && activeEvaluation && activeEvaluation.projection_mode !== 'RECORD_ONLY' ? (
-                    <div className={`rounded-lg border px-4 py-3 text-sm sm:mr-auto ${
-                        evidenceCreated
-                            ? 'theme-success-surface'
-                            : evidenceBlocked
-                                ? 'border-amber-200 bg-amber-50 text-amber-900'
-                                : 'theme-surface-muted theme-muted'
-                    }`}>
-                        {evidenceCreated
-                            ? 'Evidence created'
-                            : evidenceBlocked
-                                ? `Evidence blocked: ${activeEvaluation.evidence_warning ?? 'Review the assignment evidence status.'}`
-                                : 'Evidence pending'}
-                    </div>
-                ) : null}
-
-                <Button
-                    type="button"
-                    onClick={() => void handleSave(false)}
-                    disabled={readOnly || saving}
-                    className="w-full sm:w-auto"
-                >
-                    {saving
-                        ? 'Saving evaluation...'
-                        : 'Save'}
-                </Button>
-                <Button
-                    type="button"
-                    onClick={() => void handleSave(true)}
-                    disabled={readOnly || saving || !onSaveAndNext}
-                    className="w-full sm:w-auto"
-                >
-                    Save & Next
-                </Button>
-            </div>
-        </div>
-    );
+  const saving = pending || mutation.isPending;
+  const common = { disabled: readOnly || saving };
+  return (
+    <section className="space-y-4 rounded-lg border theme-border p-4" aria-labelledby="group-review-heading">
+      <h3 id="group-review-heading" tabIndex={-1} className="scroll-mt-28 text-base font-semibold theme-text">Review group work</h3>
+      {assignment.evaluation_type === 'NUMERIC' ? (
+        <Input ref={(node) => { fieldRefs.current.numeric_score = node; }} id="group-review-numeric-score" label="Numeric score" type="number" min="0" max={assignment.total_marks ?? undefined} value={numericScore} error={fieldErrors.numeric_score} onChange={(event) => { setNumericScore(event.target.value); clearFieldError('numeric_score'); }} {...common} />
+      ) : null}
+      {assignment.evaluation_type === 'RUBRIC' ? (
+        <Select ref={(node) => { fieldRefs.current.rubric_level = node; }} id="group-review-rubric-level" label="Rubric level" value={rubricLevel} error={fieldErrors.rubric_level} options={[{ value: '', label: 'Select rubric level' }, ...rubricLevels.map((level) => ({ value: level.id, label: `${level.label} (${level.code})` }))]} onChange={(event) => { setRubricLevel(event.target.value); clearFieldError('rubric_level'); }} {...common} />
+      ) : null}
+      {assignment.evaluation_type === 'COMPETENCY' ? (
+        <Select ref={(node) => { fieldRefs.current.competency_state = node; }} id="group-review-competency-state" label="Competency state" value={competencyState} error={fieldErrors.competency_state} options={[{ value: '', label: 'Select competency state' }, { value: 'EMERGING', label: 'Emerging' }, { value: 'MEETING', label: 'Meeting expectation' }, { value: 'EXCEEDING', label: 'Exceeding expectation' }, { value: 'NOT_EVIDENCED', label: 'Not evidenced' }]} onChange={(event) => { setCompetencyState(event.target.value); clearFieldError('competency_state'); }} {...common} />
+      ) : null}
+      <div>
+        <label htmlFor="group-review-narrative" className="block text-sm font-medium theme-text">{assignment.evaluation_type === 'DESCRIPTIVE' ? 'Narrative feedback' : 'Review notes'}</label>
+        <textarea ref={(node) => { fieldRefs.current.narrative = node; }} id="group-review-narrative" rows={4} value={narrative} aria-invalid={Boolean(fieldErrors.narrative)} aria-describedby={fieldErrors.narrative ? 'group-review-narrative-error' : undefined} className={`theme-focus-ring theme-input mt-1 w-full scroll-mt-28 rounded-lg px-4 py-3 ${fieldErrors.narrative ? 'theme-input-error' : ''}`} onChange={(event) => { setNarrative(event.target.value); clearFieldError('narrative'); }} {...common} />
+        {fieldErrors.narrative ? <p id="group-review-narrative-error" className="mt-1 text-sm text-[color:var(--color-danger)]">{fieldErrors.narrative}</p> : null}
+      </div>
+      <Select label="Evidence projection" value={projectionMode} options={[{ value: 'APPLY_TO_ALL_MEMBERS', label: 'Apply to all participating members' }, { value: 'APPLY_WITH_OVERRIDES', label: 'Apply with individual overrides' }, { value: 'RECORD_ONLY', label: 'Record only' }]} onChange={(event) => setProjectionMode(event.target.value as AssignmentEvidenceProjectionMode)} {...common} />
+      {projectionMode === 'APPLY_WITH_OVERRIDES' ? <div ref={(node) => { fieldRefs.current.member_overrides = node; }} tabIndex={-1} className="scroll-mt-28 space-y-3 rounded-lg border theme-border p-4" aria-invalid={Boolean(fieldErrors.member_overrides)} aria-describedby={fieldErrors.member_overrides ? 'member-overrides-error' : undefined}>
+        <h4 className="text-sm font-medium theme-text">Individual member overrides</h4>
+        {(group.members ?? []).map((member) => {
+          const item = overrides[member.id] ?? { enabled: false, value: '' };
+          return <div key={member.id} className="grid gap-2 sm:grid-cols-[1fr_14rem]">
+            <label className="flex items-center gap-2 text-sm theme-text"><input type="checkbox" checked={item.enabled} disabled={readOnly || saving} onChange={(event) => setOverrides((current) => ({ ...current, [member.id]: { ...item, enabled: event.target.checked } }))} />{member.student_name}</label>
+            {item.enabled ? assignment.evaluation_type === 'RUBRIC' ? <Select aria-label={`Rubric override for ${member.student_name}`} value={item.value} options={[{ value: '', label: 'Select level' }, ...rubricLevels.map((level) => ({ value: level.id, label: level.label }))]} onChange={(event) => { setOverrides((current) => ({ ...current, [member.id]: { enabled: true, value: event.target.value } })); clearFieldError('member_overrides'); }} {...common} /> : <Input aria-label={`Override for ${member.student_name}`} type={assignment.evaluation_type === 'NUMERIC' ? 'number' : 'text'} value={item.value} onChange={(event) => { setOverrides((current) => ({ ...current, [member.id]: { enabled: true, value: event.target.value } })); clearFieldError('member_overrides'); }} {...common} /> : null}
+          </div>;
+        })}
+        {fieldErrors.member_overrides ? <p id="member-overrides-error" className="text-sm text-[color:var(--color-danger)]">{fieldErrors.member_overrides}</p> : null}
+      </div> : null}
+      <div className="space-y-3 rounded-lg border theme-border theme-surface-muted p-4">
+        <h4 className="text-sm font-medium theme-text">Group members and participation</h4>
+        {(group.members ?? []).map((member) => (
+          <div key={member.id} className="grid gap-2 sm:grid-cols-[1fr_14rem] sm:items-center">
+            <span className="text-sm theme-text">{member.student_name} <span className="theme-subtle">({member.admission_number})</span></span>
+            <Select aria-label={`Participation for ${member.student_name}`} value={participation[member.id] ?? member.participation_status} options={participationOptions} onChange={(event) => setParticipation((current) => ({ ...current, [member.id]: event.target.value as AssignmentGroupMemberParticipationStatus }))} {...common} />
+          </div>
+        ))}
+      </div>
+      {actionMessage ? <p role="status" className={Object.keys(fieldErrors).length ? 'text-sm text-[color:var(--color-danger)]' : 'text-sm theme-muted'}>{actionMessage}</p> : null}
+      {!readOnly ? <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="secondary" disabled={saving} onClick={() => void save('SAVE_DRAFT')}>Save draft</Button>
+        <Button type="button" variant="secondary" disabled={saving} onClick={() => void save('COMPLETE')}>Complete review</Button>
+        <Button type="button" disabled={saving} onClick={() => void save('COMPLETE', true)}>Complete review &amp; next</Button>
+      </div> : null}
+    </section>
+  );
 }

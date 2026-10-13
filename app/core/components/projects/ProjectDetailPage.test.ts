@@ -30,4 +30,22 @@ describe('ProjectDetailPage task hierarchy', () => {
     expect(page).toContain("searchParams.get('section') === 'observation'");
     expect(page).not.toContain('resources.finalizeClassObservation.mutate(item.id)');
   });
+
+  it('groups project and task observations with actual task titles', () => {
+    const page = source();
+    expect(page).toContain('Project observations');
+    expect(page).toContain('Observations by task');
+    expect(page).toContain('Open task workspace');
+    expect(page).toContain('task.title');
+    expect(page).toContain('draft');
+    expect(page).toContain('finalized');
+  });
+
+  it('names completion and shows server-derived readiness', () => {
+    const page = source();
+    expect(page).toContain('Complete project');
+    expect(page).toContain('Completion readiness');
+    expect(page).toContain('outstanding_evidence');
+    expect(page).toContain('draft_class_observations');
+  });
 });

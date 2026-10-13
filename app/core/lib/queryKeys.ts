@@ -98,6 +98,8 @@ export const assignmentKeys = {
   groupDetail: (groupId: number | null) => ['assignments', 'group-detail', groupId] as const,
   groupSubmissions: (groupId: number | null) =>
     ['assignments', 'group-submissions', groupId] as const,
+  groupWorkReview: (groupId: number | null) =>
+    ['assignments', 'group-work-review', groupId] as const,
   groupEvaluationsPrefix: (assignmentId: number | null) =>
     ['assignments', 'group-evaluations', assignmentId] as const,
   groupEvaluations: (assignmentId: number | null, filters?: Record<string, unknown>) =>

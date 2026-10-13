@@ -83,7 +83,7 @@ function parsePositiveId(value: string | null): number | undefined {
 
 function isAssignmentNeedingReview(assignment: Assignment): boolean {
   if (assignment.delivery_mode === 'GROUP') {
-    return assignment.group_submission_count > assignment.group_evaluation_count;
+    return (assignment.pending_review_count ?? 0) > 0;
   }
 
   return assignment.submissions_count > assignment.reviewed_count;
@@ -479,7 +479,9 @@ export default function CohortAssignmentsPage() {
         (count, assignment) =>
           count +
           (assignment.delivery_mode === 'GROUP'
-            ? assignment.group_submission_count
+            ? assignment.group_workflow_mode === 'INSTRUCTOR_RECORDED'
+              ? assignment.group_evaluation_count + (assignment.pending_review_count ?? 0)
+              : assignment.group_submission_count
             : assignment.submissions_count),
         0,
       ),
@@ -766,7 +768,7 @@ export default function CohortAssignmentsPage() {
             <StatsCard
               title="Review Progress"
               value={`${reviewedTotal}/${submissionTotal}`}
-              subtitle="Reviewed submissions"
+              subtitle="Completed reviews"
               icon={CheckCircle2}
               color="purple"
             />
