@@ -15,6 +15,24 @@ export function getProjectStreamsPageTitle(projectTitle?: string | null): string
   return projectTitle?.trim() || 'Project Streams';
 }
 
+interface ProjectWorkspacePageTitleInput {
+  accessConfirmed: boolean;
+  projectTitle?: string | null;
+  cohortName?: string | null;
+}
+
+export function getProjectWorkspacePageTitle({
+  accessConfirmed,
+  projectTitle,
+  cohortName,
+}: ProjectWorkspacePageTitleInput): string {
+  const cleanProjectTitle = projectTitle?.trim();
+  if (!accessConfirmed || !cleanProjectTitle) return 'Project';
+
+  const cleanCohortName = cohortName?.trim();
+  return cleanCohortName ? `${cleanProjectTitle} — ${cleanCohortName}` : cleanProjectTitle;
+}
+
 interface CohortAssignmentsPageTitleInput {
   accessConfirmed: boolean;
   cohortName?: string | null;

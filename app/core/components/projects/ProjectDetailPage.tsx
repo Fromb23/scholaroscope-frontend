@@ -27,6 +27,8 @@ import { ProjectEvidenceRecorder } from './ProjectEvidenceRecorder';
 import { ProjectTaskEvaluationEditor } from './ProjectTaskEvaluationEditor';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
 import { GroupRosterSummary } from '@/app/core/components/grouping/GroupRosterSummary';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
+import { getProjectWorkspacePageTitle } from '@/app/core/pageIdentity/contextualPageTitles';
 import type { ProjectClassObservation, ProjectTask } from '@/app/core/types/projects';
 
 const tabs = [
@@ -79,6 +81,14 @@ export function ProjectDetailPage() {
   const [observationComment, setObservationComment] = useState('');
   const observationOpen = searchParams.get('section') === 'observation';
   const project = deploymentQuery.data;
+  useSemanticPageTitle(
+    getProjectWorkspacePageTitle({
+      accessConfirmed:
+        deploymentQuery.isSuccess && !deploymentQuery.isError && project?.id === id,
+      projectTitle: project?.title,
+      cohortName: project?.cohort?.name,
+    }),
+  );
   const error = mutation.error
     ? resolveAppError(mutation.error, {
         domain: 'projects',

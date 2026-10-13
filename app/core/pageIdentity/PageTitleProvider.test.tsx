@@ -67,4 +67,50 @@ describe('PageTitleProvider override lifecycle', () => {
 
     expect(document.title).toBe('Water Conservation | Scholaroscope');
   });
+
+  it('replaces project workspace identity across direct loads, deployments, and navigation away', async () => {
+    navigationState.pathname = '/projects/11';
+    await act(async () => {
+      renderer = create(
+        createElement(PageTitleProvider, null, createElement(TitledPage, { title: 'Project' })),
+      );
+    });
+    expect(document.title).toBe('Project | Scholaroscope');
+
+    await act(async () => {
+      renderer!.update(
+        createElement(
+          PageTitleProvider,
+          null,
+          createElement(TitledPage, { title: 'Community Garden — Grade 7 Yellow' }),
+        ),
+      );
+    });
+    expect(document.title).toBe('Community Garden — Grade 7 Yellow | Scholaroscope');
+
+    navigationState.pathname = '/projects/12';
+    await act(async () => {
+      renderer!.update(
+        createElement(PageTitleProvider, null, createElement(TitledPage, { title: 'Project' })),
+      );
+    });
+    expect(document.title).toBe('Project | Scholaroscope');
+
+    await act(async () => {
+      renderer!.update(
+        createElement(
+          PageTitleProvider,
+          null,
+          createElement(TitledPage, { title: 'Water Conservation — Grade 8 East' }),
+        ),
+      );
+    });
+    expect(document.title).toBe('Water Conservation — Grade 8 East | Scholaroscope');
+
+    navigationState.pathname = '/projects';
+    await act(async () => {
+      renderer!.update(createElement(PageTitleProvider, null, createElement('div')));
+    });
+    expect(document.title).toBe('Projects | Scholaroscope');
+  });
 });

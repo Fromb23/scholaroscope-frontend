@@ -75,6 +75,15 @@ describe('semantic page identity titles', () => {
     expect(resolvePageIdentity('/admin/instructors/42/progress').displayLabel).toBe(label);
   });
 
+  it('identifies only numeric project workspaces with the project fallback', () => {
+    expect(formatDocumentTitle(resolvePageIdentity('/projects/42').displayLabel)).toBe(
+      'Project | Scholaroscope',
+    );
+    expect(resolvePageIdentity('/projects/new').pageKind).toBe('unknown');
+    expect(resolvePageIdentity('/projects/catalogue').pageKind).toBe('unknown');
+    expect(resolvePageIdentity('/projects/definitions/42').pageKind).toBe('projects.streams');
+  });
+
   it('formats loaded, loading, forbidden, and not-found labels exactly once', () => {
     expect(formatDocumentTitle('Fractions CAT')).toBe('Fractions CAT | Scholaroscope');
     expect(formatDocumentTitle('Assessment')).toBe('Assessment | Scholaroscope');
