@@ -39,9 +39,17 @@ export function getAssignmentCurrentProgressStage(
     }
 
     if (
-        lifecycleState.summary.submissions_count > 0
-        || lifecycleState.summary.pending_review_count > 0
-        || lifecycleState.next_action === 'REVIEW_WORK'
+        lifecycleState.workflow_mode === 'INSTRUCTOR_RECORDED'
+        && (lifecycleState.summary.pending_review_count > 0 || lifecycleState.next_action === 'REVIEW_WORK')
+    ) {
+        return 'Review';
+    }
+
+    if (
+        lifecycleState.workflow_mode !== 'INSTRUCTOR_RECORDED'
+        && (lifecycleState.summary.submissions_count > 0
+            || lifecycleState.summary.pending_review_count > 0
+            || lifecycleState.next_action === 'REVIEW_WORK')
     ) {
         return 'Responses';
     }
@@ -54,8 +62,11 @@ interface AssignmentProgressTrackerProps {
 }
 
 export function AssignmentProgressTracker({ lifecycleState }: AssignmentProgressTrackerProps) {
+    const progressStages = lifecycleState.workflow_mode === 'INSTRUCTOR_RECORDED'
+        ? ASSIGNMENT_PROGRESS_STAGES.filter((stage) => stage !== 'Responses')
+        : [...ASSIGNMENT_PROGRESS_STAGES];
     const currentStage = getAssignmentCurrentProgressStage(lifecycleState);
-    const currentIndex = ASSIGNMENT_PROGRESS_STAGES.indexOf(currentStage);
+    const currentIndex = progressStages.indexOf(currentStage);
     const blocked = lifecycleState.blocking_items.length > 0;
 
     return (
@@ -74,8 +85,8 @@ export function AssignmentProgressTracker({ lifecycleState }: AssignmentProgress
                 </p>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-6" aria-label="Assignment progress stages">
-                {ASSIGNMENT_PROGRESS_STAGES.map((stage, index) => {
+            <div className={`grid gap-2 ${progressStages.length === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-6'}`} aria-label="Assignment progress stages">
+                {progressStages.map((stage, index) => {
                     const complete = index < currentIndex || lifecycleState.stage === 'STORED';
                     const current = index === currentIndex && lifecycleState.stage !== 'STORED';
                     const blockedCurrent = current && blocked;

@@ -49,6 +49,8 @@ import type {
     AssignmentGroupSubmission,
     AssignmentGroupSubmissionCreatePayload,
     AssignmentGroupSubmissionListResponse,
+    AssignmentGroupWorkReviewPayload,
+    AssignmentGroupWorkReviewResult,
     AssignmentGroupUpdatePayload,
     AssignmentLifecycleState,
     AssignmentRecipient,
@@ -454,6 +456,24 @@ export const assignmentGroupAPI = {
         const response = await apiClient.post<AssignmentGroupSubmission>(
             `${ASSIGNMENT_GROUPS_BASE}/${groupId}/submissions/`,
             withClientMutationId(data, 'assignment-group-submission')
+        );
+        return response.data;
+    },
+
+    getWorkReview: async (groupId: number): Promise<AssignmentGroupWorkReviewResult> => {
+        const response = await apiClient.get<AssignmentGroupWorkReviewResult>(
+            `${ASSIGNMENT_GROUPS_BASE}/${groupId}/review-group-work/`
+        );
+        return response.data;
+    },
+
+    saveWorkReview: async (
+        groupId: number,
+        data: AssignmentGroupWorkReviewPayload
+    ): Promise<AssignmentGroupWorkReviewResult> => {
+        const response = await apiClient.post<AssignmentGroupWorkReviewResult>(
+            `${ASSIGNMENT_GROUPS_BASE}/${groupId}/review-group-work/`,
+            withClientMutationId(data, 'assignment-group-work-review')
         );
         return response.data;
     },

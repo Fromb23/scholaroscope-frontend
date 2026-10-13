@@ -203,6 +203,18 @@ export interface ProjectDeploymentProgress {
   evidence_count: number;
   evaluation_count: number;
 }
+export interface ProjectCompletionReadiness {
+  ready: boolean;
+  completed_tasks: number;
+  total_tasks: number;
+  outstanding_evidence: number;
+  pending_evaluations: number;
+  draft_class_observations: number;
+  missing_required_work: number;
+  deadline_state: 'OPEN' | 'OVERDUE';
+  blockers: string[];
+  consequences: string[];
+}
 export interface ProjectCoverage {
   covered: number;
   expected: number;
@@ -236,6 +248,7 @@ export interface ProjectDeployment {
   participant_count: number;
   progress: ProjectDeploymentProgress;
   readiness: { state: string; incomplete_required_checklist_items: number[] };
+  completion_readiness?: ProjectCompletionReadiness;
   task_executions?: Array<{
     id: number;
     task: number;
@@ -444,6 +457,8 @@ export interface ProjectClassObservation {
   organization: number;
   deployment: number;
   task: number | null;
+  task_title?: string | null;
+  task_sequence?: number | null;
   author: number;
   author_name: string;
   comment: string;
@@ -451,6 +466,7 @@ export interface ProjectClassObservation {
   status: 'DRAFT' | 'FINALIZED' | 'ARCHIVED';
   supersedes: number | null;
   amendment_reason: string;
+  amendment_count?: number;
   finalized_at: string | null;
   archived_at: string | null;
   created_at: string;

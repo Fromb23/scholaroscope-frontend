@@ -52,6 +52,8 @@ import type {
     AssignmentGroupMemberParticipationPayload,
     AssignmentGroupSubmission,
     AssignmentGroupSubmissionCreatePayload,
+    AssignmentGroupWorkReviewPayload,
+    AssignmentGroupWorkReviewResult,
     AssignmentGroupUpdatePayload,
     AssignmentLifecycleState,
     AssignmentPublishPayload,
@@ -213,6 +215,9 @@ async function invalidateAssignmentGroupDependencies(
             : Promise.resolve(),
         groupId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groupSubmissions(groupId) })
+            : Promise.resolve(),
+        groupId
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groupWorkReview(groupId) })
             : Promise.resolve(),
         evaluationId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groupEvaluationDetail(evaluationId) })
@@ -617,6 +622,42 @@ export function useAssignmentGroupSubmissions(groupId: number | null, options?: 
         error: query.error?.message ?? null,
         refetch: query.refetch,
     };
+}
+
+export function useAssignmentGroupWorkReview(groupId: number | null, options?: UseAssignmentsOptions) {
+    const enabled = (options?.enabled ?? true) && isValidId(groupId);
+    const query = useQuery<AssignmentGroupWorkReviewResult, Error>({
+        queryKey: assignmentKeys.groupWorkReview(groupId),
+        queryFn: async () => {
+            if (!groupId) throw new Error('Assignment group id is required.');
+            return assignmentGroupAPI.getWorkReview(groupId);
+        },
+        enabled,
+        staleTime: 15_000,
+    });
+    return {
+        review: query.data ?? null,
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
+export function useSaveAssignmentGroupWorkReview() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ groupId, data }: { groupId: number; data: AssignmentGroupWorkReviewPayload }) =>
+            assignmentGroupAPI.saveWorkReview(groupId, data),
+        onSuccess: async (result, variables) => {
+            queryClient.setQueryData(assignmentKeys.groupWorkReview(variables.groupId), result);
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                result.group.assignment,
+                variables.groupId,
+                result.evaluation?.id,
+            );
+        },
+    });
 }
 
 export function useAssignmentEvaluations(
