@@ -48,6 +48,8 @@ import type {
 import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { parseAppDestination } from '@/app/core/auth/navigation';
 import { buildAssignmentDetailHref as buildCanonicalAssignmentDetailHref } from '@/app/core/lib/operationalDetailNavigation';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
+import { getCohortAssignmentsPageTitle } from '@/app/core/pageIdentity/contextualPageTitles';
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'All stages' },
@@ -492,6 +494,11 @@ export default function CohortAssignmentsPage() {
       visibleCohortSubjects.find((subject) => String(subject.id) === cohortSubjectFilter) ?? null,
     [cohortSubjectFilter, visibleCohortSubjects],
   );
+  useSemanticPageTitle(getCohortAssignmentsPageTitle({
+    accessConfirmed: !accessLoading && !cohortLoading && allowed,
+    cohortName: cohort?.name,
+    subjectName: selectedCohortSubject?.subject_name,
+  }));
   const showingWorkspaceSelection =
     !cohortSubjectFilter || (isTeachingActor && !selectedCohortSubject);
   const requestedReturnTo = parseAppDestination(searchParams.get('returnTo'));

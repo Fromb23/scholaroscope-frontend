@@ -8,6 +8,7 @@ import { Input } from '@/app/components/ui/Input';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { authAPI } from '@/app/core/api/auth';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 import { AuthFrame } from './AuthFrame';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 
@@ -28,6 +29,7 @@ function resetMessageForCode(code?: string) {
 export function ResetPasswordPage() {
   const params = useParams();
   const router = useRouter();
+  useSemanticPageTitle('Reset Password');
   const uid = params.uid as string;
   const token = params.token as string;
 

@@ -19,6 +19,8 @@ import {
 } from '@/app/core/hooks/useProjects';
 import { buildProjectDetailHref, projectBackHref } from './projectNavigation';
 import { ProjectScheduleStatus } from './ProjectScheduleStatus';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
+import { getProjectStreamsPageTitle } from '@/app/core/pageIdentity/contextualPageTitles';
 
 export function ProjectStreamSelectionPage() {
   const route = useParams<{ definitionVersionId: string }>();
@@ -27,6 +29,7 @@ export function ProjectStreamSelectionPage() {
   const query = useProjectWorkspace(
     Number.isFinite(definitionVersion) && definitionVersion > 0 ? definitionVersion : null,
   );
+  useSemanticPageTitle(getProjectStreamsPageTitle(query.data?.title));
   const [showMissing, setShowMissing] = useState(false);
   const [showReopen, setShowReopen] = useState(false);
   const [selectedMissing, setSelectedMissing] = useState<Record<number, number | undefined>>({});

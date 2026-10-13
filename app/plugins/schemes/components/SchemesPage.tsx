@@ -33,6 +33,8 @@ import { useAuth } from '@/app/context/AuthContext';
 import { isSelfManagedTeachingAdmin } from '@/app/core/lib/workspaces';
 import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
 import { formatTimestamp } from '@/app/plugins/schemes/lib/workflow';
+import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
+import { getSchemesPageTitle } from '@/app/plugins/schemes/lib/pageTitle';
 
 function getStatusVariant(scheme: SchemeOfWork): 'success' | 'warning' | 'default' {
   if (scheme.is_historical) {
@@ -303,6 +305,8 @@ export function SchemesPage() {
   }, [searchParams]);
   const effectiveMyTeachingMode = teachingSurface || canUseTeacherModeAsAdmin || viewMode === 'my_teaching';
   const institutionComplianceMode = isInstitutionalAdminSupervisor && !effectiveMyTeachingMode;
+  const pageTitle = getSchemesPageTitle(effectiveMyTeachingMode, isInstitutionalAdminSupervisor);
+  useSemanticPageTitle(pageTitle);
   const queryTerm = useMemo(() => toOptionalNumber(searchParams.get('term') ?? ''), [searchParams]);
   const explicitTermId = useMemo(
     () => resolveExplicitWorkTermId(toOptionalNumber(termFilter) ?? null, terms),
@@ -595,11 +599,7 @@ export function SchemesPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold theme-text">
-            {effectiveMyTeachingMode
-              ? 'My Schemes of Work'
-              : isInstitutionalAdminSupervisor
-                ? 'Schemes of Work Supervision'
-                : 'Schemes of Work'}
+            {pageTitle}
           </h1>
           <p className="mt-1 text-sm theme-subtle">{subtitle}</p>
         </div>
