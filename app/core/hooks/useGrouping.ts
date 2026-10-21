@@ -42,6 +42,11 @@ export function useGroupingMutations(type: GroupingContextType, id: number) {
         groupingAPI.correctRoster(type, id, payload),
       onSuccess: update,
     }),
+    admitLate: useMutation({
+      mutationFn: (payload: Parameters<typeof groupingAPI.admitLate>[2]) =>
+        groupingAPI.admitLate(type, id, payload),
+      onSuccess: update,
+    }),
     reconcile: useMutation({
       mutationFn: () => groupingAPI.reconcile(type, id, false),
       onSuccess: (result) => update(result.grouping),

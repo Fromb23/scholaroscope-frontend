@@ -83,8 +83,7 @@ export function ProjectDetailPage() {
   const project = deploymentQuery.data;
   useSemanticPageTitle(
     getProjectWorkspacePageTitle({
-      accessConfirmed:
-        deploymentQuery.isSuccess && !deploymentQuery.isError && project?.id === id,
+      accessConfirmed: deploymentQuery.isSuccess && !deploymentQuery.isError && project?.id === id,
       projectTitle: project?.title,
       cohortName: project?.cohort?.name,
     }),
@@ -120,9 +119,7 @@ export function ProjectDetailPage() {
   );
   const scopeTargets = selectedScope === 'group' ? taskGroups : activeParticipants;
   const requestedTargetIndex = scopeTargets.findIndex((target) =>
-    selectedScope === 'group'
-      ? target.id === selectedGroup
-      : target.id === selectedParticipant,
+    selectedScope === 'group' ? target.id === selectedGroup : target.id === selectedParticipant,
   );
   const selectedTargetIndex = requestedTargetIndex >= 0 ? requestedTargetIndex : 0;
   const selectedTarget = scopeTargets[selectedTargetIndex] ?? null;
@@ -132,8 +129,8 @@ export function ProjectDetailPage() {
     const participant = activeParticipants.find((row) => row.id === selectedTarget.id);
     return Boolean(
       participant &&
-        (item.learner === participant.learner ||
-          item.attributed_participants.includes(participant.id)),
+      (item.learner === participant.learner ||
+        item.attributed_participants.includes(participant.id)),
     );
   });
   const selectedTaskEvaluations = (related.evaluations.data ?? []).filter((item) => {
@@ -265,8 +262,13 @@ export function ProjectDetailPage() {
               onClick={() => setPendingAction(action)}
             >
               {action === 'complete' ? (
-                <><CheckCircle2 className="mr-2 h-4 w-4" />Complete project</>
-              ) : label(action)}
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Complete project
+                </>
+              ) : (
+                label(action)
+              )}
             </Button>
           ))}
         </div>
@@ -401,7 +403,8 @@ export function ProjectDetailPage() {
                   next.set('scope', scope);
                   next.delete(scope === 'group' ? 'participant' : 'group');
                   const first = scope === 'group' ? taskGroups[0] : activeParticipants[0];
-                  if (first) next.set(scope === 'group' ? 'group' : 'participant', String(first.id));
+                  if (first)
+                    next.set(scope === 'group' ? 'group' : 'participant', String(first.id));
                   router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
                 }}
                 selectedTargetName={
@@ -432,7 +435,7 @@ export function ProjectDetailPage() {
             <Row
               key={item.id}
               title={item.learner_name}
-              detail={`${item.status}${item.is_late_addition ? ' · Late addition' : ''}`}
+              detail={`${item.status}${item.is_late_addition ? ` · Late addition${item.effective_from ? ` from ${item.effective_from}` : ''}` : ''}${item.catch_up_status === 'TEACHER_DECISION_REQUIRED' ? ' · Missed instruction / catch-up decision unresolved' : ''}${item.withdrawn_at ? ` · Departed ${new Date(item.withdrawn_at).toLocaleDateString()} (history only)` : ''}`}
             />
           ))}
         </ListState>
@@ -576,7 +579,9 @@ export function ProjectDetailPage() {
           next.delete('section');
           router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
         }}
-        title={observationTask ? 'Record task class observation' : 'Record project class observation'}
+        title={
+          observationTask ? 'Record task class observation' : 'Record project class observation'
+        }
         description="This class-level observation stays in project context and does not become learner or group evidence."
       >
         <form
@@ -653,7 +658,11 @@ export function ProjectDetailPage() {
             <Button
               variant={pendingAction === 'cancel' ? 'danger' : 'primary'}
               onClick={() => void confirmAction()}
-              disabled={mutation.isPending || (pendingAction === 'cancel' && !cancelReason.trim()) || (pendingAction === 'complete' && project.completion_readiness?.ready === false)}
+              disabled={
+                mutation.isPending ||
+                (pendingAction === 'cancel' && !cancelReason.trim()) ||
+                (pendingAction === 'complete' && project.completion_readiness?.ready === false)
+              }
             >
               {mutation.isPending ? 'Working…' : 'Confirm'}
             </Button>
@@ -673,19 +682,31 @@ export function ProjectDetailPage() {
             <div className="space-y-3 text-sm theme-muted">
               <p className="font-semibold theme-text">Completion readiness</p>
               <ul className="list-disc space-y-1 pl-5">
-                <li>Completed tasks: {project.completion_readiness.completed_tasks}/{project.completion_readiness.total_tasks}</li>
+                <li>
+                  Completed tasks: {project.completion_readiness.completed_tasks}/
+                  {project.completion_readiness.total_tasks}
+                </li>
                 <li>Outstanding evidence: {project.completion_readiness.outstanding_evidence}</li>
                 <li>Pending evaluations: {project.completion_readiness.pending_evaluations}</li>
-                <li>Draft class observations: {project.completion_readiness.draft_class_observations}</li>
-                <li>Groups or learners without required work: {project.completion_readiness.missing_required_work}</li>
+                <li>
+                  Draft class observations: {project.completion_readiness.draft_class_observations}
+                </li>
+                <li>
+                  Groups or learners without required work:{' '}
+                  {project.completion_readiness.missing_required_work}
+                </li>
                 <li>Deadline state: {project.completion_readiness.deadline_state}</li>
               </ul>
               {project.completion_readiness.blockers.map((blocker) => (
-                <p key={blocker} className="text-[color:var(--color-danger)]">{blocker}</p>
+                <p key={blocker} className="text-[color:var(--color-danger)]">
+                  {blocker}
+                </p>
               ))}
               <div>
                 <p className="font-medium theme-text">Consequences of completion</p>
-                {project.completion_readiness.consequences.map((consequence) => <p key={consequence}>• {consequence}</p>)}
+                {project.completion_readiness.consequences.map((consequence) => (
+                  <p key={consequence}>• {consequence}</p>
+                ))}
               </div>
             </div>
           ) : (
@@ -824,23 +845,94 @@ export function ProjectDetailPage() {
   );
 }
 
-function GroupedProjectObservations({ observations, tasks, deploymentId }: { observations: ProjectClassObservation[]; tasks: ProjectTask[]; deploymentId: number }) {
+function GroupedProjectObservations({
+  observations,
+  tasks,
+  deploymentId,
+}: {
+  observations: ProjectClassObservation[];
+  tasks: ProjectTask[];
+  deploymentId: number;
+}) {
   const group = (title: string, items: ProjectClassObservation[], taskId?: number) => {
     const drafts = items.filter((item) => item.status === 'DRAFT').length;
     const finalized = items.filter((item) => item.status === 'FINALIZED').length;
-    const latest = [...items].sort((left, right) => right.observed_at.localeCompare(left.observed_at))[0];
-    return <section key={title} className="space-y-3 rounded-lg border theme-border p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h3 className="font-semibold theme-text">{title}</h3><p className="text-xs theme-muted">{items.length} observations · {drafts} draft · {finalized} finalized · Latest {latest ? new Date(latest.observed_at).toLocaleString() : '—'}</p></div>
-        {taskId ? <Link className="theme-link text-sm" href={`/projects/${deploymentId}?tab=tasks&task=${taskId}`}>Open task workspace</Link> : null}
-      </div>
-      {items.length ? items.map((item) => <details key={item.id} className="rounded-lg border theme-border px-3 py-2">
-        <summary className="cursor-pointer text-sm theme-text">{item.comment.slice(0, 120)}{item.comment.length > 120 ? '…' : ''}</summary>
-        <div className="mt-2 space-y-1 text-sm theme-muted"><p>{item.comment}</p><p>Author: {item.author_name} · Status: {item.status}</p><p>Created: {new Date(item.created_at).toLocaleString()} · Observed: {new Date(item.observed_at).toLocaleString()}{item.finalized_at ? ` · Finalized: ${new Date(item.finalized_at).toLocaleString()}` : ''}</p>{item.supersedes ? <p>Amends observation #{item.supersedes}: {item.amendment_reason}</p> : null}{item.amendment_count ? <p>Superseded by {item.amendment_count} amendment(s).</p> : null}</div>
-      </details>) : <p className="text-sm theme-muted">No observations.</p>}
-    </section>;
+    const latest = [...items].sort((left, right) =>
+      right.observed_at.localeCompare(left.observed_at),
+    )[0];
+    return (
+      <section key={title} className="space-y-3 rounded-lg border theme-border p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold theme-text">{title}</h3>
+            <p className="text-xs theme-muted">
+              {items.length} observations · {drafts} draft · {finalized} finalized · Latest{' '}
+              {latest ? new Date(latest.observed_at).toLocaleString() : '—'}
+            </p>
+          </div>
+          {taskId ? (
+            <Link
+              className="theme-link text-sm"
+              href={`/projects/${deploymentId}?tab=tasks&task=${taskId}`}
+            >
+              Open task workspace
+            </Link>
+          ) : null}
+        </div>
+        {items.length ? (
+          items.map((item) => (
+            <details key={item.id} className="rounded-lg border theme-border px-3 py-2">
+              <summary className="cursor-pointer text-sm theme-text">
+                {item.comment.slice(0, 120)}
+                {item.comment.length > 120 ? '…' : ''}
+              </summary>
+              <div className="mt-2 space-y-1 text-sm theme-muted">
+                <p>{item.comment}</p>
+                <p>
+                  Author: {item.author_name} · Status: {item.status}
+                </p>
+                <p>
+                  Created: {new Date(item.created_at).toLocaleString()} · Observed:{' '}
+                  {new Date(item.observed_at).toLocaleString()}
+                  {item.finalized_at
+                    ? ` · Finalized: ${new Date(item.finalized_at).toLocaleString()}`
+                    : ''}
+                </p>
+                {item.supersedes ? (
+                  <p>
+                    Amends observation #{item.supersedes}: {item.amendment_reason}
+                  </p>
+                ) : null}
+                {item.amendment_count ? (
+                  <p>Superseded by {item.amendment_count} amendment(s).</p>
+                ) : null}
+              </div>
+            </details>
+          ))
+        ) : (
+          <p className="text-sm theme-muted">No observations.</p>
+        )}
+      </section>
+    );
   };
-  return <div className="space-y-6">{group('Project observations', observations.filter((item) => !item.task))}<section className="space-y-3"><h2 className="text-lg font-semibold theme-text">Observations by task</h2>{tasks.map((task, index) => group(`Task ${index + 1} — ${task.title}`, observations.filter((item) => item.task === task.id), task.id))}</section></div>;
+  return (
+    <div className="space-y-6">
+      {group(
+        'Project observations',
+        observations.filter((item) => !item.task),
+      )}
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold theme-text">Observations by task</h2>
+        {tasks.map((task, index) =>
+          group(
+            `Task ${index + 1} — ${task.title}`,
+            observations.filter((item) => item.task === task.id),
+            task.id,
+          ),
+        )}
+      </section>
+    </div>
+  );
 }
 
 function Row({ title, detail, icon }: { title: string; detail: string; icon?: ReactNode }) {

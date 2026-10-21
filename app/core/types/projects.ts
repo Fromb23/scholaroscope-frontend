@@ -353,6 +353,9 @@ export interface ProjectParticipant {
   is_late_addition: boolean;
   status: string;
   withdrawn_at: string | null;
+  effective_from?: string | null;
+  source_subject_enrollment?: number | null;
+  catch_up_status?: 'NOT_REQUIRED' | 'TEACHER_DECISION_REQUIRED' | 'RESOLVED';
 }
 export interface ProjectGroup {
   id: number;
