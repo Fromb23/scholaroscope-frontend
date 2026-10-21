@@ -56,6 +56,19 @@ export interface GroupingContextResponse {
     evaluation_count: number;
     dependencies: Array<Record<string, number | string>>;
   };
+  late_unassigned_participants?: Array<
+    GroupingLearner & {
+      participant_id: number;
+      effective_from: string | null;
+      catch_up_status: 'NOT_REQUIRED' | 'TEACHER_DECISION_REQUIRED' | 'RESOLVED';
+    }
+  >;
+  ongoing_tasks?: Array<{
+    id: number;
+    task_id: number;
+    task__title: string;
+    status: string;
+  }>;
 }
 
 export interface GroupingDraftGroup {

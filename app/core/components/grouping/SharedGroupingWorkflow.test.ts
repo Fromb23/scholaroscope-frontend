@@ -77,7 +77,9 @@ describe('shared Project and Assignment grouping workflow', () => {
         members: [{ id: 9, full_name: 'Nine', admission_number: 'A9' }],
       },
     ]);
-    expect(draft).toEqual([{ id: 41, clientId: 'preview-1', name: 'Team 1', notes: '', studentIds: [9] }]);
+    expect(draft).toEqual([
+      { id: 41, clientId: 'preview-1', name: 'Team 1', notes: '', studentIds: [9] },
+    ]);
   });
 
   it('renders dependency-locked rosters as inspectable and read only', () => {
@@ -98,5 +100,15 @@ describe('shared Project and Assignment grouping workflow', () => {
     expect(builder).toContain('Correction reason');
     expect(builder).toContain('mutations.correctRoster.mutateAsync');
     expect(builder).toContain('Save audited correction');
+  });
+
+  it('treats late admission as a dedicated capacity-checked transition', () => {
+    const api = fs.readFileSync(path.join(root, 'app/core/api/grouping.ts'), 'utf8');
+    expect(builder).toContain('Late participants awaiting a group');
+    expect(builder).toContain('Applicable ongoing tasks');
+    expect(builder).toContain('mutations.admitLate');
+    expect(builder).toContain('Check eligibility and group capacity');
+    expect(api).toContain('/late-admission/');
+    expect(builder).not.toContain('override capacity');
   });
 });

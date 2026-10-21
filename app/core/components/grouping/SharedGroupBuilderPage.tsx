@@ -68,12 +68,19 @@ export function SharedGroupBuilderPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [correctionMode, setCorrectionMode] = useState(false);
   const [correctionReason, setCorrectionReason] = useState('');
+  const [lateGroup, setLateGroup] = useState<Record<number, string>>({});
+  const [lateTasks, setLateTasks] = useState<Record<number, number[]>>({});
 
   useEffect(() => {
     if (isDirty) return;
     setGroups((query.data?.group_set?.groups ?? []).map(fromServerGroup));
     setDraftRevision(query.data?.group_set?.revision ?? 0);
-  }, [isDirty, query.data?.context.id, query.data?.group_set?.groups, query.data?.group_set?.revision]);
+  }, [
+    isDirty,
+    query.data?.context.id,
+    query.data?.group_set?.groups,
+    query.data?.group_set?.revision,
+  ]);
 
   const learnerById = useMemo(
     () => new Map((query.data?.eligible_learners ?? []).map((learner) => [learner.id, learner])),
@@ -170,6 +177,103 @@ export function SharedGroupBuilderPage() {
     );
   }
   const data = query.data;
+  const lateAdmissionPanel =
+    type === 'project' &&
+    data.capabilities.can_manage &&
+    (data.late_unassigned_participants ?? []).length ? (
+      <Card className="space-y-4 border-[color:var(--color-warning)]">
+        <div>
+          <h2 className="font-semibold theme-text">Late participants awaiting a group</h2>
+          <p className="text-sm theme-muted">
+            Select an existing group and any active tasks they should join. Earlier task snapshots
+            and evidence stay unchanged; unresolved missed instruction remains visible for
+            follow-up.
+          </p>
+        </div>
+        {(data.late_unassigned_participants ?? []).map((participant) => (
+          <div
+            key={participant.participant_id}
+            className="space-y-3 rounded-lg border theme-border p-3"
+          >
+            <div>
+              <p className="font-medium theme-text">{participant.full_name}</p>
+              <p className="text-xs theme-muted">
+                {participant.admission_number} · eligible from{' '}
+                {participant.effective_from ?? 'recorded enrolment'}
+                {participant.catch_up_status === 'TEACHER_DECISION_REQUIRED'
+                  ? ' · catch-up decision unresolved'
+                  : ''}
+              </p>
+            </div>
+            <Select
+              label="Existing group"
+              value={lateGroup[participant.participant_id] ?? ''}
+              onChange={(event) =>
+                setLateGroup((current) => ({
+                  ...current,
+                  [participant.participant_id]: event.target.value,
+                }))
+              }
+              options={[
+                { value: '', label: 'Choose a group' },
+                ...(data.group_set?.groups ?? []).map((group) => ({
+                  value: String(group.id),
+                  label: `${group.name} (${group.members.length} members)`,
+                })),
+              ]}
+            />
+            {(data.ongoing_tasks ?? []).length ? (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium theme-text">Applicable ongoing tasks</legend>
+                {(data.ongoing_tasks ?? []).map((task) => (
+                  <label key={task.id} className="flex items-center gap-2 text-sm theme-text">
+                    <input
+                      type="checkbox"
+                      checked={(lateTasks[participant.participant_id] ?? []).includes(task.id)}
+                      onChange={(event) =>
+                        setLateTasks((current) => {
+                          const selected = new Set(current[participant.participant_id] ?? []);
+                          if (event.target.checked) selected.add(task.id);
+                          else selected.delete(task.id);
+                          return { ...current, [participant.participant_id]: [...selected] };
+                        })
+                      }
+                    />
+                    {task.task__title}
+                  </label>
+                ))}
+              </fieldset>
+            ) : (
+              <p className="text-xs theme-muted">
+                No task is currently active; future tasks use the updated roster.
+              </p>
+            )}
+            <Button
+              disabled={!lateGroup[participant.participant_id] || mutations.admitLate.isPending}
+              onClick={() =>
+                void mutations.admitLate
+                  .mutateAsync({
+                    revision: data.group_set?.revision ?? 0,
+                    participant: participant.participant_id,
+                    group: Number(lateGroup[participant.participant_id]),
+                    task_executions: lateTasks[participant.participant_id] ?? [],
+                  })
+                  .catch((admissionError) =>
+                    setError(
+                      resolveErrorMessage(
+                        admissionError,
+                        'The learner could not be admitted. Check eligibility and group capacity.',
+                      ),
+                    ),
+                  )
+              }
+            >
+              {mutations.admitLate.isPending ? 'Admitting…' : 'Admit to group and selected tasks'}
+            </Button>
+          </div>
+        ))}
+      </Card>
+    ) : null;
   if (!data.capabilities.can_manage || (data.lock.is_locked && !correctionMode)) {
     return (
       <div className="space-y-4">
@@ -198,6 +302,7 @@ export function SharedGroupBuilderPage() {
             </div>
           ) : null}
         </Card>
+        {lateAdmissionPanel}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {(data.group_set?.groups ?? []).map((group) => (
             <Card key={group.id} className="space-y-3">
@@ -207,7 +312,10 @@ export function SharedGroupBuilderPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {group.members.map((learner) => (
-                  <span key={learner.id} className="rounded-full border theme-border px-2 py-1 text-xs theme-text">
+                  <span
+                    key={learner.id}
+                    className="rounded-full border theme-border px-2 py-1 text-xs theme-text"
+                  >
                     {learner.full_name}
                   </span>
                 ))}
@@ -216,7 +324,6 @@ export function SharedGroupBuilderPage() {
           ))}
         </div>
       </div>
-
     );
   }
 
@@ -229,7 +336,9 @@ export function SharedGroupBuilderPage() {
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-bold theme-text">Group builder</h1>
-          <span className={`rounded-full px-2 py-1 text-xs ${isDirty ? 'bg-amber-100 text-amber-800' : 'theme-surface-muted theme-muted'}`}>
+          <span
+            className={`rounded-full px-2 py-1 text-xs ${isDirty ? 'bg-amber-100 text-amber-800' : 'theme-surface-muted theme-muted'}`}
+          >
             {isDirty ? 'Unsaved roster changes' : `Roster revision ${draftRevision}`}
           </span>
         </div>
@@ -237,6 +346,8 @@ export function SharedGroupBuilderPage() {
           {data.context.title} · {data.context.population_label}
         </p>
       </div>
+
+      {lateAdmissionPanel}
 
       {correctionMode ? (
         <Card className="space-y-3 border-[color:var(--color-warning)]">
@@ -312,40 +423,42 @@ export function SharedGroupBuilderPage() {
         </Card>
       ) : (
         <>
-          {!correctionMode ? <Card className="space-y-4">
-            <h2 className="font-semibold theme-text">Random distribution preview</h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Select
-                label="Distribution method"
-                value={mode}
-                onChange={(event) => setMode(event.target.value as typeof mode)}
-                options={[
-                  { value: 'BY_GROUP_COUNT', label: 'Number of groups' },
-                  { value: 'BY_MEMBERS_PER_GROUP', label: 'Learners per group' },
-                ]}
-              />
-              <Input
-                label={mode === 'BY_GROUP_COUNT' ? 'Group count' : 'Group size'}
-                type="number"
-                min="1"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-              />
-              <Input
-                label="Group name prefix"
-                value={namePrefix}
-                onChange={(event) => setNamePrefix(event.target.value)}
-              />
-            </div>
-            <Button
-              variant="secondary"
-              onClick={() => void previewRandom()}
-              disabled={mutations.preview.isPending}
-            >
-              <Shuffle className="h-4 w-4" />
-              {mutations.preview.isPending ? 'Building preview…' : 'Preview random distribution'}
-            </Button>
-          </Card> : null}
+          {!correctionMode ? (
+            <Card className="space-y-4">
+              <h2 className="font-semibold theme-text">Random distribution preview</h2>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Select
+                  label="Distribution method"
+                  value={mode}
+                  onChange={(event) => setMode(event.target.value as typeof mode)}
+                  options={[
+                    { value: 'BY_GROUP_COUNT', label: 'Number of groups' },
+                    { value: 'BY_MEMBERS_PER_GROUP', label: 'Learners per group' },
+                  ]}
+                />
+                <Input
+                  label={mode === 'BY_GROUP_COUNT' ? 'Group count' : 'Group size'}
+                  type="number"
+                  min="1"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                />
+                <Input
+                  label="Group name prefix"
+                  value={namePrefix}
+                  onChange={(event) => setNamePrefix(event.target.value)}
+                />
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => void previewRandom()}
+                disabled={mutations.preview.isPending}
+              >
+                <Shuffle className="h-4 w-4" />
+                {mutations.preview.isPending ? 'Building preview…' : 'Preview random distribution'}
+              </Button>
+            </Card>
+          ) : null}
 
           <div className="grid gap-5 lg:grid-cols-[minmax(15rem,0.7fr)_minmax(0,1.3fr)]">
             <Card className="space-y-3">
@@ -387,12 +500,10 @@ export function SharedGroupBuilderPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() =>
-                    {
-                      setGroups((current) => [...current, createDraftGroup(current.length)]);
-                      setIsDirty(true);
-                    }
-                  }
+                  onClick={() => {
+                    setGroups((current) => [...current, createDraftGroup(current.length)]);
+                    setIsDirty(true);
+                  }}
                 >
                   <Plus className="h-4 w-4" />
                   Add group
@@ -412,48 +523,42 @@ export function SharedGroupBuilderPage() {
                         <Input
                           label="Group name"
                           value={group.name}
-                          onChange={(event) =>
-                            {
-                              setGroups((current) =>
-                                current.map((item) =>
-                                  item.clientId === group.clientId
-                                    ? { ...item, name: event.target.value }
-                                    : item,
-                                ),
-                              );
-                              setIsDirty(true);
-                            }
-                          }
+                          onChange={(event) => {
+                            setGroups((current) =>
+                              current.map((item) =>
+                                item.clientId === group.clientId
+                                  ? { ...item, name: event.target.value }
+                                  : item,
+                              ),
+                            );
+                            setIsDirty(true);
+                          }}
                         />
                         <Input
                           label="Notes"
                           value={group.notes}
-                          onChange={(event) =>
-                            {
-                              setGroups((current) =>
-                                current.map((item) =>
-                                  item.clientId === group.clientId
-                                    ? { ...item, notes: event.target.value }
-                                    : item,
-                                ),
-                              );
-                              setIsDirty(true);
-                            }
-                          }
+                          onChange={(event) => {
+                            setGroups((current) =>
+                              current.map((item) =>
+                                item.clientId === group.clientId
+                                  ? { ...item, notes: event.target.value }
+                                  : item,
+                              ),
+                            );
+                            setIsDirty(true);
+                          }}
                         />
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         aria-label={`Remove ${group.name}`}
-                        onClick={() =>
-                          {
-                            setGroups((current) =>
-                              current.filter((item) => item.clientId !== group.clientId),
-                            );
-                            setIsDirty(true);
-                          }
-                        }
+                        onClick={() => {
+                          setGroups((current) =>
+                            current.filter((item) => item.clientId !== group.clientId),
+                          );
+                          setIsDirty(true);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

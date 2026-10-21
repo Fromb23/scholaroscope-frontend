@@ -55,12 +55,20 @@ export const groupingAPI = {
       groups: Array<{ id?: number; name: string; notes?: string; student_ids: number[] }>;
     },
   ) =>
-    (
-      await apiClient.post<GroupingContextResponse>(
-        `${base(type, id)}/roster-correction/`,
-        payload,
-      )
-    ).data,
+    (await apiClient.post<GroupingContextResponse>(`${base(type, id)}/roster-correction/`, payload))
+      .data,
+  admitLate: async (
+    type: GroupingContextType,
+    id: number,
+    payload: {
+      revision: number;
+      participant: number;
+      group: number;
+      task_executions: number[];
+    },
+  ) =>
+    (await apiClient.post<GroupingContextResponse>(`${base(type, id)}/late-admission/`, payload))
+      .data,
   reconcile: async (type: GroupingContextType, id: number, dryRun = false) =>
     (
       await apiClient.post<{

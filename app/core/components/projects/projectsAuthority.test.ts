@@ -103,14 +103,14 @@ describe('Projects authority rendering', () => {
     expect(api).not.toMatch(/organization.*projects|allProjects|filterUnauthorized/i);
   });
 
-  it('keeps participants read-only and removes public mutation endpoints', () => {
+  it('keeps lifecycle propagation read-only while late admission uses shared grouping authority', () => {
     const detail = readFileSync('app/core/components/projects/ProjectDetailPage.tsx', 'utf8');
     const api = readFileSync('app/core/api/projects.ts', 'utf8');
     expect(detail).not.toContain('Manage participants');
     expect(detail).not.toContain('withdrawParticipant');
-    expect(api).not.toMatch(
-      /eligible-late-participants|participants\/add-late|participants\/withdraw/,
-    );
+    expect(api).not.toMatch(/participants\/add-late|participants\/withdraw/);
+    const groupingApi = readFileSync('app/core/api/grouping.ts', 'utf8');
+    expect(groupingApi).toContain('/late-admission/');
   });
 
   it('binds evidence recording to the task workspace', () => {
