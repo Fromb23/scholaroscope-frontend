@@ -18,6 +18,8 @@ import type {
   RegisterOfficialProjectPayload,
   RegisterOfficialProjectResponse,
   ProjectTaskEvaluation,
+  ProjectCatchUpDisposition,
+  ProjectCatchUpReviewResponse,
 } from '@/app/core/types/projects';
 
 export type ProjectListResponse<T> = T[] | PaginatedResponse<T>;
@@ -45,11 +47,13 @@ export const projectsAPI = {
     idempotencyKey: string,
   ) =>
     (
-      await apiClient.post<RegisterOfficialProjectResponse & {
-        added: Array<{ cohort_subject: number; deployment: number; reason: string }>;
-        skipped: Array<{ cohort_subject: number; deployment: number; reason: string }>;
-        failed: Array<{ cohort_subject: number | null; reason: string }>;
-      }>(
+      await apiClient.post<
+        RegisterOfficialProjectResponse & {
+          added: Array<{ cohort_subject: number; deployment: number; reason: string }>;
+          skipped: Array<{ cohort_subject: number; deployment: number; reason: string }>;
+          failed: Array<{ cohort_subject: number | null; reason: string }>;
+        }
+      >(
         `/project-workspaces/${definitionVersion}/add-missing-streams/`,
         { targets },
         { headers: { 'Idempotency-Key': idempotencyKey } },
@@ -96,6 +100,30 @@ export const projectsAPI = {
       .data,
   participants: async (id: number) =>
     (await apiClient.get<ProjectParticipant[]>(`/project-deployments/${id}/participants/`)).data,
+  catchUpReview: async (deploymentId: number, participantId: number) =>
+    (
+      await apiClient.get<ProjectCatchUpReviewResponse>(
+        `/project-deployments/${deploymentId}/participants/${participantId}/catch-up-review/`,
+      )
+    ).data,
+  saveCatchUpReview: async (
+    deploymentId: number,
+    participantId: number,
+    payload: {
+      disposition: ProjectCatchUpDisposition;
+      reason: string;
+      next_step: string;
+      assignment_recipient?: number;
+      assessment?: number;
+      evidence_ids?: number[];
+    },
+  ) =>
+    (
+      await apiClient.post<ProjectCatchUpReviewResponse>(
+        `/project-deployments/${deploymentId}/participants/${participantId}/catch-up-review/`,
+        payload,
+      )
+    ).data,
   checklist: async (id: number) =>
     (
       await apiClient.get<ProjectChecklistItem[]>(
@@ -117,7 +145,7 @@ export const projectsAPI = {
       await apiClient.get<ProjectListResponse<ProjectGroup>>('/project-groups/', {
         params: { deployment },
       })
-      ).data,
+    ).data,
   historicalGroups: async (deployment: number) =>
     (
       await apiClient.get<ProjectListResponse<ProjectGroup>>('/project-groups/', {
