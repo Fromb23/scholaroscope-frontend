@@ -432,7 +432,7 @@ export function ProjectTaskEvaluationEditor({
         <Button type="submit" disabled={pending || !payloads.length || incomplete}>
           {pending
             ? 'Saving…'
-            : `Save ${payloads.length} ${payloads.length === 1 ? 'evaluation' : 'evaluations'}`}
+            : `Save draft${payloads.length > 1 ? `s (${payloads.length})` : ''}`}
         </Button>
         {scope === 'individual' && currentParticipant && index + 1 < targets.length ? (
           <Button
