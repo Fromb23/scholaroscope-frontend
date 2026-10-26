@@ -14,6 +14,43 @@ vi.mock('next/link', () => ({
 }));
 
 describe('ProjectTaskEvaluationEditor', () => {
+  it('resumes a server draft with learner, task, rubric and evidence context', () => {
+    const task = {
+      id: 7, code: 'T1', title: 'Build system', instructions: 'Build it.', maximum_marks: '2',
+      criteria: [{
+        id: 2, code: 'C1', description: 'Works', maximum_marks: '2',
+        score_type: 'DISCRETE', score_options: [
+          { value: 0, description: 'Not demonstrated' },
+          { value: 2, description: 'Demonstrated' },
+        ], feedback_required: false, curriculum_mappings: [],
+      }],
+    } as unknown as ProjectTask;
+    const participants = [{ id: 11, learner: 101, learner_name: 'Ada', status: 'ACTIVE' }] as ProjectParticipant[];
+    let renderer: ReactTestRenderer;
+    act(() => {
+      renderer = create(
+        <ProjectTaskEvaluationEditor
+          deploymentId={3} task={task} participants={participants} groups={[]}
+          evidence={[{
+            id: 31, task: 7, learner: 101, group: null, attributed_participants: [],
+            officially_eligible: true, late_state: 'ON_TIME',
+          } as never]}
+          evaluations={[{
+            id: 41, task: 7, participant: 11, learner_name: 'Ada', status: 'DRAFT',
+            teacher_feedback: 'Saved feedback', criterion_scores: [
+              { id: 51, criterion: 2, awarded_marks: '2', feedback: '' },
+            ], evidence_ids: [31], evidence_projection_status: 'NOT_PROJECTED',
+          } as never]}
+          pending={false} onCancel={vi.fn()} onSubmit={vi.fn()} onFinalize={vi.fn()}
+        />,
+      );
+    });
+    expect(renderer!.root.findByType('textarea').props.value).toBe('Saved feedback');
+    expect(renderer!.root.findByType('select').props.value).toBe('2');
+    expect(renderer!.root.findByType('input').props.checked).toBe(true);
+    expect(JSON.stringify(renderer!.toJSON())).toContain('Running total');
+  });
+
   it('fixes the task and preserves learner drafts while navigating', async () => {
     const task = {
       id: 7,

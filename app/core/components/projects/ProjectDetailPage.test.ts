@@ -35,12 +35,24 @@ describe('ProjectDetailPage task hierarchy', () => {
     expect(page).toContain('eligible_group_ids');
   });
 
-  it('records class observations from their hierarchy and leaves the audit list read-only', () => {
+  it('records observations and renders correction controls from backend authority', () => {
     const page = source();
     expect(page).toContain('Record project class observation');
     expect(page).toContain('Record task class observation');
     expect(page).toContain("searchParams.get('section') === 'observation'");
     expect(page).not.toContain('resources.finalizeClassObservation.mutate(item.id)');
+    expect(page).toContain('item.authority?.can_edit');
+    expect(page).toContain('item.authority?.can_discard');
+    expect(page).toContain('item.authority?.can_amend');
+    expect(page).toContain('item.authority?.locked_reason');
+  });
+
+  it('routes overview actions into one evaluation workspace and uses atomic draft APIs', () => {
+    const page = source();
+    expect(page).toContain("next.set('section', 'evaluation')");
+    expect(page).toContain('resources.saveEvaluationDraft.mutateAsync');
+    expect(page).toContain('resources.applyGroupEvaluationDraft.mutateAsync');
+    expect(page).not.toContain('<ProjectCriteriaForm');
   });
 
   it('groups project and task observations with actual task titles', () => {
