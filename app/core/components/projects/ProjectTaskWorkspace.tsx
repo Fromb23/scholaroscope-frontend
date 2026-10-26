@@ -119,6 +119,19 @@ export function ProjectTaskWorkspace({
           <Coverage label="Evaluations finalized" coverage={execution.evaluation_coverage} />
         </div>
       ) : null}
+      {project.authority?.evidence_window?.is_after_original_deadline ? (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          The original local deadline was{' '}
+          {project.authority.evidence_window.original_deadline_at
+            ? new Date(project.authority.evidence_window.original_deadline_at).toLocaleString()
+            : 'not recorded'}.
+          {' '}Capture remains available. Evidence recorded now is{' '}
+          {project.authority.evidence_window.accepted_under_reopening
+            ? `accepted under the authorized ${project.authority.evidence_window.window_type?.toLowerCase() ?? 'window'} until ${new Date(project.authority.evidence_window.effective_closes_at!).toLocaleString()}`
+            : 'preserved as late and awaiting authorization, so it cannot affect finalized evaluation or CBC projection'}.
+          {' '}This local window does not change any external KNEC deadline.
+        </p>
+      ) : null}
       {task.steps.length ? (
         <div className="space-y-2">
           <h3 className="font-semibold theme-text">Task steps</h3>

@@ -249,6 +249,9 @@ export function ProjectStreamSelectionPage() {
                     : `Reconcile ${Object.keys(selectedMissing).length} streams`}
                 </Button>
               </div>
+              <p className="text-xs theme-muted">
+                This audited institution window does not change an external KNEC deadline.
+              </p>
             </div>
           ) : null}
         </Card>
@@ -264,9 +267,9 @@ export function ProjectStreamSelectionPage() {
       {project.deployments.some((row) => row.authority?.can_reopen_for_late_evidence) ? (
         <Card className="space-y-3">
           <div className="flex justify-between gap-3">
-            <p className="font-medium theme-text">Late evidence</p>
+            <p className="font-medium theme-text">Local evidence input window</p>
             <Button variant="secondary" onClick={() => setShowReopen((value) => !value)}>
-              Reopen expired streams
+              Manage evidence window
             </Button>
           </div>
           {showReopen ? (
@@ -296,7 +299,7 @@ export function ProjectStreamSelectionPage() {
                 onChange={(event) => setReason(event.target.value)}
               />
               <Input
-                label="Reopening closes at"
+                label="Effective closing time"
                 type="datetime-local"
                 required
                 value={closesAt}
@@ -327,7 +330,7 @@ export function ProjectStreamSelectionPage() {
                 >
                   {mutations.reopenLateEvidence.isPending
                     ? 'Reopening…'
-                    : `Reopen ${selectedExpired.length} streams`}
+                    : `Save window for ${selectedExpired.length} streams`}
                 </Button>
               </div>
             </div>

@@ -22,7 +22,6 @@ import {
   useProjectResourceMutations,
 } from '@/app/core/hooks/useProjects';
 import { getProjectLifecycleActions, type ProjectLifecycleAction } from './projectAuthority';
-import { ProjectCriteriaForm } from './ProjectWorkForms';
 import { ProjectEvidenceRecorder } from './ProjectEvidenceRecorder';
 import { ProjectTaskEvaluationEditor } from './ProjectTaskEvaluationEditor';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
@@ -77,7 +76,6 @@ export function ProjectDetailPage() {
   const [evaluationTaskId, setEvaluationTaskId] = useState<number | null>(
     initialWorkAction === 'evaluation' ? initialWorkTask : null,
   );
-  const [scoringEvaluationId, setScoringEvaluationId] = useState<number | null>(null);
   const [observationTask, setObservationTask] = useState(searchParams.get('task') ?? '');
   const [observationComment, setObservationComment] = useState('');
   const observationOpen = searchParams.get('section') === 'observation';
@@ -478,8 +476,16 @@ export function ProjectDetailPage() {
           {(related.evidence.data ?? []).map((item) => (
             <Row
               key={item.id}
-              title={label(item.evidence_type)}
+              title={`${label(item.evidence_type)} · ${label(item.late_state)} · ${item.officially_eligible ? 'Eligible for official evaluation' : 'Preserved, awaiting authorization'}`}
               detail={`${tasks.find((task) => task.id === item.task)?.title ?? `Task ${item.task}`} · ${item.group ? `Group: ${allGroups.find((group) => group.id === item.group)?.name ?? item.group}` : `Learner: ${activeParticipants.find((participant) => participant.learner === item.learner)?.learner_name ?? item.learner}`} · ${project.subject.name} · ${new Date(item.observed_at).toLocaleString()}`}
+              icon={item.authority?.can_authorize_late ? (
+                <Button size="sm" variant="secondary" onClick={() => {
+                  const reason = window.prompt('Reason for accepting this late evidence');
+                  if (reason?.trim()) void resources.authorizeLateEvidence.mutateAsync({ evidence: item.id, reason });
+                }}>
+                  Authorize late evidence
+                </Button>
+              ) : item.authority?.locked_reason ? <span className="text-xs theme-muted">{item.authority.locked_reason}</span> : null}
             />
           ))}
         </ListState>
@@ -490,6 +496,30 @@ export function ProjectDetailPage() {
             observations={related.observations.data ?? []}
             tasks={tasks}
             deploymentId={id}
+            onEdit={async (item) => {
+              const comment = window.prompt('Correct this draft observation', item.comment);
+              if (!comment?.trim()) return;
+              await resources.updateClassObservation.mutateAsync({
+                observation: item.id, task: item.task, comment,
+                observed_at: item.observed_at,
+              });
+            }}
+            onDiscard={async (item) => {
+              if (!window.confirm('Discard this draft observation? The audit record will be retained.')) return;
+              const reason = window.prompt('Reason for discarding this draft');
+              if (!reason?.trim()) return;
+              await resources.discardClassObservation.mutateAsync({ observation: item.id, reason });
+            }}
+            onAmend={async (item) => {
+              const reason = window.prompt('Reason for amending this finalized observation');
+              if (!reason?.trim()) return;
+              const comment = window.prompt('Corrected observation', item.comment);
+              if (!comment?.trim()) return;
+              await resources.createClassObservation.mutateAsync({
+                task: item.task ?? undefined, comment, observed_at: new Date().toISOString(),
+                supersedes: item.id, amendment_reason: reason,
+              });
+            }}
           />
         </ListState>
       ) : null}
@@ -509,7 +539,15 @@ export function ProjectDetailPage() {
                 detail={`${item.source_group ? `Group: ${allGroups.find((group) => group.id === item.source_group)?.name ?? 'Group name unavailable'} · ` : 'Individual · '}${project.subject.name} · ${item.status} · ${item.derived_score} · Learner feedback: ${item.teacher_feedback || 'None'} · Projection: ${item.evidence_projection_status}${item.evidence_projection_warning ? ` (${item.evidence_projection_warning})` : ''}`}
                 icon={
                   project.authority.can_evaluate ? (
-                    <Button size="sm" onClick={() => setScoringEvaluationId(item.id)}>
+                    <Button size="sm" onClick={() => {
+                      setEvaluationTaskId(item.task);
+                      setWorkAction('evaluation');
+                      const next = new URLSearchParams(searchParams.toString());
+                      next.set('tab', 'tasks'); next.set('task', String(item.task));
+                      next.set('scope', 'individual'); next.set('participant', String(item.participant));
+                      next.set('section', 'evaluation');
+                      router.replace(`/projects/${id}?${next.toString()}`, { scroll: false });
+                    }}>
                       {item.status === 'FINALIZED'
                         ? 'Review evaluation'
                         : item.criterion_scores.length
@@ -786,70 +824,39 @@ export function ProjectDetailPage() {
             task={tasks.find((task) => task.id === evaluationTaskId)!}
             participants={related.participants.data ?? []}
             groups={taskGroups}
+            evidence={(related.evidence.data ?? []).filter((item) => item.task === evaluationTaskId)}
+            evaluations={(related.evaluations.data ?? []).filter((item) => item.task === evaluationTaskId)}
             pending={
-              resources.createEvaluation.isPending || resources.recordCriterionScore.isPending
+              resources.createEvaluation.isPending || resources.saveEvaluationDraft.isPending ||
+              resources.applyGroupEvaluationDraft.isPending || resources.finalizeEvaluation.isPending
             }
             onCancel={closeTaskAction}
             onSubmit={async (payloads) => {
+              const savedGroups = new Set<number>();
               for (const payload of payloads) {
-                const { criterion_scores: scores, ...evaluationPayload } = payload;
-                const evaluation = await resources.createEvaluation.mutateAsync(evaluationPayload);
-                for (const score of scores as Array<{
-                  criterion: number;
-                  awarded_marks: string;
-                }>) {
-                  await resources.recordCriterionScore.mutateAsync({
-                    evaluation: evaluation.id,
-                    ...score,
+                const { criterion_scores: scores, evidence_ids, ...evaluationPayload } = payload;
+                if (payload.source_group) {
+                  if (savedGroups.has(payload.source_group)) continue;
+                  savedGroups.add(payload.source_group);
+                  await resources.applyGroupEvaluationDraft.mutateAsync({
+                    deployment: project.id, task: payload.task, group: payload.source_group,
+                    observed_at: payload.observed_at, teacher_feedback: payload.teacher_feedback,
+                    scores, evidence_ids,
                   });
+                  continue;
                 }
+                const evaluation = await resources.createEvaluation.mutateAsync(evaluationPayload);
+                await resources.saveEvaluationDraft.mutateAsync({
+                  evaluation: evaluation.id, scores, teacher_feedback: payload.teacher_feedback,
+                  evidence_ids,
+                });
               }
-              setWorkAction(null);
-              closeTaskAction();
+            }}
+            onFinalize={async (evaluation) => {
+              await resources.finalizeEvaluation.mutateAsync(evaluation.id);
             }}
           />
         ) : null}
-      </ResponsiveActionSheet>
-      <ResponsiveActionSheet
-        open={Boolean(scoringEvaluationId)}
-        onOpenChange={(open) => !open && setScoringEvaluationId(null)}
-        title="Score project criteria"
-        description="Award marks against the definition criteria. Maximum marks remain server-enforced."
-        size="lg"
-      >
-        {resources.recordCriterionScore.error ? (
-          <AppErrorBanner
-            error={resolveAppError(resources.recordCriterionScore.error, {
-              domain: 'projects',
-              action: 'update',
-              entityLabel: 'criterion score',
-            })}
-            className="mb-4"
-          />
-        ) : null}
-        {scoringEvaluationId
-          ? (() => {
-              const evaluation = (related.evaluations.data ?? []).find(
-                (item) => item.id === scoringEvaluationId,
-              );
-              return evaluation ? (
-                <ProjectCriteriaForm
-                  project={project}
-                  evaluation={evaluation}
-                  pending={resources.recordCriterionScore.isPending}
-                  onCancel={() => setScoringEvaluationId(null)}
-                  onSubmit={async (scores) => {
-                    for (const score of scores)
-                      await resources.recordCriterionScore.mutateAsync({
-                        evaluation: evaluation.id,
-                        ...score,
-                      });
-                    setScoringEvaluationId(null);
-                  }}
-                />
-              ) : null;
-            })()
-          : null}
       </ResponsiveActionSheet>
     </div>
   );
@@ -859,10 +866,16 @@ function GroupedProjectObservations({
   observations,
   tasks,
   deploymentId,
+  onEdit,
+  onDiscard,
+  onAmend,
 }: {
   observations: ProjectClassObservation[];
   tasks: ProjectTask[];
   deploymentId: number;
+  onEdit: (item: ProjectClassObservation) => Promise<void>;
+  onDiscard: (item: ProjectClassObservation) => Promise<void>;
+  onAmend: (item: ProjectClassObservation) => Promise<void>;
 }) {
   const group = (title: string, items: ProjectClassObservation[], taskId?: number) => {
     const drafts = items.filter((item) => item.status === 'DRAFT').length;
@@ -916,6 +929,18 @@ function GroupedProjectObservations({
                 {item.amendment_count ? (
                   <p>Superseded by {item.amendment_count} amendment(s).</p>
                 ) : null}
+                {item.authority?.locked_reason ? <p>{item.authority.locked_reason}</p> : null}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {item.authority?.can_edit ? (
+                    <Button size="sm" variant="secondary" onClick={() => void onEdit(item)}>Edit</Button>
+                  ) : null}
+                  {item.authority?.can_discard ? (
+                    <Button size="sm" variant="secondary" onClick={() => void onDiscard(item)}>Discard</Button>
+                  ) : null}
+                  {item.authority?.can_amend ? (
+                    <Button size="sm" variant="secondary" onClick={() => void onAmend(item)}>Amend</Button>
+                  ) : null}
+                </div>
               </div>
             </details>
           ))

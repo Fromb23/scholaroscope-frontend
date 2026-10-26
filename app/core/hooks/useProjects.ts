@@ -264,6 +264,11 @@ export function useProjectResourceMutations(deploymentId: number) {
         projectsAPI.recordEvidenceBatch({ deployment: deploymentId, task, items }),
       ...options,
     }),
+    authorizeLateEvidence: useMutation({
+      mutationFn: ({ evidence, reason }: { evidence: number; reason: string }) =>
+        projectsAPI.authorizeLateEvidence(evidence, reason),
+      ...options,
+    }),
     createEvaluation: useMutation({
       mutationFn: (payload: Record<string, unknown>) =>
         projectsAPI.createEvaluation({ deployment: deploymentId, ...payload }),
@@ -275,12 +280,33 @@ export function useProjectResourceMutations(deploymentId: number) {
         criterion,
         awarded_marks,
         feedback,
+        evidence_ids,
       }: {
         evaluation: number;
         criterion: number;
         awarded_marks: string;
         feedback?: string;
-      }) => projectsAPI.recordCriterionScore(evaluation, { criterion, awarded_marks, feedback }),
+        evidence_ids?: number[];
+      }) => projectsAPI.recordCriterionScore(evaluation, { criterion, awarded_marks, feedback, evidence_ids }),
+      ...options,
+    }),
+    saveEvaluationDraft: useMutation({
+      mutationFn: ({ evaluation, scores, teacher_feedback, evidence_ids }: {
+        evaluation: number;
+        scores: Array<{ criterion: number; awarded_marks: string; feedback?: string }>;
+        teacher_feedback?: string;
+        evidence_ids: number[];
+      }) => projectsAPI.saveEvaluationDraft(evaluation, { scores, teacher_feedback, evidence_ids }),
+      ...options,
+    }),
+    applyGroupEvaluationDraft: useMutation({
+      mutationFn: (payload: Record<string, unknown>) =>
+        projectsAPI.applyGroupEvaluationDraft({ deployment: deploymentId, ...payload }),
+      ...options,
+    }),
+    amendEvaluation: useMutation({
+      mutationFn: ({ evaluation, reason }: { evaluation: number; reason: string }) =>
+        projectsAPI.amendEvaluation(evaluation, reason),
       ...options,
     }),
     finalizeEvaluation: useMutation({
@@ -288,12 +314,26 @@ export function useProjectResourceMutations(deploymentId: number) {
       ...options,
     }),
     createClassObservation: useMutation({
-      mutationFn: (payload: { task?: number; comment: string; observed_at: string }) =>
+      mutationFn: (payload: {
+        task?: number; comment: string; observed_at: string;
+        supersedes?: number; amendment_reason?: string;
+      }) =>
         projectsAPI.createClassObservation({ deployment: deploymentId, ...payload }),
       ...options,
     }),
     finalizeClassObservation: useMutation({
       mutationFn: (observation: number) => projectsAPI.finalizeClassObservation(observation),
+      ...options,
+    }),
+    updateClassObservation: useMutation({
+      mutationFn: ({ observation, ...payload }: {
+        observation: number; task?: number | null; comment: string; observed_at: string;
+      }) => projectsAPI.updateClassObservation(observation, payload),
+      ...options,
+    }),
+    discardClassObservation: useMutation({
+      mutationFn: ({ observation, reason }: { observation: number; reason: string }) =>
+        projectsAPI.discardClassObservation(observation, reason),
       ...options,
     }),
   };

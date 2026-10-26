@@ -3,7 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Button } from '@/app/components/ui/Button';
-import type { ProjectGroup, ProjectParticipant, ProjectTask } from '@/app/core/types/projects';
+import type {
+  ProjectEvidence,
+  ProjectGroup,
+  ProjectParticipant,
+  ProjectTask,
+  ProjectTaskEvaluation,
+} from '@/app/core/types/projects';
 
 type EvaluationScope = 'individual' | 'group';
 type EvaluationDraft = { feedback: string; scores: Record<number, string> };
@@ -14,9 +20,12 @@ export type TaskEvaluationPayload = {
   observed_at: string;
   teacher_feedback: string;
   criterion_scores: Array<{ criterion: number; awarded_marks: string }>;
+  evidence_ids: number[];
 };
 
 const emptyDraft = (): EvaluationDraft => ({ feedback: '', scores: {} });
+const noEvidence: ProjectEvidence[] = [];
+const noEvaluations: ProjectTaskEvaluation[] = [];
 
 function replaceEvaluationRoute(
   deploymentId: number,
@@ -24,7 +33,6 @@ function replaceEvaluationRoute(
 ) {
   if (typeof window === 'undefined') return;
   const params = new URLSearchParams(window.location.search);
-  params.delete('returnTo');
   update(params);
   window.history.replaceState(
     window.history.state,
@@ -38,17 +46,23 @@ export function ProjectTaskEvaluationEditor({
   task,
   participants,
   groups,
+  evidence = noEvidence,
+  evaluations = noEvaluations,
   pending,
   onCancel,
   onSubmit,
+  onFinalize = async () => undefined,
 }: {
   deploymentId: number;
   task: ProjectTask;
   participants: ProjectParticipant[];
   groups: ProjectGroup[];
+  evidence?: ProjectEvidence[];
+  evaluations?: ProjectTaskEvaluation[];
   pending: boolean;
   onCancel: () => void;
   onSubmit: (payloads: TaskEvaluationPayload[]) => Promise<void>;
+  onFinalize?: (evaluation: ProjectTaskEvaluation) => Promise<void>;
 }) {
   const activeParticipants = useMemo(
     () => participants.filter((item) => item.status === 'ACTIVE'),
@@ -92,6 +106,8 @@ export function ProjectTaskEvaluationEditor({
   });
   const [participantDrafts, setParticipantDrafts] = useState<Record<number, EvaluationDraft>>({});
   const [groupDrafts, setGroupDrafts] = useState<Record<number, EvaluationDraft>>({});
+  const [selectedEvidence, setSelectedEvidence] = useState<Record<number, number[]>>({});
+  const [isDirty, setIsDirty] = useState(false);
   const targets = scope === 'individual' ? activeParticipants : availableGroups;
   const index = scope === 'individual' ? participantIndex : groupIndex;
   const target = targets[index];
@@ -105,6 +121,32 @@ export function ProjectTaskEvaluationEditor({
   );
 
   useEffect(() => {
+    const restored: Record<number, EvaluationDraft> = {};
+    const linked: Record<number, number[]> = {};
+    evaluations.forEach((evaluation) => {
+      restored[evaluation.participant] = {
+        feedback: evaluation.teacher_feedback,
+        scores: Object.fromEntries(
+          evaluation.criterion_scores.map((score) => [score.criterion, score.awarded_marks]),
+        ),
+      };
+      linked[evaluation.participant] = evaluation.evidence_ids;
+    });
+    setParticipantDrafts((current) => ({ ...restored, ...current }));
+    setSelectedEvidence((current) => ({ ...linked, ...current }));
+  }, [evaluations]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isDirty]);
+
+  useEffect(() => {
     if (scope !== 'group' || !availableGroups.length || typeof window === 'undefined') return;
     const requestedGroup = Number(new URLSearchParams(window.location.search).get('group'));
     const requestedIndex = availableGroups.findIndex((group) => group.id === requestedGroup);
@@ -113,6 +155,7 @@ export function ProjectTaskEvaluationEditor({
 
   const updateDraft = (change: Partial<EvaluationDraft>) => {
     if (!target) return;
+    setIsDirty(true);
     const update = (current: Record<number, EvaluationDraft>) => ({
       ...current,
       [target.id]: { ...(current[target.id] ?? emptyDraft()), ...change },
@@ -173,6 +216,9 @@ export function ProjectTaskEvaluationEditor({
             criterion: criterion.id,
             awarded_marks: value.scores[criterion.id],
           })),
+          evidence_ids: selectedEvidence[
+            scope === 'group' ? -Number(targetId) : participant
+          ] ?? [],
         });
       }
     }
@@ -182,7 +228,7 @@ export function ProjectTaskEvaluationEditor({
   const payloads = buildPayloads();
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    void onSubmit(payloads).catch(() => undefined);
+    void onSubmit(payloads).then(() => setIsDirty(false)).catch(() => undefined);
   };
 
   const isParticipant = scope === 'individual' && target && 'learner_name' in target;
@@ -193,6 +239,22 @@ export function ProjectTaskEvaluationEditor({
         ? target.name
         : ''
     : '';
+  const currentParticipant = scope === 'individual' && target ? Number(target.id) : null;
+  const currentEvidenceKey = target
+    ? scope === 'group'
+      ? -Number(target.id)
+      : Number(target.id)
+    : null;
+  const currentEvaluation = evaluations.find(
+    (evaluation) => evaluation.participant === currentParticipant,
+  );
+  const relevantEvidence = evidence.filter((item) =>
+    scope === 'group'
+      ? item.group === Number(target?.id)
+      : item.learner ===
+          activeParticipants.find((row) => row.id === currentParticipant)?.learner ||
+        Boolean(currentParticipant && item.attributed_participants.includes(currentParticipant)),
+  );
 
   return (
     <form className="space-y-4" onSubmit={submit}>
@@ -301,22 +363,62 @@ export function ProjectTaskEvaluationEditor({
             {task.criteria.map((criterion) => (
               <label key={criterion.id} className="text-sm font-medium theme-text">
                 {criterion.code} marks (max {criterion.maximum_marks})
-                <input
-                  className="theme-input mt-1 w-full rounded-lg px-3 py-2"
-                  type="number"
-                  min="0"
-                  max={criterion.maximum_marks}
-                  step="0.01"
-                  value={draft.scores[criterion.id] ?? ''}
-                  onChange={(event) =>
-                    updateDraft({
-                      scores: { ...draft.scores, [criterion.id]: event.target.value },
-                    })
-                  }
-                />
+                {criterion.score_type === 'DISCRETE' ? (
+                  <select
+                    className="theme-input mt-1 w-full rounded-lg px-3 py-2"
+                    value={draft.scores[criterion.id] ?? ''}
+                    onChange={(event) => updateDraft({ scores: { ...draft.scores, [criterion.id]: event.target.value } })}
+                  >
+                    <option value="">Choose rubric outcome</option>
+                    {criterion.score_options.map((option) => (
+                      <option key={String(option.value)} value={String(option.value)}>
+                        {option.label ?? option.value}{option.description ? ` — ${option.description}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="theme-input mt-1 w-full rounded-lg px-3 py-2"
+                    type="number" min="0" max={criterion.maximum_marks} step="0.01"
+                    value={draft.scores[criterion.id] ?? ''}
+                    onChange={(event) => updateDraft({ scores: { ...draft.scores, [criterion.id]: event.target.value } })}
+                  />
+                )}
               </label>
             ))}
           </div>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium theme-text">
+              Supporting evidence ({relevantEvidence.length})
+            </legend>
+            {relevantEvidence.map((item) => (
+              <label key={item.id} className="flex gap-2 text-sm theme-muted">
+                <input
+                  type="checkbox"
+                  disabled={!item.officially_eligible || currentEvidenceKey === null}
+                  checked={Boolean(currentEvidenceKey !== null && (selectedEvidence[currentEvidenceKey] ?? []).includes(item.id))}
+                  onChange={(event) => {
+                    if (currentEvidenceKey === null) return;
+                    const current = selectedEvidence[currentEvidenceKey] ?? [];
+                    setSelectedEvidence((all) => ({
+                      ...all,
+                      [currentEvidenceKey]: event.target.checked
+                        ? [...new Set([...current, item.id])]
+                        : current.filter((id) => id !== item.id),
+                    }));
+                    setIsDirty(true);
+                  }}
+                />
+                Evidence #{item.id} · {item.late_state.replaceAll('_', ' ')}
+                {!item.officially_eligible ? ' · not eligible for finalization' : ''}
+              </label>
+            ))}
+          </fieldset>
+          <p className="text-sm theme-muted">
+            Status: {currentEvaluation?.status ?? 'Not yet saved'} · Projection:{' '}
+            {currentEvaluation?.evidence_projection_status ?? 'Not projected'} · Running total:{' '}
+            {Object.values(draft.scores).reduce((total, score) => total + Number(score || 0), 0)} / {task.maximum_marks}
+          </p>
         </div>
       ) : (
         <p className="text-sm theme-muted">
@@ -330,8 +432,36 @@ export function ProjectTaskEvaluationEditor({
         <Button type="submit" disabled={pending || !payloads.length || incomplete}>
           {pending
             ? 'Saving…'
-            : `Save ${payloads.length} ${payloads.length === 1 ? 'evaluation' : 'evaluations'}`}
+            : `Save draft${payloads.length > 1 ? `s (${payloads.length})` : ''}`}
         </Button>
+        {scope === 'individual' && currentParticipant && index + 1 < targets.length ? (
+          <Button
+            type="button"
+            disabled={pending || task.criteria.some((criterion) => !draft.scores[criterion.id])}
+            onClick={() => {
+              const currentPayload = payloads.find((payload) => payload.participant === currentParticipant);
+              if (currentPayload)
+                void onSubmit([currentPayload]).then(() => {
+                  setIsDirty(false);
+                  move(1);
+                }).catch(() => undefined);
+            }}
+          >
+            Save &amp; next
+          </Button>
+        ) : null}
+        {currentEvaluation?.status === 'DRAFT' ? (
+          <Button
+            type="button"
+            disabled={pending || incomplete}
+            onClick={() => {
+              if (window.confirm('Finalize this evaluation? Scores and linked evidence will be locked and CBC projection may begin.'))
+                void onFinalize(currentEvaluation);
+            }}
+          >
+            Finalize evaluation
+          </Button>
+        ) : null}
       </div>
     </form>
   );

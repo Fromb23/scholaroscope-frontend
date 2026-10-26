@@ -168,6 +168,12 @@ export const projectsAPI = {
     (await apiClient.get<ProjectEvidenceTypeContract>('/project-evidence/type-contract/')).data,
   recordEvidence: async (payload: Record<string, unknown>) =>
     (await apiClient.post<ProjectEvidence>('/project-evidence/', payload)).data,
+  authorizeLateEvidence: async (evidence: number, reason: string) =>
+    (
+      await apiClient.post<ProjectEvidence>(`/project-evidence/${evidence}/authorize-late/`, {
+        reason,
+      })
+    ).data,
   recordEvidenceBatch: async (payload: {
     deployment: number;
     task: number;
@@ -199,6 +205,34 @@ export const projectsAPI = {
         `/project-task-evaluations/${evaluation}/finalize/`,
       )
     ).data,
+  saveEvaluationDraft: async (
+    evaluation: number,
+    payload: {
+      scores: Array<{ criterion: number; awarded_marks: string; feedback?: string }>;
+      teacher_feedback?: string;
+      evidence_ids: number[];
+    },
+  ) =>
+    (
+      await apiClient.post<ProjectTaskEvaluation>(
+        `/project-task-evaluations/${evaluation}/save-draft/`,
+        payload,
+      )
+    ).data,
+  applyGroupEvaluationDraft: async (payload: Record<string, unknown>) =>
+    (
+      await apiClient.post<ProjectTaskEvaluation[]>(
+        '/project-task-evaluations/apply-group-draft/',
+        payload,
+      )
+    ).data,
+  amendEvaluation: async (evaluation: number, reason: string) =>
+    (
+      await apiClient.post<ProjectTaskEvaluation>(
+        `/project-task-evaluations/${evaluation}/amend/`,
+        { reason },
+      )
+    ).data,
   classObservations: async (deployment: number) =>
     (
       await apiClient.get<ProjectListResponse<ProjectClassObservation>>(
@@ -218,6 +252,18 @@ export const projectsAPI = {
   finalizeClassObservation: async (id: number) =>
     (await apiClient.post<ProjectClassObservation>(`/project-class-observations/${id}/finalize/`))
       .data,
+  updateClassObservation: async (
+    id: number,
+    payload: { task?: number | null; comment: string; observed_at: string },
+  ) =>
+    (await apiClient.patch<ProjectClassObservation>(`/project-class-observations/${id}/`, payload))
+      .data,
+  discardClassObservation: async (id: number, reason: string) =>
+    (
+      await apiClient.delete<ProjectClassObservation>(`/project-class-observations/${id}/`, {
+        data: { reason },
+      })
+    ).data,
   catalogue: async (params?: Record<string, unknown>) =>
     (
       await apiClient.get<ProjectListResponse<ProjectDefinitionVersion>>('/project-catalogue/', {

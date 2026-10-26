@@ -32,6 +32,10 @@ export interface ProjectAuthority {
     accepted_under_reopening: boolean;
     reopening_id: number | null;
     closes_at: string | null;
+    effective_closes_at: string | null;
+    window_type: 'EXTENSION' | 'REOPENING' | null;
+    is_after_original_deadline: boolean;
+    late_without_authorization: boolean;
   };
 }
 
@@ -98,6 +102,9 @@ export interface ProjectCriterion {
   code: string;
   description: string;
   maximum_marks: string;
+  score_type: 'CONTINUOUS' | 'DISCRETE';
+  score_options: Array<{ value: number | string; label?: string; description?: string }>;
+  feedback_required: boolean;
   order: number;
   curriculum_mappings: Array<{
     provider_key: string;
@@ -311,6 +318,7 @@ export interface ProjectWorkspaceSummary {
   authority: {
     can_reconcile_streams: boolean;
     can_reopen_late_evidence: boolean;
+    can_manage_evidence_window?: boolean;
   };
   deployments: ProjectDeployment[];
 }
@@ -467,6 +475,10 @@ export interface ProjectEvidence {
   is_late_submission: boolean;
   original_deadline_at: string | null;
   accepted_under_reopening: boolean;
+  acceptance_status: 'ON_TIME' | 'ACCEPTED_LATE' | 'AWAITING_AUTHORIZATION' | 'WITHDRAWN';
+  officially_eligible: boolean;
+  late_state: 'ON_TIME' | 'ACCEPTED_LATE' | 'AWAITING_AUTHORIZATION' | 'WITHDRAWN';
+  authority: { can_authorize_late: boolean; locked_reason: string };
   reopening: number | null;
   attributed_participants: number[];
   content_hash: string;
@@ -491,6 +503,9 @@ export interface ProjectTaskEvaluation {
   deployment: number;
   task: number;
   participant: number;
+  learner_name: string;
+  task_title: string;
+  task_maximum_marks: string;
   source_group: number | null;
   evaluator: number;
   status: string;
@@ -501,7 +516,11 @@ export interface ProjectTaskEvaluation {
   evidence_projection_status: string;
   evidence_projection_warning: string;
   criterion_scores: ProjectCriterionScore[];
+  evidence_ids: number[];
+  evidence_count: number;
   project_total: string;
+  created_at: string;
+  updated_at: string;
 }
 export interface ProjectResultSummary {
   participant: number;
@@ -536,6 +555,17 @@ export interface ProjectClassObservation {
   amendment_count?: number;
   finalized_at: string | null;
   archived_at: string | null;
+  archived_by: number | null;
+  archive_reason: string;
+  authority: {
+    can_edit: boolean;
+    can_discard: boolean;
+    can_finalize: boolean;
+    can_amend: boolean;
+    locked_reason: string;
+    used_by_finalized_evaluation: boolean;
+    projected_to_cbc: boolean;
+  } | null;
   created_at: string;
   updated_at: string;
 }
