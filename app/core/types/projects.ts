@@ -356,6 +356,70 @@ export interface ProjectParticipant {
   effective_from?: string | null;
   source_subject_enrollment?: number | null;
   catch_up_status?: 'NOT_REQUIRED' | 'TEACHER_DECISION_REQUIRED' | 'RESOLVED';
+  catch_up_disposition?: ProjectCatchUpDisposition | '';
+  catch_up_reviewed_by?: number | null;
+  catch_up_reviewer_name?: string | null;
+  catch_up_reviewed_at?: string | null;
+  catch_up_reason?: string;
+  catch_up_next_step?: string;
+  catch_up_assignment_recipient?: number | null;
+  catch_up_assessment?: number | null;
+  catch_up_evidence_ids?: number[];
+  catch_up_provenance?: Record<string, unknown>;
+}
+
+export type ProjectCatchUpDisposition =
+  | 'CATCH_UP_WORK_PLANNED'
+  | 'DIAGNOSTIC_ASSESSMENT_PLANNED'
+  | 'EXISTING_EVIDENCE_REVIEWED'
+  | 'NO_ADDITIONAL_WORK';
+
+export interface ProjectCatchUpContext {
+  scope: 'PROJECT';
+  scope_message: string;
+  prior_evidence_message: string;
+  outcomes: Array<{
+    id: number;
+    code: string;
+    description: string;
+    instruction_state:
+      | 'TAUGHT_BEFORE_ADMISSION'
+      | 'TAUGHT_WHILE_ELIGIBLE_EXPOSURE_UNCONFIRMED'
+      | 'CONFIRMED_EXPOSURE'
+      | 'NOT_YET_TAUGHT';
+    taught_before_admission: boolean;
+    taught_while_eligible: boolean;
+    confirmed_learner_exposure: boolean;
+    class_session_dates: string[];
+    valid_evidence: Array<{ id: number; observed_at: string; source_type: string | null }>;
+  }>;
+  tasks: Array<{
+    execution_id: number;
+    task_id: number;
+    code: string;
+    title: string;
+    status: string;
+    started_at: string | null;
+    started_before_admission: boolean;
+    prospectively_admitted: boolean;
+  }>;
+  catch_up_assignment_options: Array<{
+    recipient_id: number;
+    assignment_id: number;
+    title: string;
+    status: string;
+  }>;
+  diagnostic_assessment_options: Array<{
+    id: number;
+    name: string;
+    status: string;
+    assessment_date: string | null;
+  }>;
+}
+
+export interface ProjectCatchUpReviewResponse {
+  participant: ProjectParticipant;
+  context: ProjectCatchUpContext;
 }
 export interface ProjectGroup {
   id: number;

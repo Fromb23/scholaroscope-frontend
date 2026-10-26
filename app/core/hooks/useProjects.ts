@@ -155,6 +155,32 @@ export function useProjectAction(deploymentId: number) {
   });
 }
 
+export function useProjectCatchUpReview(deploymentId: number, participantId: number | null) {
+  const { activeOrg } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = projectKeys.related(
+    activeOrg?.id ?? null,
+    deploymentId,
+    `catch-up-${participantId}`,
+  );
+  const review = useQuery({
+    queryKey,
+    queryFn: () => projectsAPI.catchUpReview(deploymentId, participantId as number),
+    enabled: Boolean(activeOrg && deploymentId && participantId),
+  });
+  const save = useMutation({
+    mutationFn: (payload: Parameters<typeof projectsAPI.saveCatchUpReview>[2]) =>
+      projectsAPI.saveCatchUpReview(deploymentId, participantId as number, payload),
+    onSuccess: async (data) => {
+      queryClient.setQueryData(queryKey, data);
+      await queryClient.invalidateQueries({
+        queryKey: projectKeys.related(activeOrg?.id ?? null, deploymentId, 'participants'),
+      });
+    },
+  });
+  return { review, save };
+}
+
 export function useProjectCatalogue(filters: Record<string, unknown> = {}) {
   const { activeOrg } = useAuth();
   const normalized = compact(filters);

@@ -26,6 +26,7 @@ import { ProjectCriteriaForm } from './ProjectWorkForms';
 import { ProjectEvidenceRecorder } from './ProjectEvidenceRecorder';
 import { ProjectTaskEvaluationEditor } from './ProjectTaskEvaluationEditor';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
+import { ProjectCatchUpReview } from './ProjectCatchUpReview';
 import { GroupRosterSummary } from '@/app/core/components/grouping/GroupRosterSummary';
 import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 import { getProjectWorkspacePageTitle } from '@/app/core/pageIdentity/contextualPageTitles';
@@ -435,7 +436,16 @@ export function ProjectDetailPage() {
             <Row
               key={item.id}
               title={item.learner_name}
-              detail={`${item.status}${item.is_late_addition ? ` · Late addition${item.effective_from ? ` from ${item.effective_from}` : ''}` : ''}${item.catch_up_status === 'TEACHER_DECISION_REQUIRED' ? ' · Missed instruction / catch-up decision unresolved' : ''}${item.withdrawn_at ? ` · Departed ${new Date(item.withdrawn_at).toLocaleDateString()} (history only)` : ''}`}
+              icon={
+                item.is_late_addition ? (
+                  <ProjectCatchUpReview
+                    deploymentId={id}
+                    participant={item}
+                    canReview={project.authority.can_manage_groups}
+                  />
+                ) : null
+              }
+              detail={`${item.status}${item.is_late_addition ? ` · Late addition${item.effective_from ? ` from ${item.effective_from}` : ''}` : ''}${item.catch_up_status === 'TEACHER_DECISION_REQUIRED' ? ' · Project missed-instruction review unresolved' : ''}${item.withdrawn_at ? ` · Departed ${new Date(item.withdrawn_at).toLocaleDateString()} (history only)` : ''}`}
             />
           ))}
         </ListState>
