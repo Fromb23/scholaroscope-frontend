@@ -11,6 +11,8 @@ import type {
   WorkspaceRoleAssignmentPayload,
   WorkspaceRolePayload,
   WorkspaceRoleTemplate,
+  PrincipalGovernance,
+  PrincipalGovernancePayload,
 } from '@/app/core/types/workspaceAccess';
 
 export const workspaceAccessAPI = {
@@ -36,6 +38,16 @@ export const workspaceAccessAPI = {
 
   getStaffAssignments: async (): Promise<WorkspaceStaffAssignment[]> => {
     const response = await apiClient.get<WorkspaceStaffAssignment[]>('/workspace-access/staff-assignments/');
+    return response.data;
+  },
+
+  getPrincipalGovernance: async (): Promise<PrincipalGovernance> => {
+    const response = await apiClient.get<PrincipalGovernance>('/workspace-access/principal-governance/');
+    return response.data;
+  },
+
+  mutatePrincipalGovernance: async (payload: PrincipalGovernancePayload): Promise<PrincipalGovernance> => {
+    const response = await apiClient.post<PrincipalGovernance>('/workspace-access/principal-governance/', payload);
     return response.data;
   },
 

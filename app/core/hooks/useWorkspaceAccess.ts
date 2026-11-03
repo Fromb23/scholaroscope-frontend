@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { workspaceAccessAPI } from '@/app/core/api/workspaceAccess';
 import { resolveWorkspaceError, type AppError } from '@/app/core/errors';
-import type { WorkspaceRoleAssignmentPayload, WorkspaceRolePayload } from '@/app/core/types/workspaceAccess';
+import type { PrincipalGovernancePayload, WorkspaceRoleAssignmentPayload, WorkspaceRolePayload } from '@/app/core/types/workspaceAccess';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
 export const workspaceAccessKeys = {
@@ -14,6 +14,7 @@ export const workspaceAccessKeys = {
   staffAssignments: (organizationId: number | null) => ['workspace-access', organizationId, 'staff-assignments'] as const,
   assignmentOptions: (organizationId: number | null) => ['workspace-access', organizationId, 'assignment-options'] as const,
   me: (organizationId: number | null) => ['workspace-access', organizationId, 'me'] as const,
+  principal: (organizationId: number | null) => ['workspace-access', organizationId, 'principal-governance'] as const,
 };
 
 export function useWorkspaceAccess() {
@@ -60,6 +61,10 @@ export function useWorkspaceAccess() {
     queryKey: workspaceAccessKeys.staffAssignments(organizationId),
     queryFn: workspaceAccessAPI.getStaffAssignments,
   });
+  const principalQuery = useQuery({
+    queryKey: workspaceAccessKeys.principal(organizationId),
+    queryFn: workspaceAccessAPI.getPrincipalGovernance,
+  });
   const assignmentOptionsError = useMemo<AppError | null>(() => (
     assignmentOptionsQuery.error
       ? resolveWorkspaceError(assignmentOptionsQuery.error, {
@@ -76,6 +81,7 @@ export function useWorkspaceAccess() {
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.staffAssignments(organizationId) });
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.assignmentOptions(organizationId) });
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.me(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.principal(organizationId) });
   };
 
   const createRole = useMutation({
@@ -105,6 +111,10 @@ export function useWorkspaceAccess() {
       workspaceAccessAPI.endAssignment(assignmentId, reason),
     onSuccess: invalidate,
   });
+  const mutatePrincipal = useMutation({
+    mutationFn: (payload: PrincipalGovernancePayload) => workspaceAccessAPI.mutatePrincipalGovernance(payload),
+    onSuccess: invalidate,
+  });
 
   return {
     permissionsQuery,
@@ -115,6 +125,7 @@ export function useWorkspaceAccess() {
     assignmentOptionsQuery,
     assignmentOptionsError,
     meQuery,
+    principalQuery,
     actions: {
       createRole,
       updateRole,
@@ -122,6 +133,7 @@ export function useWorkspaceAccess() {
       cloneTemplate,
       assignRole,
       endAssignment,
+      mutatePrincipal,
     },
   };
 }

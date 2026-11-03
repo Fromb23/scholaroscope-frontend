@@ -8,10 +8,11 @@ const panel = read('app/core/components/workspace-access/RoleAssignmentPanel.tsx
 const api = read('app/core/api/workspaceAccess.ts');
 const hook = read('app/core/hooks/useWorkspaceAccess.ts');
 const types = read('app/core/types/workspaceAccess.ts');
+const principal = read('app/core/components/workspace-access/PrincipalGovernanceModal.tsx');
 
 describe('workspace roles redesign', () => {
   it('defaults to the role catalogue and exposes summary counts', () => {
-    expect(page).toContain("useState<Tab>('roles')");
+    expect(page).toContain("searchParams.get('tab') === 'assignments'");
     expect(page).toContain("['Total roles', summary?.total_roles]");
     expect(page).toContain("['Active role assignments', summary?.active_role_assignments]");
     expect(api).toContain('/workspace-access/roles/catalogue/');
@@ -28,7 +29,11 @@ describe('workspace roles redesign', () => {
   it('keeps Principal visible but outside generic mutation flows', () => {
     expect(page).toContain("role.responsibility_type === 'OVERSIGHT'");
     expect(page).toContain('Principal oversight is managed through the institution-governance lifecycle.');
-    expect(page).toContain('Appointment, replacement, suspension, restoration and tenure ending are not available here.');
+    expect(page).toContain("principalQuery.data?.current ? 'Manage Principal' : 'Appoint Principal'");
+    expect(page).toContain('role.actions.can_manage_principal');
+    expect(page).toContain("role.actions.can_assign");
+    expect(principal).toContain('membership_id: Number(membershipId)');
+    expect(principal).toContain('Required reason');
   });
 
   it('renders each projected staff member once with role chips', () => {
@@ -57,6 +62,17 @@ describe('workspace roles redesign', () => {
     expect(hook).toContain("['workspace-access', organizationId");
     expect(hook).toContain('staffAssignments(organizationId)');
     expect(hook).toContain('invalidateQueries');
+    expect(hook).toContain('principal(organizationId)');
+  });
+
+  it('makes role and staff management URL-addressable', () => {
+    expect(page).toContain("searchParams.get('role')");
+    expect(page).toContain("searchParams.get('staff')");
+    expect(page).toContain("tab: 'assignments', role: null, staff: String(person.membership_id)");
+    expect(page).toContain("staff: id ? String(id) : null");
+    expect(page).toContain('That staff assignment is unavailable in this workspace.');
+    expect(panel).toContain('selectedMembershipId');
+    expect(panel).toContain('Managed through the Principal governance lifecycle');
   });
 
   it('provides loading, empty, error and retry states', () => {
