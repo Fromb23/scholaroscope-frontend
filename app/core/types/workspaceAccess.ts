@@ -73,10 +73,42 @@ export interface WorkspaceRole {
     can_archive: boolean;
     can_manage_permissions: boolean;
     can_assign: boolean;
+    can_manage_principal: boolean;
   };
   action_explanations: Record<'update' | 'archive' | 'manage_permissions' | 'assign', string>;
   created_at: string;
   updated_at: string;
+}
+
+export interface PrincipalTenure {
+  id: number;
+  membership_id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  status: 'ACTIVE' | 'SUSPENDED' | 'ENDED' | 'REPLACED';
+  appointment_reason: string;
+  appointed_at: string;
+  appointed_by: string | null;
+  suspended_at: string | null;
+  suspension_reason: string;
+  ended_at: string | null;
+  ending_reason: string;
+  assignment_id: number | null;
+}
+
+export interface PrincipalGovernance {
+  can_manage: boolean;
+  current: PrincipalTenure | null;
+  history: PrincipalTenure[];
+  candidates: WorkspaceStaffOption[];
+  allowed_actions: Record<'appoint' | 'replace' | 'suspend' | 'restore' | 'end', boolean>;
+}
+
+export interface PrincipalGovernancePayload {
+  operation: 'appoint' | 'replace' | 'suspend' | 'restore' | 'end';
+  membership_id?: number;
+  reason: string;
 }
 
 export interface WorkspaceRoleCatalogue {

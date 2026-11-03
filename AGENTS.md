@@ -8,6 +8,8 @@ Use these terms precisely: observation, project evidence, evaluation, finalized 
 
 Roles do not form a hierarchy and never inherit permissions. Role titles and legacy membership roles are classification only; authority comes exclusively from backend-projected effective assignments and exact capabilities. Principal is the workspace-wide, permission-bounded `OVERSIGHT` responsibility, not owner, Administrator, or Teacher. Principal routes and components must use `INSTITUTION_OVERSIGHT` plus capabilities and must never infer authority from `activeRole`. New permissions are default-deny and must be explicitly classified as read, review, approval, operation, or technical administration and added to canonical role contracts.
 
+Principal remains a canonical protected system role and cannot be assigned through generic role APIs. Workspace administrators appoint and manage Principal tenure only through the protected lifecycle and the exact server-projected Principal-management permission. Role definitions, membership classifications, staff assignments, and operating contexts remain independent; URL state uses workspace membership identity for staff-role management and never confers authority.
+
 Future AI tools must call governed application services. They must never query unrestricted database state or treat a model as an authority source.
 
 Read `README.md`, `docs/frontend-workspace-state.md`, `package.json`, `app/core/api/projects.ts`, `app/core/hooks/useProjects.ts`, `app/core/types/projects.ts`, the relevant components and tests under `app/core/components/projects`, `app/core/lib/queryKeys.ts`, and relevant checks under `tools`.
