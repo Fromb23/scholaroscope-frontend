@@ -4,39 +4,43 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { workspaceAccessAPI } from '@/app/core/api/workspaceAccess';
 import { resolveWorkspaceError, type AppError } from '@/app/core/errors';
 import type { WorkspaceRoleAssignmentPayload, WorkspaceRolePayload } from '@/app/core/types/workspaceAccess';
+import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
 export const workspaceAccessKeys = {
-  permissions: ['workspace-access', 'permissions'] as const,
-  templates: ['workspace-access', 'templates'] as const,
-  roles: ['workspace-access', 'roles'] as const,
-  assignments: ['workspace-access', 'assignments'] as const,
-  assignmentOptions: ['workspace-access', 'assignment-options'] as const,
-  me: ['workspace-access', 'me'] as const,
+  permissions: (organizationId: number | null) => ['workspace-access', organizationId, 'permissions'] as const,
+  templates: (organizationId: number | null) => ['workspace-access', organizationId, 'templates'] as const,
+  roles: (organizationId: number | null) => ['workspace-access', organizationId, 'roles'] as const,
+  assignments: (organizationId: number | null) => ['workspace-access', organizationId, 'assignments'] as const,
+  staffAssignments: (organizationId: number | null) => ['workspace-access', organizationId, 'staff-assignments'] as const,
+  assignmentOptions: (organizationId: number | null) => ['workspace-access', organizationId, 'assignment-options'] as const,
+  me: (organizationId: number | null) => ['workspace-access', organizationId, 'me'] as const,
 };
 
 export function useWorkspaceAccess() {
+  const { organizationId } = useOrganizationContext();
   const queryClient = useQueryClient();
   const permissionsQuery = useQuery({
-    queryKey: workspaceAccessKeys.permissions,
+    queryKey: workspaceAccessKeys.permissions(organizationId),
     queryFn: workspaceAccessAPI.getPermissions,
   });
   const templatesQuery = useQuery({
-    queryKey: workspaceAccessKeys.templates,
+    queryKey: workspaceAccessKeys.templates(organizationId),
     queryFn: workspaceAccessAPI.getTemplates,
   });
   const rolesQuery = useQuery({
-    queryKey: workspaceAccessKeys.roles,
-    queryFn: workspaceAccessAPI.getRoles,
+    queryKey: workspaceAccessKeys.roles(organizationId),
+    queryFn: workspaceAccessAPI.getRoleCatalogue,
   });
+  const roles = rolesQuery.data?.results;
   const assignmentsQuery = useQuery({
-    queryKey: workspaceAccessKeys.assignments,
+    queryKey: workspaceAccessKeys.assignments(organizationId),
     queryFn: workspaceAccessAPI.getAssignments,
   });
   const meQuery = useQuery({
-    queryKey: workspaceAccessKeys.me,
+    queryKey: workspaceAccessKeys.me(organizationId),
     queryFn: workspaceAccessAPI.getMe,
   });
-  const roleActionsAllowAssignment = rolesQuery.data?.some(
+  const roleActionsAllowAssignment = roles?.some(
     (role) => role.actions.can_assign && role.is_active,
   ) ?? false;
   const meHasAssignmentPermission = meQuery.data?.permission_keys.includes(
@@ -48,9 +52,13 @@ export function useWorkspaceAccess() {
     && (roleActionsAllowAssignment || meHasAssignmentPermission),
   );
   const assignmentOptionsQuery = useQuery({
-    queryKey: workspaceAccessKeys.assignmentOptions,
+    queryKey: workspaceAccessKeys.assignmentOptions(organizationId),
     queryFn: workspaceAccessAPI.getAssignmentOptions,
     enabled: canLoadAssignmentOptions,
+  });
+  const staffAssignmentsQuery = useQuery({
+    queryKey: workspaceAccessKeys.staffAssignments(organizationId),
+    queryFn: workspaceAccessAPI.getStaffAssignments,
   });
   const assignmentOptionsError = useMemo<AppError | null>(() => (
     assignmentOptionsQuery.error
@@ -63,10 +71,11 @@ export function useWorkspaceAccess() {
   ), [assignmentOptionsQuery.error]);
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.roles });
-    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.assignments });
-    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.assignmentOptions });
-    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.me });
+    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.roles(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.assignments(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.staffAssignments(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.assignmentOptions(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.me(organizationId) });
   };
 
   const createRole = useMutation({
@@ -92,7 +101,7 @@ export function useWorkspaceAccess() {
     onSuccess: invalidate,
   });
   const endAssignment = useMutation({
-    mutationFn: ({ assignmentId, reason }: { assignmentId: number; reason: string }) =>
+    mutationFn: ({ assignmentId, reason }: { assignmentId: number; reason?: string }) =>
       workspaceAccessAPI.endAssignment(assignmentId, reason),
     onSuccess: invalidate,
   });
@@ -102,6 +111,7 @@ export function useWorkspaceAccess() {
     templatesQuery,
     rolesQuery,
     assignmentsQuery,
+    staffAssignmentsQuery,
     assignmentOptionsQuery,
     assignmentOptionsError,
     meQuery,

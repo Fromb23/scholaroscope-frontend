@@ -4,6 +4,8 @@ import type {
   WorkspaceAccessMe,
   WorkspacePermissionDefinition,
   WorkspaceRole,
+  WorkspaceRoleCatalogue,
+  WorkspaceStaffAssignment,
   WorkspaceRoleAssignment,
   WorkspaceRoleAssignmentOptionsResponse,
   WorkspaceRoleAssignmentPayload,
@@ -25,6 +27,16 @@ export const workspaceAccessAPI = {
   getRoles: async (): Promise<WorkspaceRole[]> => {
     const response = await apiClient.get<WorkspaceRole[] | { results?: WorkspaceRole[] }>('/workspace-access/roles/');
     return unwrapPaginated(response.data);
+  },
+
+  getRoleCatalogue: async (): Promise<WorkspaceRoleCatalogue> => {
+    const response = await apiClient.get<WorkspaceRoleCatalogue>('/workspace-access/roles/catalogue/');
+    return response.data;
+  },
+
+  getStaffAssignments: async (): Promise<WorkspaceStaffAssignment[]> => {
+    const response = await apiClient.get<WorkspaceStaffAssignment[]>('/workspace-access/staff-assignments/');
+    return response.data;
   },
 
   createRole: async (payload: WorkspaceRolePayload): Promise<WorkspaceRole> => {
@@ -65,7 +77,7 @@ export const workspaceAccessAPI = {
     return response.data;
   },
 
-  endAssignment: async (assignmentId: number, reason: string): Promise<WorkspaceRoleAssignment> => {
+  endAssignment: async (assignmentId: number, reason?: string): Promise<WorkspaceRoleAssignment> => {
     const response = await apiClient.post<WorkspaceRoleAssignment>(`/workspace-access/assignments/${assignmentId}/end/`, {
       reason,
     });

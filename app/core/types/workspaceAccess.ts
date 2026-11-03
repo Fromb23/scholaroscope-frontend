@@ -57,6 +57,16 @@ export interface WorkspaceRole {
   permission_keys: string[];
   permission_count: number;
   active_assignment_count: number;
+  responsibility_type: 'NONE' | 'TEACHING' | 'OVERSIGHT';
+  assigned_staff: Array<{
+    assignment_id: number;
+    membership_id: number;
+    user_id: number;
+    name: string;
+    email: string;
+    membership_status: string;
+    scopes: Array<{ scope_type: string; scope_object_id: number | null }>;
+  }>;
   assignment_scope_policy?: WorkspaceRoleAssignmentScopePolicy;
   actions: {
     can_update: boolean;
@@ -64,8 +74,39 @@ export interface WorkspaceRole {
     can_manage_permissions: boolean;
     can_assign: boolean;
   };
+  action_explanations: Record<'update' | 'archive' | 'manage_permissions' | 'assign', string>;
   created_at: string;
   updated_at: string;
+}
+
+export interface WorkspaceRoleCatalogue {
+  summary: {
+    total_roles: number;
+    system_roles: number;
+    custom_roles: number;
+    active_role_assignments: number;
+  };
+  results: WorkspaceRole[];
+}
+
+export interface WorkspaceStaffAssignment {
+  membership_id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  membership_classification: string;
+  membership_status: string;
+  can_manage_roles: boolean;
+  roles: Array<{
+    assignment_id: number;
+    role_id: number;
+    name: string;
+    is_system_managed: boolean;
+    responsibility_type: 'NONE' | 'TEACHING' | 'OVERSIGHT';
+    can_remove: boolean;
+    scopes: Array<{ scope_type: string; scope_object_id: number | null }>;
+  }>;
+  scope_summary: string[];
 }
 
 export interface WorkspaceRoleTemplate {
