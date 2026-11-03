@@ -11,7 +11,7 @@ Its job is to let public visitors create commercial workspace quotes and let rea
 At runtime, the frontend behaves as a single application shell with four constant dimensions:
 
 - Organization-aware: every meaningful authenticated action happens inside an organization/workspace context.
-- Role-aware: workspace admins and instructors do not see the same system, because they do not have the same authority or responsibilities.
+- Authority-aware: Principals, workspace administrators, and instructors do not see the same system because their effective assignments grant different responsibilities and permissions.
 - Curriculum-aware: kernel academic flows exist alongside curriculum-specific flows such as CBC and Cambridge.
 - Plugin-aware: features are not all hardcoded into the core shell; some are mounted into it through registry and extension points.
 
@@ -31,7 +31,7 @@ The frontend follows these principles:
 
 When you work in this codebase, think in this order:
 
-1. Who is the actor: public visitor, invited user, workspace admin, instructor, or workspace owner?
+1. Who is the actor: public visitor, invited user, Principal, workspace administrator, instructor, or workspace owner?
 2. What organization context is active?
 3. What domain is being operated on: academic setup, teaching, learners, assessments, requests, reports, plugins?
 4. Is the behavior kernel-wide, or does it belong to a plugin boundary such as CBC or Cambridge?
@@ -425,6 +425,21 @@ Secondary and corrective actions must be hidden behind More on both desktop and 
 - Do not anchor architecture discussions on folder names alone.
 - Do not move backend truth into client-only heuristics unless the UX explicitly needs local assistance.
 - Do not make pages thick with data orchestration and business branching when hooks or domain modules should own that logic.
+
+## Principal oversight authority
+
+`/principal` is available only when the backend projects the
+`INSTITUTION_OVERSIGHT` operating context from an effective `OVERSIGHT`
+assignment. Legacy roles, ownership, report permissions, and route prefixes do
+not unlock it. Principal navigation is read/review oriented and does not expose
+Administrator setup mutations or Teacher recording actions. Capability refresh
+is authoritative: revocation removes the context, route, and navigation.
+
+The conversation shell is intentionally not connected to an unrestricted model.
+A future callable intelligence tool must equal the intersection of active
+Principal intelligence permission, underlying domain permission, workspace
+scope, plugin entitlement, and data-access policy, and must call governed
+application services.
 
 ## Development
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Activity, Building2, GraduationCap } from 'lucide-react';
+import { Activity, Building2, GraduationCap, School } from 'lucide-react';
 
 import { useAuth } from '@/app/context/AuthContext';
 import { useSidebar } from '@/app/context/SidebarContext';
@@ -24,6 +24,7 @@ interface SidebarProps {
 function contextLabel(context: OperatingContext | null): string {
   if (context === 'WORKSPACE_MANAGEMENT') return 'Workspace management';
   if (context === 'MY_TEACHING') return 'My teaching';
+  if (context === 'INSTITUTION_OVERSIGHT') return 'Institution oversight';
   return 'Workspace';
 }
 
@@ -38,7 +39,11 @@ export default function Sidebar({ navConfig }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const colors = getRoleColorScheme('ADMIN', activeOrg?.org_type);
-  const RoleIcon = activeOperatingContext === 'MY_TEACHING' ? GraduationCap : Building2;
+  const RoleIcon = activeOperatingContext === 'MY_TEACHING'
+    ? GraduationCap
+    : activeOperatingContext === 'INSTITUTION_OVERSIGHT'
+      ? School
+      : Building2;
   const Logo = AppLogoIcon;
 
   const isActive = (href: string): boolean => isNavHrefActive(pathname, href);

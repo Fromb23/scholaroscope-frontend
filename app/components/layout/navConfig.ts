@@ -26,6 +26,8 @@ import {
   CalendarDays,
   CircleDollarSign,
   FolderKanban,
+  MessageSquareText,
+  School,
 } from 'lucide-react';
 import type {
   OperatingContext,
@@ -280,6 +282,9 @@ export function resolveNavConfig({
         academicTodayMode,
         instructorAssignedCohortCount,
       );
+      break;
+    case 'INSTITUTION_OVERSIGHT':
+      navConfig = getInstitutionOversightNav();
       break;
     default:
       return { primary: [] };
@@ -724,6 +729,45 @@ export function getMyTeachingNav(
   };
 }
 
+export function getInstitutionOversightNav(): NavigationConfig {
+  return {
+    primary: [
+      {
+        name: 'Principal workspace',
+        shortName: 'Home',
+        href: '/principal',
+        icon: MessageSquareText,
+        mobilePriority: 1,
+      },
+      { name: 'Academic overview', href: '/academic', icon: GraduationCap },
+      {
+        name: 'Learners',
+        shortName: 'Learners',
+        href: '/learners',
+        icon: Users,
+        mobilePriority: 2,
+      },
+      {
+        name: 'Projects',
+        shortName: 'Projects',
+        href: '/projects',
+        icon: FolderKanban,
+        mobilePriority: 3,
+      },
+      {
+        name: 'Reports',
+        shortName: 'Reports',
+        href: '/reports',
+        icon: FileBarChart,
+        mobilePriority: 4,
+      },
+    ],
+    secondary: [
+      { name: 'Profile', href: '/profile', icon: School },
+    ],
+  };
+}
+
 // ── Footer label ──────────────────────────────────────────────────────────
 
 export function getRoleFooterLabel(
@@ -734,6 +778,7 @@ export function getRoleFooterLabel(
     return getWorkspaceManagementLabel(orgType);
   }
   if (context === 'MY_TEACHING') return 'My teaching';
+  if (context === 'INSTITUTION_OVERSIGHT') return 'Principal oversight';
   return 'Workspace';
 }
 

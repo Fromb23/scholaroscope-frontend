@@ -6,7 +6,10 @@
  * helpers as an authority source.
  */
 export type Role = 'ADMIN' | 'INSTRUCTOR';
-export type OperatingContext = 'WORKSPACE_MANAGEMENT' | 'MY_TEACHING';
+export type OperatingContext =
+  | 'WORKSPACE_MANAGEMENT'
+  | 'MY_TEACHING'
+  | 'INSTITUTION_OVERSIGHT';
 export type OrgType =
   | 'INSTITUTION'
   | 'PERSONAL'
@@ -119,7 +122,7 @@ export interface WorkspaceCapabilities {
       name: string;
       slug?: string;
       role_kind?: string;
-      responsibility_type?: 'NONE' | 'TEACHING' | string;
+      responsibility_type?: 'NONE' | 'TEACHING' | 'OVERSIGHT' | string;
       is_workspace_admin?: boolean;
       assignment_id?: number;
       legacy_role?: string;
@@ -138,6 +141,11 @@ export interface WorkspaceCapabilities {
       requires_review?: boolean;
     } | null;
     migration_state?: string | null;
+    responsibilities?: Array<{
+      type: 'TEACHING' | 'OVERSIGHT' | string;
+      role_slug: string;
+      scope_type: string;
+    }>;
   };
 }
 

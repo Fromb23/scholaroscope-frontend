@@ -46,6 +46,18 @@ function getMatchedRule(path: string) {
 }
 
 describe('route access', () => {
+  it('requires the backend oversight context for the Principal route', () => {
+    const principalCaps = capabilities(['reports.view', 'workspace.view']);
+
+    expect(canAccess('/principal', 'INSTITUTION_OVERSIGHT', principalCaps)).toBe(true);
+    expect(canAccess('/principal', 'WORKSPACE_MANAGEMENT', principalCaps)).toBe(false);
+    expect(canAccess('/principal', 'MY_TEACHING', principalCaps)).toBe(false);
+    expect(routeAllowedForRole('/principal', 'ADMIN')).toBe(false);
+    expect(getUnauthorizedRouteFallback('INSTITUTION_OVERSIGHT', '/principal')).toBe(
+      '/principal',
+    );
+  });
+
   it('uses context and capability for teaching routes', () => {
     const teachingCaps = capabilities(['lessons.view'], { can_teach: true });
 

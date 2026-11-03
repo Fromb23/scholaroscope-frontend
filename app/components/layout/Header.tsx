@@ -29,15 +29,14 @@ import { operatingContextHomeRoute } from '@/app/utils/routeAccess';
 import { themeModeToAppearanceMode } from '@/app/core/theme/effectiveTheme';
 import type { OperatingContext, SwitchOrgResponse } from '@/app/core/types/auth';
 
-function switchedWorkspaceHomeRoute(response: SwitchOrgResponse): string {
+function switchedWorkspaceHomeRoute(
+  response: SwitchOrgResponse,
+  preferredContext: OperatingContext | null,
+): string {
   const contexts = response.capabilities?.authorization?.operating_contexts ?? [];
-  const context = (
-    contexts.includes('WORKSPACE_MANAGEMENT')
-      ? 'WORKSPACE_MANAGEMENT'
-      : contexts.includes('MY_TEACHING')
-        ? 'MY_TEACHING'
-        : null
-  ) as OperatingContext | null;
+  const context = preferredContext && contexts.includes(preferredContext)
+    ? preferredContext
+    : contexts[0] ?? null;
   return operatingContextHomeRoute(context);
 }
 
@@ -66,6 +65,8 @@ export default function Header() {
     ? 'My teaching'
     : activeOperatingContext === 'WORKSPACE_MANAGEMENT'
       ? 'Workspace management'
+      : activeOperatingContext === 'INSTITUTION_OVERSIGHT'
+        ? 'Institution oversight'
       : 'Workspace';
 
   const handleLogout = () => {
@@ -100,7 +101,7 @@ export default function Header() {
     try {
       const response = await switchOrg(orgId);
       setOrgDropdownOpen(false);
-      router.replace(switchedWorkspaceHomeRoute(response));
+      router.replace(switchedWorkspaceHomeRoute(response, activeOperatingContext));
     } catch (err) {
       console.error('Failed to switch org:', err);
       const resolved = resolveWorkspaceError(err, {
@@ -125,6 +126,7 @@ export default function Header() {
   const permissionKeys = capabilities.authorization?.permission_keys ?? [];
   const showSettingsLink = Boolean(
     user
+    && activeOperatingContext !== 'INSTITUTION_OVERSIGHT'
     && (permissionKeys.includes('workspace.settings.view') || permissionKeys.includes('workspace.settings.manage'))
   );
 

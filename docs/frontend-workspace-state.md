@@ -61,6 +61,17 @@ advancing the workspace generation and clearing local authority. Server
 revocation is bounded and best-effort, while local signed-out state is
 authoritative. Automatic refresh and context paths cannot clear the tombstone
 or restore a session. An intentional new authentication submission clears it.
+## Operating contexts and Principal revocation
+
+Operating contexts are backend authority projections, not role-title guesses.
+The canonical contexts are `WORKSPACE_MANAGEMENT`, `MY_TEACHING`, and
+`INSTITUTION_OVERSIGHT`. The latter is accepted only when present in the latest
+capability response. Workspace switching or access-version refresh replaces the
+context set, remounts the generation boundary, clears stale Principal navigation,
+and redirects an inaccessible `/principal` route to another valid context or the
+existing no-access surface. `activeRole` and legacy membership metadata never
+authorize Principal UI.
+
 ## Project workspace navigation
 
 Project list filters are URL state. Project, catalogue and portfolio source links carry a bounded internal `returnTo`; the project workspace sanitizes it with the shared application-destination parser. Tab changes modify the existing query string so `returnTo`, task, participant and other valid workspace state survive. Project source routes select the exact evaluation for authorized staff, while learner and parent portfolio detail never links into the staff workspace.

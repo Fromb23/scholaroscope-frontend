@@ -134,7 +134,11 @@ const OPERATING_CONTEXT_STORAGE_KEY = 'scholaroscope_operating_context';
 function readStoredOperatingContext(): OperatingContext | null {
   if (typeof window === 'undefined') return null;
   const value = window.localStorage.getItem(OPERATING_CONTEXT_STORAGE_KEY);
-  return value === 'WORKSPACE_MANAGEMENT' || value === 'MY_TEACHING' ? value : null;
+  return (
+    value === 'WORKSPACE_MANAGEMENT'
+    || value === 'MY_TEACHING'
+    || value === 'INSTITUTION_OVERSIGHT'
+  ) ? value : null;
 }
 
 function writeStoredOperatingContext(context: OperatingContext | null) {
@@ -162,7 +166,11 @@ function deriveOperatingContexts(capabilities: WorkspaceCapabilities): Operating
   if (!Array.isArray(serverContexts)) return [];
   return serverContexts.filter(
     (context, index): context is OperatingContext => (
-      (context === 'WORKSPACE_MANAGEMENT' || context === 'MY_TEACHING')
+      (
+        context === 'WORKSPACE_MANAGEMENT'
+        || context === 'MY_TEACHING'
+        || context === 'INSTITUTION_OVERSIGHT'
+      )
       && serverContexts.indexOf(context) === index
     ),
   );

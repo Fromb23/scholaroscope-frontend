@@ -1,4 +1,5 @@
 import { parseAppDestination } from '@/app/core/auth/navigation';
+import type { OperatingContext } from '@/app/core/types/auth';
 
 export type ReportProjection =
   | 'overview'
@@ -271,9 +272,9 @@ export function buildReportOrigin(pathname: string, source: URLSearchParams | st
 }
 
 export function reportAuthorityModeForOperatingContext(
-  context: 'WORKSPACE_MANAGEMENT' | 'MY_TEACHING' | null | undefined,
+  context: OperatingContext | null | undefined,
 ): 'supervision' | 'teaching' {
-  return context === 'WORKSPACE_MANAGEMENT' ? 'supervision' : 'teaching';
+  return context === 'MY_TEACHING' ? 'teaching' : 'supervision';
 }
 
 const FOCUS_KEYS = [

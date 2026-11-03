@@ -17,6 +17,7 @@ import {
   isExplicitLogoutActive,
   markExplicitLogout,
 } from '@/app/core/auth/explicitLogout';
+import type { OperatingContext } from '@/app/core/types/auth';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
@@ -40,7 +41,7 @@ function deferred<T>(): Deferred<T> {
 function authState(
   organizationId: number,
   canViewReports: boolean,
-  operatingContexts: Array<'WORKSPACE_MANAGEMENT' | 'MY_TEACHING'> = [],
+  operatingContexts: OperatingContext[] = [],
 ) {
   const organization = {
     id: organizationId,
@@ -194,6 +195,7 @@ describe('AuthContext workspace authority races', () => {
   it.each([
     ['delegated report manager', ['WORKSPACE_MANAGEMENT'], ['WORKSPACE_MANAGEMENT']],
     ['assigned teacher', ['MY_TEACHING'], ['MY_TEACHING']],
+    ['appointed Principal', ['INSTITUTION_OVERSIGHT'], ['INSTITUTION_OVERSIGHT']],
     [
       'manager-teacher',
       ['WORKSPACE_MANAGEMENT', 'MY_TEACHING'],
