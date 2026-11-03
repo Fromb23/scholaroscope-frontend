@@ -1,4 +1,7 @@
-export type OperatingContext = 'WORKSPACE_MANAGEMENT' | 'MY_TEACHING';
+export type OperatingContext =
+    | 'WORKSPACE_MANAGEMENT'
+    | 'MY_TEACHING'
+    | 'INSTITUTION_OVERSIGHT';
 
 export type Role = 'ADMIN' | 'INSTRUCTOR';
 
@@ -22,6 +25,12 @@ export interface WorkspaceCapabilities {
     authorization?: {
         enforced?: boolean;
         permission_keys?: string[];
+        operating_contexts?: OperatingContext[];
+        responsibilities?: Array<{
+            type: string;
+            role_slug: string;
+            scope_type: string;
+        }>;
         roles?: unknown[];
         admin_slots?: unknown;
         migration_state?: unknown;

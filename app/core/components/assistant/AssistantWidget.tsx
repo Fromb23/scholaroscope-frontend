@@ -88,6 +88,10 @@ function preferredDesktopSide(state: Record<string, unknown> | undefined): Assis
 }
 
 const QUICK_PROMPTS_BY_CONTEXT: Record<OperatingContext, string[]> = {
+  INSTITUTION_OVERSIGHT: [
+    'What can I do here?',
+    'How is Principal access governed?',
+  ],
   MY_TEACHING: [
     'What can I do here?',
     'Who are you?',

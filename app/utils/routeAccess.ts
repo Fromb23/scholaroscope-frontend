@@ -74,6 +74,7 @@ export function isScopedInstructorAttendanceReport(path: string): boolean {
 }
 
 const kernelRouteRules: RouteAccessRule[] = [
+  { pattern: /^\/principal(?:\/|$)/, requiredContext: 'INSTITUTION_OVERSIGHT' },
   { pattern: /^\/dashboard\/admin/, requiredContext: 'WORKSPACE_MANAGEMENT' },
   {
     pattern: /^\/dashboard\/instructor/,
@@ -321,6 +322,7 @@ export function routeAllowedForRole(path: string, role: Role): boolean {
 }
 
 export function operatingContextHomeRoute(context: OperatingContext | null): string {
+  if (context === 'INSTITUTION_OVERSIGHT') return '/principal';
   if (context === 'MY_TEACHING') return '/dashboard/instructor';
   if (context === 'WORKSPACE_MANAGEMENT') return '/dashboard/admin';
   return '/dashboard';

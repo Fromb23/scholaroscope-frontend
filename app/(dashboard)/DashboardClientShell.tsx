@@ -14,6 +14,7 @@ import {
   isAcademicSetupOperationalAdminPath,
 } from '@/app/core/lib/academicSetup';
 import {
+  getUnauthorizedRouteFallback,
   routeAllowedForContext,
 } from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
@@ -161,7 +162,9 @@ function DashboardContent({
             <div className="pb-16 lg:pb-0">
               <RouteTransition>{children}</RouteTransition>
             </div>
-            {GUIDE_ENABLED ? <AssistantWidget /> : null}
+            {GUIDE_ENABLED && activeOperatingContext !== 'INSTITUTION_OVERSIGHT'
+              ? <AssistantWidget />
+              : null}
           </AssistantProvider>
         </main>
       </div>
@@ -311,6 +314,14 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     user,
   ]);
 
+  useEffect(() => {
+    if (!routeDenied || !activeOperatingContext) return;
+    const fallback = getUnauthorizedRouteFallback(activeOperatingContext, currentPath);
+    if (fallback !== pathname) {
+      router.replace(fallback);
+    }
+  }, [activeOperatingContext, currentPath, pathname, routeDenied, router]);
+
   const showAcademicSetupAccessDenied = (
     !loading
     && Boolean(user)
@@ -375,7 +386,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
   if (routeDenied) {
     return (
       <AccessTerminalState
-        title="Report access denied"
+        title="Workspace access denied"
         description="You are signed in, but your effective authority in this workspace does not permit this page. Change operating context or ask a workspace administrator for the required permission."
       />
     );

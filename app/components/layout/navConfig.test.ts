@@ -253,6 +253,28 @@ function getInstructorNav(
   });
 }
 
+function getPrincipalNav(capabilities: WorkspaceCapabilities | null = null) {
+  const principalCapabilities = capabilities ?? capabilitiesWithKeys([
+    'workspace.view',
+    'academic.view',
+    'learners.view',
+    'projects.view',
+    'reports.view',
+  ]);
+  return resolveNavConfig({
+    user: testUser(),
+    activeOperatingContext: 'INSTITUTION_OVERSIGHT',
+    orgType: 'INSTITUTION',
+    pluginNavigationContext: {
+      ...pluginContext,
+      activeOperatingContext: 'INSTITUTION_OVERSIGHT',
+      orgType: 'INSTITUTION',
+      capabilities: principalCapabilities,
+    } as PluginNavigationContext,
+    capabilities: principalCapabilities,
+  });
+}
+
 function allNavHrefs(nav: ReturnType<typeof getAdminNav>): string[] {
   const collect = (items = nav.primary): string[] =>
     items.flatMap((item) => [item.href, ...collect(item.children ?? [])]);
@@ -264,6 +286,29 @@ function allNavHrefs(nav: ReturnType<typeof getAdminNav>): string[] {
 }
 
 describe('admin navigation config', () => {
+  it('keeps Principal navigation read-only and separate from admin and teaching actions', () => {
+    const hrefs = allNavHrefs(getPrincipalNav());
+
+    expect(hrefs).toContain('/principal');
+    expect(hrefs).toContain('/reports');
+    expect(hrefs.some((href) => href.startsWith('/admin'))).toBe(false);
+    expect(hrefs).not.toContain('/assessments/new');
+    expect(hrefs).not.toContain('/lessons/prepare');
+    expect(hrefs).not.toContain('/projects/new');
+  });
+
+  it('removes Principal navigation when the oversight context is absent', () => {
+    const nav = resolveNavConfig({
+      user: testUser(),
+      activeOperatingContext: null,
+      orgType: 'INSTITUTION',
+      pluginNavigationContext: pluginContext,
+      capabilities: capabilitiesWithKeys(['reports.view']),
+    });
+
+    expect(allNavHrefs(nav)).not.toContain('/principal');
+  });
+
   it('renames institutional admin teaching surfaces to supervision labels', () => {
     const nav = getAdminNav(pluginContext, 'INSTITUTION');
     const assessmentItem = nav.primary.find((item) => item.href === '/assessments');
