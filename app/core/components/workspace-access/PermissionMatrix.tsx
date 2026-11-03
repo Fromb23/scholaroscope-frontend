@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react';
+import { Input } from '@/app/components/ui/Input';
 import type { WorkspacePermissionDefinition } from '@/app/core/types/workspaceAccess';
 
 interface PermissionMatrixProps {
@@ -8,13 +10,16 @@ interface PermissionMatrixProps {
 }
 
 export function PermissionMatrix({ permissions, selected, onToggle, readonly = false }: PermissionMatrixProps) {
-  const groups = permissions.reduce<Record<string, WorkspacePermissionDefinition[]>>((acc, permission) => {
+  const [search, setSearch] = useState('');
+  const filtered = useMemo(() => permissions.filter((permission) => `${permission.name} ${permission.key} ${permission.description}`.toLowerCase().includes(search.toLowerCase())), [permissions, search]);
+  const groups = filtered.reduce<Record<string, WorkspacePermissionDefinition[]>>((acc, permission) => {
     acc[permission.subsystem] = [...(acc[permission.subsystem] ?? []), permission];
     return acc;
   }, {});
 
   return (
     <div className="space-y-4">
+      {permissions.length > 6 ? <Input id="permission-search" label="Search permissions" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, key or description" /> : null}
       {Object.entries(groups).map(([subsystem, items]) => (
         <div key={subsystem} className="rounded-md border theme-border p-4">
           <p className="mb-3 text-sm font-semibold capitalize theme-text">{subsystem}</p>
