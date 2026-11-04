@@ -509,6 +509,20 @@ export const reportingAPI = {
 // Reports API (Comprehensive Reports)
 // ============================================================================
 export const adminReportsAPI = {
+  getAcademicOverview: async (params: {
+    curriculum?: number;
+    academic_year?: number;
+    term?: number;
+    cohort?: number;
+    cohort_subject?: number;
+  }) => {
+    const response = await apiClient.get<import('@/app/core/types/reporting').PrincipalAcademicOverview>(
+      '/reports/admin/academic-overview/',
+      { params: { ...params, authority_mode: 'supervision' } },
+    );
+    return response.data;
+  },
+
   getOverview: async (termId: number | null | undefined, authorityMode: ReportAuthorityMode) => {
     const response = await apiClient.get<DashboardOverview>('/reports/admin/overview/', {
       params: { term_id: termId ?? undefined, authority_mode: authorityMode },

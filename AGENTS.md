@@ -12,6 +12,8 @@ Principal remains a canonical protected system role and cannot be assigned throu
 
 Future AI tools must call governed application services. They must never query unrestricted database state or treat a model as an authority source.
 
+Principal Academic Overview is a read-only facade over the canonical reporting engine. Its authority comes only from backend-projected permissions in `INSTITUTION_OVERSIGHT`; traversing curriculum -> academic year -> term -> cohort -> cohort subject -> projection/record never grants mutation authority. Parent changes clear invalid descendants in URL state. Principal drill-down uses neutral canonical report routes, not instructor routes, and `returnTo` is sanitized navigation state rather than authorization or resource scope. New academic domains extend this hierarchy instead of adding Principal sidebar destinations.
+
 Read `README.md`, `docs/frontend-workspace-state.md`, `package.json`, `app/core/api/projects.ts`, `app/core/hooks/useProjects.ts`, `app/core/types/projects.ts`, the relevant components and tests under `app/core/components/projects`, `app/core/lib/queryKeys.ts`, and relevant checks under `tools`.
 
 Change the backend contract first. Keep `page.tsx` thin and follow component → hook → API adapter layering. Query keys must include organization identity, and workspace-generation changes must reset cached state. Do not expose platform-control-plane UI or cross plugin boundaries.

@@ -47,7 +47,8 @@ function requestedAuthorityMode(url: URL): 'teaching' | 'supervision' | null {
 function isSupervisionReportRoute(context: RouteAccessContext): boolean {
   return (
     requestedAuthorityMode(context.url) === 'supervision' &&
-    context.operatingContext === 'WORKSPACE_MANAGEMENT' &&
+    (context.operatingContext === 'WORKSPACE_MANAGEMENT' ||
+      context.operatingContext === 'INSTITUTION_OVERSIGHT') &&
     hasCapabilityPermission(context.capabilities, 'reports.view')
   );
 }

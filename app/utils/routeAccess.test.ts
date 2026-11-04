@@ -114,6 +114,19 @@ describe('route access', () => {
     )).toBe(true);
   });
 
+  it('allows Principal oversight to open canonical supervised reports only with reports.view', () => {
+    expect(canAccess(
+      '/reports/cohort-subjects/3?authority_mode=supervision',
+      'INSTITUTION_OVERSIGHT',
+      capabilities(['reports.view']),
+    )).toBe(true);
+    expect(canAccess(
+      '/reports/cohort-subjects/3?authority_mode=supervision',
+      'INSTITUTION_OVERSIGHT',
+      capabilities([]),
+    )).toBe(false);
+  });
+
   it('denies supervised cohort-subject routes without reports.view', () => {
     expect(canAccess(
       '/reports/cohort-subjects/3?authority_mode=supervision',

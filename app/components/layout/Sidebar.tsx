@@ -46,7 +46,11 @@ export default function Sidebar({ navConfig }: SidebarProps) {
       : Building2;
   const Logo = AppLogoIcon;
 
-  const isActive = (href: string): boolean => isNavHrefActive(pathname, href);
+  const isActive = (href: string): boolean =>
+    (activeOperatingContext === 'INSTITUTION_OVERSIGHT' &&
+      href === '/principal/academic-overview' &&
+      pathname.startsWith('/reports')) ||
+    isNavHrefActive(pathname, href);
 
   useEffect(() => {
     if (!user) return;

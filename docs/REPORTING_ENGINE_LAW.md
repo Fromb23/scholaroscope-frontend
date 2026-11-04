@@ -20,6 +20,9 @@ This document is the normative architecture contract for workspace reporting. Th
 16. The same facts produce the same result regardless of entry route.
 17. The browser must not compute a competing reporting metric already owned by the server.
 18. One reporting engine does not require one endpoint; projections may load independently and lazily.
+19. Principal Academic Overview is an oversight facade over this engine, never a second reporting engine or an administration surface.
+20. Its hierarchy is curriculum -> academic year -> term -> cohort -> cohort subject -> projection/record; parent changes remove invalid descendant URL state and the backend validates every selected relationship.
+21. Principal drill-down uses neutral canonical report routes in supervision mode. Instructor-scoped routes remain teaching surfaces.
 
 ## Canonical report objects
 

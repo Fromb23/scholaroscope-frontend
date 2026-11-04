@@ -7,6 +7,7 @@ export type ReportProjection =
   | 'attendance'
   | 'assessments-results'
   | 'assignments'
+  | 'projects'
   | 'curriculum-progress'
   | 'portfolio';
 
@@ -21,6 +22,7 @@ export type ReportObject =
   | { type: 'learner-portfolio'; learnerId: number };
 
 export interface ReportPeriod {
+  curriculumId?: number;
   academicYearId?: number;
   termId?: number;
 }
@@ -33,6 +35,7 @@ export interface ReportFocus {
   subStrandId?: number;
   outcomeId?: number;
   evidenceId?: number;
+  projectDeploymentId?: number;
 }
 
 export interface ReportTableState {
@@ -73,6 +76,7 @@ const PROJECTIONS = new Set<ReportProjection>([
   'attendance',
   'assessments-results',
   'assignments',
+  'projects',
   'curriculum-progress',
   'portfolio',
 ]);
@@ -89,9 +93,9 @@ const LEGACY_PROJECTIONS: Record<string, ReportProjection> = {
 
 const OBJECT_PROJECTIONS: Record<ReportObject['type'], ReadonlySet<ReportProjection>> = {
   workspace: new Set(['overview']),
-  cohort: new Set(['overview', 'learners', 'attendance', 'assessments-results', 'assignments', 'curriculum-progress']),
+  cohort: new Set(['overview', 'learners', 'attendance', 'assessments-results', 'assignments', 'projects', 'curriculum-progress']),
   'workspace-subject': new Set(['overview', 'learners', 'attendance', 'assessments-results', 'assignments', 'curriculum-progress']),
-  'cohort-subject': new Set(['overview', 'learners', 'attendance', 'assessments-results', 'assignments', 'curriculum-progress']),
+  'cohort-subject': new Set(['overview', 'learners', 'attendance', 'assessments-results', 'assignments', 'projects', 'curriculum-progress']),
   instructor: new Set(['overview', 'attendance', 'assessments-results', 'assignments', 'curriculum-progress']),
   learner: new Set(['overview']),
   'learner-subject': new Set(['overview', 'attendance', 'assessments-results', 'assignments', 'curriculum-progress']),
@@ -153,6 +157,7 @@ export function parseReportIntent(
   const projection = isProjectionAllowed(object, requestedProjection)
     ? requestedProjection
     : fallbackProjection;
+  const curriculumId = firstPositive(params, 'curriculum', 'curriculum_id');
   const academicYearId = firstPositive(params, 'academic_year', 'academicYear', 'academic_year_id');
   const termId = firstPositive(params, 'term', 'term_id');
   const sessionId = firstPositive(params, 'session', 'session_id', 'sessionId');
@@ -162,6 +167,7 @@ export function parseReportIntent(
   const subStrandId = firstPositive(params, 'sub_strand', 'sub_strand_id', 'subStrandId');
   const outcomeId = firstPositive(params, 'outcome', 'outcome_id', 'outcomeId');
   const evidenceId = firstPositive(params, 'evidence', 'evidence_id', 'evidenceId');
+  const projectDeploymentId = firstPositive(params, 'project_deployment', 'deployment');
   const page = firstPositive(params, 'page');
   const pageSize = firstPositive(params, 'page_size', 'pageSize');
   const returnTo = parseAppDestination(params.get('returnTo'));
@@ -175,9 +181,9 @@ export function parseReportIntent(
   return {
     object,
     projection,
-    period: academicYearId || termId ? { academicYearId, termId } : undefined,
-    focus: sessionId || assessmentId || assignmentId || strandId || subStrandId || outcomeId || evidenceId
-      ? { sessionId, assessmentId, assignmentId, strandId, subStrandId, outcomeId, evidenceId }
+    period: curriculumId || academicYearId || termId ? { curriculumId, academicYearId, termId } : undefined,
+    focus: sessionId || assessmentId || assignmentId || strandId || subStrandId || outcomeId || evidenceId || projectDeploymentId
+      ? { sessionId, assessmentId, assignmentId, strandId, subStrandId, outcomeId, evidenceId, projectDeploymentId }
       : undefined,
     filters: firstPositive(params, 'cohort', 'cohort_id')
       || firstPositive(params, 'subject', 'subject_id')
@@ -221,6 +227,7 @@ function setText(params: URLSearchParams, key: string, value?: string): void {
 export function serializeReportIntent(intent: ReportIntent): URLSearchParams {
   const params = new URLSearchParams();
   params.set('projection', intent.projection);
+  setPositive(params, 'curriculum', intent.period?.curriculumId);
   setPositive(params, 'academic_year', intent.period?.academicYearId);
   setPositive(params, 'term', intent.period?.termId);
   setPositive(params, 'session', intent.focus?.sessionId);
@@ -230,6 +237,7 @@ export function serializeReportIntent(intent: ReportIntent): URLSearchParams {
   setPositive(params, 'sub_strand', intent.focus?.subStrandId);
   setPositive(params, 'outcome', intent.focus?.outcomeId);
   setPositive(params, 'evidence', intent.focus?.evidenceId);
+  setPositive(params, 'project_deployment', intent.focus?.projectDeploymentId);
   setPositive(params, 'cohort', intent.filters?.cohortId);
   setPositive(params, 'subject', intent.filters?.subjectId);
   if (intent.object.type !== 'learner-subject') {
@@ -281,6 +289,7 @@ const FOCUS_KEYS = [
   'session', 'session_id', 'assessment', 'assessment_id', 'assignment',
   'assignment_id', 'highlightAssignment', 'strand', 'strand_id', 'sub_strand',
   'sub_strand_id', 'outcome', 'outcome_id', 'evidence', 'evidence_id',
+  'project_deployment', 'deployment',
 ] as const;
 
 function clearKeys(params: URLSearchParams, keys: readonly string[]): void {
@@ -289,7 +298,7 @@ function clearKeys(params: URLSearchParams, keys: readonly string[]): void {
 
 export function applyReportStateChange(
   source: URLSearchParams | string,
-  key: 'academic_year' | 'term' | 'cohort' | 'subject' | 'cohort_subject' | 'learner' | 'projection',
+  key: 'curriculum' | 'academic_year' | 'term' | 'cohort' | 'subject' | 'cohort_subject' | 'learner' | 'projection',
   value: string | number | null,
 ): URLSearchParams {
   const params = typeof source === 'string'
@@ -298,12 +307,14 @@ export function applyReportStateChange(
   if (value === null || value === '') params.delete(key);
   else params.set(key, String(value));
 
-  if (key === 'academic_year') {
-    clearKeys(params, ['term', 'term_id', 'cohort', 'cohort_id', 'subject', 'subject_id', 'cohort_subject', 'cohortSubject', 'cohort_subject_id', 'learner', 'student', ...FOCUS_KEYS]);
+  if (key === 'curriculum') {
+    clearKeys(params, ['academic_year', 'academicYear', 'academic_year_id', 'term', 'term_id', 'cohort', 'cohort_id', 'subject', 'subject_id', 'cohort_subject', 'cohortSubject', 'cohort_subject_id', 'learner', 'student', 'projection', ...FOCUS_KEYS]);
+  } else if (key === 'academic_year') {
+    clearKeys(params, ['term', 'term_id', 'cohort', 'cohort_id', 'subject', 'subject_id', 'cohort_subject', 'cohortSubject', 'cohort_subject_id', 'learner', 'student', 'projection', ...FOCUS_KEYS]);
   } else if (key === 'term') {
-    clearKeys(params, FOCUS_KEYS);
+    clearKeys(params, ['cohort_subject', 'cohortSubject', 'cohort_subject_id', 'learner', 'student', 'projection', ...FOCUS_KEYS]);
   } else if (key === 'cohort' || key === 'subject') {
-    clearKeys(params, ['cohort_subject', 'cohortSubject', 'cohort_subject_id', 'learner', 'student', ...FOCUS_KEYS]);
+    clearKeys(params, ['cohort_subject', 'cohortSubject', 'cohort_subject_id', 'learner', 'student', 'projection', ...FOCUS_KEYS]);
   } else if (key === 'cohort_subject') {
     clearKeys(params, ['learner', 'student', ...FOCUS_KEYS]);
   } else if (key === 'learner') {
