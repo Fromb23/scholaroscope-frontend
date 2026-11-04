@@ -1,27 +1,44 @@
 // app/(auth)/reset-password/[uid]/[token]/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 import { Input } from '@/app/components/ui/Input';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { authAPI } from '@/app/core/api/auth';
+import {
+  authAPI,
+  passwordFieldErrorsFromError,
+  resetCodeFromError,
+  type ResetTokenCode,
+} from '@/app/core/api/auth';
 import { useSemanticPageTitle } from '@/app/core/pageIdentity/PageTitleProvider';
 import { AuthFrame } from './AuthFrame';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 
-type ResetTokenState = 'validating' | 'valid' | 'expired' | 'used' | 'invalid';
+type ResetTokenState =
+  | 'validating'
+  | 'valid'
+  | 'expired'
+  | 'used'
+  | 'superseded'
+  | 'invalid'
+  | 'unavailable';
 
-function resetMessageForCode(code?: string) {
+function stateForCode(code: ResetTokenCode): ResetTokenState {
+  return code.replace('password_reset_', '') as ResetTokenState;
+}
+
+function resetMessageForCode(code: Exclude<ResetTokenCode, 'password_reset_valid'>) {
   switch (code) {
     case 'password_reset_expired':
-      return 'This password reset link has expired. Reset links are valid for 24 hours. Please request a new one.';
+      return 'This password reset link has expired. Please request a new one.';
     case 'password_reset_used':
-      return 'This password reset link has already been used. Please request a new link.';
+      return 'This password reset link has already been used. You can request another link if needed.';
+    case 'password_reset_superseded':
+      return 'A newer password reset link was requested. Use the most recent email or request another link.';
     case 'password_reset_invalid':
-    default:
       return 'This password reset link is invalid. Please request a new one.';
   }
 }
@@ -39,6 +56,7 @@ export function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [tokenState, setTokenState] = useState<ResetTokenState>('validating');
   const [tokenMessage, setTokenMessage] = useState('');
+  const submittingRef = useRef(false);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -50,52 +68,58 @@ export function ResetPasswordPage() {
   };
 
   const handleSubmit = async () => {
+    if (submittingRef.current || tokenState !== 'valid') return;
     if (!validate()) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await authAPI.resetPassword({ uid, token, ...form });
+      setForm({ new_password: '', confirm_password: '' });
       setSuccess(true);
       setTimeout(() => router.push('/login'), 3000);
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string; code?: string } } };
-      const code = axiosErr?.response?.data?.code;
-      if (code === 'password_reset_expired' || code === 'password_reset_used' || code === 'password_reset_invalid') {
-        setTokenState(
-          code === 'password_reset_expired'
-            ? 'expired'
-            : code === 'password_reset_used'
-              ? 'used'
-              : 'invalid',
-        );
+      const code = resetCodeFromError(err);
+      if (code && code !== 'password_reset_valid') {
+        setTokenState(stateForCode(code));
         setTokenMessage(resetMessageForCode(code));
         return;
       }
-      setErrors({ general: axiosErr?.response?.data?.error || 'Could not reset your password.' });
+      const policyErrors = passwordFieldErrorsFromError(err);
+      if (policyErrors.length > 0) {
+        setErrors({ new_password: policyErrors.join(' ') });
+      } else {
+        setErrors({ general: 'Could not reset your password. Please try again.' });
+      }
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const validateToken = async () => {
-      try {
-        const result = await authAPI.validateResetToken({ uid, token }) as { code?: string };
-        setTokenState(result.code === 'password_reset_valid' ? 'valid' : 'invalid');
-      } catch (err: unknown) {
-        const axiosErr = err as { response?: { data?: { code?: string } } };
-        const code = axiosErr?.response?.data?.code;
-        setTokenState(
-          code === 'password_reset_expired'
-            ? 'expired'
-            : code === 'password_reset_used'
-              ? 'used'
-              : 'invalid',
-        );
-        setTokenMessage(resetMessageForCode(code));
+  const validateToken = useCallback(async () => {
+    setTokenState('validating');
+    setTokenMessage('');
+    try {
+      const result = await authAPI.validateResetToken({ uid, token });
+      if (result.code !== 'password_reset_valid' || result.valid !== true) {
+        throw new Error('Unexpected reset validation response.');
       }
-    };
-    validateToken();
+      setTokenState('valid');
+    } catch (err: unknown) {
+      const code = resetCodeFromError(err);
+      if (code && code !== 'password_reset_valid') {
+        setTokenState(stateForCode(code));
+        setTokenMessage(resetMessageForCode(code));
+      } else {
+        setTokenState('unavailable');
+        setTokenMessage('We couldn’t validate this reset link right now.');
+      }
+    }
   }, [uid, token]);
+
+  useEffect(() => {
+    void validateToken();
+  }, [validateToken]);
 
   if (tokenState === 'validating') {
     return (
@@ -112,10 +136,18 @@ export function ResetPasswordPage() {
       <AuthFrame>
         <div className="theme-card space-y-3 rounded-2xl p-8 text-center">
           <p className="text-sm font-medium text-[color:var(--color-danger)]">
-            {tokenMessage || resetMessageForCode()}
+            {tokenMessage}
           </p>
+          {tokenState === 'unavailable' && (
+            <Button variant="secondary" className="w-full" onClick={() => void validateToken()}>
+              Retry validation
+            </Button>
+          )}
           <a href="/forgot-password" className="theme-link block text-sm">
-            Request a new one
+            Request a new link
+          </a>
+          <a href="/login" className="theme-link block text-sm">
+            Back to login
           </a>
         </div>
       </AuthFrame>
