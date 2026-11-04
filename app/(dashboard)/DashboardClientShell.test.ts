@@ -37,6 +37,7 @@ vi.mock('@/app/core/hooks/useAcademicSetupStatus', () => ({
 
 vi.mock('@/app/utils/routeAccess', () => ({
   routeAllowedForContext: (path: unknown, context: unknown) => mocks.routeAllowedForContext(path, context),
+  getUnauthorizedRouteFallback: () => '/dashboard',
 }));
 
 vi.mock('@/app/components/layout/Sidebar', () => ({ default: () => null }));
@@ -228,7 +229,7 @@ describe('DashboardClientShell authentication boundary', () => {
 
     expect(mocks.assign).not.toHaveBeenCalled();
     expect(mocks.router.replace).not.toHaveBeenCalled();
-    expect(renderedText(renderer)).toContain('Report access denied');
+    expect(renderedText(renderer)).toContain('Workspace access denied');
   });
 
   it('does not trigger duplicate login redirect logic while logging out', () => {
@@ -276,7 +277,7 @@ describe('DashboardClientShell source-level auth boundary contracts', () => {
     expect(unauthCopyIndex).toBeGreaterThan(-1);
     expect(logoutRenderIndex).toBeLessThan(unauthCopyIndex);
     expect(source).toContain('title="Workspace access unavailable"');
-    expect(source).toContain('title="Report access denied"');
+    expect(source).toContain('title="Workspace access denied"');
     expect(source).toContain("redirectToPlatformConsole('/login')");
   });
 

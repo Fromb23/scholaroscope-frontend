@@ -441,6 +441,16 @@ Principal intelligence permission, underlying domain permission, workspace
 scope, plugin entitlement, and data-access policy, and must call governed
 application services.
 
+Principal conversation selection is URL state: `/principal` is an unsaved blank
+canvas and `/principal/conversations/[conversationId]` is a persisted metadata
+record authorized by the backend. History and title search are scoped by user
+and workspace, render ten recent rows initially, and page older results through
+the bounded More conversations disclosure. Workspace generation changes clear
+the history surface. Renaming treats titles as plain text and cannot mutate
+ownership or activity. Missing academic context does not remove the shell, and
+the composer stays explicitly unavailable until governed intelligence and
+message acceptance are connected.
+
 ## Development
 
 Requirements:

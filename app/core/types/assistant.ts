@@ -1,4 +1,15 @@
 import type { OperatingContext } from '@/app/core/types/auth';
+import type { PaginatedResponse } from '@/app/core/types/api';
+
+export interface AssistantConversation {
+  id: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  last_activity_at: string;
+}
+
+export type AssistantConversationListResponse = PaginatedResponse<AssistantConversation>;
 
 export type AssistantActionType = 'navigate' | 'page_action' | 'feedback' | 'external' | 'chat_prompt';
 export type AssistantConfidence = 'low' | 'medium' | 'high';

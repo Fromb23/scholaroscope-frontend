@@ -13,6 +13,7 @@ import {
   Moon,
   Plus,
   Settings,
+  School,
   Sun,
   User,
 } from 'lucide-react';
@@ -68,13 +69,13 @@ export default function Header() {
     : activeOperatingContext === 'WORKSPACE_MANAGEMENT'
       ? 'Workspace management'
       : activeOperatingContext === 'INSTITUTION_OVERSIGHT'
-        ? 'Institution oversight'
+        ? 'Principal'
       : 'Workspace';
   const contextName = (context: OperatingContext) => context === 'MY_TEACHING'
     ? 'My teaching'
     : context === 'WORKSPACE_MANAGEMENT'
       ? 'Workspace management'
-      : 'Institution oversight';
+      : 'Principal';
 
   const handleLogout = () => {
     if (logoutPending) return;
@@ -139,12 +140,19 @@ export default function Header() {
 
   return (
     <header className="theme-header sticky top-0 z-30 flex h-16 items-center justify-between border-b theme-border px-4 lg:px-6">
-      <button
-        onClick={toggleSidebar}
-        className="theme-focus-ring flex min-h-11 min-w-11 items-center justify-center rounded-lg theme-hover-surface lg:hidden"
-      >
-        <Menu className="h-6 w-6 theme-muted" />
-      </button>
+      {activeOperatingContext === 'INSTITUTION_OVERSIGHT' ? (
+        <Link href="/principal" className="theme-focus-ring flex items-center gap-2 rounded-lg py-1 text-sm font-semibold theme-text">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:var(--brand-primary)] text-white"><School className="h-4 w-4" /></span>
+          <span className="hidden sm:inline">Scholaroscope</span>
+        </Link>
+      ) : (
+        <button
+          onClick={toggleSidebar}
+          className="theme-focus-ring flex min-h-11 min-w-11 items-center justify-center rounded-lg theme-hover-surface lg:hidden"
+        >
+          <Menu className="h-6 w-6 theme-muted" />
+        </button>
+      )}
 
       <div className="ml-auto flex items-center gap-3">
         {showWorkspaceControl && (
