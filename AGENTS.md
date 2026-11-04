@@ -24,6 +24,8 @@ Orient every project screen to its stage and provide one primary next action; pl
 
 When a cross-repository contract changes: backend model/service/API/tests, then frontend types/API/hooks/components/tests. Update regression tests whenever an invariant changes.
 
+Password-reset requests, validation, and consumption are public identity operations and must not use authenticated refresh recovery, workspace generation, membership state, or organization headers. Model valid, expired, used, superseded, and invalid token codes explicitly; transport, server, CORS, timeout, and malformed-response failures are an unavailable state, never an invalid-token state. Never send reset tokens or reset URLs to logs, telemetry, monitoring metadata, or page titles. Identity changes require focused end-to-end lifecycle coverage.
+
 Focused validation:
 
 ```text

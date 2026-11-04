@@ -25,6 +25,80 @@ type LogoutOptions = {
   timeoutMs?: number;
 };
 
+export type ResetTokenCode =
+  | 'password_reset_valid'
+  | 'password_reset_expired'
+  | 'password_reset_used'
+  | 'password_reset_superseded'
+  | 'password_reset_invalid';
+
+export type ResetTokenResponse = { valid: boolean; code: ResetTokenCode };
+
+export type PublicAuthError = Error & {
+  data?: unknown;
+  status?: number;
+};
+
+const RESET_TOKEN_CODES: ReadonlySet<string> = new Set<ResetTokenCode>([
+  'password_reset_valid',
+  'password_reset_expired',
+  'password_reset_used',
+  'password_reset_superseded',
+  'password_reset_invalid',
+]);
+
+export function isResetTokenCode(value: unknown): value is ResetTokenCode {
+  return typeof value === 'string' && RESET_TOKEN_CODES.has(value);
+}
+
+export function resetCodeFromError(error: unknown): ResetTokenCode | null {
+  const candidate = error as {
+    data?: { code?: unknown; error?: { code?: unknown } };
+    response?: { data?: { code?: unknown; error?: { code?: unknown } } };
+  };
+  const status = (error as { status?: number; response?: { status?: number } }).status
+    ?? (error as { response?: { status?: number } }).response?.status;
+  if (status !== undefined && (status < 400 || status >= 500 || status === 404)) {
+    return null;
+  }
+  const data = candidate.data ?? candidate.response?.data;
+  const code = data?.code ?? data?.error?.code;
+  return isResetTokenCode(code) ? code : null;
+}
+
+export function passwordFieldErrorsFromError(error: unknown): string[] {
+  const candidate = error as {
+    data?: { field_errors?: { new_password?: unknown }; error?: { field_errors?: { new_password?: unknown } } };
+    response?: { data?: { field_errors?: { new_password?: unknown }; error?: { field_errors?: { new_password?: unknown } } } };
+  };
+  const data = candidate.data ?? candidate.response?.data;
+  const value = data?.field_errors?.new_password ?? data?.error?.field_errors?.new_password;
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+async function publicAuthRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      credentials: 'omit',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', ...init.headers },
+    });
+    const data: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw Object.assign(new Error('Public authentication request failed.'), {
+        data,
+        status: response.status,
+      }) satisfies PublicAuthError;
+    }
+    return data as T;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
+}
+
 type RawActiveOrg = {
   id: number;
   name: string;
@@ -325,8 +399,10 @@ export const authAPI = {
   },
 
   forgotPassword: async (email: string) => {
-    const response = await apiClient.post('/auth/forgot-password/', { email });
-    return response.data;
+    return publicAuthRequest<{ message: string }>('/auth/forgot-password/', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
   },
 
   resetPassword: async (data: {
@@ -335,12 +411,25 @@ export const authAPI = {
     new_password: string;
     confirm_password: string;
   }) => {
-    const response = await apiClient.post('/auth/reset-password/', data);
-    return response.data;
+    return publicAuthRequest<{ message: string }>('/auth/reset-password/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 
-  validateResetToken: async (data: { uid: string; token: string }) => {
-    const response = await apiClient.get(`/auth/reset-password/${data.uid}/${data.token}/validate/`);
-    return response.data;
+  validateResetToken: async (data: { uid: string; token: string }): Promise<ResetTokenResponse> => {
+    const result = await publicAuthRequest<unknown>(
+      `/auth/reset-password/${encodeURIComponent(data.uid)}/${encodeURIComponent(data.token)}/validate/`,
+      { method: 'GET' },
+    );
+    if (
+      !result
+      || typeof result !== 'object'
+      || typeof (result as { valid?: unknown }).valid !== 'boolean'
+      || !isResetTokenCode((result as { code?: unknown }).code)
+    ) {
+      throw new Error('Password reset validation response was unavailable.');
+    }
+    return result as ResetTokenResponse;
   },
 };

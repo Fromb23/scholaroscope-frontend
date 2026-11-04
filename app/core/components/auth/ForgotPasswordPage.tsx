@@ -1,7 +1,7 @@
 // app/(auth)/forgot-password/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { Mail, ArrowLeft } from 'lucide-react';
 import { Input } from '@/app/components/ui/Input';
@@ -16,12 +16,15 @@ export function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const submittingRef = useRef(false);
 
   const handleSubmit = async () => {
+    if (submittingRef.current) return;
     if (!email.trim()) {
       setError('Email is required');
       return;
     }
+    submittingRef.current = true;
     setLoading(true);
     setError('');
     try {
@@ -30,6 +33,7 @@ export function ForgotPasswordPage() {
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
