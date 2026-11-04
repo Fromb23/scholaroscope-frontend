@@ -87,6 +87,9 @@ function DashboardContent({
   });
   const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
+  const pathname = usePathname();
+  const isPrincipalConversationWorkspace = activeOperatingContext === 'INSTITUTION_OVERSIGHT'
+    && (pathname === '/principal' || pathname.startsWith('/principal/conversations/'));
 
   const pluginNavigationContext = useMemo<PluginNavigationContext>(
     () => ({
@@ -148,7 +151,7 @@ function DashboardContent({
 
   return (
     <div className="theme-app-bg pwa-safe-area-shell flex h-dvh overflow-hidden">
-      <Sidebar navConfig={navConfig} />
+      {isPrincipalConversationWorkspace ? null : <Sidebar navConfig={navConfig} />}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Header />
         {notices.length > 0 && (
@@ -156,10 +159,14 @@ function DashboardContent({
         )}
         <main
           id="dashboard-scroll-root"
-          className="pwa-safe-area-main min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6"
+          className={`pwa-safe-area-main min-h-0 flex-1 overscroll-contain ${
+            isPrincipalConversationWorkspace
+              ? 'overflow-hidden p-0'
+              : 'overflow-y-auto p-4 lg:p-6'
+          }`}
         >
           <AssistantProvider>
-            <div className="pb-16 lg:pb-0">
+            <div className={isPrincipalConversationWorkspace ? 'h-full min-h-0' : 'pb-16 lg:pb-0'}>
               <RouteTransition>{children}</RouteTransition>
             </div>
             {GUIDE_ENABLED && activeOperatingContext !== 'INSTITUTION_OVERSIGHT'
@@ -168,7 +175,7 @@ function DashboardContent({
           </AssistantProvider>
         </main>
       </div>
-      <MobileBottomNav navConfig={navConfig} />
+      {isPrincipalConversationWorkspace ? null : <MobileBottomNav navConfig={navConfig} />}
     </div>
   );
 }
