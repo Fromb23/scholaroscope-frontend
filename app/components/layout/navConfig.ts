@@ -733,33 +733,18 @@ export function getInstitutionOversightNav(): NavigationConfig {
   return {
     primary: [
       {
-        name: 'Principal workspace',
+        name: 'Ask Scholaroscope',
         shortName: 'Home',
         href: '/principal',
         icon: MessageSquareText,
         mobilePriority: 1,
       },
-      { name: 'Academic overview', href: '/academic', icon: GraduationCap },
       {
-        name: 'Learners',
-        shortName: 'Learners',
-        href: '/learners',
-        icon: Users,
+        name: 'Academic overview',
+        shortName: 'Overview',
+        href: '/principal/academic-overview',
+        icon: GraduationCap,
         mobilePriority: 2,
-      },
-      {
-        name: 'Projects',
-        shortName: 'Projects',
-        href: '/projects',
-        icon: FolderKanban,
-        mobilePriority: 3,
-      },
-      {
-        name: 'Reports',
-        shortName: 'Reports',
-        href: '/reports',
-        icon: FileBarChart,
-        mobilePriority: 4,
       },
     ],
     secondary: [

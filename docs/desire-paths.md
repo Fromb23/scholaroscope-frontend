@@ -16,6 +16,9 @@ one entity to another and back.
   requires an application-relative, same-origin result and rejects schemes,
   protocol-relative forms, backslashes, control characters, malformed encoding,
   encoded/double-encoded external forms, credentials, and excessive lengths.
+- Principal Academic Overview carries its exact curriculum, year, term, cohort,
+  cohort-subject, projection, filters, and stable focus in the canonical destination.
+  `returnTo` restores that destination but never supplies report authority or scope.
 - Commercial quote selection should survive registration navigation through the
   backend quote token.
 - Authenticated additional-workspace creation routes through `/workspaces/new` and

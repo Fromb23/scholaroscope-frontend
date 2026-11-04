@@ -34,9 +34,11 @@ describe('Principal workspace foundation', () => {
     );
 
     expect(loading).toContain('aria-busy="true"');
-    expect(loading).toContain('Preparing the Principal oversight workspace');
+    expect(loading).toContain('The prompt shell remains available');
+    expect(loading).toContain('aria-label="Principal school question"');
     expect(error).toContain('role="alert"');
     expect(error).toContain('Academic context failed');
+    expect(error).toContain('aria-label="Principal school question"');
   });
 
   it('does not use activeRole in production Principal guards', () => {

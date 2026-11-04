@@ -16,6 +16,13 @@ describe('report intent contract', () => {
       .toBe('overview');
   });
 
+  it('treats projects as a first-class cohort-subject projection', () => {
+    expect(parseReportIntent(
+      { type: 'cohort-subject', cohortSubjectId: 3 },
+      'projection=projects&project_deployment=18',
+    )).toMatchObject({ projection: 'projects', focus: { projectDeploymentId: 18 } });
+  });
+
   it('normalizes legacy learner assignment intent into canonical object, projection, period, and focus', () => {
     expect(parseReportIntent(
       learnerSubject,
@@ -72,8 +79,9 @@ describe('report intent contract', () => {
   it('clears dependency descendants while preserving stable parent state', () => {
     const original = 'academic_year=8&term=4&cohort=2&subject=7&cohort_subject=3&student=22&projection=assignments&assignment=14&q=amina&sort=name&page=2';
     const changedTerm = applyReportStateChange(original, 'term', 5);
-    expect(changedTerm.get('projection')).toBe('assignments');
+    expect(changedTerm.get('projection')).toBeNull();
     expect(changedTerm.get('q')).toBe('amina');
+    expect(changedTerm.get('cohort_subject')).toBeNull();
     expect(changedTerm.get('assignment')).toBeNull();
 
     const changedSubject = applyReportStateChange(original, 'subject', 9);
@@ -84,5 +92,16 @@ describe('report intent contract', () => {
     const changedProjection = applyReportStateChange(original, 'projection', 'attendance');
     expect(changedProjection.get('term')).toBe('4');
     expect(changedProjection.get('cohort_subject')).toBe('3');
+
+    const changedCurriculum = applyReportStateChange(
+      `curriculum=1&${original}`,
+      'curriculum',
+      2,
+    );
+    expect(changedCurriculum.get('academic_year')).toBeNull();
+    expect(changedCurriculum.get('term')).toBeNull();
+    expect(changedCurriculum.get('cohort')).toBeNull();
+    expect(changedCurriculum.get('cohort_subject')).toBeNull();
+    expect(changedCurriculum.get('projection')).toBeNull();
   });
 });

@@ -696,6 +696,75 @@ export interface DashboardOverview {
   composition?: ReportCompositionMeta | null;
 }
 
+export type AcademicOverviewDataState =
+  | 'ZERO'
+  | 'NO_RECORDS'
+  | 'INCOMPLETE'
+  | 'UNAVAILABLE'
+  | 'AVAILABLE';
+
+export interface PrincipalAcademicOverview {
+  report_type: 'principal_academic_overview';
+  generated_at: string;
+  organization: ReportOrganization;
+  selection: {
+    curriculum_id: number | null;
+    academic_year_id: number | null;
+    term_id: number | null;
+    cohort_id: number | null;
+    cohort_subject_id: number | null;
+  };
+  options: {
+    curricula: Array<{ id: number; name: string }>;
+    academic_years: Array<{ id: number; name: string; is_current: boolean }>;
+    terms: Array<{ id: number; name: string; status: string }>;
+    cohorts: Array<{ id: number; name: string }>;
+    cohort_subjects: Array<{ id: number; subject_id: number; name: string }>;
+  };
+  summary: {
+    learners: { active_count: number; state: AcademicOverviewDataState };
+    cohorts: { count: number; state: AcademicOverviewDataState };
+    teaching_assignments: { active_count: number; state: AcademicOverviewDataState };
+    lessons: { planned_count: number; completed_count: number; state: AcademicOverviewDataState };
+    attendance: {
+      marked_count: number;
+      expected_count: number;
+      coverage_percentage: number | null;
+      attendance_rate: number | null;
+      state: AcademicOverviewDataState;
+    };
+    assessments: {
+      assessment_count: number;
+      score_slots: number;
+      scored_count: number;
+      missing_result_count: number;
+      state: AcademicOverviewDataState;
+    };
+    assignments: {
+      assignment_count: number;
+      recipient_count: number;
+      participated_count: number;
+      state: AcademicOverviewDataState;
+    };
+    projects: {
+      deployment_count: number;
+      active_count: number;
+      evidence_count: number;
+      state: AcademicOverviewDataState;
+    };
+    curriculum_progress: {
+      covered: number | null;
+      total: number | null;
+      percentage: number | null;
+      state: AcademicOverviewDataState;
+    };
+  };
+  data_completeness: {
+    state: 'COMPLETE' | 'INCOMPLETE';
+    warnings: Array<{ code: string; count: number }>;
+  };
+}
+
 export interface OverallStats {
   generic_average_score: number | null;
   cbc_average_weighted_score: number | null;

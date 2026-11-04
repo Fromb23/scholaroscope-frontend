@@ -289,8 +289,11 @@ describe('admin navigation config', () => {
   it('keeps Principal navigation read-only and separate from admin and teaching actions', () => {
     const hrefs = allNavHrefs(getPrincipalNav());
 
-    expect(hrefs).toContain('/principal');
-    expect(hrefs).toContain('/reports');
+    expect(hrefs).toEqual([
+      '/principal',
+      '/principal/academic-overview',
+      '/profile',
+    ]);
     expect(hrefs.some((href) => href.startsWith('/admin'))).toBe(false);
     expect(hrefs).not.toContain('/assessments/new');
     expect(hrefs).not.toContain('/lessons/prepare');

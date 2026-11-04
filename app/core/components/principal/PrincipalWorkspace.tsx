@@ -53,56 +53,8 @@ export function PrincipalWorkspaceShell({
     );
   };
 
-  if (state === 'loading') {
-    return (
-      <section
-        aria-busy="true"
-        aria-live="polite"
-        className="mx-auto max-w-6xl space-y-5"
-      >
-        <p className="sr-only">Preparing the Principal oversight workspace.</p>
-        <div className="theme-card h-28 animate-pulse rounded-2xl border theme-border" />
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="theme-card h-96 animate-pulse rounded-2xl border theme-border" />
-          <div className="theme-card h-64 animate-pulse rounded-2xl border theme-border" />
-        </div>
-      </section>
-    );
-  }
-
-  if (state === 'error') {
-    return (
-      <section
-        role="alert"
-        className="theme-card mx-auto max-w-2xl rounded-2xl border theme-border p-6"
-      >
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--color-warning)]" />
-          <div className="space-y-3">
-            <div>
-              <h1 className="text-lg font-semibold theme-text">Academic context unavailable</h1>
-              <p className="mt-1 text-sm theme-text-muted">
-                {errorMessage ?? 'The current academic year and term could not be loaded.'}
-              </p>
-            </div>
-            {onRetry ? (
-              <button
-                type="button"
-                onClick={onRetry}
-                className="theme-focus-ring inline-flex min-h-11 items-center gap-2 rounded-lg border theme-border px-4 py-2 text-sm font-medium theme-text theme-hover-surface"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Retry academic context
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="mx-auto max-w-6xl space-y-5" aria-busy={state === 'loading'}>
       <header className="theme-card overflow-hidden rounded-2xl border theme-border p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
@@ -127,6 +79,26 @@ export function PrincipalWorkspaceShell({
           </div>
         </div>
       </header>
+
+      {state === 'loading' ? (
+        <p role="status" className="theme-card rounded-xl border theme-border p-3 text-sm theme-text-muted">
+          Preparing academic context. The prompt shell remains available.
+        </p>
+      ) : state === 'error' ? (
+        <section role="alert" className="theme-card rounded-xl border theme-border p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--color-warning)]" />
+            <div className="flex-1">
+              <h2 className="font-semibold theme-text">Academic context unavailable</h2>
+              <p className="mt-1 text-sm theme-text-muted">
+                {errorMessage ?? 'The current academic year and term could not be loaded.'}
+                {' '}You still have access to the Principal workspace.
+              </p>
+            </div>
+            {onRetry ? <button type="button" onClick={onRetry} className="theme-focus-ring inline-flex min-h-10 items-center gap-2 rounded-lg border theme-border px-3 text-sm theme-text"><RefreshCw className="h-4 w-4" />Retry context</button> : null}
+          </div>
+        </section>
+      ) : null}
 
       <section aria-label="Oversight status" className="grid gap-3 sm:grid-cols-3">
         <StatusItem
@@ -164,11 +136,12 @@ export function PrincipalWorkspaceShell({
                 <button
                   key={question}
                   type="button"
+                  disabled={state !== 'ready'}
                   onClick={() => {
                     setPrompt(question);
                     setFoundationNotice(null);
                   }}
-                  className="theme-focus-ring rounded-full border theme-border px-3 py-2 text-left text-xs font-medium theme-text theme-hover-surface"
+                  className="theme-focus-ring rounded-full border theme-border px-3 py-2 text-left text-xs font-medium theme-text theme-hover-surface disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {question}
                 </button>

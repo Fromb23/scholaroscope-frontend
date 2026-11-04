@@ -51,6 +51,17 @@ import {
   parsePositiveReportParam,
   resolveReportBackHref,
 } from './reportNavigation';
+import type { ReportProjection } from './reportIntent';
+
+const OVERSIGHT_PROJECTIONS: Array<{ key: ReportProjection; label: string }> = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'learners', label: 'Learners' },
+  { key: 'attendance', label: 'Lessons and attendance' },
+  { key: 'assignments', label: 'Assignments' },
+  { key: 'assessments-results', label: 'Assessments and results' },
+  { key: 'projects', label: 'Projects' },
+  { key: 'curriculum-progress', label: 'Curriculum / CBC progress' },
+];
 
 function getLearnerSummaryNote(row: ClassSubjectLearnerRow): string {
   return row.summary_note || row.note || 'No summary note yet.';
@@ -548,6 +559,18 @@ export function ClassSubjectReportPage({
           }),
           variant: 'ghost' as const,
         },
+        {
+          label: 'Projects',
+          href: buildScopedOperationsHref('/projects', {
+            academic_year: parsePositiveReportParam(searchParams.get('academic_year')),
+            term: selectedTermId ?? report.period?.term_id ?? null,
+            cohort_subject: report.cohort_subject.id,
+            cohort: report.cohort.id,
+            subject: report.subject.id,
+            returnTo: currentReturnTo,
+          }),
+          variant: 'ghost' as const,
+        },
       ]
     : [];
   const renderLearnerLinks = useCallback(
@@ -648,6 +671,27 @@ export function ClassSubjectReportPage({
             />
           </div>
         </Card>
+
+        <nav aria-label="Cohort subject report projections" className="flex flex-wrap gap-2">
+          {OVERSIGHT_PROJECTIONS.map((projection) => (
+            <Link
+              key={projection.key}
+              href={buildCohortSubjectProjectionHref(
+                cohortSubjectId,
+                projection.key,
+                searchParams,
+                { instructorRoute: isTeachingReportRoute },
+              )}
+              className={`theme-focus-ring rounded-full border px-3 py-2 text-xs font-medium ${
+                (searchParams.get('projection') ?? 'overview') === projection.key
+                  ? 'theme-brand-icon'
+                  : 'theme-border theme-text theme-hover-surface'
+              }`}
+            >
+              {projection.label}
+            </Link>
+          ))}
+        </nav>
       </div>
 
       {visibleError ? <ErrorBanner message={visibleError} onDismiss={() => undefined} /> : null}
