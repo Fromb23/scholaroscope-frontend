@@ -15,7 +15,13 @@ function routeDepth(pathname: string): number {
   return pathname.split('/').filter(Boolean).length;
 }
 
-export function RouteTransition({ children }: { children: ReactNode }) {
+export function RouteTransition({
+  children,
+  fillAvailableHeight = false,
+}: {
+  children: ReactNode;
+  fillAvailableHeight?: boolean;
+}) {
   const pathname = usePathname();
   const [transition, setTransition] = useState<TransitionState>({
     pathname,
@@ -37,7 +43,7 @@ export function RouteTransition({ children }: { children: ReactNode }) {
   return (
     <div
       key={pathname}
-      className={`mobile-route-transition ${
+      className={`mobile-route-transition ${fillAvailableHeight ? 'h-full min-h-0 ' : ''}${
         transition.hasNavigated
           ? `mobile-route-transition-${transition.direction}`
           : 'mobile-route-transition-initial'

@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Save,
   Search,
+  Send,
   Trash2,
   User,
   X,
@@ -406,8 +407,8 @@ function ConversationCanvas({
   };
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col bg-[color:var(--color-background)]">
-      <div className="flex min-h-12 items-center justify-between gap-3 border-b theme-border px-4 py-2 lg:px-6">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[color:var(--color-background)]">
+      <div className="flex min-h-12 shrink-0 items-center justify-between gap-3 border-b theme-border px-4 py-2 lg:px-6">
         <button type="button" onClick={onOpenHistory} className="theme-focus-ring inline-flex min-h-10 items-center gap-2 rounded-lg border theme-border px-3 text-sm theme-text lg:hidden" aria-label="Open conversation history">
           <Menu className="h-4 w-4" />
           Conversations
@@ -427,7 +428,7 @@ function ConversationCanvas({
         </div>
       </div>
 
-      <div className="border-b theme-border px-4 py-2 text-xs theme-muted lg:px-6">
+      <div className="shrink-0 border-b theme-border px-4 py-2 text-xs theme-muted lg:px-6">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span>Principal oversight</span><span aria-hidden="true">·</span>
           <span>{contextLoading ? 'Academic context loading' : academicYearName ?? 'Academic year unavailable'}</span><span aria-hidden="true">·</span>
@@ -493,13 +494,13 @@ function ConversationCanvas({
         ) : null}
       </div>
 
-      <div className="border-t theme-border bg-[color:var(--color-surface)] p-3 sm:p-4">
+      <div className="shrink-0 border-t theme-border bg-[color:var(--color-surface)] p-3 sm:p-4">
         <form onSubmit={(event) => void submit(event)} aria-label="Principal question composer" className="mx-auto max-w-3xl">
           <label htmlFor="principal-prompt" className="sr-only">Ask a school-level question</label>
           <div className="flex items-end gap-2 rounded-2xl border theme-border bg-[color:var(--color-background)] p-2">
             <textarea id="principal-prompt" rows={2} value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onComposerKeyDown} disabled={!canSend || messageState.sending} placeholder={canSend ? 'Ask about governed attendance information' : 'Switch to Principal oversight context to ask a question'} className="min-h-14 flex-1 resize-none bg-transparent px-3 py-2 text-sm theme-text outline-none disabled:cursor-not-allowed disabled:opacity-70" />
-            <button type="submit" disabled={!canSend || !prompt.trim() || messageState.sending} aria-label="Send question" className="theme-focus-ring flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-primary)] text-white disabled:cursor-not-allowed disabled:opacity-40">
-              <Plus className="h-4 w-4 rotate-45" />
+            <button type="submit" disabled={!canSend || !prompt.trim() || messageState.sending} aria-label="Send message" className="theme-focus-ring flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-primary)] text-white disabled:cursor-not-allowed disabled:opacity-40">
+              <Send aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
           {!canSend ? <p className="mt-2 px-1 text-xs theme-muted">Questions are available only in your explicitly selected Principal oversight context. Your active context has not been changed.</p> : null}
@@ -563,8 +564,8 @@ export function PrincipalWorkspace() {
   );
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden rounded-none border theme-border lg:rounded-xl">
-      <aside className="hidden w-72 shrink-0 border-r theme-border lg:block" aria-label="Conversation navigation">
+    <div className="flex h-full min-h-0 w-full overflow-hidden">
+      <aside className="hidden h-full min-h-0 w-72 shrink-0 border-r theme-border lg:block" aria-label="Conversation navigation">
         {sidebar}
       </aside>
       {drawerOpen ? (
