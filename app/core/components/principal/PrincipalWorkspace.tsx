@@ -20,12 +20,18 @@ import {
   RefreshCw,
   Save,
   Search,
+  Trash2,
   User,
   X,
 } from 'lucide-react';
 
 import { useAuth } from '@/app/context/AuthContext';
 import { useCurrentAcademicYear, useCurrentTerm } from '@/app/core/hooks/useAcademic';
+import { AssistantResponseBlocks } from '@/app/core/components/principal/AssistantResponseBlocks';
+import {
+  type PrincipalConversationMessageState,
+  usePrincipalConversationMessages,
+} from '@/app/core/hooks/usePrincipalConversationMessages';
 import {
   type PrincipalConversationState,
   usePrincipalConversations,
@@ -335,26 +341,69 @@ function ConversationSidebar({
 
 interface ConversationCanvasProps {
   state: PrincipalConversationState;
+  messageState: PrincipalConversationMessageState;
   isBlank: boolean;
+  canSend: boolean;
   academicYearName?: string | null;
   termName?: string | null;
   contextUnavailable: boolean;
   contextLoading: boolean;
   onRetryContext: () => void;
   onOpenHistory: () => void;
+  onConversationCreated: (conversationId: number) => void;
 }
 
 function ConversationCanvas({
   state,
+  messageState,
   isBlank,
+  canSend,
   academicYearName,
   termName,
   contextUnavailable,
   contextLoading,
   onRetryContext,
   onOpenHistory,
+  onConversationCreated,
 }: ConversationCanvasProps) {
-  const submitUnavailable = (event: FormEvent<HTMLFormElement>) => event.preventDefault();
+  const [prompt, setPrompt] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messageState.messages.length, messageState.sending]);
+
+  const submit = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    if (!canSend || !prompt.trim() || messageState.sending) return;
+    const persistedConversationId = await messageState.submitMessage(prompt);
+    if (persistedConversationId !== null) {
+      setPrompt('');
+      if (isBlank) onConversationCreated(persistedConversationId);
+    }
+  };
+
+  const retry = async () => {
+    const persistedConversationId = await messageState.retrySubmission();
+    if (persistedConversationId !== null) {
+      setPrompt('');
+      if (isBlank) onConversationCreated(persistedConversationId);
+    }
+  };
+
+  const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void submit();
+    }
+  };
+
+  const deleteActiveConversation = async () => {
+    const conversation = state.activeConversation;
+    if (!conversation) return;
+    if (!window.confirm(`Delete "${conversation.title}"? This conversation cannot be recovered.`)) return;
+    await state.deleteConversation(conversation.id);
+  };
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-[color:var(--color-background)]">
@@ -366,9 +415,16 @@ function ConversationCanvas({
         <p className="min-w-0 truncate text-sm font-medium theme-text">
           {!isBlank && state.activeConversation ? state.activeConversation.title : 'New conversation'}
         </p>
-        <button type="button" disabled title="Sources appear with governed answers" className="theme-focus-ring rounded-lg border theme-border px-3 py-2 text-xs font-medium theme-muted disabled:cursor-not-allowed disabled:opacity-60">
-          Sources
-        </button>
+        <div className="flex items-center gap-2">
+          {state.activeConversation ? (
+            <button type="button" onClick={() => void deleteActiveConversation()} disabled={state.deletingId === state.activeConversation.id} aria-label={`Delete ${state.activeConversation.title}`} className="theme-focus-ring rounded-lg border theme-border p-2 text-[color:var(--color-danger)] disabled:opacity-50">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          ) : null}
+          <button type="button" disabled title="Sources appear with governed answers" className="theme-focus-ring rounded-lg border theme-border px-3 py-2 text-xs font-medium theme-muted disabled:cursor-not-allowed disabled:opacity-60">
+            Sources
+          </button>
+        </div>
       </div>
 
       <div className="border-b theme-border px-4 py-2 text-xs theme-muted lg:px-6">
@@ -376,7 +432,7 @@ function ConversationCanvas({
           <span>Principal oversight</span><span aria-hidden="true">·</span>
           <span>{contextLoading ? 'Academic context loading' : academicYearName ?? 'Academic year unavailable'}</span><span aria-hidden="true">·</span>
           <span>{contextLoading ? 'Term loading' : termName ?? 'No active term'}</span><span aria-hidden="true">·</span>
-          <span>Intelligence not connected</span>
+          <span>{canSend ? 'Governed intelligence' : 'Oversight context required'}</span>
           {contextUnavailable ? (
             <button type="button" onClick={onRetryContext} className="theme-focus-ring ml-1 inline-flex items-center gap-1 rounded underline" title="Academic context unavailable; retry">
               <RefreshCw className="h-3 w-3" /> Retry context
@@ -395,6 +451,31 @@ function ConversationCanvas({
             <p className="mt-2 text-sm theme-muted">This conversation was not found or is not available in your active workspace.</p>
             <Link href="/principal" className="theme-focus-ring mt-5 rounded-lg border theme-border px-4 py-2 text-sm font-medium theme-text">Start a new conversation</Link>
           </div>
+        ) : messageState.loading ? (
+          <div role="status" className="flex h-full min-h-72 items-center justify-center p-8 text-sm theme-muted">Loading conversation messagesâ€¦</div>
+        ) : messageState.unavailable ? (
+          <div role="alert" className="mx-auto flex h-full min-h-72 max-w-lg flex-col items-center justify-center p-8 text-center">
+            <h1 className="text-xl font-semibold theme-text">Messages unavailable</h1>
+            <p className="mt-2 text-sm theme-muted">The conversation remains available, but its messages could not be loaded.</p>
+            <button type="button" onClick={messageState.retryLoad} className="theme-focus-ring mt-4 rounded-lg border theme-border px-4 py-2 text-sm font-medium theme-text">Retry messages</button>
+          </div>
+        ) : messageState.messages.length > 0 ? (
+          <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6">
+            {messageState.messages.map((message) => (
+              <article key={message.id} className={message.role === 'USER' ? 'ml-auto max-w-[85%] rounded-2xl bg-[color:var(--brand-primary)] px-4 py-3 text-white' : 'mr-auto max-w-full rounded-2xl border theme-border bg-[color:var(--color-surface)] px-4 py-3'}>
+                <p className="sr-only">{message.role === 'USER' ? 'You' : 'Scholaroscope assistant'}</p>
+                {message.role === 'ASSISTANT' ? (
+                  <AssistantResponseBlocks blocks={message.content_blocks} />
+                ) : (
+                  <div className="space-y-2 text-sm leading-6">
+                    {message.content_blocks.map((block, index) => block.type === 'markdown' ? <p key={index} className="whitespace-pre-wrap">{block.text}</p> : null)}
+                  </div>
+                )}
+              </article>
+            ))}
+            {messageState.sending ? <p role="status" className="text-sm theme-muted">Sending your question and waiting for governed intelligenceâ€¦</p> : null}
+            <div ref={messagesEndRef} />
+          </div>
         ) : isBlank ? (
           <div className="mx-auto flex h-full min-h-72 max-w-2xl flex-col items-center justify-center px-6 py-12 text-center">
             <div className="rounded-2xl bg-[color:var(--brand-primary)]/10 p-4 text-[color:var(--brand-primary)]">
@@ -407,21 +488,28 @@ function ConversationCanvas({
           <div className="mx-auto flex h-full min-h-72 max-w-3xl flex-col items-center justify-center px-6 py-12 text-center">
             <History className="h-8 w-8 theme-subtle" />
             <h1 className="mt-4 max-w-full break-words text-xl font-semibold theme-text">{state.activeConversation.title}</h1>
-            <p className="mt-2 text-sm theme-muted">This conversation has no stored messages. Intelligence remains disconnected, so no answer has been fabricated.</p>
+            <p className="mt-2 text-sm theme-muted">This conversation has no stored messages yet.</p>
           </div>
         ) : null}
       </div>
 
       <div className="border-t theme-border bg-[color:var(--color-surface)] p-3 sm:p-4">
-        <form onSubmit={submitUnavailable} aria-label="Principal question composer" className="mx-auto max-w-3xl">
+        <form onSubmit={(event) => void submit(event)} aria-label="Principal question composer" className="mx-auto max-w-3xl">
           <label htmlFor="principal-prompt" className="sr-only">Ask a school-level question</label>
           <div className="flex items-end gap-2 rounded-2xl border theme-border bg-[color:var(--color-background)] p-2">
-            <textarea id="principal-prompt" rows={2} disabled placeholder="Intelligence not connected" className="min-h-14 flex-1 resize-none bg-transparent px-3 py-2 text-sm theme-text outline-none disabled:cursor-not-allowed disabled:opacity-70" />
-            <button type="submit" disabled aria-label="Send question" className="theme-focus-ring flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-primary)] text-white disabled:cursor-not-allowed disabled:opacity-40">
+            <textarea id="principal-prompt" rows={2} value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onComposerKeyDown} disabled={!canSend || messageState.sending} placeholder={canSend ? 'Ask about governed attendance information' : 'Switch to Principal oversight context to ask a question'} className="min-h-14 flex-1 resize-none bg-transparent px-3 py-2 text-sm theme-text outline-none disabled:cursor-not-allowed disabled:opacity-70" />
+            <button type="submit" disabled={!canSend || !prompt.trim() || messageState.sending} aria-label="Send question" className="theme-focus-ring flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-primary)] text-white disabled:cursor-not-allowed disabled:opacity-40">
               <Plus className="h-4 w-4 rotate-45" />
             </button>
           </div>
-          <p className="mt-2 px-1 text-xs theme-muted">Intelligence not connected. Questions cannot be sent yet.</p>
+          {!canSend ? <p className="mt-2 px-1 text-xs theme-muted">Questions are available only in your explicitly selected Principal oversight context. Your active context has not been changed.</p> : null}
+          {messageState.retryableError ? (
+            <div role="alert" className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-[color:var(--color-danger)]/30 p-3 text-xs">
+              <span className="text-[color:var(--color-danger)]">{messageState.retryableError}</span>
+              <button type="button" onClick={() => void retry()} disabled={messageState.sending} className="theme-focus-ring rounded underline">Retry</button>
+            </div>
+          ) : null}
+          {state.activeConversation && state.deleteErrorId === state.activeConversation.id ? <p role="alert" className="mt-2 px-1 text-xs text-[color:var(--color-danger)]">The conversation could not be deleted. It remains in your history; retry when ready.</p> : null}
         </form>
       </div>
     </section>
@@ -429,7 +517,7 @@ function ConversationCanvas({
 }
 
 export function PrincipalWorkspace() {
-  const { activeOrg } = useAuth();
+  const { activeOrg, activeOperatingContext } = useAuth();
   const params = useParams<{ conversationId?: string }>();
   const rawConversationId = params?.conversationId;
   const parsedConversationId = rawConversationId ? Number(rawConversationId) : null;
@@ -440,6 +528,10 @@ export function PrincipalWorkspace() {
     activeOrg?.id ?? null,
     conversationId,
     invalidConversationId,
+  );
+  const messageState = usePrincipalConversationMessages(
+    activeOrg?.id ?? null,
+    conversationId,
   );
   const academicYear = useCurrentAcademicYear();
   const term = useCurrentTerm();
@@ -453,6 +545,12 @@ export function PrincipalWorkspace() {
   useEffect(() => {
     if (!activeOrg) router.replace('/dashboard');
   }, [activeOrg, router]);
+
+  useEffect(() => {
+    document.title = state.activeConversation?.title
+      ? `${state.activeConversation.title} | Scholaroscope`
+      : 'Principal Dashboard | Scholaroscope';
+  }, [state.activeConversation?.title]);
 
   const sidebar = (
     <ConversationSidebar
@@ -480,7 +578,9 @@ export function PrincipalWorkspace() {
       ) : null}
       <ConversationCanvas
         state={state}
+        messageState={messageState}
         isBlank={rawConversationId === undefined}
+        canSend={activeOperatingContext === 'INSTITUTION_OVERSIGHT'}
         academicYearName={academicYear.currentYear?.name}
         termName={term.currentTerm?.name}
         contextUnavailable={Boolean(academicYear.error || term.error)}
@@ -490,6 +590,9 @@ export function PrincipalWorkspace() {
           void term.refetch();
         }}
         onOpenHistory={() => setDrawerOpen(true)}
+        onConversationCreated={(createdConversationId) => {
+          router.replace(`/principal/conversations/${createdConversationId}`);
+        }}
       />
     </div>
   );

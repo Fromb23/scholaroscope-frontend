@@ -11,6 +11,75 @@ export interface AssistantConversation {
 
 export type AssistantConversationListResponse = PaginatedResponse<AssistantConversation>;
 
+export type AssistantMessageRole = 'USER' | 'ASSISTANT';
+
+export interface AssistantMarkdownBlock {
+  type: 'markdown';
+  text: string;
+}
+
+export interface AssistantMetricsBlock {
+  type: 'metrics';
+  values: Record<string, number>;
+}
+
+export interface AssistantTableBlock {
+  type: 'table';
+  columns: string[];
+  rows: Array<Record<string, string | number | null>>;
+}
+
+export interface AssistantActionsBlock {
+  type: 'actions';
+  actions: AssistantAction[];
+}
+
+export interface AssistantClarificationBlock {
+  type: 'clarification';
+  question: string;
+}
+
+export interface AssistantUnsupportedCapabilityBlock {
+  type: 'unsupported_capability';
+  code: string;
+  message: string;
+}
+
+export interface AssistantErrorBlock {
+  type: 'error';
+  code: string;
+  message: string;
+}
+
+export type AssistantResponseBlock =
+  | AssistantMarkdownBlock
+  | AssistantMetricsBlock
+  | AssistantTableBlock
+  | AssistantActionsBlock
+  | AssistantClarificationBlock
+  | AssistantUnsupportedCapabilityBlock
+  | AssistantErrorBlock;
+
+export interface AssistantMessage {
+  id: number;
+  role: AssistantMessageRole;
+  content_blocks: AssistantResponseBlock[];
+  client_request_id: string | null;
+  created_at: string;
+}
+
+export interface AssistantMessageCreatePayload {
+  message: string;
+  client_request_id: string;
+}
+
+export interface AssistantConversationMessageResponse {
+  schema_version: string;
+  conversation: AssistantConversation;
+  user_message: AssistantMessage;
+  assistant_message: AssistantMessage | null;
+}
+
 export type AssistantActionType = 'navigate' | 'page_action' | 'feedback' | 'external' | 'chat_prompt';
 export type AssistantConfidence = 'low' | 'medium' | 'high';
 export type AssistantSuggestionPriority = 'low' | 'medium' | 'high';

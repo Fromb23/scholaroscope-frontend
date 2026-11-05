@@ -2,13 +2,20 @@ import { apiClient } from '@/app/core/api/client';
 import type {
   AssistantConversation,
   AssistantConversationListResponse,
+  AssistantConversationMessageResponse,
   AssistantChatRequest,
   AssistantChatResponse,
   AssistantFeedbackPayload,
   AssistantFeedbackResponse,
+  AssistantMessage,
+  AssistantMessageCreatePayload,
   AssistantSuggestRequest,
   AssistantSuggestResponse,
 } from '@/app/core/types/assistant';
+
+const OVERSIGHT_CONTEXT_HEADERS = {
+  'X-Scholaroscope-Operating-Context': 'INSTITUTION_OVERSIGHT',
+} as const;
 
 export const assistantAPI = {
   listConversations: async (
@@ -42,6 +49,44 @@ export const assistantAPI = {
       { title },
     );
     return response.data;
+  },
+
+  createConversationMessage: async (
+    payload: AssistantMessageCreatePayload,
+  ): Promise<AssistantConversationMessageResponse> => {
+    const response = await apiClient.post<AssistantConversationMessageResponse>(
+      '/assistant/conversations/messages/',
+      payload,
+      { headers: OVERSIGHT_CONTEXT_HEADERS },
+    );
+    return response.data;
+  },
+
+  listConversationMessages: async (
+    conversationId: number,
+    signal?: AbortSignal,
+  ): Promise<AssistantMessage[]> => {
+    const response = await apiClient.get<AssistantMessage[]>(
+      `/assistant/conversations/${conversationId}/messages/`,
+      { signal },
+    );
+    return response.data;
+  },
+
+  appendConversationMessage: async (
+    conversationId: number,
+    payload: AssistantMessageCreatePayload,
+  ): Promise<AssistantConversationMessageResponse> => {
+    const response = await apiClient.post<AssistantConversationMessageResponse>(
+      `/assistant/conversations/${conversationId}/messages/`,
+      payload,
+      { headers: OVERSIGHT_CONTEXT_HEADERS },
+    );
+    return response.data;
+  },
+
+  deleteConversation: async (conversationId: number): Promise<void> => {
+    await apiClient.delete(`/assistant/conversations/${conversationId}/`);
   },
 
   chat: async (payload: AssistantChatRequest): Promise<AssistantChatResponse> => {
