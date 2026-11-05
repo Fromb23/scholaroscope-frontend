@@ -48,7 +48,7 @@ describe('AssistantResponseBlocks', () => {
     expect(html).not.toContain('role="alert"');
   });
 
-  it('renders provider unavailability with its backend code and message', () => {
+  it('renders a safe retry message without backend diagnostics', () => {
     const html = render([{
       type: 'error',
       code: 'intelligence_unavailable',
@@ -56,8 +56,9 @@ describe('AssistantResponseBlocks', () => {
     }]);
 
     expect(html).toContain('role="alert"');
-    expect(html).toContain('Assistant intelligence is unavailable.');
-    expect(html).toContain('intelligence_unavailable');
+    expect(html).toContain('The response could not be completed. Please retry.');
+    expect(html).not.toContain('Assistant intelligence is unavailable.');
+    expect(html).not.toContain('intelligence_unavailable');
   });
 
   it('renders markdown as escaped text', () => {

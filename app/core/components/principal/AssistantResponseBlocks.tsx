@@ -89,8 +89,7 @@ export function AssistantResponseBlocks({ blocks }: AssistantResponseBlocksProps
           case 'error':
             return (
               <div key={index} role="alert" className="rounded-lg border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger)]/5 p-3">
-                <p className="text-sm theme-text">{block.message}</p>
-                <p className="mt-1 text-xs theme-muted">Code: {block.code}</p>
+                <p className="text-sm theme-text">The response could not be completed. Please retry.</p>
               </div>
             );
           case 'actions':

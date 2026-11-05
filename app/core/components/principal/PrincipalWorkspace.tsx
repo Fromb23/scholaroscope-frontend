@@ -498,7 +498,7 @@ function ConversationCanvas({
         <form onSubmit={(event) => void submit(event)} aria-label="Principal question composer" className="mx-auto max-w-3xl">
           <label htmlFor="principal-prompt" className="sr-only">Ask a school-level question</label>
           <div className="flex items-end gap-2 rounded-2xl border theme-border bg-[color:var(--color-background)] p-2">
-            <textarea id="principal-prompt" rows={2} value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onComposerKeyDown} disabled={!canSend || messageState.sending} placeholder={canSend ? 'Ask about governed attendance information' : 'Switch to Principal oversight context to ask a question'} className="min-h-14 flex-1 resize-none bg-transparent px-3 py-2 text-sm theme-text outline-none disabled:cursor-not-allowed disabled:opacity-70" />
+            <textarea id="principal-prompt" rows={2} value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onComposerKeyDown} disabled={!canSend || messageState.sending} placeholder={canSend ? 'Ask about your school' : 'Switch to Principal oversight context to ask a question'} className="min-h-14 flex-1 resize-none bg-transparent px-3 py-2 text-sm theme-text outline-none disabled:cursor-not-allowed disabled:opacity-70" />
             <button type="submit" disabled={!canSend || !prompt.trim() || messageState.sending} aria-label="Send message" className="theme-focus-ring flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-primary)] text-white disabled:cursor-not-allowed disabled:opacity-40">
               <Send aria-hidden="true" className="h-4 w-4" />
             </button>

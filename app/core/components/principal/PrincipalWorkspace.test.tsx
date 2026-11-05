@@ -229,6 +229,11 @@ describe('Principal conversational workspace', () => {
     expect(messageHook).toContain('return performSubmission(pending);');
   });
 
+  it('uses school-wide composer wording', () => {
+    expect(workspace).toContain("'Ask about your school'");
+    expect(workspace).not.toContain('Ask about governed attendance information');
+  });
+
   it('does not submit or switch context outside explicit oversight', () => {
     expect(workspace).toContain("canSend={activeOperatingContext === 'INSTITUTION_OVERSIGHT'}");
     expect(workspace).toContain('Your active context has not been changed.');
