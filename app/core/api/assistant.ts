@@ -12,10 +12,23 @@ import type {
   AssistantSuggestRequest,
   AssistantSuggestResponse,
 } from '@/app/core/types/assistant';
+import axios from 'axios';
 
 const OVERSIGHT_CONTEXT_HEADERS = {
   'X-Scholaroscope-Operating-Context': 'INSTITUTION_OVERSIGHT',
 } as const;
+
+export const ASSISTANT_REQUEST_TIMEOUT_MS = 45_000;
+
+export function isAssistantRequestTimeout(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.code === 'ECONNABORTED';
+}
+
+const assistantRequestConfig = (signal?: AbortSignal) => ({
+  headers: OVERSIGHT_CONTEXT_HEADERS,
+  signal,
+  timeout: ASSISTANT_REQUEST_TIMEOUT_MS,
+});
 
 export const assistantAPI = {
   listConversations: async (
@@ -54,11 +67,12 @@ export const assistantAPI = {
 
   createConversationMessage: async (
     payload: AssistantMessageCreatePayload,
+    signal?: AbortSignal,
   ): Promise<AssistantConversationMessageResponse> => {
     const response = await apiClient.post<AssistantConversationMessageResponse>(
       '/assistant/conversations/messages/',
       payload,
-      { headers: OVERSIGHT_CONTEXT_HEADERS },
+      assistantRequestConfig(signal),
     );
     return response.data;
   },
@@ -77,11 +91,12 @@ export const assistantAPI = {
   appendConversationMessage: async (
     conversationId: number,
     payload: AssistantMessageCreatePayload,
+    signal?: AbortSignal,
   ): Promise<AssistantConversationMessageResponse> => {
     const response = await apiClient.post<AssistantConversationMessageResponse>(
       `/assistant/conversations/${conversationId}/messages/`,
       payload,
-      { headers: OVERSIGHT_CONTEXT_HEADERS },
+      assistantRequestConfig(signal),
     );
     return response.data;
   },

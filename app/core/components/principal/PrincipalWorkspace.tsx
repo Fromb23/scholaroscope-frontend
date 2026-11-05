@@ -3,6 +3,7 @@
 import {
   type FormEvent,
   type KeyboardEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -27,6 +28,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '@/app/context/AuthContext';
+import { AssistantThinkingIndicator } from '@/app/core/components/assistant/AssistantThinkingIndicator';
 import { useCurrentAcademicYear, useCurrentTerm } from '@/app/core/hooks/useAcademic';
 import { AssistantResponseBlocks } from '@/app/core/components/principal/AssistantResponseBlocks';
 import {
@@ -369,10 +371,39 @@ function ConversationCanvas({
 }: ConversationCanvasProps) {
   const [prompt, setPrompt] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const nearBottomRef = useRef(true);
+  const scrollFrameRef = useRef<number | null>(null);
+
+  const followLatestMessage = useCallback(() => {
+    if (!nearBottomRef.current || scrollFrameRef.current !== null) return;
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      scrollFrameRef.current = null;
+    });
+  }, []);
+
+  useEffect(() => followLatestMessage(), [
+    followLatestMessage,
+    messageState.messages.length,
+    messageState.requestState,
+  ]);
+
+  useEffect(() => () => {
+    if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
+  }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messageState.messages.length, messageState.sending]);
+    if ([
+      'COMPLETE',
+      'PROVIDER_TIMEOUT',
+      'RESPONSE_REJECTED',
+      'REQUEST_FAILED',
+    ].includes(messageState.requestState)) {
+      composerRef.current?.focus();
+    }
+  }, [messageState.requestState]);
 
   const submit = async (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
@@ -442,7 +473,15 @@ function ConversationCanvas({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={messagesContainerRef}
+        className="min-h-0 flex-1 overflow-y-auto"
+        onScroll={() => {
+          const container = messagesContainerRef.current;
+          if (!container) return;
+          nearBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+        }}
+      >
         {state.activeLoading ? (
           <div role="status" className="flex h-full min-h-72 items-center justify-center p-8 text-sm theme-muted">Opening conversation…</div>
         ) : state.activeUnavailable ? (
@@ -466,7 +505,12 @@ function ConversationCanvas({
               <article key={message.id} className={message.role === 'USER' ? 'ml-auto max-w-[85%] rounded-2xl bg-[color:var(--brand-primary)] px-4 py-3 text-white' : 'mr-auto max-w-full rounded-2xl border theme-border bg-[color:var(--color-surface)] px-4 py-3'}>
                 <p className="sr-only">{message.role === 'USER' ? 'You' : 'Scholaroscope assistant'}</p>
                 {message.role === 'ASSISTANT' ? (
-                  <AssistantResponseBlocks blocks={message.content_blocks} />
+                  <AssistantResponseBlocks
+                    blocks={message.content_blocks}
+                    progressive={messageState.progressiveMessageIds.has(message.id)}
+                    onProgressiveProgress={followLatestMessage}
+                    onProgressiveComplete={() => messageState.completeProgressiveMessage(message.id)}
+                  />
                 ) : (
                   <div className="space-y-2 text-sm leading-6">
                     {message.content_blocks.map((block, index) => block.type === 'markdown' ? <p key={index} className="whitespace-pre-wrap">{block.text}</p> : null)}
@@ -474,7 +518,9 @@ function ConversationCanvas({
                 )}
               </article>
             ))}
-            {messageState.sending ? <p role="status" className="text-sm theme-muted">Sending your question and waiting for governed intelligenceâ€¦</p> : null}
+            {['SUBMITTING', 'THINKING'].includes(messageState.requestState)
+              ? <AssistantThinkingIndicator />
+              : null}
             <div ref={messagesEndRef} />
           </div>
         ) : isBlank ? (
@@ -498,7 +544,7 @@ function ConversationCanvas({
         <form onSubmit={(event) => void submit(event)} aria-label="Principal question composer" className="mx-auto max-w-3xl">
           <label htmlFor="principal-prompt" className="sr-only">Ask a school-level question</label>
           <div className="flex items-end gap-2 rounded-2xl border theme-border bg-[color:var(--color-background)] p-2">
-            <textarea id="principal-prompt" rows={2} value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onComposerKeyDown} disabled={!canSend || messageState.sending} placeholder={canSend ? 'Ask about your school' : 'Switch to Principal oversight context to ask a question'} className="min-h-14 flex-1 resize-none bg-transparent px-3 py-2 text-sm theme-text outline-none disabled:cursor-not-allowed disabled:opacity-70" />
+            <textarea ref={composerRef} id="principal-prompt" rows={2} value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onComposerKeyDown} disabled={!canSend || messageState.sending} placeholder={canSend ? 'Ask about your school' : 'Switch to Principal oversight context to ask a question'} className="min-h-14 flex-1 resize-none bg-transparent px-3 py-2 text-sm theme-text outline-none disabled:cursor-not-allowed disabled:opacity-70" />
             <button type="submit" disabled={!canSend || !prompt.trim() || messageState.sending} aria-label="Send message" className="theme-focus-ring flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-primary)] text-white disabled:cursor-not-allowed disabled:opacity-40">
               <Send aria-hidden="true" className="h-4 w-4" />
             </button>

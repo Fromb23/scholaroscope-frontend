@@ -61,6 +61,24 @@ describe('AssistantResponseBlocks', () => {
     expect(html).not.toContain('intelligence_unavailable');
   });
 
+  it('maps typed provider failures without exposing internal diagnostics', () => {
+    const timeout = render([{
+      type: 'error',
+      code: 'assistant_provider_timeout',
+      message: 'intelligence_timeout',
+    }]);
+    const rejected = render([{
+      type: 'error',
+      code: 'assistant_response_rejected',
+      message: 'provider_malformed_output',
+    }]);
+
+    expect(timeout).toContain('The response took too long to complete. Please retry.');
+    expect(timeout).not.toContain('intelligence_timeout');
+    expect(rejected).toContain('I couldn’t complete that response safely. Please retry.');
+    expect(rejected).not.toContain('provider_malformed_output');
+  });
+
   it('renders markdown as escaped text', () => {
     const html = render([{ type: 'markdown', text: '<script>alert(1)</script>' }]);
 
