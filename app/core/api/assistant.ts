@@ -24,7 +24,7 @@ export const assistantAPI = {
   ): Promise<AssistantConversationListResponse> => {
     const response = await apiClient.get<AssistantConversationListResponse>(
       '/assistant/conversations/',
-      { params, signal },
+      { params, signal, headers: OVERSIGHT_CONTEXT_HEADERS },
     );
     return response.data;
   },
@@ -35,7 +35,7 @@ export const assistantAPI = {
   ): Promise<AssistantConversation> => {
     const response = await apiClient.get<AssistantConversation>(
       `/assistant/conversations/${conversationId}/`,
-      { signal },
+      { signal, headers: OVERSIGHT_CONTEXT_HEADERS },
     );
     return response.data;
   },
@@ -47,6 +47,7 @@ export const assistantAPI = {
     const response = await apiClient.patch<AssistantConversation>(
       `/assistant/conversations/${conversationId}/`,
       { title },
+      { headers: OVERSIGHT_CONTEXT_HEADERS },
     );
     return response.data;
   },
@@ -68,7 +69,7 @@ export const assistantAPI = {
   ): Promise<AssistantMessage[]> => {
     const response = await apiClient.get<AssistantMessage[]>(
       `/assistant/conversations/${conversationId}/messages/`,
-      { signal },
+      { signal, headers: OVERSIGHT_CONTEXT_HEADERS },
     );
     return response.data;
   },
@@ -86,7 +87,10 @@ export const assistantAPI = {
   },
 
   deleteConversation: async (conversationId: number): Promise<void> => {
-    await apiClient.delete(`/assistant/conversations/${conversationId}/`);
+    await apiClient.delete(
+      `/assistant/conversations/${conversationId}/`,
+      { headers: OVERSIGHT_CONTEXT_HEADERS },
+    );
   },
 
   chat: async (payload: AssistantChatRequest): Promise<AssistantChatResponse> => {

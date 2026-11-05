@@ -533,6 +533,7 @@ export function PrincipalWorkspace() {
   const messageState = usePrincipalConversationMessages(
     activeOrg?.id ?? null,
     conversationId,
+    state.applyConversationUpdate,
   );
   const academicYear = useCurrentAcademicYear();
   const term = useCurrentTerm();

@@ -59,6 +59,7 @@ export interface PrincipalConversationState {
   renameConversation: (conversationId: number, title: string) => Promise<boolean>;
   deleteConversation: (conversationId: number) => Promise<boolean>;
   retryRecent: () => void;
+  applyConversationUpdate?: (conversation: AssistantConversation) => void;
 }
 
 export function usePrincipalConversations(
@@ -302,6 +303,17 @@ export function usePrincipalConversations(
     }
   }, [activeConversation?.id, conversationId, deletingId, organizationId, router]);
 
+  const applyConversationUpdate = useCallback((conversation: AssistantConversation) => {
+    if (organizationId !== organizationRef.current) return;
+    const replace = (rows: AssistantConversation[]) => rows.map(
+      (row) => row.id === conversation.id ? conversation : row,
+    );
+    setRecent(replace);
+    setOlder(replace);
+    setSearchResults(replace);
+    setActiveConversation((current) => current?.id === conversation.id ? conversation : current);
+  }, [organizationId]);
+
   return {
     recent,
     recentCount,
@@ -330,5 +342,6 @@ export function usePrincipalConversations(
     renameConversation,
     deleteConversation,
     retryRecent: () => void loadRecent(),
+    applyConversationUpdate,
   };
 }

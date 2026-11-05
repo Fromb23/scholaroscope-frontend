@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { assistantAPI } from '@/app/core/api/assistant';
-import type { AssistantMessage } from '@/app/core/types/assistant';
+import type { AssistantConversation, AssistantMessage } from '@/app/core/types/assistant';
 
 interface PendingSubmission {
   message: string;
@@ -41,6 +41,7 @@ function mergeMessages(
 export function usePrincipalConversationMessages(
   organizationId: number | null,
   conversationId: number | null,
+  onConversationUpdated?: (conversation: AssistantConversation) => void,
 ): PrincipalConversationMessageState {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,6 +136,7 @@ export function usePrincipalConversationMessages(
         current,
         [response.user_message, response.assistant_message],
       ));
+      onConversationUpdated?.(response.conversation);
       pendingRef.current = null;
       if (pending.conversationId === null) {
         createdConversationRef.current = response.conversation.id;
@@ -156,7 +158,7 @@ export function usePrincipalConversationMessages(
         setSending(false);
       }
     }
-  }, []);
+  }, [onConversationUpdated]);
 
   const submitMessage = useCallback(async (rawMessage: string) => {
     const message = rawMessage.trim();
