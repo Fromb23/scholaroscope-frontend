@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import type {
   AssistantAction,
+  AssistantRunDiagnostics,
   AssistantResponseBlock,
 } from '@/app/core/types/assistant';
 import {
@@ -14,6 +15,8 @@ interface AssistantResponseBlocksProps {
   progressive?: boolean;
   onProgressiveComplete?: () => void;
   onProgressiveProgress?: () => void;
+  onRetry?: () => void;
+  diagnostics?: AssistantRunDiagnostics;
 }
 
 function labelFor(value: string): string {
@@ -71,6 +74,8 @@ export function AssistantResponseBlocks({
   progressive = false,
   onProgressiveComplete,
   onProgressiveProgress,
+  onRetry,
+  diagnostics,
 }: AssistantResponseBlocksProps) {
   const progressiveMarkdownIndices = blocks.flatMap((block, index) => (
     block.type === 'markdown' && !isStructuredAssistantMarkdown(block.text) ? [index] : []
@@ -124,6 +129,19 @@ export function AssistantResponseBlocks({
             return (
               <div key={index} role="alert" className="rounded-lg border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger)]/5 p-3">
                 <p className="text-sm theme-text">{safeErrorMessage(block.code)}</p>
+                {onRetry ? <button type="button" onClick={onRetry} className="theme-focus-ring mt-2 rounded underline text-sm">Retry</button> : null}
+                {diagnostics ? (
+                  <details className="mt-3 text-xs theme-muted">
+                    <summary className="cursor-pointer">Development diagnostics</summary>
+                    <dl className="mt-2 grid grid-cols-2 gap-1">
+                      <dt>Run</dt><dd>{diagnostics.run_id}</dd>
+                      <dt>Stage</dt><dd>{diagnostics.stage}</dd>
+                      <dt>Failure</dt><dd>{diagnostics.failure_code ?? '—'}</dd>
+                      <dt>Latency</dt><dd>{diagnostics.latency_ms} ms</dd>
+                      <dt>Tool</dt><dd>{diagnostics.tool_selected ?? 'None'}</dd>
+                    </dl>
+                  </details>
+                ) : null}
               </div>
             );
           case 'actions':

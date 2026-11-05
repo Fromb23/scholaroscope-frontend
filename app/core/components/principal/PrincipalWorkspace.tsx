@@ -370,6 +370,7 @@ function ConversationCanvas({
   onConversationCreated,
 }: ConversationCanvasProps) {
   const [prompt, setPrompt] = useState('');
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -377,9 +378,11 @@ function ConversationCanvas({
   const scrollFrameRef = useRef<number | null>(null);
 
   const followLatestMessage = useCallback(() => {
-    if (!nearBottomRef.current || scrollFrameRef.current !== null) return;
+    if (!nearBottomRef.current) { setShowJumpToLatest(true); return; }
+    if (scrollFrameRef.current !== null) return;
     scrollFrameRef.current = requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      messagesEndRef.current?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'end' });
       scrollFrameRef.current = null;
     });
   }, []);
@@ -388,7 +391,15 @@ function ConversationCanvas({
     followLatestMessage,
     messageState.messages.length,
     messageState.requestState,
+    messageState.executionStage,
   ]);
+
+  const jumpToLatest = useCallback(() => {
+    nearBottomRef.current = true;
+    setShowJumpToLatest(false);
+    const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    messagesEndRef.current?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'end' });
+  }, []);
 
   useEffect(() => () => {
     if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
@@ -473,13 +484,16 @@ function ConversationCanvas({
         </div>
       </div>
 
+      <div className="relative min-h-0 flex-1">
       <div
         ref={messagesContainerRef}
-        className="min-h-0 flex-1 overflow-y-auto"
+        className="h-full min-h-0 overflow-y-auto"
         onScroll={() => {
           const container = messagesContainerRef.current;
           if (!container) return;
-          nearBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+          const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+          nearBottomRef.current = nearBottom;
+          if (nearBottom) setShowJumpToLatest(false);
         }}
       >
         {state.activeLoading ? (
@@ -502,7 +516,7 @@ function ConversationCanvas({
         ) : messageState.messages.length > 0 ? (
           <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6">
             {messageState.messages.map((message) => (
-              <article key={message.id} className={message.role === 'USER' ? 'ml-auto max-w-[85%] rounded-2xl bg-[color:var(--brand-primary)] px-4 py-3 text-white' : 'mr-auto max-w-full rounded-2xl border theme-border bg-[color:var(--color-surface)] px-4 py-3'}>
+              <article key={message.id} className={message.role === 'USER' ? 'ml-auto w-fit max-w-[85%] rounded-2xl bg-[color:var(--brand-primary)] px-4 py-3 text-white' : 'mr-auto w-fit max-w-full rounded-2xl border theme-border bg-[color:var(--color-surface)] px-4 py-3'}>
                 <p className="sr-only">{message.role === 'USER' ? 'You' : 'Scholaroscope assistant'}</p>
                 {message.role === 'ASSISTANT' ? (
                   <AssistantResponseBlocks
@@ -510,6 +524,8 @@ function ConversationCanvas({
                     progressive={messageState.progressiveMessageIds.has(message.id)}
                     onProgressiveProgress={followLatestMessage}
                     onProgressiveComplete={() => messageState.completeProgressiveMessage(message.id)}
+                    onRetry={message.content_blocks.some((block) => block.type === 'error') && messageState.retryableError ? () => void retry() : undefined}
+                    diagnostics={message.content_blocks.some((block) => block.type === 'error') ? messageState.diagnostics : undefined}
                   />
                 ) : (
                   <div className="space-y-2 text-sm leading-6">
@@ -519,7 +535,7 @@ function ConversationCanvas({
               </article>
             ))}
             {['SUBMITTING', 'THINKING'].includes(messageState.requestState)
-              ? <AssistantThinkingIndicator />
+              ? <AssistantThinkingIndicator stage={messageState.executionStage} longRunning={messageState.longRunning} />
               : null}
             <div ref={messagesEndRef} />
           </div>
@@ -539,6 +555,13 @@ function ConversationCanvas({
           </div>
         ) : null}
       </div>
+      {showJumpToLatest ? (
+        <button type="button" onClick={jumpToLatest} aria-label="Jump to latest response" className="theme-focus-ring absolute bottom-4 right-5 flex h-10 w-10 items-center justify-center rounded-full border theme-border bg-[color:var(--color-surface)] shadow-lg">
+          <ChevronDown className="h-5 w-5" />
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[color:var(--brand-primary)]" aria-hidden="true" />
+        </button>
+      ) : null}
+      </div>
 
       <div className="shrink-0 border-t theme-border bg-[color:var(--color-surface)] p-3 sm:p-4">
         <form onSubmit={(event) => void submit(event)} aria-label="Principal question composer" className="mx-auto max-w-3xl">
@@ -550,12 +573,6 @@ function ConversationCanvas({
             </button>
           </div>
           {!canSend ? <p className="mt-2 px-1 text-xs theme-muted">Questions are available only in your explicitly selected Principal oversight context. Your active context has not been changed.</p> : null}
-          {messageState.retryableError ? (
-            <div role="alert" className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-[color:var(--color-danger)]/30 p-3 text-xs">
-              <span className="text-[color:var(--color-danger)]">{messageState.retryableError}</span>
-              <button type="button" onClick={() => void retry()} disabled={messageState.sending} className="theme-focus-ring rounded underline">Retry</button>
-            </div>
-          ) : null}
           {state.activeConversation && state.deleteErrorId === state.activeConversation.id ? <p role="alert" className="mt-2 px-1 text-xs text-[color:var(--color-danger)]">The conversation could not be deleted. It remains in your history; retry when ready.</p> : null}
         </form>
       </div>

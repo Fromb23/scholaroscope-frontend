@@ -11,6 +11,7 @@ import type {
   AssistantMessageCreatePayload,
   AssistantSuggestRequest,
   AssistantSuggestResponse,
+  AssistantRun,
 } from '@/app/core/types/assistant';
 import axios from 'axios';
 
@@ -97,6 +98,22 @@ export const assistantAPI = {
       `/assistant/conversations/${conversationId}/messages/`,
       payload,
       assistantRequestConfig(signal),
+    );
+    return response.data;
+  },
+
+  getRun: async (runId: number, signal?: AbortSignal): Promise<AssistantRun> => {
+    const response = await apiClient.get<AssistantRun>(`/assistant/runs/${runId}/`, {
+      signal, headers: OVERSIGHT_CONTEXT_HEADERS,
+    });
+    return response.data;
+  },
+
+  retryRun: async (runId: number, clientRequestId: string, signal?: AbortSignal): Promise<AssistantRun> => {
+    const response = await apiClient.post<AssistantRun>(
+      `/assistant/runs/${runId}/retry/`,
+      { client_request_id: clientRequestId },
+      { signal, headers: OVERSIGHT_CONTEXT_HEADERS },
     );
     return response.data;
   },

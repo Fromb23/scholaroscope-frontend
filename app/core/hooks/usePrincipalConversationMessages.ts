@@ -1,30 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-import {
-  assistantAPI,
-  isAssistantRequestTimeout,
-} from '@/app/core/api/assistant';
+import { assistantAPI } from '@/app/core/api/assistant';
 import { isStructuredAssistantMarkdown } from '@/app/core/components/assistant/AssistantProgressiveText';
-import {
-  type AssistantRequestState,
-  useAssistantRequestState,
-} from '@/app/core/components/assistant/useAssistantRequestState';
-import type { AssistantConversation, AssistantMessage } from '@/app/core/types/assistant';
-
-interface PendingSubmission {
-  message: string;
-  clientRequestId: string;
-  conversationId: number | null;
-  organizationId: number;
-}
+import { type AssistantRequestState, useAssistantRequestState } from '@/app/core/components/assistant/useAssistantRequestState';
+import type {
+  AssistantConversation, AssistantExecutionStage, AssistantMessage,
+  AssistantRun, AssistantRunDiagnostics,
+} from '@/app/core/types/assistant';
 
 export interface PrincipalConversationMessageState {
   messages: AssistantMessage[];
   loading: boolean;
   sending: boolean;
   requestState: AssistantRequestState;
+  executionStage: AssistantExecutionStage | null;
+  longRunning: boolean;
+  diagnostics?: AssistantRunDiagnostics;
   progressiveMessageIds: ReadonlySet<number>;
   retryableError: string | null;
   unavailable: boolean;
@@ -34,17 +26,11 @@ export interface PrincipalConversationMessageState {
   completeProgressiveMessage: (messageId: number) => void;
 }
 
-function mergeMessages(
-  current: AssistantMessage[],
-  incoming: Array<AssistantMessage | null>,
-): AssistantMessage[] {
+function mergeMessages(current: AssistantMessage[], incoming: Array<AssistantMessage | null>) {
   const next = [...current];
-  const seen = new Set(current.map((message) => message.id));
+  const seen = new Set(next.map(({ id }) => id));
   incoming.forEach((message) => {
-    if (message && !seen.has(message.id)) {
-      seen.add(message.id);
-      next.push(message);
-    }
+    if (message && !seen.has(message.id)) { seen.add(message.id); next.push(message); }
   });
   return next;
 }
@@ -57,252 +43,153 @@ export function usePrincipalConversationMessages(
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const [retryableError, setRetryableError] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [executionStage, setExecutionStage] = useState<AssistantExecutionStage | null>(null);
+  const [longRunning, setLongRunning] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<AssistantRunDiagnostics>();
+  const [retryableError, setRetryableError] = useState<string | null>(null);
   const [progressiveMessageIds, setProgressiveMessageIds] = useState<Set<number>>(new Set());
-  const {
-    requestState,
-    beginRequest,
-    markThinking,
-    markTypewriting,
-    markComplete,
-    markProviderTimeout,
-    markResponseRejected,
-    markRequestFailed,
-    resetRequestState,
-  } = useAssistantRequestState();
-  const requestGenerationRef = useRef(0);
-  const organizationRef = useRef(organizationId);
-  const conversationRef = useRef(conversationId);
-  const sendingRef = useRef(false);
-  const pendingRef = useRef<PendingSubmission | null>(null);
-  const createdConversationRef = useRef<number | null>(null);
-  const submissionControllerRef = useRef<AbortController | null>(null);
+  const state = useAssistantRequestState();
+  const generationRef = useRef(0);
+  const activeRunRef = useRef<number | null>(null);
+  const activeControllerRef = useRef<AbortController | null>(null);
   const optimisticIdRef = useRef(-1);
-  organizationRef.current = organizationId;
-  conversationRef.current = conversationId;
+  const createdConversationRef = useRef<number | null>(null);
+  const organizationRef = useRef(organizationId);
 
-  useEffect(() => {
-    requestGenerationRef.current += 1;
-    pendingRef.current = null;
-    createdConversationRef.current = null;
-    sendingRef.current = false;
-    setMessages([]);
-    setLoading(false);
+  const cancelActive = useCallback(() => {
+    generationRef.current += 1;
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = null;
+    activeRunRef.current = null;
     setSending(false);
-    setRetryableError(null);
-    setUnavailable(false);
-    setProgressiveMessageIds(new Set());
-    resetRequestState();
-  }, [organizationId, resetRequestState]);
+    setLongRunning(false);
+    setExecutionStage(null);
+  }, []);
+
+  useEffect(() => () => cancelActive(), [cancelActive]);
+  useEffect(() => {
+    const organizationChanged = organizationRef.current !== organizationId;
+    organizationRef.current = organizationId;
+    if (!organizationChanged && createdConversationRef.current === conversationId) {
+      createdConversationRef.current = null;
+      return;
+    }
+    cancelActive();
+    setMessages([]); setUnavailable(false); setDiagnostics(undefined);
+    setRetryableError(null); setProgressiveMessageIds(new Set()); state.resetRequestState();
+  // reset strictly at workspace/conversation boundaries
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, conversationId]);
 
   useEffect(() => {
-    const generation = ++requestGenerationRef.current;
-    if (sendingRef.current) {
-      submissionControllerRef.current?.abort();
-      submissionControllerRef.current = null;
-      sendingRef.current = false;
-      pendingRef.current = null;
-      setSending(false);
-      setRetryableError(null);
-      resetRequestState();
-    }
-    if (!organizationId || conversationId === null) {
-      if (conversationId === null) setMessages([]);
-      setLoading(false);
-      setUnavailable(false);
-      return;
-    }
-    if (createdConversationRef.current === conversationId) {
-      createdConversationRef.current = null;
-      setLoading(false);
-      setUnavailable(false);
-      return;
-    }
-
+    if (!organizationId || conversationId === null) return;
     const controller = new AbortController();
-    setMessages([]);
-    setProgressiveMessageIds(new Set());
-    setLoading(true);
-    setUnavailable(false);
+    setLoading(true); setUnavailable(false);
     assistantAPI.listConversationMessages(conversationId, controller.signal)
-      .then((response) => {
-        if (
-          generation !== requestGenerationRef.current
-          || organizationId !== organizationRef.current
-          || conversationId !== conversationRef.current
-        ) return;
-        setMessages(response);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted && generation === requestGenerationRef.current) {
-          setUnavailable(true);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted && generation === requestGenerationRef.current) {
-          setLoading(false);
-        }
-      });
+      .then(setMessages)
+      .catch(() => { if (!controller.signal.aborted) setUnavailable(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [conversationId, loadAttempt, organizationId, resetRequestState]);
+  }, [conversationId, loadAttempt, organizationId]);
 
-  const performSubmission = useCallback(async (
-    pending: PendingSubmission,
-  ): Promise<number | null> => {
-    if (sendingRef.current) return null;
-    const generation = requestGenerationRef.current;
-    const controller = new AbortController();
-    submissionControllerRef.current = controller;
-    sendingRef.current = true;
-    setSending(true);
-    setRetryableError(null);
-    beginRequest();
-    markThinking();
+  const completeRun = useCallback((run: AssistantRun) => {
+    setExecutionStage(run.execution_stage);
+    setDiagnostics(run.diagnostics);
+    if (run.assistant_message) {
+      setMessages((current) => mergeMessages(current, [run.assistant_message]));
+      const progressive = run.assistant_message.content_blocks.some(
+        (block) => block.type === 'markdown' && !isStructuredAssistantMarkdown(block.text),
+      );
+      if (progressive) {
+        setProgressiveMessageIds((current) => new Set(current).add(run.assistant_message!.id));
+        state.markTypewriting();
+      } else state.markComplete();
+    }
+    if (run.status === 'FAILED') {
+      setRetryableError(run.retryable ? 'The response could not be completed. Retry is available.' : null);
+      state.markRequestFailed();
+    }
+    activeRunRef.current = run.id;
+    setSending(false); setLongRunning(false);
+  }, [state]);
+
+  const pollRun = useCallback(async (runId: number, generation: number) => {
+    const started = Date.now();
+    let failures = 0;
+    while (generation === generationRef.current) {
+      const controller = new AbortController(); activeControllerRef.current = controller;
+      try {
+        const run = await assistantAPI.getRun(runId, controller.signal);
+        if (generation !== generationRef.current) return;
+        failures = 0; setExecutionStage(run.execution_stage); setDiagnostics(run.diagnostics);
+        setLongRunning(Date.now() - started >= 25_000);
+        if (['COMPLETED', 'SUCCEEDED', 'FAILED', 'UNSUPPORTED'].includes(run.status)) {
+          completeRun(run); return;
+        }
+      } catch {
+        if (controller.signal.aborted || generation !== generationRef.current) return;
+        failures += 1;
+        if (failures >= 5) { setSending(false); state.markRequestFailed(); return; }
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, Math.min(4000, 750 * 2 ** failures)));
+    }
+  }, [completeRun, state]);
+
+  const startPolling = useCallback((runId: number) => {
+    activeRunRef.current = runId;
+    const generation = ++generationRef.current;
+    void pollRun(runId, generation);
+  }, [pollRun]);
+
+  const submitMessage = useCallback(async (raw: string) => {
+    const text = raw.trim();
+    if (!text || !organizationId || sending) return null;
+    const clientRequestId = crypto.randomUUID();
+    setMessages((current) => [...current, {
+      id: optimisticIdRef.current--, role: 'USER', client_request_id: clientRequestId,
+      created_at: new Date().toISOString(), content_blocks: [{ type: 'markdown', text }],
+    }]);
+    setSending(true); setRetryableError(null); setDiagnostics(undefined);
+    state.beginRequest(); state.markThinking();
     try {
-      const payload = {
-        message: pending.message,
-        client_request_id: pending.clientRequestId,
-      };
-      const response = pending.conversationId === null
-        ? await assistantAPI.createConversationMessage(payload, controller.signal)
-        : await assistantAPI.appendConversationMessage(
-          pending.conversationId,
-          payload,
-          controller.signal,
-        );
-      if (
-        generation !== requestGenerationRef.current
-        || pending.organizationId !== organizationRef.current
-        || pending.conversationId !== conversationRef.current
-      ) return null;
+      const response = conversationId === null
+        ? await assistantAPI.createConversationMessage({ message: text, client_request_id: clientRequestId })
+        : await assistantAPI.appendConversationMessage(conversationId, { message: text, client_request_id: clientRequestId });
       setMessages((current) => mergeMessages(
-        current.filter((message) => !(
-          message.role === 'USER'
-          && message.client_request_id === pending.clientRequestId
-        )),
-        [response.user_message, response.assistant_message],
+        current.filter((message) => message.client_request_id !== clientRequestId),
+        [response.user_message],
       ));
       onConversationUpdated?.(response.conversation);
-      const errorBlock = response.assistant_message?.content_blocks.find(
-        (block) => block.type === 'error',
-      );
-      if (errorBlock?.type === 'error') {
-        pendingRef.current = {
-          ...pending,
-          conversationId: response.conversation.id,
-        };
-        if (errorBlock.code === 'assistant_provider_timeout') {
-          setRetryableError('The response took too long to complete. Please retry.');
-          markProviderTimeout();
-        } else if (errorBlock.code === 'assistant_response_rejected') {
-          setRetryableError('I couldn’t complete that response safely. Please retry.');
-          markResponseRejected();
-        } else {
-          setRetryableError('The response could not be completed. Please retry.');
-          markRequestFailed();
-        }
-      } else {
-        pendingRef.current = null;
-        const progressive = response.assistant_message?.content_blocks.some(
-          (block) => block.type === 'markdown'
-            && !isStructuredAssistantMarkdown(block.text),
-        );
-        if (response.assistant_message && progressive) {
-          setProgressiveMessageIds((current) => new Set(current).add(response.assistant_message!.id));
-          markTypewriting();
-        } else {
-          markComplete();
-        }
-      }
-      if (pending.conversationId === null) {
-        createdConversationRef.current = response.conversation.id;
-      }
+      if (conversationId === null) createdConversationRef.current = response.conversation.id;
+      setExecutionStage(response.execution_stage);
+      startPolling(response.run_id);
       return response.conversation.id;
-    } catch (error) {
-      if (
-        !controller.signal.aborted
-        && generation === requestGenerationRef.current
-        && pending.organizationId === organizationRef.current
-        && pending.conversationId === conversationRef.current
-      ) {
-        pendingRef.current = pending;
-        if (isAssistantRequestTimeout(error)) {
-          setRetryableError('The response took too long to complete. Please retry.');
-          markProviderTimeout();
-        } else {
-          setRetryableError('The response could not be completed. Please retry.');
-          markRequestFailed();
-        }
-      }
-      return null;
-    } finally {
-      if (generation === requestGenerationRef.current) {
-        submissionControllerRef.current = null;
-        sendingRef.current = false;
-        setSending(false);
-      }
+    } catch {
+      setSending(false); setRetryableError(null); state.markRequestFailed(); return null;
     }
-  }, [
-    beginRequest,
-    markComplete,
-    markProviderTimeout,
-    markRequestFailed,
-    markResponseRejected,
-    markThinking,
-    markTypewriting,
-    onConversationUpdated,
-  ]);
-
-  const submitMessage = useCallback(async (rawMessage: string) => {
-    const message = rawMessage.trim();
-    if (!message || !organizationId || sendingRef.current) return null;
-    const pending: PendingSubmission = {
-      message,
-      clientRequestId: crypto.randomUUID(),
-      conversationId,
-      organizationId,
-    };
-    pendingRef.current = pending;
-    const optimisticMessage: AssistantMessage = {
-      id: optimisticIdRef.current--,
-      role: 'USER',
-      content_blocks: [{ type: 'markdown', text: message }],
-      client_request_id: pending.clientRequestId,
-      created_at: new Date().toISOString(),
-    };
-    setMessages((current) => [...current, optimisticMessage]);
-    return performSubmission(pending);
-  }, [conversationId, organizationId, performSubmission]);
+  }, [conversationId, onConversationUpdated, organizationId, sending, startPolling, state]);
 
   const retrySubmission = useCallback(async () => {
-    const pending = pendingRef.current;
-    if (!pending || sendingRef.current) return null;
-    return performSubmission(pending);
-  }, [performSubmission]);
+    const runId = activeRunRef.current;
+    if (!runId || sending) return null;
+    setSending(true); setRetryableError(null); state.beginRequest(); state.markThinking();
+    try {
+      const run = await assistantAPI.retryRun(runId, crypto.randomUUID());
+      setExecutionStage(run.execution_stage); startPolling(run.id); return conversationId;
+    } catch { setSending(false); state.markRequestFailed(); return null; }
+  }, [conversationId, sending, startPolling, state]);
 
-  const completeProgressiveMessage = useCallback((messageId: number) => {
-    setProgressiveMessageIds((current) => {
-      if (!current.has(messageId)) return current;
-      const next = new Set(current);
-      next.delete(messageId);
-      return next;
-    });
-    markComplete();
-  }, [markComplete]);
+  const completeProgressiveMessage = useCallback((id: number) => {
+    setProgressiveMessageIds((current) => { const next = new Set(current); next.delete(id); return next; });
+    state.markComplete();
+  }, [state]);
 
   return {
-    messages,
-    loading,
-    sending,
-    requestState,
-    progressiveMessageIds,
-    retryableError,
-    unavailable,
-    submitMessage,
-    retrySubmission,
-    retryLoad: () => setLoadAttempt((attempt) => attempt + 1),
+    messages, loading, sending, requestState: state.requestState, executionStage, longRunning,
+    diagnostics, progressiveMessageIds, retryableError, unavailable, submitMessage,
+    retrySubmission, retryLoad: () => setLoadAttempt((value) => value + 1),
     completeProgressiveMessage,
   };
 }
