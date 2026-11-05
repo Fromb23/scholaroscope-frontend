@@ -4,9 +4,16 @@ import type {
   AssistantAction,
   AssistantResponseBlock,
 } from '@/app/core/types/assistant';
+import {
+  AssistantProgressiveText,
+  isStructuredAssistantMarkdown,
+} from '@/app/core/components/assistant/AssistantProgressiveText';
 
 interface AssistantResponseBlocksProps {
   blocks: AssistantResponseBlock[];
+  progressive?: boolean;
+  onProgressiveComplete?: () => void;
+  onProgressiveProgress?: () => void;
 }
 
 function labelFor(value: string): string {
@@ -49,13 +56,40 @@ function renderAction(action: AssistantAction, index: number) {
   return null;
 }
 
-export function AssistantResponseBlocks({ blocks }: AssistantResponseBlocksProps) {
+function safeErrorMessage(code: string): string {
+  if (code === 'assistant_provider_timeout') {
+    return 'The response took too long to complete. Please retry.';
+  }
+  if (code === 'assistant_response_rejected') {
+    return 'I couldn’t complete that response safely. Please retry.';
+  }
+  return 'The response could not be completed. Please retry.';
+}
+
+export function AssistantResponseBlocks({
+  blocks,
+  progressive = false,
+  onProgressiveComplete,
+  onProgressiveProgress,
+}: AssistantResponseBlocksProps) {
+  const progressiveMarkdownIndices = blocks.flatMap((block, index) => (
+    block.type === 'markdown' && !isStructuredAssistantMarkdown(block.text) ? [index] : []
+  ));
+  const finalProgressiveIndex = progressiveMarkdownIndices.at(-1);
   return (
     <div className="space-y-3">
       {blocks.map((block, index) => {
         switch (block.type) {
           case 'markdown':
-            return <p key={index} className="whitespace-pre-wrap text-sm leading-6 theme-text">{block.text}</p>;
+            return (
+              <AssistantProgressiveText
+                key={index}
+                text={block.text}
+                active={progressive}
+                onProgress={onProgressiveProgress}
+                onComplete={index === finalProgressiveIndex ? onProgressiveComplete : undefined}
+              />
+            );
           case 'metrics':
             return (
               <dl key={index} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -89,8 +123,7 @@ export function AssistantResponseBlocks({ blocks }: AssistantResponseBlocksProps
           case 'error':
             return (
               <div key={index} role="alert" className="rounded-lg border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger)]/5 p-3">
-                <p className="text-sm theme-text">{block.message}</p>
-                <p className="mt-1 text-xs theme-muted">Code: {block.code}</p>
+                <p className="text-sm theme-text">{safeErrorMessage(block.code)}</p>
               </div>
             );
           case 'actions':

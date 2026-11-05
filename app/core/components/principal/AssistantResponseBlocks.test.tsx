@@ -48,7 +48,7 @@ describe('AssistantResponseBlocks', () => {
     expect(html).not.toContain('role="alert"');
   });
 
-  it('renders provider unavailability with its backend code and message', () => {
+  it('renders a safe retry message without backend diagnostics', () => {
     const html = render([{
       type: 'error',
       code: 'intelligence_unavailable',
@@ -56,8 +56,27 @@ describe('AssistantResponseBlocks', () => {
     }]);
 
     expect(html).toContain('role="alert"');
-    expect(html).toContain('Assistant intelligence is unavailable.');
-    expect(html).toContain('intelligence_unavailable');
+    expect(html).toContain('The response could not be completed. Please retry.');
+    expect(html).not.toContain('Assistant intelligence is unavailable.');
+    expect(html).not.toContain('intelligence_unavailable');
+  });
+
+  it('maps typed provider failures without exposing internal diagnostics', () => {
+    const timeout = render([{
+      type: 'error',
+      code: 'assistant_provider_timeout',
+      message: 'intelligence_timeout',
+    }]);
+    const rejected = render([{
+      type: 'error',
+      code: 'assistant_response_rejected',
+      message: 'provider_malformed_output',
+    }]);
+
+    expect(timeout).toContain('The response took too long to complete. Please retry.');
+    expect(timeout).not.toContain('intelligence_timeout');
+    expect(rejected).toContain('I couldn’t complete that response safely. Please retry.');
+    expect(rejected).not.toContain('provider_malformed_output');
   });
 
   it('renders markdown as escaped text', () => {

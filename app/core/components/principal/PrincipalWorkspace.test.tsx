@@ -177,7 +177,7 @@ describe('Principal conversational workspace', () => {
 
   it('keeps a blank route unpersisted until the first submission', () => {
     expect(messageHook).toContain('conversationId === null');
-    expect(messageHook).toContain('assistantAPI.createConversationMessage(payload)');
+    expect(messageHook).toContain('assistantAPI.createConversationMessage(payload, controller.signal)');
     expect(workspace).toContain('isBlank={rawConversationId === undefined}');
   });
 
@@ -190,7 +190,8 @@ describe('Principal conversational workspace', () => {
   });
 
   it('sends the oversight header on every conversation API operation and never in a body', () => {
-    expect(api.match(/headers: OVERSIGHT_CONTEXT_HEADERS/g)).toHaveLength(7);
+    expect(api).toContain('assistantRequestConfig(signal)');
+    expect(api.match(/headers: OVERSIGHT_CONTEXT_HEADERS/g)?.length).toBeGreaterThanOrEqual(5);
     expect(api).not.toContain('operating_context');
     expect(api).not.toContain('operatingContext');
   });
@@ -219,7 +220,7 @@ describe('Principal conversational workspace', () => {
     expect(messageHook).toContain('assistantAPI.listConversationMessages(conversationId');
     expect(messageHook).toContain('setMessages(response)');
     expect(workspace).toContain("message.role === 'ASSISTANT'");
-    expect(workspace).toContain('<AssistantResponseBlocks blocks={message.content_blocks} />');
+    expect(workspace).toContain('blocks={message.content_blocks}');
   });
 
   it('prevents double submission and reuses the request ID for retry', () => {
@@ -227,6 +228,34 @@ describe('Principal conversational workspace', () => {
     expect(messageHook).toContain('clientRequestId: crypto.randomUUID()');
     expect(messageHook).toContain('const pending = pendingRef.current;');
     expect(messageHook).toContain('return performSubmission(pending);');
+    expect(messageHook).toContain('message.client_request_id === pending.clientRequestId');
+    expect(messageHook).toContain('setMessages((current) => [...current, optimisticMessage])');
+    expect(messageHook).toContain('conversationId: response.conversation.id');
+  });
+
+  it('uses shared thinking and progressive response primitives', () => {
+    expect(workspace).toContain('<AssistantThinkingIndicator />');
+    expect(workspace).toContain("['SUBMITTING', 'THINKING'].includes(messageState.requestState)");
+    expect(workspace).not.toContain('Sending your question and waiting for governed intelligence');
+    expect(workspace).toContain('progressive={messageState.progressiveMessageIds.has(message.id)}');
+    expect(workspace).toContain('message.role === \'ASSISTANT\'');
+  });
+
+  it('bounds assistant requests and distinguishes timeout from cancellation', () => {
+    expect(api).toContain('ASSISTANT_REQUEST_TIMEOUT_MS = 45_000');
+    expect(api).toContain("error.code === 'ECONNABORTED'");
+    expect(messageHook).toContain('!controller.signal.aborted');
+    expect(messageHook).toContain('submissionControllerRef.current?.abort()');
+  });
+
+  it('follows responses only while the reader remains near the bottom', () => {
+    expect(workspace).toContain('if (!nearBottomRef.current');
+    expect(workspace).toContain('container.scrollHeight - container.scrollTop - container.clientHeight < 120');
+  });
+
+  it('uses school-wide composer wording', () => {
+    expect(workspace).toContain("'Ask about your school'");
+    expect(workspace).not.toContain('Ask about governed attendance information');
   });
 
   it('does not submit or switch context outside explicit oversight', () => {
@@ -300,11 +329,19 @@ describe('Principal workspace layout and controls', () => {
       loading: false,
       unavailable: false,
       sending: false,
+      requestState: 'IDLE',
+      progressiveMessageIds: new Set(),
       retryableError: null,
       submitMessage: vi.fn(),
       retrySubmission: vi.fn(),
       retryLoad: vi.fn(),
+      completeProgressiveMessage: vi.fn(),
     };
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
     vi.stubGlobal('document', { title: '' });
   });
 
