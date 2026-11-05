@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     replace: vi.fn(),
   },
   routeAllowedForContext: vi.fn<(path: unknown, context: unknown) => boolean>(() => true),
+  routeTransition: vi.fn(),
   assign: vi.fn(),
   pluginRegistry: {
     isRoutePluginLoading: false,
@@ -43,7 +44,16 @@ vi.mock('@/app/utils/routeAccess', () => ({
 vi.mock('@/app/components/layout/Sidebar', () => ({ default: () => null }));
 vi.mock('@/app/components/layout/MobileBottomNav', () => ({ default: () => null }));
 vi.mock('@/app/components/layout/RouteTransition', () => ({
-  RouteTransition: ({ children }: { children: ReactNode }) => children,
+  RouteTransition: ({
+    children,
+    fillAvailableHeight,
+  }: {
+    children: ReactNode;
+    fillAvailableHeight?: boolean;
+  }) => {
+    mocks.routeTransition({ fillAvailableHeight });
+    return children;
+  },
 }));
 vi.mock('@/app/context/SidebarContext', () => ({
   SidebarProvider: ({ children }: { children: ReactNode }) => children,
@@ -150,6 +160,7 @@ describe('DashboardClientShell authentication boundary', () => {
     mocks.router.replace.mockClear();
     mocks.routeAllowedForContext.mockReset();
     mocks.routeAllowedForContext.mockReturnValue(true);
+    mocks.routeTransition.mockClear();
     mocks.assign.mockClear();
     mocks.pluginRegistry = {
       isRoutePluginLoading: false,
@@ -241,6 +252,65 @@ describe('DashboardClientShell authentication boundary', () => {
     expect(mocks.router.replace).not.toHaveBeenCalled();
     expect(renderedText(renderer)).toContain('Signing out...');
   });
+});
+
+describe('DashboardClientShell Principal workspace height propagation', () => {
+  beforeEach(() => {
+    mocks.auth = baseAuth({
+      user: { id: 7, is_superadmin: false },
+      activeOrg: { id: 3, name: 'Demo School', org_type: 'SCHOOL' },
+      activeOperatingContext: 'INSTITUTION_OVERSIGHT',
+      availableOperatingContexts: ['INSTITUTION_OVERSIGHT'],
+    });
+    mocks.search = '';
+    mocks.routeAllowedForContext.mockReset();
+    mocks.routeAllowedForContext.mockReturnValue(true);
+    mocks.routeTransition.mockClear();
+    mocks.pluginRegistry = {
+      isRoutePluginLoading: false,
+      error: null,
+      pendingRoutePluginIds: [],
+    };
+    vi.stubGlobal('document', {
+      documentElement: { classList: { add: vi.fn(), remove: vi.fn() } },
+      body: { classList: { add: vi.fn(), remove: vi.fn() } },
+    });
+    vi.stubGlobal('window', {
+      location: {
+        origin: 'https://scholaroscope.test',
+        pathname: mocks.pathname,
+        search: '',
+        hash: '',
+        assign: mocks.assign,
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each(['/principal', '/principal/conversations/42'])(
+    'enables full-height transitions for %s',
+    (pathname) => {
+      mocks.pathname = pathname;
+
+      renderShell();
+
+      expect(mocks.routeTransition).toHaveBeenCalledWith({ fillAvailableHeight: true });
+    },
+  );
+
+  it.each(['/dashboard', '/principal/academic-overview'])(
+    'keeps ordinary route transitions unchanged for %s',
+    (pathname) => {
+      mocks.pathname = pathname;
+
+      renderShell();
+
+      expect(mocks.routeTransition).toHaveBeenCalledWith({ fillAvailableHeight: false });
+    },
+  );
 });
 
 describe('DashboardClientShell source-level auth boundary contracts', () => {

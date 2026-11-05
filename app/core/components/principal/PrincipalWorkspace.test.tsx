@@ -1,6 +1,60 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { createElement, type ReactNode } from 'react';
+import { act, create, type ReactTestInstance, type ReactTestRenderer } from 'react-test-renderer';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  router: { replace: vi.fn() },
+  conversationState: {} as Record<string, unknown>,
+  messageState: {} as Record<string, unknown>,
+}));
+
+vi.mock('next/link', () => ({
+  default: ({ children, ...props }: { children: ReactNode }) =>
+    createElement('a', props, children),
+}));
+
+vi.mock('next/navigation', () => ({
+  useParams: () => ({}),
+  useRouter: () => mocks.router,
+}));
+
+vi.mock('@/app/context/AuthContext', () => ({
+  useAuth: () => ({
+    activeOrg: { id: 3, name: 'Demo School' },
+    activeOperatingContext: 'INSTITUTION_OVERSIGHT',
+  }),
+}));
+
+vi.mock('@/app/core/hooks/useAcademic', () => ({
+  useCurrentAcademicYear: () => ({
+    currentYear: { name: '2026' },
+    error: null,
+    loading: false,
+    refetch: vi.fn(),
+  }),
+  useCurrentTerm: () => ({
+    currentTerm: { name: 'Term 1' },
+    error: null,
+    loading: false,
+    refetch: vi.fn(),
+  }),
+}));
+
+vi.mock('@/app/core/hooks/usePrincipalConversations', () => ({
+  usePrincipalConversations: () => mocks.conversationState,
+}));
+
+vi.mock('@/app/core/hooks/usePrincipalConversationMessages', () => ({
+  usePrincipalConversationMessages: () => mocks.messageState,
+}));
+
+vi.mock('@/app/core/components/principal/AssistantResponseBlocks', () => ({
+  AssistantResponseBlocks: () => createElement('div', null, 'Assistant response'),
+}));
+
+import { PrincipalWorkspace } from './PrincipalWorkspace';
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 const workspace = read('app/core/components/principal/PrincipalWorkspace.tsx');
@@ -172,5 +226,115 @@ describe('Principal conversational workspace', () => {
   it('sets the browser title from the active server conversation title', () => {
     expect(workspace).toContain('document.title = state.activeConversation?.title');
     expect(workspace).toContain('Principal Dashboard | Scholaroscope');
+  });
+});
+
+function renderWorkspace(): ReactTestRenderer {
+  let renderer: ReactTestRenderer | undefined;
+  act(() => {
+    renderer = create(createElement(PrincipalWorkspace));
+  });
+  return renderer as ReactTestRenderer;
+}
+
+function hasClass(node: ReactTestInstance, className: string): boolean {
+  return String(node.props.className ?? '').split(/\s+/).includes(className);
+}
+
+describe('Principal workspace layout and controls', () => {
+  beforeEach(() => {
+    mocks.router.replace.mockClear();
+    mocks.conversationState = {
+      searchActive: false,
+      searchResults: [],
+      recent: [],
+      recentCount: 0,
+      recentLoading: false,
+      recentError: null,
+      retryRecent: vi.fn(),
+      searchInput: '',
+      setSearchInput: vi.fn(),
+      searchLoading: false,
+      searchError: null,
+      searchHasNext: false,
+      loadMoreSearch: vi.fn(),
+      older: [],
+      olderLoading: false,
+      olderError: null,
+      olderHasNext: false,
+      loadOlder: vi.fn(),
+      renamingId: null,
+      renameErrorId: null,
+      renameConversation: vi.fn(),
+      activeConversation: null,
+      activeLoading: false,
+      activeUnavailable: false,
+      deletingId: null,
+      deleteErrorId: null,
+      deleteConversation: vi.fn(),
+    };
+    mocks.messageState = {
+      messages: [],
+      loading: false,
+      unavailable: false,
+      sending: false,
+      retryableError: null,
+      submitMessage: vi.fn(),
+      retrySubmission: vi.fn(),
+      retryLoad: vi.fn(),
+    };
+    vi.stubGlobal('document', { title: '' });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('fills inherited height and keeps only the message region scrollable', () => {
+    const renderer = renderWorkspace();
+    const workspaceRoot = renderer.root.findAll(
+      (node) => node.type === 'div' && hasClass(node, 'h-full') && hasClass(node, 'w-full'),
+    )[0];
+    const canvas = renderer.root.findByType('section');
+    const directRegions = canvas.children.filter(
+      (child): child is ReactTestInstance => typeof child !== 'string',
+    );
+    const messageRegion = directRegions[2];
+    const composer = directRegions[3];
+
+    expect(workspaceRoot).toBeDefined();
+    expect(hasClass(workspaceRoot, 'min-h-0')).toBe(true);
+    expect(hasClass(workspaceRoot, 'overflow-hidden')).toBe(true);
+    expect(hasClass(canvas, 'min-w-0')).toBe(true);
+    expect(hasClass(messageRegion, 'min-h-0')).toBe(true);
+    expect(hasClass(messageRegion, 'flex-1')).toBe(true);
+    expect(hasClass(messageRegion, 'overflow-y-auto')).toBe(true);
+    expect(hasClass(composer, 'shrink-0')).toBe(true);
+    expect(messageRegion.findAll((node) => node === composer)).toHaveLength(0);
+  });
+
+  it('uses the correct icons for send, new conversation, and mobile drawer close', () => {
+    const renderer = renderWorkspace();
+    const sendButton = renderer.root.findByProps({ 'aria-label': 'Send message' });
+    const newConversation = renderer.root.findByProps({ href: '/principal' });
+
+    expect(
+      sendButton.findAll((node) => node.type === 'svg' && hasClass(node, 'lucide-send')),
+    ).toHaveLength(1);
+    expect(sendButton.findAll((node) => hasClass(node, 'lucide-plus'))).toHaveLength(0);
+    expect(sendButton.findAll((node) => hasClass(node, 'rotate-45'))).toHaveLength(0);
+    expect(
+      newConversation.findAll((node) => node.type === 'svg' && hasClass(node, 'lucide-plus')),
+    ).toHaveLength(1);
+
+    act(() => {
+      renderer.root.findByProps({ 'aria-label': 'Open conversation history' }).props.onClick();
+    });
+    const closeButton = renderer.root.findByProps({
+      'aria-label': 'Close conversation history panel',
+    });
+    expect(
+      closeButton.findAll((node) => node.type === 'svg' && hasClass(node, 'lucide-x')),
+    ).toHaveLength(1);
   });
 });

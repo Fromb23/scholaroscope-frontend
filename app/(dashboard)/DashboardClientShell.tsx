@@ -167,7 +167,9 @@ function DashboardContent({
         >
           <AssistantProvider>
             <div className={isPrincipalConversationWorkspace ? 'h-full min-h-0' : 'pb-16 lg:pb-0'}>
-              <RouteTransition>{children}</RouteTransition>
+              <RouteTransition fillAvailableHeight={isPrincipalConversationWorkspace}>
+                {children}
+              </RouteTransition>
             </div>
             {GUIDE_ENABLED && activeOperatingContext !== 'INSTITUTION_OVERSIGHT'
               ? <AssistantWidget />
