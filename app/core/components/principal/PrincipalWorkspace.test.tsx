@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 const workspace = read('app/core/components/principal/PrincipalWorkspace.tsx');
 const hook = read('app/core/hooks/usePrincipalConversations.ts');
 const api = read('app/core/api/assistant.ts');
+const messageHook = read('app/core/hooks/usePrincipalConversationMessages.ts');
 const header = read('app/components/layout/Header.tsx');
 const shell = read('app/(dashboard)/DashboardClientShell.tsx');
 
@@ -104,7 +105,7 @@ describe('Principal conversational workspace', () => {
   it('keeps the conversation shell when academic context fails', () => {
     expect(workspace).toContain('contextUnavailable={Boolean(academicYear.error || term.error)}');
     expect(workspace).toContain('Retry context');
-    expect(workspace).toContain('Intelligence not connected');
+    expect(workspace).toContain('Retry context');
   });
 
   it('provides a mobile conversation drawer and removes the wide global shell', () => {
@@ -119,9 +120,57 @@ describe('Principal conversational workspace', () => {
     expect(hook).toContain('controller.abort()');
   });
 
-  it('does not enable AI submission or persist navigation-created threads', () => {
-    expect(workspace).toContain('disabled placeholder="Intelligence not connected"');
-    expect(api).not.toContain('createConversation');
+  it('keeps a blank route unpersisted until the first submission', () => {
+    expect(messageHook).toContain('conversationId === null');
+    expect(messageHook).toContain('assistantAPI.createConversationMessage(payload)');
+    expect(workspace).toContain('isBlank={rawConversationId === undefined}');
+  });
+
+  it('uses first-message and continued-message endpoints with an oversight header only', () => {
+    expect(api).toContain("'/assistant/conversations/messages/'");
+    expect(api).toContain('`/assistant/conversations/${conversationId}/messages/`');
+    expect(api).toContain("'X-Scholaroscope-Operating-Context': 'INSTITUTION_OVERSIGHT'");
+    expect(messageHook).toContain('client_request_id: pending.clientRequestId');
+    expect(messageHook).not.toContain('operating_context');
+  });
+
+  it('replaces blank history with the persisted conversation URL', () => {
+    expect(workspace).toContain('router.replace(`/principal/conversations/${createdConversationId}`)');
+    expect(workspace).not.toContain('router.push(`/principal/conversations/');
+  });
+
+  it('loads persisted messages and renders user and assistant roles in server order', () => {
+    expect(messageHook).toContain('assistantAPI.listConversationMessages(conversationId');
+    expect(messageHook).toContain('setMessages(response)');
+    expect(workspace).toContain("message.role === 'ASSISTANT'");
+    expect(workspace).toContain('<AssistantResponseBlocks blocks={message.content_blocks} />');
+  });
+
+  it('prevents double submission and reuses the request ID for retry', () => {
+    expect(messageHook).toContain('if (sendingRef.current) return null;');
+    expect(messageHook).toContain('clientRequestId: crypto.randomUUID()');
+    expect(messageHook).toContain('const pending = pendingRef.current;');
+    expect(messageHook).toContain('return performSubmission(pending);');
+  });
+
+  it('does not submit or switch context outside explicit oversight', () => {
+    expect(workspace).toContain("canSend={activeOperatingContext === 'INSTITUTION_OVERSIGHT'}");
+    expect(workspace).toContain('Your active context has not been changed.');
+    expect(workspace).not.toContain('setActiveOperatingContext');
     expect(workspace).not.toContain('assistantAPI.chat');
+  });
+
+  it('requires delete confirmation, removes history only after success, and returns active deletion to blank', () => {
+    expect(workspace).toContain('window.confirm(`Delete');
+    expect(hook).toContain('await assistantAPI.deleteConversation(id)');
+    expect(hook).toContain('setRecent((rows) => removeConversation(rows, id))');
+    expect(hook).toContain("router.replace('/principal')");
+    expect(hook.indexOf('await assistantAPI.deleteConversation(id)')).toBeLessThan(hook.indexOf('setRecent((rows) => removeConversation(rows, id))'));
+    expect(workspace).toContain('It remains in your history; retry when ready.');
+  });
+
+  it('sets the browser title from the active server conversation title', () => {
+    expect(workspace).toContain('document.title = state.activeConversation?.title');
+    expect(workspace).toContain('Principal Dashboard | Scholaroscope');
   });
 });

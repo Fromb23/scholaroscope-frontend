@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { assistantAPI } from '@/app/core/api/assistant';
 import type { AssistantConversation } from '@/app/core/types/assistant';
@@ -21,6 +22,13 @@ function mergeUnique(
 ): AssistantConversation[] {
   const seen = new Set(current.map((row) => row.id));
   return [...current, ...incoming.filter((row) => !seen.has(row.id))];
+}
+
+function removeConversation(
+  rows: AssistantConversation[],
+  conversationId: number,
+): AssistantConversation[] {
+  return rows.filter((row) => row.id !== conversationId);
 }
 
 export interface PrincipalConversationState {
@@ -44,9 +52,12 @@ export interface PrincipalConversationState {
   activeUnavailable: boolean;
   renamingId: number | null;
   renameErrorId: number | null;
+  deletingId: number | null;
+  deleteErrorId: number | null;
   loadOlder: () => Promise<void>;
   loadMoreSearch: () => Promise<void>;
   renameConversation: (conversationId: number, title: string) => Promise<boolean>;
+  deleteConversation: (conversationId: number) => Promise<boolean>;
   retryRecent: () => void;
 }
 
@@ -55,6 +66,7 @@ export function usePrincipalConversations(
   conversationId: number | null,
   invalidConversationId: boolean,
 ): PrincipalConversationState {
+  const router = useRouter();
   const [recent, setRecent] = useState<AssistantConversation[]>([]);
   const [recentCount, setRecentCount] = useState(0);
   const [recentLoading, setRecentLoading] = useState(true);
@@ -76,6 +88,8 @@ export function usePrincipalConversations(
   const [activeUnavailable, setActiveUnavailable] = useState(invalidConversationId);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameErrorId, setRenameErrorId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteErrorId, setDeleteErrorId] = useState<number | null>(null);
   const recentRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
   const organizationRef = useRef(organizationId);
@@ -113,6 +127,8 @@ export function usePrincipalConversations(
     setActiveConversation(null);
     setRenamingId(null);
     setRenameErrorId(null);
+    setDeletingId(null);
+    setDeleteErrorId(null);
     if (organizationId) void loadRecent();
   }, [loadRecent, organizationId]);
 
@@ -261,6 +277,31 @@ export function usePrincipalConversations(
     }
   }, [activeConversation, older, organizationId, recent, renamingId, searchResults]);
 
+  const deleteConversation = useCallback(async (id: number) => {
+    if (deletingId !== null) return false;
+    const requestOrganizationId = organizationId;
+    setDeletingId(id);
+    setDeleteErrorId(null);
+    try {
+      await assistantAPI.deleteConversation(id);
+      if (requestOrganizationId !== organizationRef.current) return false;
+      setRecent((rows) => removeConversation(rows, id));
+      setOlder((rows) => removeConversation(rows, id));
+      setSearchResults((rows) => removeConversation(rows, id));
+      setRecentCount((count) => Math.max(0, count - 1));
+      if (activeConversation?.id === id || conversationId === id) {
+        setActiveConversation(null);
+        router.replace('/principal');
+      }
+      return true;
+    } catch {
+      if (requestOrganizationId === organizationRef.current) setDeleteErrorId(id);
+      return false;
+    } finally {
+      if (requestOrganizationId === organizationRef.current) setDeletingId(null);
+    }
+  }, [activeConversation?.id, conversationId, deletingId, organizationId, router]);
+
   return {
     recent,
     recentCount,
@@ -282,9 +323,12 @@ export function usePrincipalConversations(
     activeUnavailable,
     renamingId,
     renameErrorId,
+    deletingId,
+    deleteErrorId,
     loadOlder,
     loadMoreSearch,
     renameConversation,
+    deleteConversation,
     retryRecent: () => void loadRecent(),
   };
 }
