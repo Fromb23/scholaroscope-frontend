@@ -104,6 +104,39 @@ export interface AssistantConversationMessageResponse {
   conversation: AssistantConversation;
   user_message: AssistantMessage;
   assistant_message: AssistantMessage | null;
+  run_id: number;
+  status: AssistantRunStatus;
+  execution_stage: AssistantExecutionStage;
+}
+
+export type AssistantRunStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'SUCCEEDED' | 'FAILED' | 'UNSUPPORTED';
+export type AssistantExecutionStage =
+  | 'RECEIVED' | 'INTERPRETING' | 'RESOLVING_CONTEXT' | 'WAITING_FOR_PROVIDER'
+  | 'SELECTING_TOOL' | 'CLARIFICATION_REQUIRED' | 'TOOL_RUNNING'
+  | 'COMPOSING_RESPONSE' | 'COMPLETED' | 'FAILED';
+
+export interface AssistantRunDiagnostics {
+  run_id: number;
+  stage: AssistantExecutionStage;
+  failure_code: string | null;
+  retryable: boolean;
+  latency_ms: number;
+  provider?: string | null;
+  model?: string | null;
+  http_status?: number | null;
+  provider_retry_count?: number;
+  tool_selected: string | null;
+  tool_executed: boolean;
+}
+
+export interface AssistantRun {
+  id: number;
+  status: AssistantRunStatus;
+  execution_stage: AssistantExecutionStage;
+  attempt_number: number;
+  retryable: boolean;
+  assistant_message: AssistantMessage | null;
+  diagnostics?: AssistantRunDiagnostics;
 }
 
 export type AssistantActionType = 'navigate' | 'page_action' | 'feedback' | 'external' | 'chat_prompt';

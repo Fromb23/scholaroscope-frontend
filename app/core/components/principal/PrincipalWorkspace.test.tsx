@@ -61,6 +61,7 @@ const workspace = read('app/core/components/principal/PrincipalWorkspace.tsx');
 const hook = read('app/core/hooks/usePrincipalConversations.ts');
 const api = read('app/core/api/assistant.ts');
 const messageHook = read('app/core/hooks/usePrincipalConversationMessages.ts');
+const thinking = read('app/core/components/assistant/AssistantThinkingIndicator.tsx');
 const assistantTypes = read('app/core/types/assistant.ts');
 const header = read('app/components/layout/Header.tsx');
 const shell = read('app/(dashboard)/DashboardClientShell.tsx');
@@ -177,7 +178,7 @@ describe('Principal conversational workspace', () => {
 
   it('keeps a blank route unpersisted until the first submission', () => {
     expect(messageHook).toContain('conversationId === null');
-    expect(messageHook).toContain('assistantAPI.createConversationMessage(payload, controller.signal)');
+    expect(messageHook).toContain('assistantAPI.createConversationMessage({ message: text, client_request_id: clientRequestId })');
     expect(workspace).toContain('isBlank={rawConversationId === undefined}');
   });
 
@@ -185,7 +186,7 @@ describe('Principal conversational workspace', () => {
     expect(api).toContain("'/assistant/conversations/messages/'");
     expect(api).toContain('`/assistant/conversations/${conversationId}/messages/`');
     expect(api).toContain("'X-Scholaroscope-Operating-Context': 'INSTITUTION_OVERSIGHT'");
-    expect(messageHook).toContain('client_request_id: pending.clientRequestId');
+    expect(messageHook).toContain('client_request_id: clientRequestId');
     expect(messageHook).not.toContain('operating_context');
   });
 
@@ -218,23 +219,21 @@ describe('Principal conversational workspace', () => {
 
   it('loads persisted messages and renders user and assistant roles in server order', () => {
     expect(messageHook).toContain('assistantAPI.listConversationMessages(conversationId');
-    expect(messageHook).toContain('setMessages(response)');
+    expect(messageHook).toContain('.then(setMessages)');
     expect(workspace).toContain("message.role === 'ASSISTANT'");
     expect(workspace).toContain('blocks={message.content_blocks}');
   });
 
-  it('prevents double submission and reuses the request ID for retry', () => {
-    expect(messageHook).toContain('if (sendingRef.current) return null;');
-    expect(messageHook).toContain('clientRequestId: crypto.randomUUID()');
-    expect(messageHook).toContain('const pending = pendingRef.current;');
-    expect(messageHook).toContain('return performSubmission(pending);');
-    expect(messageHook).toContain('message.client_request_id === pending.clientRequestId');
-    expect(messageHook).toContain('setMessages((current) => [...current, optimisticMessage])');
-    expect(messageHook).toContain('conversationId: response.conversation.id');
+  it('prevents double submission and retries the failed run without another user bubble', () => {
+    expect(messageHook).toContain('if (!text || !organizationId || sending) return null;');
+    expect(messageHook).toContain('const clientRequestId = crypto.randomUUID()');
+    expect(messageHook).toContain('assistantAPI.retryRun(runId, crypto.randomUUID())');
+    expect(messageHook).toContain('activeRunRef.current');
+    expect(messageHook.match(/role: 'USER'/g)).toHaveLength(1);
   });
 
   it('uses shared thinking and progressive response primitives', () => {
-    expect(workspace).toContain('<AssistantThinkingIndicator />');
+    expect(workspace).toContain('<AssistantThinkingIndicator stage={messageState.executionStage} longRunning={messageState.longRunning} />');
     expect(workspace).toContain("['SUBMITTING', 'THINKING'].includes(messageState.requestState)");
     expect(workspace).not.toContain('Sending your question and waiting for governed intelligence');
     expect(workspace).toContain('progressive={messageState.progressiveMessageIds.has(message.id)}');
@@ -245,12 +244,39 @@ describe('Principal conversational workspace', () => {
     expect(api).toContain('ASSISTANT_REQUEST_TIMEOUT_MS = 45_000');
     expect(api).toContain("error.code === 'ECONNABORTED'");
     expect(messageHook).toContain('!controller.signal.aborted');
-    expect(messageHook).toContain('submissionControllerRef.current?.abort()');
+    expect(messageHook).toContain('activeControllerRef.current?.abort()');
   });
 
   it('follows responses only while the reader remains near the bottom', () => {
     expect(workspace).toContain('if (!nearBottomRef.current');
     expect(workspace).toContain('container.scrollHeight - container.scrollTop - container.clientHeight < 120');
+  });
+
+  it('polls asynchronous runs and cancels polling at workspace boundaries', () => {
+    expect(messageHook).toContain('assistantAPI.getRun(runId, controller.signal)');
+    expect(messageHook).toContain("['COMPLETED', 'SUCCEEDED', 'FAILED', 'UNSUPPORTED'].includes(run.status)");
+    expect(messageHook).toContain('activeControllerRef.current?.abort()');
+    expect(messageHook).toContain('failures >= 5');
+  });
+
+  it('maps real stages and reserves Almost done for composition', () => {
+    expect(thinking).toContain("COMPOSING_RESPONSE: 'Almost done — preparing your response'");
+    expect(thinking).toContain("TOOL_RUNNING: 'Analysing attendance'");
+    expect(thinking.match(/Almost done/g)).toHaveLength(1);
+    expect(messageHook).toContain('Date.now() - started >= 25_000');
+  });
+
+  it('shows a jump-to-latest control without forcing a scrolled-up reader', () => {
+    expect(workspace).toContain('if (!nearBottomRef.current) { setShowJumpToLatest(true); return; }');
+    expect(workspace).toContain('aria-label="Jump to latest response"');
+    expect(workspace).toContain('setShowJumpToLatest(false)');
+    expect(workspace).toContain('scrollFrameRef.current !== null');
+  });
+
+  it('uses content-sized bubbles and one in-message error surface', () => {
+    expect(workspace).toContain("'ml-auto w-fit max-w-[85%]");
+    expect(workspace).toContain("'mr-auto w-fit max-w-full");
+    expect(workspace).not.toContain('role="alert" className="mt-2 flex items-center');
   });
 
   it('uses school-wide composer wording', () => {
@@ -330,6 +356,9 @@ describe('Principal workspace layout and controls', () => {
       unavailable: false,
       sending: false,
       requestState: 'IDLE',
+      executionStage: null,
+      longRunning: false,
+      diagnostics: undefined,
       progressiveMessageIds: new Set(),
       retryableError: null,
       submitMessage: vi.fn(),
@@ -367,7 +396,8 @@ describe('Principal workspace layout and controls', () => {
     expect(hasClass(canvas, 'min-w-0')).toBe(true);
     expect(hasClass(messageRegion, 'min-h-0')).toBe(true);
     expect(hasClass(messageRegion, 'flex-1')).toBe(true);
-    expect(hasClass(messageRegion, 'overflow-y-auto')).toBe(true);
+    expect(hasClass(messageRegion, 'relative')).toBe(true);
+    expect(messageRegion.findAll((node) => hasClass(node, 'overflow-y-auto'))).not.toHaveLength(0);
     expect(hasClass(composer, 'shrink-0')).toBe(true);
     expect(messageRegion.findAll((node) => node === composer)).toHaveLength(0);
   });

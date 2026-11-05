@@ -16,6 +16,8 @@ Principal Academic Overview is a read-only facade over the canonical reporting e
 
 Principal conversation routes identify selected UI state but never authorize records. Conversation history and title search are server-scoped to the active user and workspace, show at most ten recent rows initially, and page older/search results instead of building an unbounded browser list. New-conversation navigation remains unsaved until an authorized first message is accepted; titles are plain text and renameable. The conversation shell survives academic-context failures, reports disconnected intelligence honestly, and derives the Principal interface label from `INSTITUTION_OVERSIGHT`, never the reverse.
 
+Principal intelligence messages use the backend asynchronous run contract. Render only server-reported operational stages, poll within the active organization and conversation lifecycle, retry the failed run without creating another user message, and pause follow-mode when the reader scrolls away from the latest response.
+
 Read `README.md`, `docs/frontend-workspace-state.md`, `package.json`, `app/core/api/projects.ts`, `app/core/hooks/useProjects.ts`, `app/core/types/projects.ts`, the relevant components and tests under `app/core/components/projects`, `app/core/lib/queryKeys.ts`, and relevant checks under `tools`.
 
 Change the backend contract first. Keep `page.tsx` thin and follow component → hook → API adapter layering. Query keys must include organization identity, and workspace-generation changes must reset cached state. Do not expose platform-control-plane UI or cross plugin boundaries.
