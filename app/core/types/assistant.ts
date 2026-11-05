@@ -7,6 +7,32 @@ export interface AssistantConversation {
   created_at: string;
   updated_at: string;
   last_activity_at: string;
+  context_revision: number;
+  context: AssistantConversationContext;
+}
+
+export interface AssistantAcademicContextEntity {
+  id: number;
+  name: string;
+}
+
+export type AssistantTermLifecycleStatus =
+  | 'OPEN'
+  | 'ENDED_GRACE_PERIOD'
+  | 'CLOSING'
+  | 'CLOSED_HISTORICAL';
+
+export interface AssistantTermContext extends AssistantAcademicContextEntity {
+  status: AssistantTermLifecycleStatus;
+}
+
+export interface AssistantConversationContext {
+  academic_year: AssistantAcademicContextEntity | null;
+  term: AssistantTermContext | null;
+  cohorts: AssistantAcademicContextEntity[] | null;
+  subject: AssistantAcademicContextEntity | null;
+  domain: string | null;
+  intent: string | null;
 }
 
 export type AssistantConversationListResponse = PaginatedResponse<AssistantConversation>;

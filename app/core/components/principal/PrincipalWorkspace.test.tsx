@@ -61,6 +61,7 @@ const workspace = read('app/core/components/principal/PrincipalWorkspace.tsx');
 const hook = read('app/core/hooks/usePrincipalConversations.ts');
 const api = read('app/core/api/assistant.ts');
 const messageHook = read('app/core/hooks/usePrincipalConversationMessages.ts');
+const assistantTypes = read('app/core/types/assistant.ts');
 const header = read('app/components/layout/Header.tsx');
 const shell = read('app/(dashboard)/DashboardClientShell.tsx');
 
@@ -186,6 +187,27 @@ describe('Principal conversational workspace', () => {
     expect(api).toContain("'X-Scholaroscope-Operating-Context': 'INSTITUTION_OVERSIGHT'");
     expect(messageHook).toContain('client_request_id: pending.clientRequestId');
     expect(messageHook).not.toContain('operating_context');
+  });
+
+  it('sends the oversight header on every conversation API operation and never in a body', () => {
+    expect(api.match(/headers: OVERSIGHT_CONTEXT_HEADERS/g)).toHaveLength(7);
+    expect(api).not.toContain('operating_context');
+    expect(api).not.toContain('operatingContext');
+  });
+
+  it('types unresolved governed conversation context safely', () => {
+    expect(assistantTypes).toContain('context_revision: number');
+    expect(assistantTypes).toContain('academic_year: AssistantAcademicContextEntity | null');
+    expect(assistantTypes).toContain('term: AssistantTermContext | null');
+    expect(assistantTypes).toContain('cohorts: AssistantAcademicContextEntity[] | null');
+    expect(assistantTypes).toContain('subject: AssistantAcademicContextEntity | null');
+    expect(assistantTypes).toContain("| 'CLOSED_HISTORICAL'");
+  });
+
+  it('updates active conversation context from each message response', () => {
+    expect(messageHook).toContain('onConversationUpdated?.(response.conversation)');
+    expect(hook).toContain('setActiveConversation((current) => current?.id === conversation.id ? conversation : current)');
+    expect(workspace).toContain('state.applyConversationUpdate');
   });
 
   it('replaces blank history with the persisted conversation URL', () => {
