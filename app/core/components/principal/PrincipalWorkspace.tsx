@@ -505,8 +505,10 @@ function ConversationCanvas({
             <p className="mt-2 text-sm theme-muted">This conversation was not found or is not available in your active workspace.</p>
             <Link href="/principal" className="theme-focus-ring mt-5 rounded-lg border theme-border px-4 py-2 text-sm font-medium theme-text">Start a new conversation</Link>
           </div>
-        ) : messageState.loading ? (
-          <div role="status" className="flex h-full min-h-72 items-center justify-center p-8 text-sm theme-muted">Loading conversation messagesâ€¦</div>
+        ) : messageState.loading
+          && messageState.turns.length === 0
+          && messageState.legacyMessages.length === 0 ? (
+          <div role="status" className="flex h-full min-h-72 items-center justify-center p-8 text-sm theme-muted">Loading conversation messages…</div>
         ) : messageState.unavailable ? (
           <div role="alert" className="mx-auto flex h-full min-h-72 max-w-lg flex-col items-center justify-center p-8 text-center">
             <h1 className="text-xl font-semibold theme-text">Messages unavailable</h1>
@@ -573,6 +575,11 @@ function ConversationCanvas({
           </div>
         ) : null}
       </div>
+      {messageState.refreshing ? (
+        <div role="status" className="pointer-events-none absolute right-4 top-3 rounded-full border theme-border bg-[color:var(--color-surface)] px-3 py-1 text-xs theme-muted shadow-sm">
+          Refreshing conversation messages…
+        </div>
+      ) : null}
       {showJumpToLatest ? (
         <button type="button" onClick={jumpToLatest} aria-label="Jump to latest response" className="theme-focus-ring absolute bottom-4 right-5 flex h-10 w-10 items-center justify-center rounded-full border theme-border bg-[color:var(--color-surface)] shadow-lg">
           <ChevronDown className="h-5 w-5" />

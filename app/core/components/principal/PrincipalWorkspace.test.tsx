@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   router: { replace: vi.fn() },
   conversationState: {} as Record<string, unknown>,
   messageState: {} as Record<string, unknown>,
+  termState: {} as Record<string, unknown>,
 }));
 
 vi.mock('next/link', () => ({
@@ -34,12 +35,7 @@ vi.mock('@/app/core/hooks/useAcademic', () => ({
     loading: false,
     refetch: vi.fn(),
   }),
-  useCurrentTerm: () => ({
-    currentTerm: { name: 'Term 1' },
-    error: null,
-    loading: false,
-    refetch: vi.fn(),
-  }),
+  useCurrentTerm: () => mocks.termState,
 }));
 
 vi.mock('@/app/core/hooks/usePrincipalConversations', () => ({
@@ -177,8 +173,8 @@ describe('Principal conversational workspace', () => {
   });
 
   it('keeps a blank route unpersisted until the first submission', () => {
-    expect(messageHook).toContain('conversationId === null');
-    expect(messageHook).toContain('assistantAPI.createConversationMessage({ message: text, client_request_id: clientRequestId })');
+    expect(messageHook).toContain('activeConversationId === null');
+    expect(messageHook).toContain('await assistantAPI.createConversationMessage(');
     expect(workspace).toContain('isBlank={rawConversationId === undefined}');
   });
 
@@ -207,7 +203,7 @@ describe('Principal conversational workspace', () => {
   });
 
   it('updates active conversation context from each message response', () => {
-    expect(messageHook).toContain('onConversationUpdated?.(response.conversation)');
+    expect(messageHook).toContain('onConversationUpdatedRef.current?.(response.conversation)');
     expect(hook).toContain('current?.id === conversation.id || conversationId === conversation.id');
     expect(hook).toContain('[conversation, ...rows].slice(0, 10)');
     expect(workspace).toContain('state.applyConversationUpdate');
@@ -229,9 +225,9 @@ describe('Principal conversational workspace', () => {
   });
 
   it('prevents double submission and retries the selected turn without a global run reference', () => {
-    expect(messageHook).toContain('if (!text || !organizationId || sending) return null;');
+    expect(messageHook).toContain('if (!text || !activeOrganizationId || sendingRef.current) return null;');
     expect(messageHook).toContain('const clientRequestId = crypto.randomUUID()');
-    expect(messageHook).toContain('assistantAPI.retryRun(runId, crypto.randomUUID())');
+    expect(messageHook).toContain('assistantAPI.retryRun(runId, crypto.randomUUID(), controller.signal)');
     expect(messageHook).toContain('retryTurn = useCallback(async (turnId: number, runId: number)');
     expect(messageHook).not.toContain('activeRunRef');
     expect(messageHook.match(/role: 'USER'/g)).toHaveLength(1);
@@ -247,7 +243,7 @@ describe('Principal conversational workspace', () => {
     expect(api).toContain('ASSISTANT_REQUEST_TIMEOUT_MS = 45_000');
     expect(api).toContain("error.code === 'ECONNABORTED'");
     expect(messageHook).toContain('!controller.signal.aborted');
-    expect(messageHook).toContain('controllersRef.current.forEach((controller) => controller.abort())');
+    expect(messageHook).toContain('operationControllersRef.current.forEach((controller) => controller.abort())');
   });
 
   it('follows responses only while the reader remains near the bottom', () => {
@@ -257,10 +253,10 @@ describe('Principal conversational workspace', () => {
 
   it('polls asynchronous runs and cancels polling at workspace boundaries', () => {
     expect(messageHook).toContain('assistantAPI.getRun(runId, controller.signal)');
-    expect(messageHook).toContain("['COMPLETED', 'SUCCEEDED', 'FAILED', 'UNSUPPORTED'].includes(run.status)");
-    expect(messageHook).toContain('controllersRef.current.forEach((controller) => controller.abort())');
+    expect(messageHook).toContain('if (isTerminal(run))');
+    expect(messageHook).toContain('pollControllersRef.current.forEach((controller) => controller.abort())');
     expect(messageHook).toContain('failures >= 5');
-    expect(messageHook).toContain('history.turns.forEach(observeTurn)');
+    expect(messageHook).toContain('.forEach((turn) => observeTurn(turn, generation))');
   });
 
   it('maps real stages and reserves Almost done for composition', () => {
@@ -358,6 +354,7 @@ describe('Principal workspace layout and controls', () => {
       turns: [],
       legacyMessages: [],
       loading: false,
+      refreshing: false,
       unavailable: false,
       sending: false,
       requestState: 'IDLE',
@@ -369,6 +366,13 @@ describe('Principal workspace layout and controls', () => {
       retryTurn: vi.fn(),
       retryLoad: vi.fn(),
       completeProgressiveMessage: vi.fn(),
+    };
+    mocks.termState = {
+      currentTerm: { name: 'Term 1' },
+      error: null,
+      noActiveTerm: false,
+      loading: false,
+      refetch: vi.fn(),
     };
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       callback(0);
@@ -429,5 +433,19 @@ describe('Principal workspace layout and controls', () => {
     expect(
       closeButton.findAll((node) => node.type === 'svg' && hasClass(node, 'lucide-x')),
     ).toHaveLength(1);
+  });
+
+  it('keeps governed chat available when there is intentionally no active term', () => {
+    mocks.termState = {
+      currentTerm: null,
+      error: null,
+      noActiveTerm: true,
+      loading: false,
+      refetch: vi.fn(),
+    };
+    const renderer = renderWorkspace();
+
+    expect(renderer.root.findByProps({ id: 'principal-prompt' }).props.disabled).toBe(false);
+    expect(renderer.root.findAllByProps({ title: 'Academic context unavailable; retry' })).toHaveLength(0);
   });
 });

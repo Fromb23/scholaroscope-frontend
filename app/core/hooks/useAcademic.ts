@@ -200,6 +200,7 @@ export const useCurrentTerm = () => {
   const [currentTerm, setCurrentTerm] = useState<Term | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noActiveTerm, setNoActiveTerm] = useState(false);
   const { organizationId } = useOrganizationContext();
 
   const fetchCurrentTerm = useCallback(async () => {
@@ -210,8 +211,15 @@ export const useCurrentTerm = () => {
       const data = await termAPI.getCurrent(params);
       setCurrentTerm(data);
       setError(null);
+      setNoActiveTerm(false);
     } catch (err) {
-      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch current term'));
+      const apiError = err as ApiError;
+      const expectedNoActiveTerm = apiError.response?.status === 404
+        && extractErrorCode(apiError) === 'no_active_term';
+      setError(expectedNoActiveTerm
+        ? null
+        : resolveErrorMessage(apiError, 'Failed to fetch current term'));
+      setNoActiveTerm(expectedNoActiveTerm);
       setCurrentTerm(null);
     } finally {
       setLoading(false);
@@ -220,7 +228,7 @@ export const useCurrentTerm = () => {
 
   useEffect(() => { fetchCurrentTerm(); }, [fetchCurrentTerm]);
 
-  return { currentTerm, loading, error, refetch: fetchCurrentTerm };
+  return { currentTerm, loading, error, noActiveTerm, refetch: fetchCurrentTerm };
 };
 
 // ── useTerms ──────────────────────────────────────────────────────────────
