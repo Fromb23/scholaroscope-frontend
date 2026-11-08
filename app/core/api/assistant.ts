@@ -78,12 +78,12 @@ export const assistantAPI = {
     return response.data;
   },
 
-  listConversationMessages: async (
+  listConversationTurns: async (
     conversationId: number,
     signal?: AbortSignal,
   ): Promise<AssistantTurnHistory> => {
     const response = await apiClient.get<AssistantTurnHistory>(
-      `/assistant/conversations/${conversationId}/messages/`,
+      `/assistant/conversations/${conversationId}/turns/`,
       { signal, headers: OVERSIGHT_CONTEXT_HEADERS },
     );
     return response.data;

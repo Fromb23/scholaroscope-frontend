@@ -219,7 +219,8 @@ describe('Principal conversational workspace', () => {
   });
 
   it('loads authoritative turns and renders each user turn with one current response area', () => {
-    expect(messageHook).toContain('assistantAPI.listConversationMessages(conversationId');
+    expect(messageHook).toContain('assistantAPI.listConversationTurns(conversationId');
+    expect(api).toContain('`/assistant/conversations/${conversationId}/turns/`');
     expect(messageHook).toContain('setTurns(history.turns)');
     expect(messageHook).toContain('setLegacyMessages(history.legacy_unlinked_messages)');
     expect(workspace).toContain('messageState.turns.map((turn)');

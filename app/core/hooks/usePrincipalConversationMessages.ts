@@ -161,7 +161,7 @@ export function usePrincipalConversationMessages(
     const controller = new AbortController();
     const generation = generationRef.current;
     setLoading(true); setUnavailable(false);
-    assistantAPI.listConversationMessages(conversationId, controller.signal)
+    assistantAPI.listConversationTurns(conversationId, controller.signal)
       .then((history) => {
         if (generation !== generationRef.current) return;
         setTurns(history.turns);
