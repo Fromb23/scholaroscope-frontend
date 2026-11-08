@@ -4,6 +4,7 @@ import type { PaginatedResponse } from '@/app/core/types/api';
 export interface AssistantConversation {
   id: number;
   title: string;
+  title_kind: 'PROVISIONAL' | 'AUTOMATIC' | 'MANUAL';
   created_at: string;
   updated_at: string;
   last_activity_at: string;
@@ -69,6 +70,8 @@ export interface AssistantUnsupportedCapabilityBlock {
   type: 'unsupported_capability';
   code: string;
   message: string;
+  presentation_owner?: 'SERVER';
+  model_context_retained?: boolean;
 }
 
 export interface AssistantErrorBlock {
@@ -107,6 +110,7 @@ export interface AssistantConversationMessageResponse {
   run_id: number;
   status: AssistantRunStatus;
   execution_stage: AssistantExecutionStage;
+  turn: AssistantTurn;
 }
 
 export type AssistantRunStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'SUCCEEDED' | 'FAILED' | 'UNSUPPORTED';
@@ -137,6 +141,35 @@ export interface AssistantRun {
   retryable: boolean;
   assistant_message: AssistantMessage | null;
   diagnostics?: AssistantRunDiagnostics;
+}
+
+export interface AssistantTurnAttempt {
+  id: number;
+  attempt_number: number;
+  status: AssistantRunStatus;
+  execution_stage: AssistantExecutionStage;
+  retryable: boolean;
+  response_message_id: number | null;
+  previous_run_id: number | null;
+  queued_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AssistantTurn {
+  id: number;
+  user_message: AssistantMessage;
+  current_run: AssistantRun | null;
+  current_response: AssistantMessage | null;
+  retry_allowed: boolean;
+  retry_target_run_id: number | null;
+  attempts: AssistantTurnAttempt[];
+}
+
+export interface AssistantTurnHistory {
+  schema_version: 'assistant.turns.v1';
+  turns: AssistantTurn[];
+  legacy_unlinked_messages: AssistantMessage[];
 }
 
 export type AssistantActionType = 'navigate' | 'page_action' | 'feedback' | 'external' | 'chat_prompt';

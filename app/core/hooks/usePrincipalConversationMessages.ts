@@ -5,12 +5,13 @@ import { assistantAPI } from '@/app/core/api/assistant';
 import { isStructuredAssistantMarkdown } from '@/app/core/components/assistant/AssistantProgressiveText';
 import { type AssistantRequestState, useAssistantRequestState } from '@/app/core/components/assistant/useAssistantRequestState';
 import type {
-  AssistantConversation, AssistantExecutionStage, AssistantMessage,
-  AssistantRun, AssistantRunDiagnostics,
+  AssistantConversation, AssistantExecutionStage, AssistantRun,
+  AssistantMessage, AssistantRunDiagnostics, AssistantTurn,
 } from '@/app/core/types/assistant';
 
 export interface PrincipalConversationMessageState {
-  messages: AssistantMessage[];
+  turns: AssistantTurn[];
+  legacyMessages: AssistantMessage[];
   loading: boolean;
   sending: boolean;
   requestState: AssistantRequestState;
@@ -18,29 +19,24 @@ export interface PrincipalConversationMessageState {
   longRunning: boolean;
   diagnostics?: AssistantRunDiagnostics;
   progressiveMessageIds: ReadonlySet<number>;
-  retryableError: string | null;
   unavailable: boolean;
   submitMessage: (message: string) => Promise<number | null>;
-  retrySubmission: () => Promise<number | null>;
+  retryTurn: (turnId: number, runId: number) => Promise<number | null>;
   retryLoad: () => void;
   completeProgressiveMessage: (messageId: number) => void;
 }
 
-function mergeMessages(current: AssistantMessage[], incoming: Array<AssistantMessage | null>) {
-  const next = [...current];
-  const seen = new Set(next.map(({ id }) => id));
-  incoming.forEach((message) => {
-    if (message && !seen.has(message.id)) { seen.add(message.id); next.push(message); }
-  });
-  return next;
-}
+const isActive = (run: AssistantRun | null) => Boolean(
+  run && (run.status === 'PENDING' || run.status === 'RUNNING'),
+);
 
 export function usePrincipalConversationMessages(
   organizationId: number | null,
   conversationId: number | null,
   onConversationUpdated?: (conversation: AssistantConversation) => void,
 ): PrincipalConversationMessageState {
-  const [messages, setMessages] = useState<AssistantMessage[]>([]);
+  const [turns, setTurns] = useState<AssistantTurn[]>([]);
+  const [legacyMessages, setLegacyMessages] = useState<AssistantMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
@@ -48,21 +44,20 @@ export function usePrincipalConversationMessages(
   const [executionStage, setExecutionStage] = useState<AssistantExecutionStage | null>(null);
   const [longRunning, setLongRunning] = useState(false);
   const [diagnostics, setDiagnostics] = useState<AssistantRunDiagnostics>();
-  const [retryableError, setRetryableError] = useState<string | null>(null);
   const [progressiveMessageIds, setProgressiveMessageIds] = useState<Set<number>>(new Set());
   const state = useAssistantRequestState();
   const generationRef = useRef(0);
-  const activeRunRef = useRef<number | null>(null);
-  const activeControllerRef = useRef<AbortController | null>(null);
+  const controllersRef = useRef<Map<number, AbortController>>(new Map());
   const optimisticIdRef = useRef(-1);
   const createdConversationRef = useRef<number | null>(null);
   const organizationRef = useRef(organizationId);
+  const pollingRef = useRef<Set<number>>(new Set());
 
   const cancelActive = useCallback(() => {
     generationRef.current += 1;
-    activeControllerRef.current?.abort();
-    activeControllerRef.current = null;
-    activeRunRef.current = null;
+    controllersRef.current.forEach((controller) => controller.abort());
+    controllersRef.current.clear();
+    pollingRef.current.clear();
     setSending(false);
     setLongRunning(false);
     setExecutionStage(null);
@@ -77,28 +72,39 @@ export function usePrincipalConversationMessages(
       return;
     }
     cancelActive();
-    setMessages([]); setUnavailable(false); setDiagnostics(undefined);
-    setRetryableError(null); setProgressiveMessageIds(new Set()); state.resetRequestState();
+    setTurns([]); setLegacyMessages([]); setUnavailable(false); setDiagnostics(undefined);
+    setProgressiveMessageIds(new Set()); state.resetRequestState();
   // reset strictly at workspace/conversation boundaries
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, conversationId]);
 
-  useEffect(() => {
-    if (!organizationId || conversationId === null) return;
-    const controller = new AbortController();
-    setLoading(true); setUnavailable(false);
-    assistantAPI.listConversationMessages(conversationId, controller.signal)
-      .then(setMessages)
-      .catch(() => { if (!controller.signal.aborted) setUnavailable(true); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, [conversationId, loadAttempt, organizationId]);
+  const refreshAuthoritativeTitle = useCallback((generation: number, id: number) => {
+    [300, 1_200].forEach((delay) => window.setTimeout(() => {
+        if (generation !== generationRef.current) return;
+        assistantAPI.getConversation(id).then((conversation) => {
+          if (generation === generationRef.current) onConversationUpdated?.(conversation);
+        }).catch(() => undefined);
+      }, delay));
+  }, [onConversationUpdated]);
 
-  const completeRun = useCallback((run: AssistantRun) => {
+  const completeRun = useCallback((turnId: number, run: AssistantRun, generation: number) => {
+    if (generation !== generationRef.current) return;
     setExecutionStage(run.execution_stage);
     setDiagnostics(run.diagnostics);
+    setTurns((current) => current.map((turn) => turn.id === turnId ? {
+      ...turn,
+      current_run: run,
+      current_response: run.assistant_message,
+      retry_allowed: run.status === 'FAILED' && run.retryable,
+      retry_target_run_id: run.status === 'FAILED' && run.retryable ? run.id : null,
+      attempts: turn.attempts.some((attempt) => attempt.id === run.id)
+        ? turn.attempts.map((attempt) => attempt.id === run.id ? {
+            ...attempt, status: run.status, execution_stage: run.execution_stage,
+            retryable: run.retryable, response_message_id: run.assistant_message?.id ?? null,
+          } : attempt)
+        : turn.attempts,
+    } : turn));
     if (run.assistant_message) {
-      setMessages((current) => mergeMessages(current, [run.assistant_message]));
       const progressive = run.assistant_message.content_blocks.some(
         (block) => block.type === 'markdown' && !isStructuredAssistantMarkdown(block.text),
       );
@@ -107,79 +113,111 @@ export function usePrincipalConversationMessages(
         state.markTypewriting();
       } else state.markComplete();
     }
-    if (run.status === 'FAILED') {
-      setRetryableError(run.retryable ? 'The response could not be completed. Retry is available.' : null);
-      state.markRequestFailed();
-    }
-    activeRunRef.current = run.id;
+    if (run.status === 'FAILED') state.markRequestFailed();
     setSending(false); setLongRunning(false);
-  }, [state]);
+    if (conversationId !== null) refreshAuthoritativeTitle(generation, conversationId);
+  }, [conversationId, refreshAuthoritativeTitle, state]);
 
-  const pollRun = useCallback(async (runId: number, generation: number) => {
+  const pollRun = useCallback(async (turnId: number, runId: number, generation: number) => {
+    if (pollingRef.current.has(runId)) return;
+    pollingRef.current.add(runId);
     const started = Date.now();
     let failures = 0;
-    while (generation === generationRef.current) {
-      const controller = new AbortController(); activeControllerRef.current = controller;
-      try {
-        const run = await assistantAPI.getRun(runId, controller.signal);
-        if (generation !== generationRef.current) return;
-        failures = 0; setExecutionStage(run.execution_stage); setDiagnostics(run.diagnostics);
-        setLongRunning(Date.now() - started >= 25_000);
-        if (['COMPLETED', 'SUCCEEDED', 'FAILED', 'UNSUPPORTED'].includes(run.status)) {
-          completeRun(run); return;
+    try {
+      while (generation === generationRef.current) {
+        const controller = new AbortController();
+        controllersRef.current.set(runId, controller);
+        try {
+          const run = await assistantAPI.getRun(runId, controller.signal);
+          if (generation !== generationRef.current) return;
+          failures = 0; setExecutionStage(run.execution_stage); setDiagnostics(run.diagnostics);
+          setLongRunning(Date.now() - started >= 25_000);
+          setTurns((current) => current.map((turn) => turn.id === turnId
+            ? { ...turn, current_run: run, retry_allowed: false, retry_target_run_id: null }
+            : turn));
+          if (['COMPLETED', 'SUCCEEDED', 'FAILED', 'UNSUPPORTED'].includes(run.status)) {
+            completeRun(turnId, run, generation); return;
+          }
+        } catch {
+          if (controller.signal.aborted || generation !== generationRef.current) return;
+          failures += 1;
+          if (failures >= 5) { setSending(false); state.markRequestFailed(); return; }
         }
-      } catch {
-        if (controller.signal.aborted || generation !== generationRef.current) return;
-        failures += 1;
-        if (failures >= 5) { setSending(false); state.markRequestFailed(); return; }
+        await new Promise((resolve) => window.setTimeout(resolve, Math.min(4000, 750 * 2 ** failures)));
       }
-      await new Promise((resolve) => window.setTimeout(resolve, Math.min(4000, 750 * 2 ** failures)));
+    } finally {
+      pollingRef.current.delete(runId);
+      controllersRef.current.delete(runId);
     }
   }, [completeRun, state]);
 
-  const startPolling = useCallback((runId: number) => {
-    activeRunRef.current = runId;
-    const generation = ++generationRef.current;
-    void pollRun(runId, generation);
+  const observeTurn = useCallback((turn: AssistantTurn) => {
+    if (!turn.current_run || !isActive(turn.current_run)) return;
+    void pollRun(turn.id, turn.current_run.id, generationRef.current);
   }, [pollRun]);
+
+  useEffect(() => {
+    if (!organizationId || conversationId === null) return;
+    const controller = new AbortController();
+    const generation = generationRef.current;
+    setLoading(true); setUnavailable(false);
+    assistantAPI.listConversationMessages(conversationId, controller.signal)
+      .then((history) => {
+        if (generation !== generationRef.current) return;
+        setTurns(history.turns);
+        setLegacyMessages(history.legacy_unlinked_messages);
+        history.turns.forEach(observeTurn);
+      })
+      .catch(() => { if (!controller.signal.aborted) setUnavailable(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [conversationId, loadAttempt, observeTurn, organizationId]);
 
   const submitMessage = useCallback(async (raw: string) => {
     const text = raw.trim();
     if (!text || !organizationId || sending) return null;
     const clientRequestId = crypto.randomUUID();
-    setMessages((current) => [...current, {
-      id: optimisticIdRef.current--, role: 'USER', client_request_id: clientRequestId,
-      created_at: new Date().toISOString(), content_blocks: [{ type: 'markdown', text }],
+    const optimisticId = optimisticIdRef.current--;
+    setTurns((current) => [...current, {
+      id: optimisticId,
+      user_message: { id: optimisticId, role: 'USER', client_request_id: clientRequestId,
+        created_at: new Date().toISOString(), content_blocks: [{ type: 'markdown', text }] },
+      current_run: null, current_response: null, retry_allowed: false,
+      retry_target_run_id: null, attempts: [],
     }]);
-    setSending(true); setRetryableError(null); setDiagnostics(undefined);
-    state.beginRequest(); state.markThinking();
+    setSending(true); setDiagnostics(undefined); state.beginRequest(); state.markThinking();
     try {
       const response = conversationId === null
         ? await assistantAPI.createConversationMessage({ message: text, client_request_id: clientRequestId })
         : await assistantAPI.appendConversationMessage(conversationId, { message: text, client_request_id: clientRequestId });
-      setMessages((current) => mergeMessages(
-        current.filter((message) => message.client_request_id !== clientRequestId),
-        [response.user_message],
-      ));
+      setTurns((current) => [...current.filter((turn) => turn.id !== optimisticId), response.turn]);
       onConversationUpdated?.(response.conversation);
       if (conversationId === null) createdConversationRef.current = response.conversation.id;
       setExecutionStage(response.execution_stage);
-      startPolling(response.run_id);
+      observeTurn(response.turn);
       return response.conversation.id;
     } catch {
-      setSending(false); setRetryableError(null); state.markRequestFailed(); return null;
+      setSending(false); state.markRequestFailed(); return null;
     }
-  }, [conversationId, onConversationUpdated, organizationId, sending, startPolling, state]);
+  }, [conversationId, observeTurn, onConversationUpdated, organizationId, sending, state]);
 
-  const retrySubmission = useCallback(async () => {
-    const runId = activeRunRef.current;
-    if (!runId || sending) return null;
-    setSending(true); setRetryableError(null); state.beginRequest(); state.markThinking();
+  const retryTurn = useCallback(async (turnId: number, runId: number) => {
+    if (sending) return null;
+    setSending(true); state.beginRequest(); state.markThinking();
+    setTurns((current) => current.map((turn) => turn.id === turnId
+      ? { ...turn, retry_allowed: false, retry_target_run_id: null }
+      : turn));
     try {
       const run = await assistantAPI.retryRun(runId, crypto.randomUUID());
-      setExecutionStage(run.execution_stage); startPolling(run.id); return conversationId;
-    } catch { setSending(false); state.markRequestFailed(); return null; }
-  }, [conversationId, sending, startPolling, state]);
+      setTurns((current) => current.map((turn) => turn.id === turnId
+        ? { ...turn, current_run: run, current_response: null }
+        : turn));
+      void pollRun(turnId, run.id, generationRef.current);
+      return conversationId;
+    } catch {
+      setSending(false); setLoadAttempt((value) => value + 1); state.markRequestFailed(); return null;
+    }
+  }, [conversationId, pollRun, sending, state]);
 
   const completeProgressiveMessage = useCallback((id: number) => {
     setProgressiveMessageIds((current) => { const next = new Set(current); next.delete(id); return next; });
@@ -187,9 +225,8 @@ export function usePrincipalConversationMessages(
   }, [state]);
 
   return {
-    messages, loading, sending, requestState: state.requestState, executionStage, longRunning,
-    diagnostics, progressiveMessageIds, retryableError, unavailable, submitMessage,
-    retrySubmission, retryLoad: () => setLoadAttempt((value) => value + 1),
-    completeProgressiveMessage,
+    turns, legacyMessages, loading, sending, requestState: state.requestState, executionStage, longRunning,
+    diagnostics, progressiveMessageIds, unavailable, submitMessage, retryTurn,
+    retryLoad: () => setLoadAttempt((value) => value + 1), completeProgressiveMessage,
   };
 }

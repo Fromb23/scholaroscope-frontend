@@ -94,7 +94,9 @@ export function usePrincipalConversations(
   const recentRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
   const organizationRef = useRef(organizationId);
+  const recentRef = useRef(recent);
   organizationRef.current = organizationId;
+  recentRef.current = recent;
 
   const loadRecent = useCallback(async () => {
     if (!organizationId) return;
@@ -308,11 +310,16 @@ export function usePrincipalConversations(
     const replace = (rows: AssistantConversation[]) => rows.map(
       (row) => row.id === conversation.id ? conversation : row,
     );
-    setRecent(replace);
+    const knownRecent = recentRef.current.some((row) => row.id === conversation.id);
+    setRecent((rows) => knownRecent ? replace(rows) : [conversation, ...rows].slice(0, 10));
+    if (!knownRecent) setRecentCount((count) => count + 1);
     setOlder(replace);
     setSearchResults(replace);
-    setActiveConversation((current) => current?.id === conversation.id ? conversation : current);
-  }, [organizationId]);
+    setActiveConversation((current) => (
+      current?.id === conversation.id || conversationId === conversation.id
+        ? conversation : current
+    ));
+  }, [conversationId, organizationId]);
 
   return {
     recent,
