@@ -46,6 +46,30 @@ describe('AssistantResponseBlocks', () => {
 
     expect(html).toContain('No supported tool can answer this request.');
     expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain('rounded-lg border');
+  });
+
+  it('keeps mixed useful content and one unboxed capability boundary', () => {
+    const html = render([
+      { type: 'markdown', text: 'Absence can identify learners who need support.' },
+      {
+        type: 'unsupported_capability', code: 'unsupported_capability',
+        message: 'Live results are not available.', presentation_owner: 'SERVER',
+        model_context_retained: true,
+      },
+    ]);
+    expect(html).toContain('learners who need support');
+    expect(html.match(/Live results are not available/g)).toHaveLength(1);
+  });
+
+  it('offers retry only for a genuine execution failure when supplied by its turn', () => {
+    const html = renderToStaticMarkup(createElement(AssistantResponseBlocks, {
+      blocks: [{ type: 'error', code: 'assistant_response_unavailable', message: 'internal' }],
+      onRetry: () => undefined,
+    }));
+    expect(html).toContain('>Retry</button>');
+    expect(render([{ type: 'unsupported_capability', code: 'unsupported_capability', message: 'Unavailable.' }]))
+      .not.toContain('>Retry</button>');
   });
 
   it('renders a safe retry message without backend diagnostics', () => {

@@ -7,7 +7,7 @@ import type {
   AssistantChatResponse,
   AssistantFeedbackPayload,
   AssistantFeedbackResponse,
-  AssistantMessage,
+  AssistantTurnHistory,
   AssistantMessageCreatePayload,
   AssistantSuggestRequest,
   AssistantSuggestResponse,
@@ -78,12 +78,12 @@ export const assistantAPI = {
     return response.data;
   },
 
-  listConversationMessages: async (
+  listConversationTurns: async (
     conversationId: number,
     signal?: AbortSignal,
-  ): Promise<AssistantMessage[]> => {
-    const response = await apiClient.get<AssistantMessage[]>(
-      `/assistant/conversations/${conversationId}/messages/`,
+  ): Promise<AssistantTurnHistory> => {
+    const response = await apiClient.get<AssistantTurnHistory>(
+      `/assistant/conversations/${conversationId}/turns/`,
       { signal, headers: OVERSIGHT_CONTEXT_HEADERS },
     );
     return response.data;

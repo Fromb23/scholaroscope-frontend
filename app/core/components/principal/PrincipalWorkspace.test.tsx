@@ -208,7 +208,8 @@ describe('Principal conversational workspace', () => {
 
   it('updates active conversation context from each message response', () => {
     expect(messageHook).toContain('onConversationUpdated?.(response.conversation)');
-    expect(hook).toContain('setActiveConversation((current) => current?.id === conversation.id ? conversation : current)');
+    expect(hook).toContain('current?.id === conversation.id || conversationId === conversation.id');
+    expect(hook).toContain('[conversation, ...rows].slice(0, 10)');
     expect(workspace).toContain('state.applyConversationUpdate');
   });
 
@@ -217,34 +218,36 @@ describe('Principal conversational workspace', () => {
     expect(workspace).not.toContain('router.push(`/principal/conversations/');
   });
 
-  it('loads persisted messages and renders user and assistant roles in server order', () => {
-    expect(messageHook).toContain('assistantAPI.listConversationMessages(conversationId');
-    expect(messageHook).toContain('.then(setMessages)');
-    expect(workspace).toContain("message.role === 'ASSISTANT'");
-    expect(workspace).toContain('blocks={message.content_blocks}');
+  it('loads authoritative turns and renders each user turn with one current response area', () => {
+    expect(messageHook).toContain('assistantAPI.listConversationTurns(conversationId');
+    expect(api).toContain('`/assistant/conversations/${conversationId}/turns/`');
+    expect(messageHook).toContain('setTurns(history.turns)');
+    expect(messageHook).toContain('setLegacyMessages(history.legacy_unlinked_messages)');
+    expect(workspace).toContain('messageState.turns.map((turn)');
+    expect(workspace).toContain('blocks={turn.current_response.content_blocks}');
+    expect(workspace).toContain('Older assistant records without a stored turn link are shown separately.');
   });
 
-  it('prevents double submission and retries the failed run without another user bubble', () => {
+  it('prevents double submission and retries the selected turn without a global run reference', () => {
     expect(messageHook).toContain('if (!text || !organizationId || sending) return null;');
     expect(messageHook).toContain('const clientRequestId = crypto.randomUUID()');
     expect(messageHook).toContain('assistantAPI.retryRun(runId, crypto.randomUUID())');
-    expect(messageHook).toContain('activeRunRef.current');
+    expect(messageHook).toContain('retryTurn = useCallback(async (turnId: number, runId: number)');
+    expect(messageHook).not.toContain('activeRunRef');
     expect(messageHook.match(/role: 'USER'/g)).toHaveLength(1);
   });
 
   it('uses shared thinking and progressive response primitives', () => {
-    expect(workspace).toContain('<AssistantThinkingIndicator stage={messageState.executionStage} longRunning={messageState.longRunning} />');
-    expect(workspace).toContain("['SUBMITTING', 'THINKING'].includes(messageState.requestState)");
+    expect(workspace).toContain('<AssistantThinkingIndicator stage={turn.current_run.execution_stage} longRunning={messageState.longRunning} />');
     expect(workspace).not.toContain('Sending your question and waiting for governed intelligence');
-    expect(workspace).toContain('progressive={messageState.progressiveMessageIds.has(message.id)}');
-    expect(workspace).toContain('message.role === \'ASSISTANT\'');
+    expect(workspace).toContain('progressive={messageState.progressiveMessageIds.has(turn.current_response.id)}');
   });
 
   it('bounds assistant requests and distinguishes timeout from cancellation', () => {
     expect(api).toContain('ASSISTANT_REQUEST_TIMEOUT_MS = 45_000');
     expect(api).toContain("error.code === 'ECONNABORTED'");
     expect(messageHook).toContain('!controller.signal.aborted');
-    expect(messageHook).toContain('activeControllerRef.current?.abort()');
+    expect(messageHook).toContain('controllersRef.current.forEach((controller) => controller.abort())');
   });
 
   it('follows responses only while the reader remains near the bottom', () => {
@@ -255,8 +258,9 @@ describe('Principal conversational workspace', () => {
   it('polls asynchronous runs and cancels polling at workspace boundaries', () => {
     expect(messageHook).toContain('assistantAPI.getRun(runId, controller.signal)');
     expect(messageHook).toContain("['COMPLETED', 'SUCCEEDED', 'FAILED', 'UNSUPPORTED'].includes(run.status)");
-    expect(messageHook).toContain('activeControllerRef.current?.abort()');
+    expect(messageHook).toContain('controllersRef.current.forEach((controller) => controller.abort())');
     expect(messageHook).toContain('failures >= 5');
+    expect(messageHook).toContain('history.turns.forEach(observeTurn)');
   });
 
   it('maps real stages and reserves Almost done for composition', () => {
@@ -274,8 +278,8 @@ describe('Principal conversational workspace', () => {
   });
 
   it('uses content-sized bubbles and one in-message error surface', () => {
-    expect(workspace).toContain("'ml-auto w-fit max-w-[85%]");
-    expect(workspace).toContain("'mr-auto w-fit max-w-full");
+    expect(workspace).toContain('className="ml-auto w-fit max-w-[85%]');
+    expect(workspace).toContain('className="mr-auto w-fit max-w-full');
     expect(workspace).not.toContain('role="alert" className="mt-2 flex items-center');
   });
 
@@ -351,7 +355,8 @@ describe('Principal workspace layout and controls', () => {
       deleteConversation: vi.fn(),
     };
     mocks.messageState = {
-      messages: [],
+      turns: [],
+      legacyMessages: [],
       loading: false,
       unavailable: false,
       sending: false,
@@ -360,9 +365,8 @@ describe('Principal workspace layout and controls', () => {
       longRunning: false,
       diagnostics: undefined,
       progressiveMessageIds: new Set(),
-      retryableError: null,
       submitMessage: vi.fn(),
-      retrySubmission: vi.fn(),
+      retryTurn: vi.fn(),
       retryLoad: vi.fn(),
       completeProgressiveMessage: vi.fn(),
     };

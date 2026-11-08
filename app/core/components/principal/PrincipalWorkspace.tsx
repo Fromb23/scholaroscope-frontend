@@ -389,7 +389,7 @@ function ConversationCanvas({
 
   useEffect(() => followLatestMessage(), [
     followLatestMessage,
-    messageState.messages.length,
+    messageState.turns.length,
     messageState.requestState,
     messageState.executionStage,
   ]);
@@ -426,8 +426,8 @@ function ConversationCanvas({
     }
   };
 
-  const retry = async () => {
-    const persistedConversationId = await messageState.retrySubmission();
+  const retry = async (turnId: number, runId: number) => {
+    const persistedConversationId = await messageState.retryTurn(turnId, runId);
     if (persistedConversationId !== null) {
       setPrompt('');
       if (isBlank) onConversationCreated(persistedConversationId);
@@ -513,30 +513,48 @@ function ConversationCanvas({
             <p className="mt-2 text-sm theme-muted">The conversation remains available, but its messages could not be loaded.</p>
             <button type="button" onClick={messageState.retryLoad} className="theme-focus-ring mt-4 rounded-lg border theme-border px-4 py-2 text-sm font-medium theme-text">Retry messages</button>
           </div>
-        ) : messageState.messages.length > 0 ? (
+        ) : messageState.turns.length > 0 || messageState.legacyMessages.length > 0 ? (
           <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6">
-            {messageState.messages.map((message) => (
-              <article key={message.id} className={message.role === 'USER' ? 'ml-auto w-fit max-w-[85%] rounded-2xl bg-[color:var(--brand-primary)] px-4 py-3 text-white' : 'mr-auto w-fit max-w-full rounded-2xl border theme-border bg-[color:var(--color-surface)] px-4 py-3'}>
-                <p className="sr-only">{message.role === 'USER' ? 'You' : 'Scholaroscope assistant'}</p>
-                {message.role === 'ASSISTANT' ? (
-                  <AssistantResponseBlocks
-                    blocks={message.content_blocks}
-                    progressive={messageState.progressiveMessageIds.has(message.id)}
-                    onProgressiveProgress={followLatestMessage}
-                    onProgressiveComplete={() => messageState.completeProgressiveMessage(message.id)}
-                    onRetry={message.content_blocks.some((block) => block.type === 'error') && messageState.retryableError ? () => void retry() : undefined}
-                    diagnostics={message.content_blocks.some((block) => block.type === 'error') ? messageState.diagnostics : undefined}
-                  />
-                ) : (
+            {messageState.turns.map((turn) => (
+              <div key={turn.id} className="space-y-3">
+                <article className="ml-auto w-fit max-w-[85%] rounded-2xl bg-[color:var(--brand-primary)] px-4 py-3 text-white">
+                  <p className="sr-only">You</p>
                   <div className="space-y-2 text-sm leading-6">
-                    {message.content_blocks.map((block, index) => block.type === 'markdown' ? <p key={index} className="whitespace-pre-wrap">{block.text}</p> : null)}
+                    {turn.user_message.content_blocks.map((block, index) => block.type === 'markdown' ? <p key={index} className="whitespace-pre-wrap">{block.text}</p> : null)}
                   </div>
-                )}
-              </article>
+                </article>
+                <article className="mr-auto w-fit max-w-full rounded-2xl border theme-border bg-[color:var(--color-surface)] px-4 py-3">
+                  <p className="sr-only">Scholaroscope assistant</p>
+                  {turn.current_response ? (
+                  <AssistantResponseBlocks
+                    blocks={turn.current_response.content_blocks}
+                    progressive={messageState.progressiveMessageIds.has(turn.current_response.id)}
+                    onProgressiveProgress={followLatestMessage}
+                    onProgressiveComplete={() => messageState.completeProgressiveMessage(turn.current_response!.id)}
+                    onRetry={turn.retry_allowed && turn.retry_target_run_id !== null
+                      && turn.current_response.content_blocks.some((block) => block.type === 'error')
+                      ? () => void retry(turn.id, turn.retry_target_run_id!) : undefined}
+                    diagnostics={turn.current_response.content_blocks.some((block) => block.type === 'error') ? messageState.diagnostics : undefined}
+                  />
+                  ) : turn.current_run && ['PENDING', 'RUNNING'].includes(turn.current_run.status) ? (
+                    <AssistantThinkingIndicator stage={turn.current_run.execution_stage} longRunning={messageState.longRunning} />
+                  ) : (
+                    <p className="text-sm theme-muted">Response state unavailable. Reload this conversation.</p>
+                  )}
+                </article>
+              </div>
             ))}
-            {['SUBMITTING', 'THINKING'].includes(messageState.requestState)
-              ? <AssistantThinkingIndicator stage={messageState.executionStage} longRunning={messageState.longRunning} />
-              : null}
+            {messageState.legacyMessages.length > 0 ? (
+              <section aria-label="Unlinked legacy assistant records" className="space-y-3 border-t theme-border pt-4">
+                <p className="text-xs theme-muted">Older assistant records without a stored turn link are shown separately.</p>
+                {messageState.legacyMessages.map((message) => (
+                  <article key={message.id} className="mr-auto w-fit max-w-full rounded-2xl border theme-border bg-[color:var(--color-surface)] px-4 py-3">
+                    <p className="sr-only">Legacy Scholaroscope assistant record</p>
+                    <AssistantResponseBlocks blocks={message.content_blocks} />
+                  </article>
+                ))}
+              </section>
+            ) : null}
             <div ref={messagesEndRef} />
           </div>
         ) : isBlank ? (
