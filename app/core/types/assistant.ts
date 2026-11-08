@@ -72,6 +72,20 @@ export interface AssistantUnsupportedCapabilityBlock {
   message: string;
   presentation_owner?: 'SERVER';
   model_context_retained?: boolean;
+  capability_context?: {
+    outcome: 'OPERATION_UNAVAILABLE';
+    requested_operation: string;
+    limitation: string;
+    scope_labels: Array<{
+      label: string;
+      entity_type: 'LEVEL' | 'COHORT' | 'SUBJECT' | 'DATE' | 'TERM' | 'OTHER';
+      source: 'USER_PROVIDED' | 'INFERRED';
+    }>;
+    supported_alternative: {
+      description: string;
+      required_scope_labels: string[];
+    } | null;
+  };
 }
 
 export interface AssistantErrorBlock {

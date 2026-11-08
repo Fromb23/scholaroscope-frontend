@@ -49,6 +49,33 @@ describe('AssistantResponseBlocks', () => {
     expect(html).not.toContain('rounded-lg border');
   });
 
+  it('renders the production unavailable-operation contract as one readable response without Retry', () => {
+    const html = render([{
+      type: 'unsupported_capability',
+      code: 'operation_unavailable',
+      message: 'I understand you want an attendance average. I cannot calculate averages. I can list verified absences for one cohort, subject, and date.',
+      presentation_owner: 'SERVER',
+      capability_context: {
+        outcome: 'OPERATION_UNAVAILABLE',
+        requested_operation: 'an attendance average',
+        limitation: 'I cannot calculate averages.',
+        scope_labels: [
+          { label: 'Grade 10', entity_type: 'LEVEL', source: 'USER_PROVIDED' },
+        ],
+        supported_alternative: {
+          description: 'list verified absences for one cohort, subject, and date',
+          required_scope_labels: ['one cohort', 'one subject', 'one date'],
+        },
+      },
+    }]);
+
+    expect(html.match(/attendance average/g)).toHaveLength(1);
+    expect(html).toContain('one cohort, subject, and date');
+    expect(html).not.toContain('Retry');
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain('attendance.list_absent_learners');
+  });
+
   it('keeps mixed useful content and one unboxed capability boundary', () => {
     const html = render([
       { type: 'markdown', text: 'Absence can identify learners who need support.' },
