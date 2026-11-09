@@ -124,7 +124,7 @@ export function AssistantResponseBlocks({
           case 'clarification':
             return <p key={index} className="rounded-lg border theme-border bg-black/5 p-3 text-sm theme-text">{block.question}</p>;
           case 'unsupported_capability':
-            return <p key={index} className="text-sm theme-muted">{block.message}</p>;
+            return <p key={index} className="whitespace-pre-wrap text-sm leading-6 theme-text">{block.message}</p>;
           case 'error':
             return (
               <div key={index} role="alert" className="rounded-lg border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger)]/5 p-3">
