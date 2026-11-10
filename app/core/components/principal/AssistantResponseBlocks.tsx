@@ -13,6 +13,7 @@ import {
 interface AssistantResponseBlocksProps {
   blocks: AssistantResponseBlock[];
   progressive?: boolean;
+  responseIdentity?: string | number;
   onProgressiveComplete?: () => void;
   onProgressiveProgress?: () => void;
   onRetry?: () => void;
@@ -72,6 +73,7 @@ function safeErrorMessage(code: string): string {
 export function AssistantResponseBlocks({
   blocks,
   progressive = false,
+  responseIdentity,
   onProgressiveComplete,
   onProgressiveProgress,
   onRetry,
@@ -91,6 +93,7 @@ export function AssistantResponseBlocks({
                 key={index}
                 text={block.text}
                 active={progressive}
+                revealKey={responseIdentity === undefined ? undefined : `${responseIdentity}:${index}`}
                 onProgress={onProgressiveProgress}
                 onComplete={index === finalProgressiveIndex ? onProgressiveComplete : undefined}
               />

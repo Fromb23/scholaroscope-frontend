@@ -40,6 +40,7 @@ import {
   usePrincipalConversations,
 } from '@/app/core/hooks/usePrincipalConversations';
 import type { AssistantConversation } from '@/app/core/types/assistant';
+import { PrincipalConversationPageTitle } from './PrincipalConversationPageTitle';
 
 const MAX_TITLE_LENGTH = 120;
 
@@ -531,6 +532,7 @@ function ConversationCanvas({
                   <AssistantResponseBlocks
                     blocks={turn.current_response.content_blocks}
                     progressive={messageState.progressiveMessageIds.has(turn.current_response.id)}
+                    responseIdentity={turn.current_response.id}
                     onProgressiveProgress={followLatestMessage}
                     onProgressiveComplete={() => messageState.completeProgressiveMessage(turn.current_response!.id)}
                     onRetry={turn.retry_allowed && turn.retry_target_run_id !== null
@@ -636,12 +638,6 @@ export function PrincipalWorkspace() {
     if (!activeOrg) router.replace('/dashboard');
   }, [activeOrg, router]);
 
-  useEffect(() => {
-    document.title = state.activeConversation?.title
-      ? `${state.activeConversation.title} | Scholaroscope`
-      : 'Principal Dashboard | Scholaroscope';
-  }, [state.activeConversation?.title]);
-
   const sidebar = (
     <ConversationSidebar
       state={state}
@@ -654,6 +650,12 @@ export function PrincipalWorkspace() {
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden">
+      <PrincipalConversationPageTitle
+        isBlank={rawConversationId === undefined}
+        title={state.activeConversation?.title}
+        loading={state.activeLoading}
+        unavailable={state.activeUnavailable}
+      />
       <aside className="hidden h-full min-h-0 w-72 shrink-0 border-r theme-border lg:block" aria-label="Conversation navigation">
         {sidebar}
       </aside>

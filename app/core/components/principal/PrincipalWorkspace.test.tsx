@@ -300,9 +300,10 @@ describe('Principal conversational workspace', () => {
     expect(workspace).toContain('It remains in your history; retry when ready.');
   });
 
-  it('sets the browser title from the active server conversation title', () => {
-    expect(workspace).toContain('document.title = state.activeConversation?.title');
-    expect(workspace).toContain('Principal Dashboard | Scholaroscope');
+  it('delegates browser title ownership to the semantic title provider', () => {
+    expect(workspace).toContain('<PrincipalConversationPageTitle');
+    expect(workspace).toContain('title={state.activeConversation?.title}');
+    expect(workspace).not.toContain('document.title =');
   });
 });
 
