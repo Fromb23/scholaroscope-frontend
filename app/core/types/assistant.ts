@@ -143,8 +143,15 @@ export interface AssistantRunDiagnostics {
   model?: string | null;
   http_status?: number | null;
   provider_retry_count?: number;
+  provider_call_count?: number;
   tool_selected: string | null;
   tool_executed: boolean;
+  semantics?: {
+    dictionary_version: string | null;
+    concept_keys: string[];
+    entry_count: number;
+    payload_bytes: number;
+  };
 }
 
 export interface AssistantRun {
