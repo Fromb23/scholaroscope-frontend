@@ -412,6 +412,63 @@ describe('usePrincipalConversationMessages lifecycle', () => {
     await act(async () => renderer.unmount());
   });
 
+  it('keeps one reveal active while both authoritative title refreshes complete', async () => {
+    const completed = run(702, 'COMPLETED', message(
+      802,
+      'ASSISTANT',
+      'This answer remains visible while its conversation title refreshes.',
+    ));
+    const acceptedTurn = turn(7, run(701, 'RUNNING'));
+    mocks.listConversationTurns.mockResolvedValue(history());
+    mocks.appendConversationMessage.mockResolvedValue(acceptedResponse(10, acceptedTurn));
+    mocks.getRun.mockResolvedValue(completed);
+    mocks.getConversation
+      .mockResolvedValueOnce(conversation(10))
+      .mockResolvedValueOnce({ ...conversation(10), title: 'First refreshed title' })
+      .mockResolvedValueOnce({ ...conversation(10), title: 'Final refreshed title' });
+    const onConversationUpdated = vi.fn();
+    let renderer!: ReactTestRenderer;
+
+    function RefreshHarness() {
+      const state = usePrincipalConversationMessages(1, 10, onConversationUpdated);
+      useEffect(() => { latestState = state; }, [state]);
+      return createElement('message-state', { progressive: [...state.progressiveMessageIds] });
+    }
+
+    await act(async () => {
+      renderer = create(createElement(RefreshHarness));
+      await flushPromises();
+    });
+    await act(async () => {
+      await latestState.submitMessage('Question with an asynchronously generated title');
+      await flushPromises();
+    });
+    expect([...latestState.progressiveMessageIds]).toEqual([802]);
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+      await flushPromises();
+    });
+    expect([...latestState.progressiveMessageIds]).toEqual([802]);
+    expect(onConversationUpdated).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      vi.advanceTimersByTime(900);
+      await flushPromises();
+    });
+    expect([...latestState.progressiveMessageIds]).toEqual([802]);
+    expect(onConversationUpdated).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      latestState.completeProgressiveMessage(802);
+      await flushPromises();
+    });
+    expect([...latestState.progressiveMessageIds]).toEqual([]);
+
+    await act(async () => renderer.unmount());
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('stays bounded in React Strict Mode and starts only one live poll', async () => {
     mocks.listConversationTurns.mockResolvedValue(history(turn(1, run(101, 'RUNNING'))));
     const pendingPoll = deferred<AssistantRun>();

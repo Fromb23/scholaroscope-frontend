@@ -98,6 +98,109 @@ describe('shared assistant interaction primitives', () => {
     );
   });
 
+  it('does not rewind for new callback identities and completes the reveal once', async () => {
+    let frame: FrameRequestCallback | undefined;
+    const cancelFrame = vi.fn();
+    const firstComplete = vi.fn();
+    const latestComplete = vi.fn();
+    vi.stubGlobal('window', {
+      matchMedia: () => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    });
+    vi.stubGlobal('performance', { now: () => 0 });
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frame = callback;
+      return 7;
+    });
+    vi.stubGlobal('cancelAnimationFrame', cancelFrame);
+    let renderer: ReactTestRenderer | undefined;
+    const text = 'Unrelated title refreshes must not restart this response.';
+
+    await act(async () => {
+      renderer = create(createElement(AssistantProgressiveText, {
+        text,
+        active: true,
+        revealKey: 42,
+        onComplete: firstComplete,
+      }));
+    });
+    act(() => frame?.(160));
+    const beforeRefresh = renderer!.root.findByType('p').children.join('');
+
+    await act(async () => {
+      renderer!.update(createElement(AssistantProgressiveText, {
+        text,
+        active: true,
+        revealKey: 42,
+        onComplete: latestComplete,
+        onProgress: () => undefined,
+      }));
+    });
+    expect(renderer!.root.findByType('p').children.join('')).toBe(beforeRefresh);
+
+    act(() => frame?.(3_000));
+    expect(renderer!.root.findByType('p').children.join('')).toBe(text);
+    expect(firstComplete).not.toHaveBeenCalled();
+    expect(latestComplete).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      renderer!.update(createElement(AssistantProgressiveText, {
+        text,
+        active: false,
+        revealKey: 42,
+        onComplete: vi.fn(),
+      }));
+    });
+    expect(renderer!.root.findByType('p').children.join('')).toBe(text);
+    expect(latestComplete).toHaveBeenCalledTimes(1);
+
+    await act(async () => renderer!.unmount());
+    expect(cancelFrame).toHaveBeenCalled();
+  });
+
+  it('starts a distinct response identity from the beginning while equivalent reconciliation stays complete', async () => {
+    let frame: FrameRequestCallback | undefined;
+    vi.stubGlobal('window', {
+      matchMedia: () => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    });
+    vi.stubGlobal('performance', { now: () => 0 });
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frame = callback;
+      return 8;
+    });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    let renderer: ReactTestRenderer | undefined;
+
+    await act(async () => {
+      renderer = create(createElement(AssistantProgressiveText, {
+        text: 'First response', active: true, revealKey: 'response-1',
+      }));
+    });
+    act(() => renderer!.root.findByType('button').props.onClick());
+    await act(async () => {
+      renderer!.update(createElement(AssistantProgressiveText, {
+        text: 'First response', active: true, revealKey: 'response-1',
+      }));
+    });
+    expect(renderer!.root.findByType('p').children.join('')).toBe('First response');
+
+    await act(async () => {
+      renderer!.update(createElement(AssistantProgressiveText, {
+        text: 'Retry response', active: true, revealKey: 'response-2',
+      }));
+    });
+    expect(renderer!.root.findByType('p').children.join('')).toBe('');
+    act(() => frame?.(3_000));
+    expect(renderer!.root.findByType('p').children.join('')).toBe('Retry response');
+  });
+
   it('renders the complete response immediately for reduced motion', async () => {
     vi.stubGlobal('window', {
       matchMedia: () => ({

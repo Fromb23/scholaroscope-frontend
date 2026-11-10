@@ -43,6 +43,7 @@ function usePrefersReducedMotion(): boolean {
 interface AssistantProgressiveTextProps {
   text: string;
   active: boolean;
+  revealKey?: string | number;
   onComplete?: () => void;
   onProgress?: () => void;
 }
@@ -50,6 +51,7 @@ interface AssistantProgressiveTextProps {
 export function AssistantProgressiveText({
   text,
   active,
+  revealKey,
   onComplete,
   onProgress,
 }: AssistantProgressiveTextProps) {
@@ -60,48 +62,86 @@ export function AssistantProgressiveText({
     && !reducedMotion
     && !isStructuredAssistantMarkdown(text);
   const [visibleCount, setVisibleCount] = useState(shouldAnimate ? 0 : graphemes.length);
-  const completedRef = useRef(false);
-  const skippedRef = useRef(false);
+  const visibleCountRef = useRef(visibleCount);
+  const callbacksRef = useRef({ onComplete, onProgress });
+  const revealIdentity = `${String(revealKey ?? '')}\u0000${text}`;
+  const revealRef = useRef({
+    identity: revealIdentity,
+    settled: !active,
+    completionNotified: false,
+    skipped: !active,
+  });
 
   useEffect(() => {
-    completedRef.current = false;
-    skippedRef.current = false;
+    callbacksRef.current = { onComplete, onProgress };
+  }, [onComplete, onProgress]);
+
+  const updateVisibleCount = (count: number) => {
+    visibleCountRef.current = count;
+    setVisibleCount(count);
+  };
+
+  useEffect(() => {
+    const identityChanged = revealRef.current.identity !== revealIdentity;
+    if (identityChanged) {
+      revealRef.current = {
+        identity: revealIdentity,
+        settled: !active,
+        completionNotified: false,
+        skipped: !active,
+      };
+      updateVisibleCount(active && shouldAnimate ? 0 : graphemes.length);
+    }
+
     if (!shouldAnimate) {
-      setVisibleCount(graphemes.length);
-      if (active) {
-        completedRef.current = true;
-        onComplete?.();
+      updateVisibleCount(graphemes.length);
+      revealRef.current.settled = true;
+      if (active && !revealRef.current.completionNotified) {
+        revealRef.current.completionNotified = true;
+        callbacksRef.current.onComplete?.();
       }
       return;
     }
 
-    setVisibleCount(0);
+    if (revealRef.current.settled || revealRef.current.skipped) {
+      updateVisibleCount(graphemes.length);
+      return;
+    }
+
+    const startingCount = identityChanged ? 0 : Math.min(
+      visibleCountRef.current,
+      graphemes.length,
+    );
     const duration = assistantRevealDuration(graphemes.length);
-    const startedAt = performance.now();
+    const startedAt = performance.now() - (duration * startingCount / graphemes.length);
     let frame = 0;
     const reveal = (now: number) => {
-      if (skippedRef.current) return;
+      if (revealRef.current.identity !== revealIdentity || revealRef.current.skipped) return;
       const progress = Math.min(1, (now - startedAt) / duration);
       const nextCount = Math.min(graphemes.length, Math.max(1, Math.ceil(progress * graphemes.length)));
-      setVisibleCount(nextCount);
-      onProgress?.();
+      updateVisibleCount(nextCount);
+      callbacksRef.current.onProgress?.();
       if (progress < 1) {
         frame = requestAnimationFrame(reveal);
-      } else if (!completedRef.current) {
-        completedRef.current = true;
-        onComplete?.();
+      } else if (!revealRef.current.settled) {
+        revealRef.current.settled = true;
+        if (!revealRef.current.completionNotified) {
+          revealRef.current.completionNotified = true;
+          callbacksRef.current.onComplete?.();
+        }
       }
     };
     frame = requestAnimationFrame(reveal);
     return () => cancelAnimationFrame(frame);
-  }, [active, graphemes, onComplete, onProgress, shouldAnimate]);
+  }, [active, graphemes, revealIdentity, shouldAnimate]);
 
   const revealAll = () => {
-    skippedRef.current = true;
-    setVisibleCount(graphemes.length);
-    if (!completedRef.current) {
-      completedRef.current = true;
-      onComplete?.();
+    revealRef.current.skipped = true;
+    revealRef.current.settled = true;
+    updateVisibleCount(graphemes.length);
+    if (!revealRef.current.completionNotified) {
+      revealRef.current.completionNotified = true;
+      callbacksRef.current.onComplete?.();
     }
   };
 

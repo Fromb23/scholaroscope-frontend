@@ -97,6 +97,8 @@ export function usePrincipalConversationMessages(
   const pollingRef = useRef<Map<number, PollToken>>(new Map());
   const pollTimersRef = useRef<Map<string, PollTimer>>(new Map());
   const titleTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const animatingMessageIdsRef = useRef<Set<number>>(new Set());
+  const revealedMessageIdsRef = useRef<Set<number>>(new Set());
 
   currentOrganizationRef.current = organizationId;
   currentConversationRef.current = conversationId;
@@ -158,6 +160,8 @@ export function usePrincipalConversationMessages(
     setSending(false);
     setDiagnostics(undefined);
     setProgressiveMessageIds(new Set());
+    animatingMessageIdsRef.current.clear();
+    revealedMessageIdsRef.current.clear();
     setLongRunning(false);
     setExecutionStage(null);
     resetRequestState();
@@ -208,8 +212,15 @@ export function usePrincipalConversationMessages(
         (block) => block.type === 'markdown' && !isStructuredAssistantMarkdown(block.text),
       );
       if (progressive) {
-        setProgressiveMessageIds((current) => new Set(current).add(run.assistant_message!.id));
-        markTypewriting();
+        const messageId = run.assistant_message.id;
+        if (
+          !revealedMessageIdsRef.current.has(messageId)
+          && !animatingMessageIdsRef.current.has(messageId)
+        ) {
+          animatingMessageIdsRef.current.add(messageId);
+          setProgressiveMessageIds((current) => new Set(current).add(messageId));
+          markTypewriting();
+        }
       } else {
         markComplete();
       }
@@ -333,6 +344,11 @@ export function usePrincipalConversationMessages(
         ) return;
         setTurns(history.turns);
         setLegacyMessages(history.legacy_unlinked_messages);
+        history.turns.forEach((turn) => {
+          if (turn.current_response && !isActive(turn.current_run)) {
+            revealedMessageIdsRef.current.add(turn.current_response.id);
+          }
+        });
         setUnavailable(false);
         history.turns
           .filter((turn) => isActive(turn.current_run))
@@ -471,6 +487,8 @@ export function usePrincipalConversationMessages(
   }, [beginRequest, markRequestFailed, markThinking, observeTurn]);
 
   const completeProgressiveMessage = useCallback((id: number) => {
+    animatingMessageIdsRef.current.delete(id);
+    revealedMessageIdsRef.current.add(id);
     setProgressiveMessageIds((current) => {
       const next = new Set(current);
       next.delete(id);

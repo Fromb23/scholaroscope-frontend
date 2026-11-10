@@ -8,6 +8,10 @@ import type { AssistantConversation } from '@/app/core/types/assistant';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+const activeScopeKey = (organizationId: number, conversationId: number) => (
+  `${organizationId}:${conversationId}`
+);
+
 function replaceTitle(
   rows: AssistantConversation[],
   conversationId: number,
@@ -85,6 +89,7 @@ export function usePrincipalConversations(
   const [searchError, setSearchError] = useState(false);
   const [searchHasNext, setSearchHasNext] = useState(false);
   const [activeConversation, setActiveConversation] = useState<AssistantConversation | null>(null);
+  const [activeConversationScope, setActiveConversationScope] = useState<string | null>(null);
   const [activeLoading, setActiveLoading] = useState(false);
   const [activeUnavailable, setActiveUnavailable] = useState(invalidConversationId);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -93,6 +98,7 @@ export function usePrincipalConversations(
   const [deleteErrorId, setDeleteErrorId] = useState<number | null>(null);
   const recentRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
+  const activeRequestRef = useRef(0);
   const organizationRef = useRef(organizationId);
   const recentRef = useRef(recent);
   organizationRef.current = organizationId;
@@ -128,6 +134,7 @@ export function usePrincipalConversations(
     setDebouncedSearch('');
     setSearchResults([]);
     setActiveConversation(null);
+    setActiveConversationScope(null);
     setRenamingId(null);
     setRenameErrorId(null);
     setDeletingId(null);
@@ -176,24 +183,41 @@ export function usePrincipalConversations(
 
   useEffect(() => {
     if (!organizationId || conversationId === null || invalidConversationId) {
-      setActiveConversation(null);
+      activeRequestRef.current += 1;
       setActiveLoading(false);
       setActiveUnavailable(invalidConversationId);
       return;
     }
+    const scope = activeScopeKey(organizationId, conversationId);
+    const requestId = ++activeRequestRef.current;
     const controller = new AbortController();
     setActiveLoading(true);
     setActiveUnavailable(false);
     assistantAPI.getConversation(conversationId, controller.signal)
-      .then(setActiveConversation)
+      .then((conversation) => {
+        if (
+          controller.signal.aborted
+          || requestId !== activeRequestRef.current
+          || organizationId !== organizationRef.current
+        ) return;
+        setActiveConversation(conversation);
+        setActiveConversationScope(scope);
+      })
       .catch(() => {
-        if (!controller.signal.aborted) {
-          setActiveConversation(null);
+        if (
+          !controller.signal.aborted
+          && requestId === activeRequestRef.current
+          && organizationId === organizationRef.current
+        ) {
           setActiveUnavailable(true);
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setActiveLoading(false);
+        if (
+          !controller.signal.aborted
+          && requestId === activeRequestRef.current
+          && organizationId === organizationRef.current
+        ) setActiveLoading(false);
       });
     return () => controller.abort();
   }, [conversationId, invalidConversationId, organizationId]);
@@ -319,7 +343,18 @@ export function usePrincipalConversations(
       current?.id === conversation.id || conversationId === conversation.id
         ? conversation : current
     ));
+    if (organizationId !== null && (conversationId === conversation.id || conversationId === null)) {
+      setActiveConversation(conversation);
+      setActiveConversationScope(activeScopeKey(organizationId, conversation.id));
+    }
   }, [conversationId, organizationId]);
+
+  const expectedActiveScope = organizationId !== null && conversationId !== null
+    ? activeScopeKey(organizationId, conversationId)
+    : null;
+  const visibleActiveConversation = activeConversationScope === expectedActiveScope
+    ? activeConversation
+    : null;
 
   return {
     recent,
@@ -337,7 +372,7 @@ export function usePrincipalConversations(
     searchLoading,
     searchError,
     searchHasNext,
-    activeConversation,
+    activeConversation: visibleActiveConversation,
     activeLoading,
     activeUnavailable,
     renamingId,
