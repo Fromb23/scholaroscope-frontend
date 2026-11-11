@@ -56,6 +56,21 @@ export interface AssistantTableBlock {
   rows: Array<Record<string, string | number | boolean | null>>;
 }
 
+export interface AssistantDetailsBlock {
+  type: 'details';
+  items: Array<{
+    label: string;
+    value: string | number | boolean | null;
+  }>;
+}
+
+export interface AssistantNoticeBlock {
+  type: 'notice';
+  tone: 'info' | 'warning';
+  title?: string;
+  text: string;
+}
+
 export interface AssistantActionsBlock {
   type: 'actions';
   actions: AssistantAction[];
@@ -98,6 +113,8 @@ export type AssistantResponseBlock =
   | AssistantMarkdownBlock
   | AssistantMetricsBlock
   | AssistantTableBlock
+  | AssistantDetailsBlock
+  | AssistantNoticeBlock
   | AssistantActionsBlock
   | AssistantClarificationBlock
   | AssistantUnsupportedCapabilityBlock
