@@ -33,11 +33,14 @@ describe('LessonPlanDetailPage scheme desire path', () => {
     expect(source).toContain("label: 'Schedule this lesson'");
     expect(source).toContain("label: 'Open scheduled lesson'");
     expect(source).toContain("const canEditLessonPlan = Boolean(lifecycleActions?.canEdit)");
+    expect(source).toContain('Teaching action unavailable');
+    expect(source).toContain('workspace permissions do not allow review or scheduling');
     expect(source).not.toContain('Review / edit lesson plan');
   });
 
   it('treats review as explicit acceptance rather than mandatory rewriting', () => {
-    expect(source).toContain('Scholaroscope-generated lesson plans are system drafts');
+    expect(source).toContain('Inspect the lesson preparation below');
+    expect(source).toContain("lessonPlan?.status === 'DRAFT' ? 'Review lesson preparation'");
     expect(source).toContain('Edits are optional');
     expect(source).toContain('Teacher-reviewed lesson content');
     expect(source).toContain('reviewForm');

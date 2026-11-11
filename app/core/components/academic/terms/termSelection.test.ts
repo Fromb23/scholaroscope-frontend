@@ -594,6 +594,11 @@ describe('academic term calendar access', () => {
         expect(termsPage).toContain('{termDetailLocked ? (');
         expect(termsPage).toContain('Term configuration locked');
         expect(termsPage).toContain('Existing schemes may require review or regeneration.');
+        expect(termsPage).toContain('Term deletion unavailable');
+        expect(termsPage).toContain('selectedTerm.actions?.delete_blocked_reason');
+        expect(termsPage).toContain('Use Reopen Setup above');
+        expect(termsPage).toContain('Delete term');
+        expect(termsPage).toContain('aria-label={`Delete ${term.name}`}');
         expect(termsPage).toContain('TERM_CONFIGURATION_LOCKED');
         expect(termsPage).toContain('TERM_SETUP_REOPEN_NOT_ALLOWED');
         expect(canEditBlock).toContain('term.configuration_actions');

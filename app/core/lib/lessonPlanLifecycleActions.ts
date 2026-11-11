@@ -28,7 +28,7 @@ export function resolveLessonPlanLifecycleActions(
 ): LessonPlanLifecycleActions {
   const hasScheduledSession = Boolean(context.hasScheduledSession);
   const canAct = context.canCreateTeachingRecords;
-  const canReview = canAct && context.status === 'GENERATED';
+  const canReview = canAct && ['DRAFT', 'GENERATED'].includes(context.status);
   const canSchedule = canAct && context.status === 'REVIEWED' && !hasScheduledSession;
   const canPrepareLearnerTask = canAct && ['REVIEWED', 'SCHEDULED'].includes(context.status);
   const canOpenScheduledLesson = context.status === 'SCHEDULED' && hasScheduledSession;
