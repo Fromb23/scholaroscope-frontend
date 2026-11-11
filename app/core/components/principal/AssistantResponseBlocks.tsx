@@ -33,6 +33,21 @@ function displayTableValue(column: string, value: string | number | boolean | nu
   return value === null || value === undefined ? '' : String(value);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isDisplayValue(value: unknown): value is string | number | boolean | null {
+  return value === null || ['string', 'number', 'boolean'].includes(typeof value);
+}
+
+function isAssistantAction(value: unknown): value is AssistantAction {
+  return isRecord(value)
+    && typeof value.label === 'string'
+    && typeof value.type === 'string'
+    && ['navigate', 'page_action', 'feedback', 'external', 'chat_prompt'].includes(value.type);
+}
+
 function safeExternalHref(href?: string): string | null {
   if (!href) return null;
   try {
@@ -89,14 +104,21 @@ export function AssistantResponseBlocks({
   diagnostics,
 }: AssistantResponseBlocksProps) {
   const progressiveMarkdownIndices = blocks.flatMap((block, index) => (
-    block.type === 'markdown' && !isStructuredAssistantMarkdown(block.text) ? [index] : []
+    isRecord(block)
+      && block.type === 'markdown'
+      && typeof block.text === 'string'
+      && !isStructuredAssistantMarkdown(block.text)
+      ? [index]
+      : []
   ));
   const finalProgressiveIndex = progressiveMarkdownIndices.at(-1);
   return (
     <div className="space-y-3">
       {blocks.map((block, index) => {
+        if (!isRecord(block) || typeof block.type !== 'string') return null;
         switch (block.type) {
           case 'markdown':
+            if (typeof block.text !== 'string') return null;
             return (
               <AssistantProgressiveText
                 key={index}
@@ -108,9 +130,12 @@ export function AssistantResponseBlocks({
               />
             );
           case 'metrics':
+            if (!isRecord(block.values)) return null;
             return (
               <dl key={index} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                {Object.entries(block.values).map(([label, value]) => (
+                {Object.entries(block.values).filter((entry): entry is [string, number] => (
+                  typeof entry[1] === 'number' && Number.isFinite(entry[1])
+                )).map(([label, value]) => (
                   <div key={label} className="min-w-24 rounded-lg border theme-border bg-[color:var(--color-surface)] px-3 py-2">
                     <dt className="text-xs theme-muted">{labelFor(label)}</dt>
                     <dd className="mt-1 text-lg font-semibold theme-text">{value}</dd>
@@ -119,27 +144,68 @@ export function AssistantResponseBlocks({
               </dl>
             );
           case 'table': {
-            const visibleColumns = block.columns.filter((column) => column !== 'learner_id');
+            if (!Array.isArray(block.columns) || !Array.isArray(block.rows)) return null;
+            const visibleColumns = block.columns.filter((column): column is string => (
+              typeof column === 'string' && column !== 'learner_id'
+            ));
+            const rows = block.rows.filter(isRecord);
+            if (visibleColumns.length === 0) return null;
             return (
-              <div key={index} className="overflow-x-auto rounded-lg border theme-border">
+              <div key={index} className="max-w-full overflow-x-auto rounded-lg border theme-border" tabIndex={0} aria-label="Scrollable results table">
                 <table className="w-full min-w-max text-left text-sm">
+                  <caption className="sr-only">Assistant results</caption>
                   <thead className="border-b theme-border bg-black/5">
                     <tr>{visibleColumns.map((column) => <th key={column} className="px-3 py-2 font-medium theme-text">{labelFor(column)}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y theme-border">
-                    {block.rows.map((row, rowIndex) => (
-                      <tr key={rowIndex}>{visibleColumns.map((column) => <td key={column} className="px-3 py-2 theme-text">{displayTableValue(column, row[column])}</td>)}</tr>
+                    {rows.map((row, rowIndex) => (
+                      <tr key={rowIndex}>{visibleColumns.map((column) => {
+                        const value = row[column];
+                        return <td key={column} className="px-3 py-2 theme-text">{displayTableValue(column, isDisplayValue(value) ? value : null)}</td>;
+                      })}</tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             );
           }
+          case 'details': {
+            if (!Array.isArray(block.items)) return null;
+            const items = block.items.filter((item): item is { label: string; value: string | number | boolean | null } => (
+              isRecord(item) && typeof item.label === 'string' && isDisplayValue(item.value)
+            ));
+            if (items.length === 0) return null;
+            return (
+              <dl key={index} className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
+                {items.map((item, itemIndex) => (
+                  <div key={`${item.label}-${itemIndex}`} className="contents">
+                    <dt className="font-medium theme-muted">{item.label}</dt>
+                    <dd className="theme-text">{displayTableValue('', item.value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            );
+          }
+          case 'notice':
+            if (typeof block.text !== 'string' || (block.tone !== 'info' && block.tone !== 'warning')) return null;
+            return (
+              <aside
+                key={index}
+                aria-label={typeof block.title === 'string' ? block.title : 'Additional information'}
+                className={`rounded-lg border p-3 text-sm ${block.tone === 'warning' ? 'border-amber-500/40 bg-amber-500/5' : 'theme-border bg-black/5'}`}
+              >
+                {typeof block.title === 'string' ? <p className="font-medium theme-text">{block.title}</p> : null}
+                <p className={`${typeof block.title === 'string' ? 'mt-1 ' : ''}whitespace-pre-wrap leading-6 theme-text`}>{block.text}</p>
+              </aside>
+            );
           case 'clarification':
+            if (typeof block.question !== 'string') return null;
             return <p key={index} className="rounded-lg border theme-border bg-black/5 p-3 text-sm theme-text">{block.question}</p>;
           case 'unsupported_capability':
+            if (typeof block.message !== 'string') return null;
             return <p key={index} className="whitespace-pre-wrap text-sm leading-6 theme-text">{block.message}</p>;
           case 'error':
+            if (typeof block.code !== 'string') return null;
             return (
               <div key={index} role="alert" className="rounded-lg border border-[color:var(--color-danger)]/30 bg-[color:var(--color-danger)]/5 p-3">
                 <p className="text-sm theme-text">{safeErrorMessage(block.code)}</p>
@@ -159,7 +225,8 @@ export function AssistantResponseBlocks({
               </div>
             );
           case 'actions':
-            return <div key={index} className="flex flex-wrap gap-2">{block.actions.map(renderAction)}</div>;
+            if (!Array.isArray(block.actions)) return null;
+            return <div key={index} className="flex flex-wrap gap-2">{block.actions.filter(isAssistantAction).map(renderAction)}</div>;
           default:
             return null;
         }

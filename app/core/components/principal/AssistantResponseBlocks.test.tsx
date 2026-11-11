@@ -154,8 +154,55 @@ describe('AssistantResponseBlocks', () => {
     expect(html).not.toContain('<script>');
   });
 
+  it('renders compact details, results, and limitations with shared neutral blocks', () => {
+    const learner = render([
+      {
+        type: 'details',
+        items: [
+          { label: 'Learner', value: 'Hillary Sam' },
+          { label: 'Reporting period', value: '2nd Term, 2026 · 27 April–31 July 2026' },
+        ],
+      },
+      {
+        type: 'table',
+        columns: ['measure', 'result'],
+        rows: [{ measure: 'Attendance', result: '85.71% — 18 of 21 eligible recorded sessions attended' }],
+      },
+      {
+        type: 'notice', tone: 'info', title: 'About these results',
+        text: 'The assignment denominator is unavailable.',
+      },
+    ]);
+    const attendance = render([
+      { type: 'details', items: [{ label: 'Class', value: 'Grade 10 Yellow' }] },
+      { type: 'table', columns: ['measure', 'result'], rows: [{ measure: 'Absent', result: 2 }] },
+      { type: 'notice', tone: 'info', text: 'Counts come from the finalized register.' },
+    ]);
+
+    expect(learner).toContain('Hillary Sam');
+    expect(learner).toContain('18 of 21 eligible recorded sessions attended');
+    expect(learner).toContain('The assignment denominator is unavailable.');
+    expect(attendance).toContain('Grade 10 Yellow');
+    expect(attendance).toContain('finalized register');
+  });
+
+  it('keeps result tables scrollable and keyboard reachable on narrow screens', () => {
+    const html = render([{
+      type: 'table',
+      columns: ['measure', 'result'],
+      rows: [{ measure: 'Attendance', result: '18 of 21' }],
+    }]);
+
+    expect(html).toContain('overflow-x-auto');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('aria-label="Scrollable results table"');
+    expect(html).toContain('<caption class="sr-only">Assistant results</caption>');
+  });
+
   it('ignores unknown blocks without crashing the conversation', () => {
     const html = render([
+      null as unknown as AssistantResponseBlock,
+      { type: 'markdown', text: 42 } as unknown as AssistantResponseBlock,
       { type: 'future_block', value: 'not trusted' } as unknown as AssistantResponseBlock,
       { type: 'markdown', text: 'Known content remains visible.' },
     ]);
