@@ -21,7 +21,16 @@ interface AssistantResponseBlocksProps {
 }
 
 function labelFor(value: string): string {
+  if (value === 'admission_number') return 'Admission number';
   return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function displayTableValue(column: string, value: string | number | boolean | null | undefined): string {
+  if (column === 'admission_number' && (value === null || value === undefined || value === '')) {
+    return 'Unavailable';
+  }
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return value === null || value === undefined ? '' : String(value);
 }
 
 function safeExternalHref(href?: string): string | null {
@@ -109,21 +118,23 @@ export function AssistantResponseBlocks({
                 ))}
               </dl>
             );
-          case 'table':
+          case 'table': {
+            const visibleColumns = block.columns.filter((column) => column !== 'learner_id');
             return (
               <div key={index} className="overflow-x-auto rounded-lg border theme-border">
                 <table className="w-full min-w-max text-left text-sm">
                   <thead className="border-b theme-border bg-black/5">
-                    <tr>{block.columns.map((column) => <th key={column} className="px-3 py-2 font-medium theme-text">{labelFor(column)}</th>)}</tr>
+                    <tr>{visibleColumns.map((column) => <th key={column} className="px-3 py-2 font-medium theme-text">{labelFor(column)}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y theme-border">
                     {block.rows.map((row, rowIndex) => (
-                      <tr key={rowIndex}>{block.columns.map((column) => <td key={column} className="px-3 py-2 theme-text">{row[column] ?? ''}</td>)}</tr>
+                      <tr key={rowIndex}>{visibleColumns.map((column) => <td key={column} className="px-3 py-2 theme-text">{displayTableValue(column, row[column])}</td>)}</tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             );
+          }
           case 'clarification':
             return <p key={index} className="rounded-lg border theme-border bg-black/5 p-3 text-sm theme-text">{block.question}</p>;
           case 'unsupported_capability':

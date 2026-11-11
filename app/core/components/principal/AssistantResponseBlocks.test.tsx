@@ -19,15 +19,32 @@ describe('AssistantResponseBlocks', () => {
     expect(html).toContain('2');
   });
 
-  it('renders verified learner table values exactly as supplied', () => {
+  it('suppresses legacy learner database identifiers in persisted results', () => {
     const html = render([{
       type: 'table',
       columns: ['learner_id', 'name'],
       rows: [{ learner_id: 101, name: 'Amina Noor' }],
     }]);
 
-    expect(html).toContain('101');
+    expect(html).not.toContain('101');
+    expect(html).not.toContain('Learner ID');
     expect(html).toContain('Amina Noor');
+  });
+
+  it('renders admission numbers as strings and uses a neutral missing placeholder', () => {
+    const html = render([{
+      type: 'table',
+      columns: ['admission_number', 'name'],
+      rows: [
+        { admission_number: '00A17', name: 'Amina Noor' },
+        { admission_number: null, name: 'Missing Number' },
+      ],
+    }]);
+
+    expect(html).toContain('Admission number');
+    expect(html).toContain('00A17');
+    expect(html).toContain('Unavailable');
+    expect(html).not.toContain('Learner Id');
   });
 
   it('renders clarification as a neutral prompt', () => {

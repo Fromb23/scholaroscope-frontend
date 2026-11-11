@@ -53,7 +53,7 @@ export interface AssistantMetricsBlock {
 export interface AssistantTableBlock {
   type: 'table';
   columns: string[];
-  rows: Array<Record<string, string | number | null>>;
+  rows: Array<Record<string, string | number | boolean | null>>;
 }
 
 export interface AssistantActionsBlock {
