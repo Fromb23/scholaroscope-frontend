@@ -496,6 +496,16 @@ export function TermsPage() {
     ), [editingTerm, currentYear, selectedYearId]);
 
     const selectedTermCalendarBadge = selectedTerm ? getCalendarSetupBadge(selectedTerm) : null;
+    const selectedTermCanDelete = Boolean(
+        selectedTerm
+        && canManageTermSetup
+        && termCanDelete(selectedTerm)
+    );
+    const selectedTermDeleteBlockedReason = selectedTerm && !selectedTermCanDelete
+        ? selectedTerm.actions?.delete_blocked_reason
+            ?? termLockedReason(selectedTerm)
+            ?? 'This term is protected by its academic lifecycle and cannot be deleted.'
+        : null;
 
     const openCreate = useCallback(() => {
         setEditingTerm(null);
@@ -927,7 +937,13 @@ export function TermsPage() {
                                                         </Button>
                                                     ) : null}
                                                     {canDeleteTerm ? (
-                                                        <Button size="sm" variant="ghost" onClick={() => handleDelete(term)}>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleDelete(term)}
+                                                            title={`Delete ${term.name}`}
+                                                            aria-label={`Delete ${term.name}`}
+                                                        >
                                                             <Trash2 className="h-4 w-4 text-[color:var(--color-danger)]" />
                                                         </Button>
                                                     ) : null}
@@ -994,8 +1010,29 @@ export function TermsPage() {
                                     Reopen Setup
                                 </Button>
                             ) : null}
+                            {selectedTermCanDelete ? (
+                                <Button variant="danger" onClick={() => handleDelete(selectedTerm)}>
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete term
+                                </Button>
+                            ) : null}
                         </div>
                     </div>
+
+                    {canManageTermSetup && selectedTermDeleteBlockedReason ? (
+                        <div className="flex items-start gap-3 rounded-xl border theme-border theme-surface-muted px-4 py-4 text-sm theme-text">
+                            <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                            <div>
+                                <p className="font-medium">Term deletion unavailable</p>
+                                <p className="mt-1 theme-muted">{selectedTermDeleteBlockedReason}</p>
+                                {calendarReopenable ? (
+                                    <p className="mt-1 theme-muted">
+                                        Use Reopen Setup above if you need to return this active term to editable setup.
+                                    </p>
+                                ) : null}
+                            </div>
+                        </div>
+                    ) : null}
 
                     {selectedTermCalendarBadge ? (
                         <div className={`rounded-xl px-4 py-4 text-sm ${

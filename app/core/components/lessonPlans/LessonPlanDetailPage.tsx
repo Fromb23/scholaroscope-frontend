@@ -1118,6 +1118,8 @@ export function LessonPlanDetailPage() {
         ...(scheduleAction ? [scheduleAction] : []),
         ...(learnerTaskAction ? [learnerTaskAction] : []),
     ];
+    const workflowActionBlocked = !canCreateTeachingRecords
+        && ['DRAFT', 'GENERATED', 'REVIEWED'].includes(lessonPlan.status);
     const nextStepHeading = reviewAction
         ? 'Next step: review this lesson'
         : scheduleAction
@@ -1126,6 +1128,8 @@ export function LessonPlanDetailPage() {
             : 'Scheduled lesson is ready'
         : learnerTaskAction
             ? 'Optional: learner task'
+            : workflowActionBlocked
+                ? 'Teaching action unavailable'
             : lessonPlan.status === 'USED'
                 ? 'Post-lesson follow-up'
                 : 'Lesson preparation is ready';
@@ -1143,6 +1147,8 @@ export function LessonPlanDetailPage() {
             ? hasPreparedAssignment
                 ? 'Scheduling is handled separately. Review the learner task whenever you need to inspect or update it.'
                 : 'A learner task is optional for this lesson. Prepare one if you want learners to have follow-up work.'
+            : workflowActionBlocked
+                ? 'Your current workspace permissions do not allow review or scheduling. Ask a workspace administrator to check your lesson permissions and teaching assignment.'
             : lessonPlan.status === 'USED'
                 ? 'This lesson preparation has already been used in class. Reopen the lesson or download the plan for follow-up work.'
                 : 'Review the plan, then continue with your next teaching action.';
@@ -1656,18 +1662,18 @@ export function LessonPlanDetailPage() {
                     setReviewError(null);
                     setReviewFieldErrors({});
                 }}
-                title="Review generated lesson plan"
+                title={lessonPlan?.status === 'DRAFT' ? 'Review lesson preparation' : 'Review generated lesson plan'}
                 size="lg"
             >
                 <form onSubmit={handleSubmitReview} className="space-y-4">
                     <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                        Scholaroscope-generated lesson plans are system drafts. Inspect the preparation below, then explicitly accept it to make scheduling available.
+                        Inspect the lesson preparation below, then explicitly accept it to make scheduling available.
                     </div>
 
                     <div className="rounded-xl border theme-border bg-gray-50 px-4 py-3 text-sm theme-muted">
                         <p className="font-medium theme-text">Edits are optional</p>
                         <p className="mt-1">
-                            Leave the generated preparation unchanged to accept it as-is, or correct any field before completing review. The generated draft snapshot is retained as provenance.
+                            Leave the preparation unchanged to accept it as-is, or correct any field before completing review. Generated draft provenance is retained when available.
                         </p>
                     </div>
 

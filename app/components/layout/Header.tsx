@@ -111,7 +111,6 @@ export default function Header() {
       setOrgDropdownOpen(false);
       router.replace(switchedWorkspaceHomeRoute(response, activeOperatingContext));
     } catch (err) {
-      console.error('Failed to switch org:', err);
       const resolved = resolveWorkspaceError(err, {
         action: 'switch',
         entityLabel: 'workspace',

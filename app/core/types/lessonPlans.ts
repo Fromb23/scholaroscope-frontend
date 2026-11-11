@@ -405,7 +405,7 @@ export const LESSON_PLAN_STATUS_OPTIONS: Array<{
 ];
 
 export function canMarkLessonPlanReviewed(status: LessonPlanStatus): boolean {
-    return status === 'GENERATED';
+    return status === 'DRAFT' || status === 'GENERATED';
 }
 
 export function canScheduleLesson(status: LessonPlanStatus): boolean {

@@ -16,6 +16,18 @@ describe('resolveLessonPlanLifecycleActions', () => {
     expect(actions.canPrepareLearnerTask).toBe(false);
   });
 
+  it('gives manually authored, restored, and legacy drafts an explicit review path', () => {
+    const actions = resolveLessonPlanLifecycleActions({
+      status: 'DRAFT',
+      canCreateTeachingRecords: true,
+    });
+
+    expect(actions.primaryAction).toBe('review');
+    expect(actions.canReview).toBe(true);
+    expect(actions.canEdit).toBe(true);
+    expect(actions.canSchedule).toBe(false);
+  });
+
   it('allows optional edit and primary scheduling after review', () => {
     const actions = resolveLessonPlanLifecycleActions({
       status: 'REVIEWED',
