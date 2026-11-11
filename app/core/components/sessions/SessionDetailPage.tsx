@@ -2205,7 +2205,9 @@ export function SessionDetailPage() {
                     : null
         )
         : null;
-    const currentActionShowsLessonPreparation = currentActionPrimary?.label === 'View lesson preparation';
+    const showCurrentActionCard = !isHistorical && !isCompleted;
+    const currentActionShowsLessonPreparation = showCurrentActionCard
+        && currentActionPrimary?.label === 'View lesson preparation';
     const sessionDetailExtensionContext = {
         session,
         closureState,
@@ -2462,7 +2464,7 @@ export function SessionDetailPage() {
                 </div>
             ) : null}
 
-            {!isHistorical ? (
+            {showCurrentActionCard ? (
                 <Card className="theme-info-surface">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-2">
