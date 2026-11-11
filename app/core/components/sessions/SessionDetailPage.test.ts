@@ -173,4 +173,39 @@ describe('SessionDetailPage attendance learner links', () => {
     expect(component).toContain('Review lesson record');
     expect(component).toContain('buildSupervisionMissingMessage');
   });
+
+  it('hides the entire current-action card and its controls for completed sessions', () => {
+    const component = source();
+    const currentActionCard = component.slice(
+      component.indexOf('{showCurrentActionCard ? ('),
+      component.indexOf('{learnerTaskForLesson ? ('),
+    );
+
+    expect(component).toContain('const showCurrentActionCard = !isHistorical && !isCompleted;');
+    expect(currentActionCard).toContain('{currentActionPrimary ? (');
+    expect(currentActionCard).toContain('{currentActionSecondary ? (');
+    expect(currentActionCard).not.toContain('isCompleted');
+  });
+
+  it('keeps completed lesson-plan navigation and the preparation accordion available', () => {
+    const component = source();
+
+    expect(component).toContain("{isCompleted ? <Badge variant=\"green\">Completed</Badge> : null}");
+    expect(component).toContain("{teachingSurface ? 'Back to lesson preparation' : 'Back to lesson plan'}");
+    expect(component).toContain('sectionId="lesson-preparation-section"');
+    expect(component).toContain('open={lessonPreparationOpen}');
+    expect(component).toContain('onToggle={toggleLessonPreparationOpen}');
+    expect(component).toContain('const currentActionShowsLessonPreparation = showCurrentActionCard');
+  });
+
+  it('retains scheduled and in-progress current-action controls', () => {
+    const component = source();
+
+    expect(component).toContain("label: isScheduledOverdue ? 'Start late' : 'Start lesson'");
+    expect(component).toContain("currentWorkflowStep === 'attendance'");
+    expect(component).toContain("label: 'Take attendance'");
+    expect(component).toContain("currentWorkflowStep === 'confirm_taught'");
+    expect(component).toContain("label: 'Confirm what was taught'");
+    expect(component).toContain('{showCurrentActionCard ? (');
+  });
 });
