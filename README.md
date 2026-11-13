@@ -488,3 +488,15 @@ Read the system by responsibility, not by directory:
 - Integration seams: API clients, hooks, shared types, registries, provider extensions.
 
 If you keep that model in mind, the codebase reads as one governed product with modular curriculum surfaces, which is what it actually is.
+
+## License
+
+Scholaroscope's original source code in this repository is made available under
+the GNU General Public License, version 3 or (at your option) any later version.
+See [LICENSE](./LICENSE) for the authoritative terms.
+
+Copyright and provenance are documented separately in
+[COPYRIGHT.md](./COPYRIGHT.md), [IP_PROVENANCE.md](./IP_PROVENANCE.md), and
+[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md). The project licence does not
+replace the separate rights and notices applicable to dependencies, generated
+artifacts, framework scaffold material, assets, or other third-party content.
