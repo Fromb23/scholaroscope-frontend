@@ -13,6 +13,11 @@ const mocks = vi.hoisted(() => ({
     reopenCalendarSetup: vi.fn(),
     routerPush: vi.fn(),
     routerReplace: vi.fn(),
+    getDeletionImpact: vi.fn(),
+}));
+
+vi.mock('@/app/core/api/academic', () => ({
+    termAPI: { getDeletionImpact: mocks.getDeletionImpact },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -65,6 +70,7 @@ vi.mock('@/app/core/hooks/useAcademic', () => ({
             cohorts_count: 1,
             created_at: '2026-01-01T00:00:00Z',
             updated_at: '2026-01-01T00:00:00Z',
+            deletion: { eligible: true, code: null, reason: null, removes: [], blockers: [] },
         }],
         loading: false,
     }),
@@ -115,6 +121,13 @@ function buildTerm(overrides: Partial<Term> = {}): Term {
             can_reopen_setup: false,
         },
         configuration_locked_reason: null,
+        deletion: {
+            eligible: true,
+            code: null,
+            reason: null,
+            removes: [{ code: 'academic.term', label: 'term', count: 1 }],
+            blockers: [],
+        },
         week_count: 13,
         actions: {
             can_edit: true,
@@ -141,6 +154,13 @@ describe('TermsPage deletion journey', () => {
 
     beforeEach(() => {
         mocks.deleteTerm.mockReset().mockResolvedValue(undefined);
+        mocks.getDeletionImpact.mockReset().mockResolvedValue({
+            eligible: true,
+            code: null,
+            reason: null,
+            removes: [{ code: 'academic.term', label: 'term', count: 1 }],
+            blockers: [],
+        });
         mocks.reopenCalendarSetup.mockReset();
         mocks.routerPush.mockReset();
         mocks.routerReplace.mockReset();
@@ -164,11 +184,11 @@ describe('TermsPage deletion journey', () => {
         expect(deleteButton).toBeDefined();
         await act(async () => deleteButton.props.onClick());
 
-        expect(globalThis.confirm).toHaveBeenCalledWith('Delete "Term 1"? This cannot be undone.');
+        expect(globalThis.confirm).toHaveBeenCalledWith('Delete "Term 1"? This will remove 1 term. This cannot be undone.');
         expect(mocks.deleteTerm).toHaveBeenCalledWith(1);
     });
 
-    it('explains a setup lock and exposes reopening without offering deletion', async () => {
+    it('keeps deletion available when only calendar setup editing is locked', async () => {
         mocks.terms = [buildTerm({
             is_calendar_setup_complete: true,
             calendar_setup_completed_at: '2026-01-02T00:00:00Z',
@@ -196,16 +216,8 @@ describe('TermsPage deletion journey', () => {
         });
 
         const output = JSON.stringify(renderer!.toJSON());
-        expect(output).toContain('Term deletion unavailable');
-        expect(output).toContain('Reopen setup before deleting this active term.');
+        expect(output).not.toContain('Term deletion unavailable');
         expect(buttonContaining(renderer!, 'Reopen Setup')).toBeDefined();
-        expect(renderer!.root.findAll(
-            (node) => {
-                const children = Array.isArray(node.props.children)
-                    ? node.props.children
-                    : [node.props.children];
-                return typeof node.props.onClick === 'function' && children.includes('Delete term');
-            },
-        )).toHaveLength(0);
+        expect(buttonContaining(renderer!, 'Delete term')).toBeDefined();
     });
 });

@@ -40,6 +40,7 @@ import {
 } from '@/app/core/components/academic/TermComponents';
 import type { TermFormState } from '@/app/core/components/academic/TermComponents';
 import { useAcademicYears, useTermCalendarEvents, useTerms } from '@/app/core/hooks/useAcademic';
+import { termAPI } from '@/app/core/api/academic';
 import { parseAppDestination } from '@/app/core/auth/navigation';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { useWorkspaceSubscriptionSummary } from '@/app/core/hooks/useSubscriptions';
@@ -225,7 +226,7 @@ function termCanEdit(term: Term): boolean {
 }
 
 function termCanDelete(term: Term): boolean {
-    return !termHasHistoricalLifecycle(term) && term.configuration_actions.can_delete_term;
+    return term.deletion.eligible;
 }
 
 function termLockedReason(term: Term): string | null {
@@ -502,8 +503,8 @@ export function TermsPage() {
         && termCanDelete(selectedTerm)
     );
     const selectedTermDeleteBlockedReason = selectedTerm && !selectedTermCanDelete
-        ? selectedTerm.actions?.delete_blocked_reason
-            ?? termLockedReason(selectedTerm)
+        ? selectedTerm.deletion.reason
+            ?? selectedTerm.actions?.delete_blocked_reason
             ?? 'This term is protected by its academic lifecycle and cannot be deleted.'
         : null;
 
@@ -642,7 +643,16 @@ export function TermsPage() {
     };
 
     const handleDelete = async (term: Term) => {
-        if (!confirm(`Delete "${term.name}"? This cannot be undone.`)) {
+        const impact = await termAPI.getDeletionImpact(term.id);
+        if (!impact.eligible) {
+            setPageError(impact.reason ?? 'This term cannot be deleted.');
+            return;
+        }
+        const removalSummary = impact.removes
+            .filter((item) => item.count > 0)
+            .map((item) => `${item.count} ${item.label}`)
+            .join(', ');
+        if (!confirm(`Delete "${term.name}"? This will remove ${removalSummary}. This cannot be undone.`)) {
             return;
         }
 
@@ -1025,11 +1035,6 @@ export function TermsPage() {
                             <div>
                                 <p className="font-medium">Term deletion unavailable</p>
                                 <p className="mt-1 theme-muted">{selectedTermDeleteBlockedReason}</p>
-                                {calendarReopenable ? (
-                                    <p className="mt-1 theme-muted">
-                                        Use Reopen Setup above if you need to return this active term to editable setup.
-                                    </p>
-                                ) : null}
                             </div>
                         </div>
                     ) : null}

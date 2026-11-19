@@ -28,6 +28,7 @@ import {
   AcademicSetupStatus,
   AcademicLifecycleContext,
   AcademicTodayMode,
+  AcademicSetupDeletionImpact,
   SubjectCatalogItem,
   CurriculumImportRequestPayload,
   CurriculumImportRequestResponse,
@@ -172,6 +173,11 @@ export const academicYearAPI = {
     await apiClient.delete(`/academic-years/${id}/`);
   },
 
+  getDeletionImpact: async (id: number) => {
+    const response = await apiClient.get<AcademicSetupDeletionImpact>(`/academic-years/${id}/deletion-impact/`);
+    return response.data;
+  },
+
   setCurrent: async (id: number) => {
     const response = await apiClient.post<AcademicYear>(`/academic-years/${id}/set_current/`);
     return response.data;
@@ -217,7 +223,12 @@ export const termAPI = {
 
   delete: async (id: number) => {
     await apiClient.delete(`/terms/${id}/`);
-  }
+  },
+
+  getDeletionImpact: async (id: number) => {
+    const response = await apiClient.get<AcademicSetupDeletionImpact>(`/terms/${id}/deletion-impact/`);
+    return response.data;
+  },
 };
 
 export const termCalendarEventAPI = {

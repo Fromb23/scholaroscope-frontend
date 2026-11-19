@@ -268,6 +268,13 @@ function termFromSingleContext(contexts: TeachingAcademicContext[]): Term | null
             can_reopen_setup: false,
         },
         configuration_locked_reason: null,
+        deletion: {
+            eligible: false,
+            code: 'synthetic_context',
+            reason: 'Deletion eligibility is available from the academic setup service.',
+            removes: [],
+            blockers: [],
+        },
         week_count: 0,
         created_at: '',
     };
