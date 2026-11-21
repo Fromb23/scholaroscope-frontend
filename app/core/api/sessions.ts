@@ -444,6 +444,13 @@ export const sessionAPI = {
     );
     return res.data;
   },
+  recordDelivery: async (
+    id: number,
+    data: import('@/app/core/types/session').RecordSessionDeliveryPayload,
+  ): Promise<SessionDetail> => {
+    const res = await apiClient.post<SessionDetail>(`/sessions/${id}/record-delivery/`, data);
+    return res.data;
+  },
   recordReflection: async (
     id: number,
     data: RecordLessonReflectionPayload,

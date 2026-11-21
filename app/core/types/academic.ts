@@ -151,6 +151,21 @@ export interface AcademicYear {
   cohorts_count: number;
   created_at: string;
   updated_at: string;
+  deletion: AcademicSetupDeletionImpact;
+}
+
+export interface AcademicSetupDeletionItem {
+  code: string;
+  label: string;
+  count: number;
+}
+
+export interface AcademicSetupDeletionImpact {
+  eligible: boolean;
+  code: string | null;
+  reason: string | null;
+  removes: AcademicSetupDeletionItem[];
+  blockers: AcademicSetupDeletionItem[];
 }
 
 // Term
@@ -194,6 +209,7 @@ export interface Term {
     setup_locked_reason?: string | null;
   };
   created_at: string;
+  deletion: AcademicSetupDeletionImpact;
 }
 
 export type TermCalendarEventType =

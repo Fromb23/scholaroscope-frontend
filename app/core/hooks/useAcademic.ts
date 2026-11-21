@@ -101,6 +101,7 @@ export const useAcademicYears = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
+  const qc = useQueryClient();
 
   const fetchAcademicYears = useCallback(async () => {
     try {
@@ -143,6 +144,7 @@ export const useAcademicYears = () => {
     try {
       await academicYearAPI.delete(id);
       setAcademicYears(prev => prev.filter(y => y.id !== id));
+      await qc.invalidateQueries({ queryKey: ['academic'] });
     } catch (err) {
       throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete academic year'));
     }
@@ -293,6 +295,7 @@ export const useTerms = (academicYearId?: number) => {
     try {
       await termAPI.delete(id);
       qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.filter(t => t.id !== id));
+      await qc.invalidateQueries({ queryKey: ['academic'] });
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to delete term');
     }

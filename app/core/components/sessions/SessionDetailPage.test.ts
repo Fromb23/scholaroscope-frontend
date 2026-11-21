@@ -208,4 +208,12 @@ describe('SessionDetailPage attendance learner links', () => {
     expect(component).toContain("label: 'Confirm what was taught'");
     expect(component).toContain('{showCurrentActionCard ? (');
   });
+
+  it('renders reflection-first delivery controls for AI capture mode', () => {
+    const component = source();
+    expect(component).toContain("session.outcome_capture_mode === 'AI_REFLECTION'");
+    expect(component).toContain("['TAUGHT', 'PARTIALLY_TAUGHT', 'NOT_TAUGHT']");
+    expect(component).toContain('await recordDelivery({ delivery_status: deliveryStatus');
+    expect(component).toContain('Outcome processing:');
+  });
 });

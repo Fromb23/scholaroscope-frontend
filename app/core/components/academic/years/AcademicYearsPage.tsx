@@ -18,6 +18,7 @@ import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { FormValidationSummary } from '@/app/components/ui/forms';
 import { useAcademicYears, useCurricula } from '@/app/core/hooks/useAcademic';
+import { academicYearAPI } from '@/app/core/api/academic';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import {
     getAcademicSetupPageState,
@@ -121,16 +122,29 @@ export function AcademicYearsPage() {
         setIsModalOpen(true);
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm('Are you sure you want to delete this academic year?')) {
-            try {
-                await deleteAcademicYear(id);
-            } catch (error: unknown) {
-                setPageError(resolveAcademicSetupError(error, {
-                    action: 'delete',
-                    entityLabel: 'academic year',
-                }));
+    const handleDelete = async (year: AcademicYear) => {
+        try {
+            const impact = await academicYearAPI.getDeletionImpact(year.id);
+            if (!impact.eligible) {
+                setPageError(resolveAcademicSetupError({
+                    status: 409,
+                    code: impact.code,
+                    message: impact.reason,
+                }, { action: 'delete', entityLabel: 'academic year' }));
+                return;
             }
+            const removalSummary = impact.removes
+                .filter((item) => item.count > 0)
+                .map((item) => `${item.count} ${item.label}`)
+                .join(', ');
+            if (confirm(`Delete "${year.name}"? This will remove ${removalSummary}. This cannot be undone.`)) {
+                await deleteAcademicYear(year.id);
+            }
+        } catch (error: unknown) {
+            setPageError(resolveAcademicSetupError(error, {
+                action: 'delete',
+                entityLabel: 'academic year',
+            }));
         }
     };
 
@@ -379,14 +393,20 @@ export function AcademicYearsPage() {
                                             >
                                                 <Edit2 className="w-4 h-4" />
                                             </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleDelete(year.id)}
-                                                className="text-red-600 hover:text-red-700"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {year.deletion.eligible ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(year)}
+                                                    className="text-red-600 hover:text-red-700"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            ) : (
+                                                <span className="max-w-xs text-xs text-gray-500">
+                                                    {year.deletion.reason}
+                                                </span>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>

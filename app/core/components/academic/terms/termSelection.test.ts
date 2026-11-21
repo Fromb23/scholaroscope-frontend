@@ -50,6 +50,7 @@ function buildTerm(overrides: Partial<Term>): Term {
             can_reopen_setup: false,
         },
         configuration_locked_reason: null,
+        deletion: { eligible: true, code: null, reason: null, removes: [], blockers: [] },
         week_count: 13,
         created_at: '2026-01-01T00:00:00Z',
         ...overrides,
@@ -595,8 +596,9 @@ describe('academic term calendar access', () => {
         expect(termsPage).toContain('Term configuration locked');
         expect(termsPage).toContain('Existing schemes may require review or regeneration.');
         expect(termsPage).toContain('Term deletion unavailable');
+        expect(termsPage).toContain('selectedTerm.deletion.reason');
         expect(termsPage).toContain('selectedTerm.actions?.delete_blocked_reason');
-        expect(termsPage).toContain('Use Reopen Setup above');
+        expect(termsPage).not.toContain('Use Reopen Setup above');
         expect(termsPage).toContain('Delete term');
         expect(termsPage).toContain('aria-label={`Delete ${term.name}`}');
         expect(termsPage).toContain('TERM_CONFIGURATION_LOCKED');

@@ -117,6 +117,7 @@ export function validateReferencePages(
     plannedOutcomes: Map<number, PlannedOutcome>,
     options?: {
         requireAtLeastOne?: boolean;
+        requireOutcome?: boolean;
     },
 ): {
     error: string | null;
@@ -151,14 +152,14 @@ export function validateReferencePages(
             };
         }
 
-        if (!reference.outcome_id) {
+        if (options?.requireOutcome !== false && !reference.outcome_id) {
             return {
                 error: `${referenceLabel}: choose a learning outcome.`,
                 payload: [],
             };
         }
 
-        if (!plannedOutcomes.has(reference.outcome_id)) {
+        if (reference.outcome_id && !plannedOutcomes.has(reference.outcome_id)) {
             return {
                 error: `${referenceLabel}: choose a learning outcome from this lesson plan.`,
                 payload: [],

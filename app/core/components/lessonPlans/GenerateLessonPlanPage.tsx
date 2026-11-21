@@ -33,8 +33,6 @@ import {
 } from '@/app/core/forms';
 import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import {
-    getReferenceOutcomeCoverage,
-    isReferencePageStarted,
     validateReferencePages,
 } from '@/app/core/lib/lessonPlanReferences';
 import { getLessonGenerationSource } from '@/app/core/lib/lessonPlanGeneration';
@@ -89,6 +87,7 @@ export function GenerateLessonPlanPage() {
 
     const [cohortSubjectId, setCohortSubjectId] = useState('');
     const [title, setTitle] = useState('');
+    const [theme, setTheme] = useState('');
     const [plannedOutcomes, setPlannedOutcomes] = useState<PlannedOutcome[]>([]);
     const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([]);
     const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<LessonPlanGenerationField>>({});
@@ -184,11 +183,9 @@ export function GenerateLessonPlanPage() {
         () => new Map(plannedOutcomes.map((outcome) => [outcome.outcome_id, outcome])),
         [plannedOutcomes]
     );
-    const referenceCoverage = useMemo(
-        () => getReferenceOutcomeCoverage(referencePages, plannedOutcomes),
-        [plannedOutcomes, referencePages]
-    );
-    const completedReferenceCount = referenceCoverage.completeReferenceCount;
+    const completedReferenceCount = referencePages.filter((reference) => (
+        reference.resource_title.trim() && reference.page_start !== '' && reference.page_end !== ''
+    )).length;
     const aiGenerationAvailability = selectedCohortSubjectId && curriculumLoading
         ? null
         : curriculumContext?.ai_generation_available ?? null;
@@ -216,11 +213,6 @@ export function GenerateLessonPlanPage() {
         fieldLabels: LESSON_PLAN_FIELD_LABELS,
         summaryId: 'generate-lesson-plan-validation-summary',
     });
-    const showMissingReferenceWarning = (
-        plannedOutcomes.length > 0
-        && referenceCoverage.missingOutcomes.length > 0
-        && referencePages.some((reference) => isReferencePageStarted(reference))
-    );
     const guidanceSteps = [
         {
             step: 'Step 1',
@@ -232,17 +224,17 @@ export function GenerateLessonPlanPage() {
         },
         {
             step: 'Step 2',
-            title: 'Select learning outcomes',
+            title: 'Choose curriculum scope',
             detail: plannedOutcomes.length > 0
-                ? `${plannedOutcomes.length} selected`
-                : 'Choose the outcomes to teach.',
+                ? `${plannedOutcomes[0]?.strand} · ${plannedOutcomes[0]?.sub_strand}`
+                : 'Choose a strand and sub-strand.',
             complete: plannedOutcomes.length > 0,
         },
         {
             step: 'Step 3',
             title: 'Attach references and pages',
             detail: completedReferenceCount > 0
-                ? `${referenceCoverage.coveredOutcomeIds.size} of ${plannedOutcomes.length} outcomes referenced`
+                ? `${completedReferenceCount} page range${completedReferenceCount === 1 ? '' : 's'} attached`
                 : 'Attach the pages the draft may use.',
             complete: completedReferenceCount > 0,
         },
@@ -320,7 +312,9 @@ export function GenerateLessonPlanPage() {
             try {
                 const updatePayload: LessonPlanUpdatePayload = {
                     title: payload.title,
-                    planned_outcomes: payload.planned_outcomes,
+                    theme: payload.theme,
+                    outcome_capture_mode: payload.outcome_capture_mode,
+                    curriculum_scope: payload.curriculum_scope,
                     reference_pages: payload.reference_pages,
                 };
                 return await lessonPlanAPI.update(draftLessonPlan.id, updatePayload);
@@ -381,12 +375,19 @@ export function GenerateLessonPlanPage() {
         }
 
         if (plannedOutcomes.length === 0) {
-            setSubmittingError('Choose at least one learning outcome before generating the lesson plan.');
+            setSubmittingError('Choose a strand and sub-strand before generating the lesson plan.');
+            return;
+        }
+
+        const scopeOutcome = plannedOutcomes[0];
+        if (!scopeOutcome.strand_id || !scopeOutcome.sub_strand_id) {
+            setSubmittingError('Choose a valid strand and sub-strand before generating the lesson plan.');
             return;
         }
 
         const validatedReferences = validateReferencePages(referencePages, plannedOutcomeMap, {
             requireAtLeastOne: true,
+            requireOutcome: false,
         });
         if (validatedReferences.error) {
             setSubmittingError(validatedReferences.error);
@@ -399,7 +400,15 @@ export function GenerateLessonPlanPage() {
                 cohort_subject: selectedCohortSubjectId,
                 term: selectedTermId,
                 title: trimmedTitle,
-                planned_outcomes: plannedOutcomes,
+                theme: theme.trim(),
+                outcome_capture_mode: 'AI_REFLECTION',
+                curriculum_scope: {
+                    plugin: scopeOutcome.plugin,
+                    strand_id: scopeOutcome.strand_id,
+                    strand_name: scopeOutcome.strand,
+                    sub_strand_id: scopeOutcome.sub_strand_id,
+                    sub_strand_name: scopeOutcome.sub_strand,
+                },
                 reference_pages: validatedReferences.payload,
             });
 
@@ -602,14 +611,6 @@ export function GenerateLessonPlanPage() {
                     />
                 ) : null}
 
-                {showMissingReferenceWarning ? (
-                    <div className="theme-warning-surface rounded-xl p-4 text-sm">
-                        You selected {plannedOutcomes.length} outcome{plannedOutcomes.length === 1 ? '' : 's'}, but{' '}
-                        {referenceCoverage.missingOutcomes.length} {referenceCoverage.missingOutcomes.length === 1 ? 'still needs' : 'still need'} a reference.
-                        Add one for each outcome, or continue if that is intentional.
-                    </div>
-                ) : null}
-
                 {generationStatus ? (
                     <div className="theme-info-surface rounded-xl p-4 text-sm theme-text">
                         {generationStatus} You can keep this page open while Scholaroscope prepares the draft.
@@ -669,6 +670,12 @@ export function GenerateLessonPlanPage() {
                             placeholder="e.g. Fractions and equivalent parts"
                             required
                             error={getFormFieldErrorMessage(fieldErrors.title)}
+                        />
+                        <Input
+                            label="Theme (optional)"
+                            value={theme}
+                            onChange={(event) => setTheme(event.target.value)}
+                            placeholder="A narrower instructional focus, if useful"
                         />
 
                         {schemeFirstBlocked ? (

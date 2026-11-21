@@ -156,6 +156,7 @@ function buildContext(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM'): TeachingTodayCont
                 can_reopen_setup: false,
             },
             configuration_locked_reason: null,
+            deletion: { eligible: true, code: null, reason: null, removes: [], blockers: [] },
             week_count: 13,
             created_at: '2026-01-01T00:00:00Z',
         },
