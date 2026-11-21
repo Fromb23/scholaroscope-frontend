@@ -62,6 +62,8 @@ interface TeachingContextOption {
   curriculumId: number | null;
   curriculumName: string;
   curriculumType: string;
+  academicYearId: number | null;
+  academicYearName: string | null;
   levelLabel: string;
 }
 
@@ -208,6 +210,7 @@ export function CreateSchemePage() {
   const [generationFocusRequest, setGenerationFocusRequest] = useState(0);
 
   const [selectedCurriculumId, setSelectedCurriculumId] = useState('');
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedLevelLabel, setSelectedLevelLabel] = useState('');
   const [selectedCohortSubjectId, setSelectedCohortSubjectId] = useState('');
@@ -231,6 +234,7 @@ export function CreateSchemePage() {
   const [generationFailure, setGenerationFailure] = useState<string | null>(null);
   const [generationStatus, setGenerationStatus] = useState<string | null>(null);
   const [asyncGenerating, setAsyncGenerating] = useState(false);
+  const deepLinkInitialized = useRef(false);
   const safeReturnTo = useMemo(() => {
     const value = searchParams.get('returnTo');
     return parseAppDestination(value);
@@ -302,12 +306,14 @@ export function CreateSchemePage() {
   }, [isTeachingActor, isInstitutionalAdmin]);
 
   useEffect(() => {
+    if (deepLinkInitialized.current) return;
     const requestedCohortSubjectId = searchParams.get('cohort_subject');
 
-    if (requestedCohortSubjectId && !selectedCohortSubjectId) {
+    if (requestedCohortSubjectId) {
       setSelectedCohortSubjectId(requestedCohortSubjectId);
     }
-  }, [searchParams, selectedCohortSubjectId]);
+    deepLinkInitialized.current = true;
+  }, [searchParams]);
 
   const activeCurricula = useMemo(
     () => curricula.filter((curriculum) => curriculum.is_active),
@@ -355,6 +361,8 @@ export function CreateSchemePage() {
           curriculumId: assignment.curriculum_id ?? null,
           curriculumName: assignment.curriculum_name ?? 'Curriculum',
           curriculumType: assignment.curriculum_type,
+          academicYearId: assignment.academic_year_id ?? null,
+          academicYearName: assignment.academic_year_name ?? assignment.academic_year ?? null,
           levelLabel: assignment.level,
         }));
     }
@@ -369,6 +377,8 @@ export function CreateSchemePage() {
         curriculumId: subject?.curriculum ?? null,
         curriculumName: subject?.curriculum_name ?? cohortSubject.curriculum_name,
         curriculumType: subject?.curriculum_type ?? cohortSubject.curriculum_type,
+        academicYearId: null,
+        academicYearName: null,
         levelLabel: cohortSubject.cohort_level || subject?.level || 'Level',
       };
     });
@@ -384,6 +394,7 @@ export function CreateSchemePage() {
     if (isTeachingActor && contextOptions.length === 1 && !selectedCohortSubjectId) {
       const [option] = contextOptions;
       setSelectedCurriculumId(option.curriculumId ? String(option.curriculumId) : '');
+      setSelectedAcademicYearId(option.academicYearId ? String(option.academicYearId) : '');
       setSelectedSubjectId(String(option.subjectId));
       setSelectedLevelLabel(option.levelLabel);
       setSelectedCohortSubjectId(String(option.cohortSubjectId));
@@ -408,17 +419,24 @@ export function CreateSchemePage() {
   const levelFilteredContexts = useMemo(
     () =>
       curriculumFilteredContexts.filter(
-        (option) => !selectedSubjectId || String(option.subjectId) === selectedSubjectId,
+        (option) => !selectedAcademicYearId || String(option.academicYearId ?? '') === selectedAcademicYearId,
       ),
-    [curriculumFilteredContexts, selectedSubjectId],
+    [curriculumFilteredContexts, selectedAcademicYearId],
   );
 
-  const filteredContextOptions = useMemo(
+  const gradeFilteredContexts = useMemo(
     () =>
       levelFilteredContexts.filter(
         (option) => !selectedLevelLabel || option.levelLabel === selectedLevelLabel,
       ),
     [levelFilteredContexts, selectedLevelLabel],
+  );
+
+  const filteredContextOptions = useMemo(
+    () => gradeFilteredContexts.filter(
+      (option) => !selectedSubjectId || String(option.subjectId) === selectedSubjectId,
+    ),
+    [gradeFilteredContexts, selectedSubjectId],
   );
 
   const selectedContext = useMemo(
@@ -439,15 +457,34 @@ export function CreateSchemePage() {
     setSelectedCurriculumId(
       selectedContext.curriculumId ? String(selectedContext.curriculumId) : '',
     );
+    setSelectedAcademicYearId(
+      selectedContext.academicYearId ? String(selectedContext.academicYearId) : '',
+    );
     setSelectedSubjectId(String(selectedContext.subjectId));
     setSelectedLevelLabel(selectedContext.levelLabel);
   }, [selectedContext]);
 
   useEffect(() => {
-    if (filteredContextOptions.length === 1 && !selectedCohortSubjectId) {
-      setSelectedCohortSubjectId(String(filteredContextOptions[0].cohortSubjectId));
+    if (
+      filteredContextOptions.length > 0
+      && selectedAcademicYearId
+      && selectedLevelLabel
+      && selectedSubjectId
+      && !selectedCohortSubjectId
+    ) {
+      const deepLinkedId = Number(searchParams.get('cohort_subject'));
+      const origin = filteredContextOptions.find((option) => option.cohortSubjectId === deepLinkedId)
+        ?? [...filteredContextOptions].sort((left, right) => left.cohortSubjectId - right.cohortSubjectId)[0];
+      setSelectedCohortSubjectId(String(origin.cohortSubjectId));
     }
-  }, [filteredContextOptions, selectedCohortSubjectId]);
+  }, [
+    filteredContextOptions,
+    searchParams,
+    selectedAcademicYearId,
+    selectedCohortSubjectId,
+    selectedLevelLabel,
+    selectedSubjectId,
+  ]);
 
   const selectedCurriculum = useMemo<Curriculum | null>(
     () =>
@@ -460,6 +497,11 @@ export function CreateSchemePage() {
   const resolvedSelectedCohortSubjectId =
     selectedContext?.cohortSubjectId ??
     (selectedCohortSubjectId ? Number(selectedCohortSubjectId) : null);
+  const selectedOriginCohortSubjectId = useMemo(() => {
+    const deepLinkedId = Number(searchParams.get('cohort_subject'));
+    if (selectedApplicationIds.includes(deepLinkedId)) return deepLinkedId;
+    return [...selectedApplicationIds].sort((left, right) => left - right)[0] ?? null;
+  }, [searchParams, selectedApplicationIds]);
 
   useEffect(() => {
     if (!resolvedSelectedCohortSubjectId) {
@@ -476,11 +518,16 @@ export function CreateSchemePage() {
       .then((items) => {
         if (!active) return;
         setCompatibleApplicationOptions(items);
-        setSelectedApplicationIds(
-          items.some((item) => item.id === resolvedSelectedCohortSubjectId)
+        setSelectedApplicationIds((current) => {
+          const eligibleIds = new Set(items.map((item) => item.id));
+          const retained = current.filter((id) => eligibleIds.has(id));
+          if (retained.length > 0) return retained;
+          const deepLinkedId = Number(searchParams.get('cohort_subject'));
+          if (eligibleIds.has(deepLinkedId)) return [deepLinkedId];
+          return items.some((item) => item.id === resolvedSelectedCohortSubjectId)
             ? [resolvedSelectedCohortSubjectId]
-            : [],
-        );
+            : [];
+        });
       })
       .catch((error) => {
         if (!active) return;
@@ -495,7 +542,7 @@ export function CreateSchemePage() {
     return () => {
       active = false;
     };
-  }, [resolvedSelectedCohortSubjectId]);
+  }, [resolvedSelectedCohortSubjectId, searchParams]);
   const {
     data: academicContext,
     isLoading: academicContextLoading,
@@ -743,9 +790,11 @@ export function CreateSchemePage() {
     () =>
       JSON.stringify({
         selectedCurriculumId,
+        selectedAcademicYearId,
         selectedSubjectId,
         selectedLevelLabel,
         selectedCohortSubjectId,
+        selectedApplicationIds,
         selectedTermId: selectedTerm?.id ?? null,
         selectedTeacherId,
         title,
@@ -763,6 +812,8 @@ export function CreateSchemePage() {
       lessonDurationMinutes,
       lessonsPerWeek,
       selectedCohortSubjectId,
+      selectedApplicationIds,
+      selectedAcademicYearId,
       selectedCurriculumId,
       selectedLevelLabel,
       selectedSubjectId,
@@ -802,7 +853,7 @@ export function CreateSchemePage() {
       hasSelectedSubject: Boolean(resolvedSelectedSubjectId && !Number.isNaN(resolvedSelectedSubjectId)),
       hasSelectedLevel: Boolean(selectedLevelLabel),
       hasSelectedCohortSubject: Boolean(
-        resolvedSelectedCohortSubjectId && !Number.isNaN(resolvedSelectedCohortSubjectId),
+        selectedOriginCohortSubjectId && !Number.isNaN(selectedOriginCohortSubjectId),
       ),
       hasSelectedTerm: Boolean(selectedTerm),
       hasTitle: Boolean(title.trim()),
@@ -832,7 +883,7 @@ export function CreateSchemePage() {
     lessonsPerWeekValue,
     rangeValidation.curriculumRange,
     rangeValidation.error,
-    resolvedSelectedCohortSubjectId,
+    selectedOriginCohortSubjectId,
     resolvedSelectedSubjectId,
     selectedCurriculum,
     selectedLevelLabel,
@@ -859,7 +910,7 @@ export function CreateSchemePage() {
       }
     }
 
-    if (!selectedTerm || !resolvedSelectedCohortSubjectId || !rangeValidation.curriculumRange) {
+    if (!selectedTerm || !selectedOriginCohortSubjectId || !rangeValidation.curriculumRange) {
       return {
         valid: false,
         step: 4,
@@ -869,7 +920,7 @@ export function CreateSchemePage() {
     }
 
     return { valid: true };
-  }, [rangeValidation.curriculumRange, resolvedSelectedCohortSubjectId, selectedTerm, validateStep]);
+  }, [rangeValidation.curriculumRange, selectedOriginCohortSubjectId, selectedTerm, validateStep]);
 
   const loading =
     curriculaLoading ||
@@ -907,7 +958,7 @@ export function CreateSchemePage() {
       return;
     }
 
-    if (!selectedTerm || !resolvedSelectedCohortSubjectId || !rangeValidation.curriculumRange) {
+    if (!selectedTerm || !selectedOriginCohortSubjectId || !rangeValidation.curriculumRange) {
       return;
     }
 
@@ -920,7 +971,7 @@ export function CreateSchemePage() {
 
       const payload: GenerateSchemePayload = {
         term: selectedTerm.id,
-        cohort_subject: resolvedSelectedCohortSubjectId,
+        cohort_subject: selectedOriginCohortSubjectId,
         cohort_subject_ids: selectedApplicationIds,
         title: title.trim(),
         lessons_per_week: lessonsPerWeekValue ?? 1,
@@ -1116,7 +1167,7 @@ export function CreateSchemePage() {
           <div>
             <h2 className="text-lg font-semibold theme-text">Step 1: Select teaching context</h2>
             <p className="mt-1 text-sm theme-subtle">
-              Choose the curriculum, class subject, and teaching term for this draft scheme.
+              Choose the curriculum, academic year, grade, subject, and streams for this draft scheme.
             </p>
           </div>
 
@@ -1130,13 +1181,68 @@ export function CreateSchemePage() {
               value={selectedCurriculumId}
               onChange={(event) => {
                 setSelectedCurriculumId(event.target.value);
+                setSelectedAcademicYearId('');
+                setSelectedLevelLabel('');
+                setSelectedSubjectId('');
                 setSelectedCohortSubjectId('');
+                setSelectedApplicationIds([]);
               }}
               options={[
                 { value: '', label: 'Select curriculum' },
                 ...activeCurricula.map((curriculum) => ({
                   value: String(curriculum.id),
                   label: curriculum.name,
+                })),
+              ]}
+            />
+
+            <Select
+              label="Academic year"
+              required
+              value={selectedAcademicYearId}
+              onChange={(event) => {
+                setSelectedAcademicYearId(event.target.value);
+                setSelectedLevelLabel('');
+                setSelectedSubjectId('');
+                setSelectedCohortSubjectId('');
+                setSelectedApplicationIds([]);
+              }}
+              options={[
+                { value: '', label: 'Select academic year' },
+                ...Array.from(
+                  new Map(
+                    curriculumFilteredContexts.map((option) => [
+                      option.academicYearId,
+                      {
+                        value: String(option.academicYearId ?? ''),
+                        label: option.academicYearName ?? 'Academic year',
+                      },
+                    ]),
+                  ).values(),
+                ).filter((option) => option.value),
+              ]}
+            />
+
+            <Select
+              id={CREATE_SCHEME_TARGET_ELEMENT_IDS.level}
+              label="Level / Grade"
+              required
+              aria-invalid={stepError?.target === 'level' ? true : undefined}
+              aria-describedby={stepError?.target === 'level' ? STEP_ERROR_ID : undefined}
+              value={selectedLevelLabel}
+              onChange={(event) => {
+                setSelectedLevelLabel(event.target.value);
+                setSelectedSubjectId('');
+                setSelectedCohortSubjectId('');
+                setSelectedApplicationIds([]);
+              }}
+              options={[
+                { value: '', label: 'Select level / grade' },
+                ...Array.from(
+                  new Set(levelFilteredContexts.map((option) => option.levelLabel)),
+                ).map((levelLabel) => ({
+                  value: levelLabel,
+                  label: levelLabel,
                 })),
               ]}
             />
@@ -1151,66 +1257,25 @@ export function CreateSchemePage() {
               onChange={(event) => {
                 setSelectedSubjectId(event.target.value);
                 setSelectedCohortSubjectId('');
+                setSelectedApplicationIds([]);
               }}
               options={[
                 { value: '', label: 'Select subject' },
                 ...Array.from(
                   new Map(
-                    curriculumFilteredContexts.map((option) => [
+                    gradeFilteredContexts.map((option) => [
                       option.subjectId,
-                      {
-                        value: String(option.subjectId),
-                        label: option.subjectName,
-                      },
+                      { value: String(option.subjectId), label: option.subjectName },
                     ]),
                   ).values(),
                 ),
               ]}
             />
 
-            <Select
-              id={CREATE_SCHEME_TARGET_ELEMENT_IDS.level}
-              label="Level / Grade"
-              required
-              aria-invalid={stepError?.target === 'level' ? true : undefined}
-              aria-describedby={stepError?.target === 'level' ? STEP_ERROR_ID : undefined}
-              value={selectedLevelLabel}
-              onChange={(event) => {
-                setSelectedLevelLabel(event.target.value);
-                setSelectedCohortSubjectId('');
-              }}
-              options={[
-                { value: '', label: 'Select level / grade' },
-                ...Array.from(
-                  new Set(levelFilteredContexts.map((option) => option.levelLabel)),
-                ).map((levelLabel) => ({
-                  value: levelLabel,
-                  label: levelLabel,
-                })),
-              ]}
-            />
-
-            <Select
-              id={CREATE_SCHEME_TARGET_ELEMENT_IDS['cohort-subject']}
-              label="Class / Subject"
-              required
-              aria-invalid={stepError?.target === 'cohort-subject' ? true : undefined}
-              aria-describedby={stepError?.target === 'cohort-subject' ? STEP_ERROR_ID : undefined}
-              value={selectedCohortSubjectId}
-              onChange={(event) => setSelectedCohortSubjectId(event.target.value)}
-              options={[
-                { value: '', label: 'Select class / subject' },
-                ...filteredContextOptions.map((option) => ({
-                  value: String(option.cohortSubjectId),
-                  label: `${option.cohortName} • ${option.subjectName}`,
-                })),
-              ]}
-            />
-
             {resolvedSelectedCohortSubjectId ? (
               <div className="rounded-lg border theme-border p-3 md:col-span-2 xl:col-span-3">
-                <p className="text-sm font-medium theme-text">Use this scheme with classes</p>
-                <p className="mt-1 text-xs theme-subtle">Choose server-authorized compatible assigned classes. Every choice is revalidated before applying the scheme.</p>
+                <p className="text-sm font-medium theme-text">Eligible streams</p>
+                <p className="mt-1 text-xs theme-subtle">Choose one or more server-authorized streams. Every choice is revalidated before applying the scheme.</p>
                 {compatibleApplicationsError ? <p className="mt-2 text-sm text-red-600">{compatibleApplicationsError}</p> : null}
                 {compatibleApplicationsLoading ? <p className="mt-2 text-sm theme-subtle">Checking compatible classes…</p> : null}
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -1221,16 +1286,21 @@ export function CreateSchemePage() {
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={compatibleApplicationsLoading || option.id === resolvedSelectedCohortSubjectId}
+                          disabled={compatibleApplicationsLoading}
                           onChange={(event) => setSelectedApplicationIds((current) => event.target.checked
                             ? [...current, option.id]
                             : current.filter((id) => id !== option.id))}
                         />
-                        {option.cohort_name} • {option.subject_name}
+                        {option.cohort_name}
                       </label>
                     );
                   })}
                 </div>
+                {!compatibleApplicationsLoading && filteredContextOptions.length > compatibleApplicationOptions.length ? (
+                  <p className="mt-3 text-sm text-amber-700">
+                    Some assigned streams are unavailable because they are incompatible with this context or already have an active scheme.
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
