@@ -412,6 +412,14 @@ export const useSessionDetail = (
     });
   };
 
+  const recordDelivery = async (data: import('@/app/core/types/session').RecordSessionDeliveryPayload): Promise<void> => {
+    if (!sessionId) return;
+    const updated = await sessionAPI.recordDelivery(sessionId, data);
+    setSession(updated);
+    await fetchSession();
+    emitSessionDataChanged({ reason: 'session_completed', sessionId });
+  };
+
   const createAssignmentFromLesson = async (): Promise<SessionAssignmentDraftResponse> => {
     if (!sessionId) {
       throw new Error('Session not found.');
@@ -433,6 +441,7 @@ export const useSessionDetail = (
     rescheduleSession,
     startSession,
     confirmTaughtOutcomes,
+    recordDelivery,
     createAssignmentFromLesson,
   };
 };

@@ -380,6 +380,9 @@ export function SessionDetailPage() {
     const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
     const [transientWorkflowNotice, setTransientWorkflowNotice] = useState<SessionPageNotice | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
+    const [deliveryStatus, setDeliveryStatus] = useState<'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT' | ''>('');
+    const [deliveryReflection, setDeliveryReflection] = useState('');
+    const [savingDelivery, setSavingDelivery] = useState(false);
     const [taughtOutcomesValidationError, setTaughtOutcomesValidationError] = useState<string | null>(null);
     const [issuingPreparedTask, setIssuingPreparedTask] = useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
@@ -413,6 +416,7 @@ export function SessionDetailPage() {
         cancelSession,
         rescheduleSession,
         confirmTaughtOutcomes,
+        recordDelivery,
     } = useSessionDetail(hasValidSessionId ? sessionId : null, {
         includeOperationalData: isStaffAcademicViewer,
         authorityMode,
@@ -2971,7 +2975,49 @@ export function SessionDetailPage() {
                 </CollapsibleSection>
             ) : null}
 
-            {showTaughtOutcomesSection ? (
+            {session.outcome_capture_mode === 'AI_REFLECTION' && isInProgress && hasCompleteAttendance ? (
+                <Card>
+                    <div className="space-y-4">
+                        <div>
+                            <h2 className="text-lg font-semibold theme-text">Lesson delivery</h2>
+                            <p className="mt-1 text-sm theme-muted">Confirm whether teaching occurred. Curriculum coverage will be processed after you leave this page.</p>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-3">
+                            {(['TAUGHT', 'PARTIALLY_TAUGHT', 'NOT_TAUGHT'] as const).map((value) => (
+                                <button key={value} type="button" onClick={() => setDeliveryStatus(value)}
+                                    className={`rounded-lg border p-3 text-left ${deliveryStatus === value ? 'border-blue-500' : 'theme-border'}`}>
+                                    {value === 'TAUGHT' ? 'Taught' : value === 'PARTIALLY_TAUGHT' ? 'Partially taught' : 'Not taught'}
+                                </button>
+                            ))}
+                        </div>
+                        {deliveryStatus && deliveryStatus !== 'NOT_TAUGHT' ? (
+                            <label className="block text-sm font-medium theme-text">
+                                Reflection
+                                <textarea className="mt-2 min-h-32 w-full rounded-lg border theme-border theme-surface p-3"
+                                    value={deliveryReflection} onChange={(event) => setDeliveryReflection(event.target.value)}
+                                    placeholder="Describe what was actually taught, learner response, and where the lesson stopped." />
+                            </label>
+                        ) : null}
+                        {session.outcome_attribution_status ? (
+                            <p className="text-sm theme-muted">Outcome processing: {session.outcome_attribution_status.toLowerCase().replace('_', ' ')}</p>
+                        ) : null}
+                        <Button disabled={!deliveryStatus || savingDelivery || (deliveryStatus !== 'NOT_TAUGHT' && !deliveryReflection.trim())}
+                            onClick={async () => {
+                                if (!deliveryStatus) return;
+                                setSavingDelivery(true); setWorkflowError(null);
+                                try {
+                                    await recordDelivery({ delivery_status: deliveryStatus, reflection: deliveryReflection });
+                                    setWorkflowSuccess(deliveryStatus === 'NOT_TAUGHT' ? 'Lesson marked not taught. Choose reschedule or cancel.' : 'Lesson completed. Outcome alignment is processing in the background.');
+                                } catch (error) { setWorkflowError(resolveErrorMessage(error, 'Could not record lesson delivery.')); }
+                                finally { setSavingDelivery(false); }
+                            }}>
+                            {savingDelivery ? 'Saving...' : deliveryStatus === 'NOT_TAUGHT' ? 'Continue to reschedule or cancel' : 'Complete lesson'}
+                        </Button>
+                    </div>
+                </Card>
+            ) : null}
+
+            {showTaughtOutcomesSection && session.outcome_capture_mode !== 'AI_REFLECTION' ? (
                 <CollapsibleSection
                     sectionId="taught-outcomes-section"
                     title="Confirm what was taught"

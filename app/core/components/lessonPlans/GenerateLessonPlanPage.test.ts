@@ -63,8 +63,10 @@ describe('GenerateLessonPlanPage validation and error placement', () => {
 
     expect(pageSource).not.toContain('showRetryWithoutAi');
     expect(pageSource).not.toContain('Generate without AI');
-    expect(pageSource).toContain('showMissingReferenceWarning');
-    expect(pageSource).toContain('referenceCoverage.missingOutcomes.length');
+    expect(pageSource).not.toContain('showMissingReferenceWarning');
+    expect(pageSource).not.toContain('referenceCoverage.missingOutcomes.length');
+    expect(pageSource).toContain("outcome_capture_mode: 'AI_REFLECTION'");
+    expect(pageSource).toContain('curriculum_scope: {');
   });
 
   it('does not show resolved current term as ordinary teacher UI', () => {
@@ -80,6 +82,13 @@ describe('GenerateLessonPlanPage validation and error placement', () => {
 
     expect(pageSource).toContain('router.push(schemeGenerationHref)');
     expect(pageSource).toContain('First document required: Scheme of Work');
+  });
+
+  it('uses canonical scope without submitting teacher-selected outcomes', () => {
+    const pageSource = source();
+    expect(pageSource).toContain('Choose a strand and sub-strand');
+    expect(pageSource).toContain('curriculum_scope: {');
+    expect(pageSource).not.toContain('planned_outcomes: plannedOutcomes');
   });
 
   it('uses asynchronous lesson generation job polling', () => {

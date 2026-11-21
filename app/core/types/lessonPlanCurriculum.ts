@@ -33,6 +33,8 @@ export interface LessonPlanCurriculumContext {
     supports_reference_alignment: boolean;
     manual_outcomes_allowed: boolean;
     outcome_source: string;
+    supports_curriculum_scope?: boolean;
+    default_outcome_capture_mode?: 'MANUAL_OUTCOMES' | 'AI_REFLECTION';
     reference_language: LessonPlanReferenceLanguage;
     scheme_requirement: SchemeRequirementStatus;
 }

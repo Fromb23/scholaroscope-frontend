@@ -220,6 +220,9 @@ export interface LessonPlan {
     academic_year: number | null;
     academic_year_name: string | null;
     title: string;
+    theme?: string;
+    outcome_capture_mode?: 'MANUAL_OUTCOMES' | 'AI_REFLECTION';
+    curriculum_scope?: CurriculumScope | Record<string, never>;
     status: LessonPlanStatus;
     planned_outcomes: PlannedOutcome[];
     planned_date: string | null;
@@ -250,11 +253,22 @@ export interface LessonPlan {
     updated_at: string;
 }
 
+export interface CurriculumScope {
+    plugin: string;
+    strand_id: number;
+    strand_name: string;
+    sub_strand_id: number;
+    sub_strand_name: string;
+}
+
 export interface LessonPlanCreatePayload {
     cohort_subject: number;
     term: number;
     title: string;
-    planned_outcomes: PlannedOutcome[];
+    theme?: string;
+    outcome_capture_mode?: 'MANUAL_OUTCOMES' | 'AI_REFLECTION';
+    curriculum_scope?: CurriculumScope;
+    planned_outcomes?: PlannedOutcome[];
     planned_date?: string | null;
     planned_start_time?: string | null;
     planned_end_time?: string | null;
@@ -263,6 +277,9 @@ export interface LessonPlanCreatePayload {
 
 export interface LessonPlanUpdatePayload {
     title?: string;
+    theme?: string;
+    outcome_capture_mode?: 'MANUAL_OUTCOMES' | 'AI_REFLECTION';
+    curriculum_scope?: CurriculumScope;
     planned_outcomes?: PlannedOutcome[];
     planned_date?: string | null;
     planned_start_time?: string | null;

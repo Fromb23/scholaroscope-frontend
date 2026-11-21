@@ -122,6 +122,9 @@ export interface Session {
   scheme_entry?: number | null;
   planned_outcomes: PlannedOutcome[];
   taught_outcomes: PlannedOutcome[];
+  outcome_capture_mode?: 'MANUAL_OUTCOMES' | 'AI_REFLECTION';
+  delivery_status?: 'NOT_CONFIRMED' | 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
+  outcome_attribution_status?: 'NOT_REQUIRED' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'NEEDS_REVIEW' | 'FAILED' | null;
   is_unplanned: boolean;
   schedule_state: SessionScheduleState;
   is_overdue: boolean;
@@ -163,6 +166,7 @@ export type SessionClosureNextStep =
   | 'SCHEDULED'
   | 'ATTENDANCE'
   | 'TAUGHT_OUTCOMES'
+  | 'DELIVERY_STATUS'
   | 'INTERRUPTED'
   | 'EVIDENCE'
   | 'REFLECTION'
@@ -190,6 +194,14 @@ export interface SessionClosureState {
   learner_evidence_summary?: FineArtsLearnerEvidenceSummary;
   workflow_summary?: SessionWorkflowSummary;
   viewer_actions?: SessionViewerActions;
+  delivery_status?: Session['delivery_status'];
+  outcome_capture_mode?: Session['outcome_capture_mode'];
+  outcome_attribution_status?: Session['outcome_attribution_status'];
+}
+
+export interface RecordSessionDeliveryPayload {
+  delivery_status: 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
+  reflection?: string;
 }
 
 export interface SessionDetail extends Session {
