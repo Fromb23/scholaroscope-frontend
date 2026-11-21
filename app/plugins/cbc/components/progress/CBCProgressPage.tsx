@@ -345,7 +345,9 @@ export function CBCProgressPage() {
                                 )}
                             </h2>
                             <p className="text-sm text-gray-500 mt-1">
-                                Open a strand to view sub-strands and learning goals.
+                                {!page.isAdmin && !page.effectiveCohortId
+                                    ? 'Shared curriculum outline. Select a class to open stream-level progress.'
+                                    : 'Open a strand to view sub-strands and learning goals.'}
                             </p>
                         </div>
 
@@ -374,6 +376,30 @@ export function CBCProgressPage() {
                                             ?? strand.subject
                                             ?? ''
                                         );
+
+                                    if (!page.isAdmin && !page.effectiveCohortId) {
+                                        return (
+                                            <div
+                                                key={strand.id}
+                                                className="flex items-center justify-between -mx-2 px-2 py-3 rounded-lg"
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <Badge variant="blue" size="sm" className="font-mono shrink-0">
+                                                        {strand.code}
+                                                    </Badge>
+                                                    <span className="font-medium text-gray-900 truncate">
+                                                        {strand.name}
+                                                    </span>
+                                                    <Badge variant="warning" size="sm" className="shrink-0">
+                                                        Select a class
+                                                    </Badge>
+                                                </div>
+                                                <span className="text-sm text-gray-500 shrink-0 ml-4">
+                                                    {subStrandCount} sub-strands / {outcomeCount} learning goals
+                                                </span>
+                                            </div>
+                                        );
+                                    }
 
                                     return (
                                         <Link

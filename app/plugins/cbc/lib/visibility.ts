@@ -74,6 +74,10 @@ export interface CBCInstructorSubjectSelection {
     academic_year?: string | null;
     subject_code?: string | null;
     cohort_subject_id?: number | null;
+    cohort_ids?: number[];
+    cohort_names?: string[];
+    cohort_subject_ids?: number[];
+    assignments?: CBCTeachingAssignment[];
 }
 
 export function resolveCBCVisibleProfiles(
@@ -167,6 +171,14 @@ export function resolveCBCVisibleProfilesFromAssignments(
 
   // Keep direct org-local profiles only as fallback/compatibility.
   directProfiles.forEach((profile) => {
+    const catalogueEquivalent = catalogProfiles.some((catalogueProfile) => (
+      matchesCBCVisibleProfile({
+        subject_name: profile.subject_name,
+        subject_code: profile.subject_code,
+        cohort_level: profile.level,
+      }, catalogueProfile)
+    ));
+    if (catalogueEquivalent) return;
     if (!deduped.has(profile.subject_profile_id)) {
       deduped.set(profile.subject_profile_id, profile);
     }
@@ -343,19 +355,14 @@ export function buildCBCInstructorSubjectSelections(
 }
 
 export function buildCBCInstructorAssignmentSelections(
-    assignments: Array<Pick<
-        CBCTeachingAssignment,
-        'cohort_subject_id' | 'cohort_id' | 'cohort_name' | 'subject_id' |
-        'topic_subject_id' | 'subject_name' | 'subject_code' | 'subject_profile_id' | 'level' | 'academic_year'
-    >>,
+    assignments: CBCTeachingAssignment[],
     visibleProfiles: CBCVisibleProfile[],
     curriculumId: number | null,
     curriculumName = 'CBC'
 ): CBCInstructorSubjectSelection[] {
-    const deduped = new Map<number, CBCInstructorSubjectSelection>();
+    const grouped = new Map<string, CBCInstructorSubjectSelection>();
 
     assignments.forEach(assignment => {
-        const filterId = hashKey(`assignment:${assignment.cohort_subject_id}`);
         const matchingProfiles = visibleProfiles.filter(profile => (
             (typeof assignment.subject_profile_id === 'number' &&
                 assignment.subject_profile_id === profile.subject_profile_id) ||
@@ -365,9 +372,40 @@ export function buildCBCInstructorAssignmentSelections(
                 cohort_level: assignment.level,
             }, profile)
         ));
-        const resolvedProfile = matchingProfiles[0] ?? null;
+        const resolvedProfile = matchingProfiles.find(profile => (
+            profile.subject_profile_id === assignment.subject_profile_id
+        )) ?? matchingProfiles[0] ?? null;
+        const profileId = resolvedProfile?.subject_profile_id ?? assignment.subject_profile_id ?? null;
+        const fallbackKey = [
+            assignment.subject_code,
+            assignment.subject_name,
+            assignment.level,
+        ].map(value => String(value ?? '').trim().toLowerCase()).join('::');
+        const key = profileId !== null ? `profile:${profileId}` : `fallback:${fallbackKey}`;
+        const filterId = profileId ?? hashKey(key);
+        const existing = grouped.get(key);
 
-        deduped.set(assignment.cohort_subject_id, {
+        if (existing) {
+            existing.assignments = [...(existing.assignments ?? []), assignment];
+            existing.cohort_ids = uniqueNumbers([...(existing.cohort_ids ?? []), assignment.cohort_id]);
+            existing.cohort_names = uniqueStrings([...(existing.cohort_names ?? []), assignment.cohort_name]);
+            existing.cohort_subject_ids = uniqueNumbers([
+                ...(existing.cohort_subject_ids ?? []),
+                assignment.cohort_subject_id,
+            ]);
+            existing.subject_ids = uniqueNumbers([
+                ...existing.subject_ids,
+                assignment.topic_subject_id ?? assignment.subject_id,
+            ]);
+            existing.subject_profile_ids = uniqueNumbers([
+                ...(existing.subject_profile_ids ?? []),
+                ...matchingProfiles.map(profile => profile.subject_profile_id),
+                ...(profileId !== null ? [profileId] : []),
+            ]);
+            return;
+        }
+
+        grouped.set(key, {
             filter_id: filterId,
             subject: {
                 id: filterId,
@@ -381,23 +419,36 @@ export function buildCBCInstructorAssignmentSelections(
                 created_at: '',
             },
             subject_ids: [assignment.topic_subject_id ?? assignment.subject_id],
-            subject_profile_ids: matchingProfiles.map(profile => profile.subject_profile_id),
+            subject_profile_ids: uniqueNumbers([
+                ...matchingProfiles.map(profile => profile.subject_profile_id),
+                ...(profileId !== null ? [profileId] : []),
+            ]),
             subject_name: resolvedProfile?.subject_name ?? assignment.subject_name,
             level: resolvedProfile?.level ?? assignment.level,
-            cohort_id: assignment.cohort_id,
-            cohort_name: assignment.cohort_name,
+            cohort_id: null,
+            cohort_name: null,
             academic_year: assignment.academic_year,
             subject_code: resolvedProfile?.subject_code ?? assignment.subject_code,
-            cohort_subject_id: assignment.cohort_subject_id,
+            cohort_subject_id: null,
+            cohort_ids: [assignment.cohort_id],
+            cohort_names: [assignment.cohort_name],
+            cohort_subject_ids: [assignment.cohort_subject_id],
+            assignments: [assignment],
         });
     });
 
-    return Array.from(deduped.values()).sort((left, right) => (
+    return Array.from(grouped.values()).sort((left, right) => (
         left.subject.name.localeCompare(right.subject.name) ||
-        (left.cohort_name ?? '').localeCompare(right.cohort_name ?? '') ||
-        (left.academic_year ?? '').localeCompare(right.academic_year ?? '') ||
         left.subject.level.localeCompare(right.subject.level)
     ));
+}
+
+function uniqueNumbers(values: number[]) {
+    return Array.from(new Set(values)).sort((left, right) => left - right);
+}
+
+function uniqueStrings(values: string[]) {
+    return Array.from(new Set(values.filter(Boolean))).sort((left, right) => left.localeCompare(right));
 }
 
 export function matchesCBCStrandToSubjectSelection(

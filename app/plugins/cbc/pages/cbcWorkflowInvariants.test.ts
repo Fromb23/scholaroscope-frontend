@@ -36,6 +36,20 @@ describe('CBC management workflow invariants', () => {
         expect(destination).toContain('assignment.cohort_subject_id === queryCohortSubjectId');
         expect(destination).toContain('assignment.cbc_cohort_subject_id === queryCbcCohortSubjectId');
     });
+
+    it('groups instructor subjects by profile while preserving exact stream assignments', () => {
+        const visibility = source('app/plugins/cbc/lib/visibility.ts');
+        const context = source('app/plugins/cbc/hooks/useCBCInstructorContext.ts');
+        const progress = source('app/plugins/cbc/hooks/useCBCProgressPage.ts');
+        const progressPage = source('app/plugins/cbc/components/progress/CBCProgressPage.tsx');
+
+        expect(visibility).toContain('`profile:${profileId}`');
+        expect(visibility).toContain('cohort_subject_ids');
+        expect(context).toContain('invalidRequestedCohortSubject');
+        expect(context).toContain('requestedAssignment.cohort_subject_id');
+        expect(progress).toContain('subject_profile: !isAdmin');
+        expect(progressPage).toContain('Shared curriculum outline');
+    });
 });
 
 describe('CBC result scale and presentation invariants', () => {
