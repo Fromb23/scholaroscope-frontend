@@ -619,11 +619,16 @@ export function SubjectGroupPicker({
           const subjectCode = (selection.subject_code ?? selection.subject.code ?? '').trim();
           const levelLabel = formatInstructorLevelLabel(selection.level);
           const cohortName = (selection.cohort_name ?? '').trim();
+          const cohortNames = selection.cohort_names ?? [];
           const academicYear = (selection.academic_year ?? '').trim();
 
           let metaLabel = levelLabel || 'CBC Assignment';
 
-          if (cohortName) {
+          if (cohortNames.length > 0) {
+            const visibleNames = cohortNames.slice(0, 3).join(', ');
+            const overflow = cohortNames.length > 3 ? ` +${cohortNames.length - 3}` : '';
+            metaLabel = `${visibleNames}${overflow}`;
+          } else if (cohortName) {
             metaLabel = academicYear ? `${cohortName} ${academicYear}` : cohortName;
           } else if (selection.cohort_id) {
             metaLabel = levelLabel
@@ -637,7 +642,7 @@ export function SubjectGroupPicker({
 
           return (
             <button
-              key={selection.cohort_subject_id ?? selection.filter_id}
+              key={selection.filter_id}
               onClick={() => onSelect(selection.filter_id)}
               className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${
                 isSelected

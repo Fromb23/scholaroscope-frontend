@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
     useStrandsByCurriculum,
@@ -81,6 +81,8 @@ export function useCBCProgressPage() {
         subjectOptions: instructorSubjectOptions,
         selectedSubjectId: selectedVisibleSubjectId,
         selectedSelection: resolvedInstructorSubjectSelection,
+        selectedProfileIds,
+        invalidRequestedCohortSubject,
         hasVisibleProfiles,
         isLoading: instructorContextLoading,
         error: instructorContextError,
@@ -100,7 +102,21 @@ export function useCBCProgressPage() {
     } = useStrandsByCurriculum(selectedCurriculumId, {
         authority_mode: isAdmin ? 'supervision' : 'teaching',
         cohort: effectiveCohortIdForContext ?? undefined,
+        subject_profile: !isAdmin && selectedProfileIds.length === 1
+            ? selectedProfileIds[0]
+            : undefined,
     });
+
+    useEffect(() => {
+        if (
+            !isAdmin
+            && !instructorContextLoading
+            && selectedCohortId !== null
+            && !assignedCohorts.some(cohort => cohort.id === selectedCohortId)
+        ) {
+            setSelectedCohort(null);
+        }
+    }, [assignedCohorts, instructorContextLoading, isAdmin, selectedCohortId, setSelectedCohort]);
 
     const subjectsForCurriculum = useMemo(() => {
         if (!selectedCurriculumId) return [];
@@ -129,6 +145,9 @@ export function useCBCProgressPage() {
         const withContent = strandSource.filter(strand => getSubStrandCount(strand) > 0);
 
         if (!isAdmin) {
+            if (invalidRequestedCohortSubject) {
+                return [];
+            }
             if (!resolvedInstructorSubjectSelection) {
                 return withContent;
             }
@@ -145,6 +164,7 @@ export function useCBCProgressPage() {
         return withContent.filter(strand => strand.subject_org_id === effectiveSubjectId);
     }, [
         isAdmin,
+        invalidRequestedCohortSubject,
         resolvedInstructorSubjectSelection,
         effectiveSubjectId,
         strandSource,
@@ -173,9 +193,13 @@ export function useCBCProgressPage() {
                         .map(strand => strand.subject_org_id)
                         .filter((value): value is number => value !== null && value !== undefined)
                 ).size
-                : subjectsForCurriculum.length,
+                : new Set(
+                    instructorSubjectSelections.flatMap(
+                        selection => selection.subject_profile_ids ?? []
+                    )
+                ).size,
         }),
-        [isAdmin, subjectsForCurriculum.length, visibleStrands]
+        [instructorSubjectSelections, isAdmin, visibleStrands]
     );
 
     const isLoading = isAdmin
@@ -190,8 +214,10 @@ export function useCBCProgressPage() {
 
     const handleCohortChange = (cohortId: number | null) => {
         setSelectedCohort(cohortId);
-        setSelectedSubject(null);
-        setSelectedSubjectFilterId(null);
+        if (isAdmin) {
+            setSelectedSubject(null);
+            setSelectedSubjectFilterId(null);
+        }
     };
 
     return {

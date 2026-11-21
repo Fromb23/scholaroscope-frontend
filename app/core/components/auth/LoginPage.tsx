@@ -115,6 +115,16 @@ function LoginForm() {
       if (errorCode === 'email_not_verified') {
         setVerificationEmail(email);
       }
+      if (errorCode === 'account_restricted') {
+        setError({
+          kind: 'permission',
+          title: 'Account restricted.',
+          message: 'Your Scholaroscope account has been restricted. Contact platform support.',
+          retryable: false,
+          severity: 'warning',
+        });
+        return;
+      }
       if (!e?.status && !Object.keys(data).length) {
         setError(serviceUnavailableError());
         return;

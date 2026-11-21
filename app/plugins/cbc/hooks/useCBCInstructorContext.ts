@@ -106,69 +106,111 @@ export function useResolvedCBCInstructorContext({
     const query = useCBCInstructorContext(selectedCurriculumId);
     const data = query.data;
 
-    const effectiveCohortId = useMemo(() => {
-        if (!data) return null;
-        if (requestedCohortId !== null && data.assignedCohorts.some(cohort => cohort.id === requestedCohortId)) {
-            return requestedCohortId;
-        }
-        return data.assignedCohorts.length === 1 ? data.assignedCohorts[0].id : null;
-    }, [data, requestedCohortId]);
-
-    const effectiveCohort = useMemo(
-        () => data?.assignedCohorts.find(cohort => cohort.id === effectiveCohortId) ?? null,
-        [data?.assignedCohorts, effectiveCohortId]
-    );
-
-    const scopedAssignments = useMemo(() => {
-        if (!data) return [];
-        if (effectiveCohortId === null) return data.assignments;
-        return data.assignments.filter(assignment => assignment.cohort_id === effectiveCohortId);
-    }, [data, effectiveCohortId]);
-
-    const scopedVisibleProfiles = useMemo(
-        () => data?.catalog
-            ? resolveCBCVisibleProfilesFromAssignments(data.catalog, scopedAssignments)
-            : [],
-        [data, scopedAssignments]
-    );
-
     const subjectSelections = useMemo<CBCInstructorSubjectSelection[]>(
         () => buildCBCInstructorAssignmentSelections(
-            scopedAssignments,
-            scopedVisibleProfiles,
+            data?.assignments ?? [],
+            data?.visibleProfiles ?? [],
             selectedCurriculumId,
             data?.curriculumName ?? 'CBC'
         ),
-        [data?.curriculumName, scopedAssignments, scopedVisibleProfiles, selectedCurriculumId]
+        [data?.assignments, data?.curriculumName, data?.visibleProfiles, selectedCurriculumId]
+    );
+
+    const requestedAssignment = useMemo(() => {
+        if (requestedCohortSubjectId === null || requestedCohortSubjectId === undefined) return null;
+        return data?.assignments.find(
+            assignment => assignment.cohort_subject_id === requestedCohortSubjectId
+        ) ?? null;
+    }, [data?.assignments, requestedCohortSubjectId]);
+
+    const invalidRequestedCohortSubject = Boolean(
+        requestedCohortSubjectId && data && !requestedAssignment
     );
 
     const selectedSubjectId = useMemo(() => {
+        if (requestedCohortSubjectId !== null && requestedCohortSubjectId !== undefined) {
+            if (!requestedAssignment) return null;
+            return subjectSelections.find(selection => (
+                selection.cohort_subject_ids?.includes(requestedAssignment.cohort_subject_id)
+            ))?.filter_id ?? null;
+        }
         if (requestedSubjectId !== null && subjectSelections.some(selection => selection.filter_id === requestedSubjectId)) {
             return requestedSubjectId;
         }
-        if (requestedCohortSubjectId !== null && requestedCohortSubjectId !== undefined) {
-            const requestedSelection = subjectSelections.find(
-                selection => selection.cohort_subject_id === requestedCohortSubjectId
-            );
-            if (requestedSelection) {
-                return requestedSelection.filter_id;
-            }
-        }
         return subjectSelections.length === 1 ? subjectSelections[0].filter_id : null;
-    }, [requestedCohortSubjectId, requestedSubjectId, subjectSelections]);
+    }, [requestedAssignment, requestedCohortSubjectId, requestedSubjectId, subjectSelections]);
 
-    const selectedSelection = useMemo(
+    const baseSelectedSelection = useMemo(
         () => subjectSelections.find(selection => selection.filter_id === selectedSubjectId) ?? null,
         [selectedSubjectId, subjectSelections]
     );
 
+    const eligibleAssignments = useMemo(
+        () => baseSelectedSelection?.assignments
+            ?? (invalidRequestedCohortSubject ? [] : data?.assignments ?? []),
+        [baseSelectedSelection, data?.assignments, invalidRequestedCohortSubject]
+    );
+
+    const assignedCohorts = useMemo(
+        () => buildAssignedCohorts(eligibleAssignments),
+        [eligibleAssignments]
+    );
+
+    const effectiveCohortId = useMemo(() => {
+        if (invalidRequestedCohortSubject) return null;
+        if (requestedAssignment) return requestedAssignment.cohort_id;
+        if (
+            requestedCohortId !== null
+            && eligibleAssignments.some(assignment => assignment.cohort_id === requestedCohortId)
+        ) {
+            return requestedCohortId;
+        }
+        return assignedCohorts.length === 1 ? assignedCohorts[0].id : null;
+    }, [assignedCohorts, eligibleAssignments, invalidRequestedCohortSubject, requestedAssignment, requestedCohortId]);
+
+    const effectiveCohort = useMemo(
+        () => assignedCohorts.find(cohort => cohort.id === effectiveCohortId) ?? null,
+        [assignedCohorts, effectiveCohortId]
+    );
+
+    const selectedAssignment = useMemo(() => {
+        if (!baseSelectedSelection || effectiveCohortId === null) return null;
+        return (baseSelectedSelection.assignments ?? []).find(
+            assignment => assignment.cohort_id === effectiveCohortId
+        ) ?? null;
+    }, [baseSelectedSelection, effectiveCohortId]);
+
+    const selectedSelection = useMemo<CBCInstructorSubjectSelection | null>(() => {
+        if (!baseSelectedSelection) return null;
+        return {
+            ...baseSelectedSelection,
+            cohort_id: selectedAssignment?.cohort_id ?? null,
+            cohort_name: selectedAssignment?.cohort_name ?? null,
+            cohort_subject_id: selectedAssignment?.cohort_subject_id ?? null,
+        };
+    }, [baseSelectedSelection, selectedAssignment]);
+
+    const scopedAssignments = useMemo(() => {
+        if (effectiveCohortId === null) return eligibleAssignments;
+        return eligibleAssignments.filter(assignment => assignment.cohort_id === effectiveCohortId);
+    }, [effectiveCohortId, eligibleAssignments]);
+
+    const scopedVisibleProfiles = useMemo(() => {
+        if (invalidRequestedCohortSubject) return [];
+        const selectedIds = new Set(baseSelectedSelection?.subject_profile_ids ?? []);
+        if (!baseSelectedSelection) return data?.visibleProfiles ?? [];
+        return (data?.visibleProfiles ?? []).filter(profile => (
+            selectedIds.has(profile.subject_profile_id)
+        ));
+    }, [baseSelectedSelection, data?.visibleProfiles, invalidRequestedCohortSubject]);
+
     const selectedProfileIds = useMemo(
         () => uniqueSortedIds(
-            selectedSelection?.subject_profile_ids?.length
-                ? selectedSelection.subject_profile_ids
+            baseSelectedSelection?.subject_profile_ids?.length
+                ? baseSelectedSelection.subject_profile_ids
                 : scopedVisibleProfiles.map(profile => profile.subject_profile_id)
         ),
-        [scopedVisibleProfiles, selectedSelection]
+        [baseSelectedSelection, scopedVisibleProfiles]
     );
 
     const subjectOptions = useMemo<Subject[]>(
@@ -178,7 +220,7 @@ export function useResolvedCBCInstructorContext({
 
     return {
         ...query,
-        assignedCohorts: data?.assignedCohorts ?? [],
+        assignedCohorts,
         cohortSubjects: data?.cohortSubjects ?? [],
         allAssignments: data?.assignments ?? [],
         visibleProfiles: scopedVisibleProfiles,
@@ -189,7 +231,9 @@ export function useResolvedCBCInstructorContext({
         subjectOptions,
         selectedSubjectId,
         selectedSelection,
+        selectedAssignment,
         selectedProfileIds,
+        invalidRequestedCohortSubject,
         hasVisibleProfiles: subjectOptions.length > 0 || selectedProfileIds.length > 0,
     };
 }

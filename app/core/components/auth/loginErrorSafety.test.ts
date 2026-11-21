@@ -28,6 +28,17 @@ describe('login error safety contract', () => {
     expect(loginSource).not.toContain('interpretedMessage');
   });
 
+  it('handles a verified global account restriction before the generic auth fallback', () => {
+    const restrictionIndex = loginSource.indexOf("errorCode === 'account_restricted'");
+    const genericFallbackIndex = loginSource.indexOf('[400, 401, 403].includes');
+
+    expect(restrictionIndex).toBeGreaterThan(-1);
+    expect(restrictionIndex).toBeLessThan(genericFallbackIndex);
+    expect(loginSource).toContain(
+      'Your Scholaroscope account has been restricted. Contact platform support.',
+    );
+  });
+
   it('gets the platform console target from frontend configuration', () => {
     expect(platformRedirectSource).toContain('NEXT_PUBLIC_PLATFORM_APP_URL');
     expect(platformRedirectSource).toContain('https://admin.scholaroscope.com');
