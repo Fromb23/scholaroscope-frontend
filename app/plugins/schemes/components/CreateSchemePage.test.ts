@@ -25,6 +25,22 @@ const source = readFileSync(
 );
 
 describe('create scheme term calendar setup copy', () => {
+  it('selects a stable subject once and then offers compatible streams', () => {
+    expect(source).toContain('gradeFilteredContexts.map((option) => [');
+    expect(source).toContain('option.subjectId');
+    expect(source).toContain('Eligible streams');
+    expect(source).toContain('selectedApplicationIds');
+    expect(source).toContain('cohort_subject_ids: selectedApplicationIds');
+    expect(source).toContain('selectedOriginCohortSubjectId');
+    expect(source).not.toContain('label="Class / Subject"');
+  });
+
+  it('preserves an authorized deep-link stream as the deterministic origin while selected', () => {
+    expect(source).toContain("searchParams.get('cohort_subject')");
+    expect(source).toContain('selectedApplicationIds.includes(deepLinkedId)');
+    expect(source).toContain('return [...selectedApplicationIds].sort((left, right) => left - right)[0] ?? null');
+  });
+
   it('keeps institution teacher wording when the term calendar is incomplete', () => {
     expect(getSchemeTermCalendarSetupMessage({
       selectedTerm: incompleteTerm,

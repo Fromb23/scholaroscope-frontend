@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
     BookOpen,
-    ClipboardList,
     GraduationCap,
     History,
     Users,
@@ -353,97 +352,33 @@ export function InstructorMyCohortsPageContent() {
 
                                     <Link href={buildClassDetailHref(group.cohort_id)} className="w-full lg:w-auto">
                                         <Button variant="secondary" size="sm" className="w-full lg:w-auto">
-                                            {group.setup_status === 'INCOMPLETE' ? 'Complete class-subject setup' : 'Open Class'}
+                                            {group.setup_status === 'INCOMPLETE' ? 'Complete class-subject setup' : 'Class overview'}
                                         </Button>
                                     </Link>
                                 </div>
 
-                                <div className="grid gap-3">
+                                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-gray-100 pt-3 text-sm text-gray-600">
+                                    {typeof group.learner_count === 'number' ? (
+                                        <span>{group.learner_count} learner{group.learner_count === 1 ? '' : 's'}</span>
+                                    ) : null}
                                     {group.subjects.length === 0 ? (
-                                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                                            <h3 className="text-base font-semibold text-amber-950">Class-subject setup incomplete</h3>
-                                            <p className="mt-1 text-sm text-amber-800">
-                                                {group.setup_incomplete_reason ?? 'Complete class-subject setup before preparing lessons, sessions, assessments, or schemes for this class.'}
-                                            </p>
-                                            <p className="mt-2 text-xs text-amber-700">
-                                                0 class subjects configured. No teaching assignments are being fabricated for this class.
-                                            </p>
-                                        </div>
-                                    ) : group.subjects.map((subject) => (
-                                        <div key={subject.teaching_key} className="rounded-xl border border-gray-200 p-4">
-                                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                                <div className="min-w-0 space-y-2">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <h3 className="text-base font-semibold text-gray-900">{subject.subject_name}</h3>
-                                                        {subject.subject_code ? (
-                                                            <Badge variant="info">{subject.subject_code}</Badge>
-                                                        ) : null}
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-                                                        {subject.academic_year_name ? (
-                                                            <span>Academic Year: {subject.academic_year_name}</span>
-                                                        ) : null}
-                                                        {typeof subject.learner_count === 'number' ? (
-                                                            <span>Cohort Learners: {subject.learner_count}</span>
-                                                        ) : null}
-                                                    </div>
-                                                    {!subject.cohort_subject_id ? (
-                                                        <p className="text-xs text-amber-700">
-                                                            Learner management link unavailable until the assignment exposes a kernel class-subject id.
-                                                        </p>
-                                                    ) : null}
-                                                </div>
-
-                                                <div className="flex flex-col gap-2 sm:flex-row">
-                                                    {subject.cohort_subject_id ? (
-                                                        <Link
-                                                            href={`/academic/cohort-subjects/${subject.cohort_subject_id}/learners`}
-                                                            className="w-full sm:w-auto"
-                                                        >
-                                                            <Button size="sm" className="w-full sm:w-auto">
-                                                                View Learners
-                                                            </Button>
-                                                        </Link>
-                                                    ) : (
-                                                        <Button size="sm" className="w-full sm:w-auto" disabled>
-                                                            View Learners
-                                                        </Button>
-                                                    )}
-                                                    <Link
-                                                        href={subject.cohort_subject_id
-                                                            ? `/sessions?cohort_subject=${subject.cohort_subject_id}`
-                                                            : `/sessions?cohort=${group.cohort_id}`}
-                                                        className="w-full sm:w-auto"
-                                                    >
-                                                        <Button variant="secondary" size="sm" className="w-full sm:w-auto">
-                                                            Sessions
-                                                        </Button>
-                                                    </Link>
-                                                    <Link
-                                                        href={subject.cohort_subject_id
-                                                            ? `/assessments?cohort_subject=${subject.cohort_subject_id}`
-                                                            : '/assessments'}
-                                                        className="w-full sm:w-auto"
-                                                    >
-                                                        <Button variant="ghost" size="sm" className="w-full sm:w-auto">
-                                                            Assessments
-                                                        </Button>
-                                                    </Link>
-                                                    <Link
-                                                        href={subject.cohort_subject_id
-                                                            ? `/academic/cohorts/${group.cohort_id}/assignments?cohort_subject=${subject.cohort_subject_id}`
-                                                            : `/academic/cohorts/${group.cohort_id}/assignments`}
-                                                        className="w-full sm:w-auto"
-                                                    >
-                                                        <Button variant="ghost" size="sm" className="w-full sm:w-auto">
-                                                            <ClipboardList className="mr-1 h-4 w-4" />
-                                                            Assignments
-                                                        </Button>
-                                                    </Link>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        <span className="text-amber-700">
+                                            {group.setup_incomplete_reason ?? 'No class subjects configured.'}
+                                        </span>
+                                    ) : group.subjects.length === 1 ? (
+                                        <span className="font-medium text-gray-900">{group.subjects[0].subject_name}</span>
+                                    ) : (
+                                        <details>
+                                            <summary className="cursor-pointer font-medium text-blue-700">
+                                                {group.subjects.length} subjects
+                                            </summary>
+                                            <ul className="mt-2 space-y-1 pl-4 text-gray-700">
+                                                {group.subjects.map((subject) => (
+                                                    <li key={subject.teaching_key}>{subject.subject_name}</li>
+                                                ))}
+                                            </ul>
+                                        </details>
+                                    )}
                                 </div>
                             </div>
                         </Card>

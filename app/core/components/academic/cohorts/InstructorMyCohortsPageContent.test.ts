@@ -41,8 +41,20 @@ describe('InstructorMyCohortsPageContent class-list contract', () => {
     expect(hookSource).toContain('subjects: []');
     expect(hookSource).toContain("setup_status: assignment.setup_status ?? ((subjectCount ?? 0) > 0 ? 'READY' : 'INCOMPLETE')");
     expect(pageSource).toContain('Setup incomplete');
-    expect(pageSource).toContain('Class-subject setup incomplete');
-    expect(pageSource).toContain('0 class subjects configured. No teaching assignments are being fabricated for this class.');
+    expect(pageSource).toContain("group.setup_incomplete_reason ?? 'No class subjects configured.'");
     expect(pageSource).toContain('Complete class-subject setup');
+  });
+
+  it('renders one compact class card with one class learner count and collapsed subjects', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('<Card key={group.cohort_id}>');
+    expect(pageSource).toContain("group.learner_count === 1 ? '' : 's'");
+    expect(pageSource).toContain('group.subjects.length === 1');
+    expect(pageSource).toContain('<details>');
+    expect(pageSource).toContain('{group.subjects.length} subjects');
+    expect(pageSource).toContain('Class overview');
+    expect(pageSource).not.toContain('View Learners');
+    expect(pageSource).not.toContain('Cohort Learners:');
   });
 });
