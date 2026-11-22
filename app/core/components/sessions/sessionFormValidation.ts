@@ -52,9 +52,6 @@ export function validateSessionCreateForm({
     errors.end_time = 'End time must be after start time.';
   }
   if (isBlank(formData.title)) errors.title = 'Session title is required.';
-  if (formData.session_type === 'OTHER' && isBlank(formData.description)) {
-    errors.description = 'Purpose or description is required for Other sessions.';
-  }
   if (isBlank(formData.venue)) errors.venue = 'Venue is required.';
 
   return {

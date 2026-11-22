@@ -50,6 +50,7 @@ import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/li
 import {
     useCreateLessonPlan,
     useGenerateLessonPlan,
+    useLessonGapSuggestions,
     useLessonPlanCurriculumContext,
 } from '@/app/core/hooks/useLessonPlans';
 import type { ApiError } from '@/app/core/types/errors';
@@ -90,6 +91,7 @@ export function GenerateLessonPlanPage() {
     const [theme, setTheme] = useState('');
     const [plannedOutcomes, setPlannedOutcomes] = useState<PlannedOutcome[]>([]);
     const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([]);
+    const [selectedFollowUpIds, setSelectedFollowUpIds] = useState<number[]>([]);
     const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<LessonPlanGenerationField>>({});
     const [useAi, setUseAi] = useState(true);
     const [submittingError, setSubmittingError] = useState<string | null>(null);
@@ -136,6 +138,7 @@ export function GenerateLessonPlanPage() {
                     label: `${assignment.cohort_name} • ${assignment.subject_name}`,
                     curriculumId: assignment.curriculum_id ?? null,
                     curriculumType: assignment.curriculum_type ?? null,
+                    cohortId: assignment.cohort_id,
                 })),
         [assignments]
     );
@@ -163,6 +166,20 @@ export function GenerateLessonPlanPage() {
 
         return resolveCurriculumForType(curricula, selectedAssignment.curriculumType);
     }, [curricula, selectedAssignment]);
+    const selectedSubStrandId = plannedOutcomes[0]?.sub_strand_id ?? null;
+    const selectedOutcomeIds = useMemo(
+        () => plannedOutcomes.map((outcome) => outcome.outcome_id),
+        [plannedOutcomes],
+    );
+    const {
+        suggestions: gapSuggestions,
+        loading: gapSuggestionsLoading,
+        error: gapSuggestionsError,
+    } = useLessonGapSuggestions({
+        cohortSubjectId: selectedCohortSubjectId,
+        subStrandId: selectedSubStrandId,
+        outcomeIds: selectedOutcomeIds,
+    });
 
     useEffect(() => {
         if (
@@ -255,7 +272,13 @@ export function GenerateLessonPlanPage() {
     useEffect(() => {
         setPlannedOutcomes([]);
         setReferencePages([]);
+        setSelectedFollowUpIds([]);
     }, [cohortSubjectId]);
+
+    useEffect(() => {
+        const relevantIds = new Set(gapSuggestions.flatMap((suggestion) => suggestion.follow_up_ids));
+        setSelectedFollowUpIds((current) => current.filter((id) => relevantIds.has(id)));
+    }, [gapSuggestions]);
 
     useEffect(() => {
         if (cohortSubjectId && !availableAssignmentOptions.some((assignment) => assignment.value === cohortSubjectId)) {
@@ -411,6 +434,8 @@ export function GenerateLessonPlanPage() {
                 },
                 reference_pages: validatedReferences.payload,
             });
+
+            await lessonPlanAPI.saveFollowUpSelections(lessonPlan.id, selectedFollowUpIds);
 
             const queued = await generateLessonPlan(lessonPlan.id, {
                 force_regenerate: false,
@@ -715,6 +740,80 @@ export function GenerateLessonPlanPage() {
                             onReferencePagesChange={setReferencePages}
                         />
                     ) : null
+                ) : null}
+
+                {selectedCohortSubjectId && selectedSubStrandId && !schemeFirstBlocked ? (
+                    <Card>
+                        <div className="space-y-4">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <h2 className="text-base font-semibold theme-text">Confirmed learning gaps</h2>
+                                    <p className="mt-1 text-sm theme-muted">
+                                        Up to three relevant groups are shown. Preparation can continue without selecting one.
+                                    </p>
+                                </div>
+                                {selectedAssignment ? (
+                                    <Link
+                                        className="text-sm font-medium text-blue-700 hover:underline"
+                                        href={`/reports/instructor/cohort-subjects/${selectedCohortSubjectId}/class-report?returnTo=${encodeURIComponent('/lesson-plans/new')}`}
+                                    >
+                                        Full class-subject list
+                                    </Link>
+                                ) : null}
+                            </div>
+
+                            {gapSuggestionsLoading ? (
+                                <LoadingSpinner message="Loading confirmed gaps..." fullScreen={false} />
+                            ) : gapSuggestionsError ? (
+                                <p className="text-sm theme-muted">
+                                    {gapSuggestionsError} You can still prepare this lesson.
+                                </p>
+                            ) : gapSuggestions.length === 0 ? (
+                                <p className="text-sm theme-muted">No confirmed gaps match this lesson scope.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {gapSuggestions.map((suggestion) => {
+                                        const checked = suggestion.follow_up_ids.every((id) => selectedFollowUpIds.includes(id));
+                                        return (
+                                            <div key={`${suggestion.learning_outcome_id}:${suggestion.grouping_key}`} className="theme-card-muted rounded-lg border p-4 theme-border">
+                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                    <div className="space-y-1">
+                                                        <p className="font-medium theme-text">{suggestion.specific_skill}</p>
+                                                        <p className="text-sm theme-muted">{suggestion.reason}</p>
+                                                        <p className="text-sm theme-muted">
+                                                            {suggestion.affected_learner_count} learner{suggestion.affected_learner_count === 1 ? '' : 's'} still need a check
+                                                            {suggestion.observed_denominator
+                                                                ? ` out of ${suggestion.observed_denominator} observed`
+                                                                : ''}
+                                                            {suggestion.already_planned ? ' · Follow-up already planned' : ''}
+                                                        </p>
+                                                    </div>
+                                                    <label className="flex items-center gap-2 text-sm font-medium theme-text">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={(event) => {
+                                                                setSelectedFollowUpIds((current) => {
+                                                                    const ids = new Set(current);
+                                                                    suggestion.follow_up_ids.forEach((id) => {
+                                                                        if (event.target.checked) ids.add(id);
+                                                                        else ids.delete(id);
+                                                                    });
+                                                                    return Array.from(ids).sort((a, b) => a - b);
+                                                                });
+                                                            }}
+                                                            className="theme-checkbox theme-border h-4 w-4 rounded"
+                                                        />
+                                                        Follow up in this lesson
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </Card>
                 ) : null}
 
                 {!schemeFirstBlocked ? (

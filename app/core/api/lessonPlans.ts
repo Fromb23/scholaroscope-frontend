@@ -21,6 +21,7 @@ import type {
     LessonPlanComplianceQueryParams,
     LessonPlanComplianceResponse,
     LessonPlanCreatePayload,
+    LessonGapSuggestion,
     LessonPlanQueryParams,
     LessonPlanUpdatePayload,
     MarkUsedPayload,
@@ -103,6 +104,35 @@ export const lessonPlanAPI = {
                     ...(typeof termId === 'number' ? { term: termId } : {}),
                 },
             }
+        );
+        return response.data;
+    },
+
+    getGapSuggestions: async (params: {
+        cohort_subject: number;
+        sub_strand: number;
+        outcomes?: number[];
+    }): Promise<LessonGapSuggestion[]> => {
+        const response = await apiClient.get<LessonGapSuggestion[]>(
+            `${LESSON_PLANS_BASE_PATH}/gap-suggestions/`,
+            {
+                params: {
+                    cohort_subject: params.cohort_subject,
+                    sub_strand: params.sub_strand,
+                    outcomes: params.outcomes?.join(',') ?? '',
+                },
+            }
+        );
+        return response.data;
+    },
+
+    saveFollowUpSelections: async (
+        id: number,
+        followUpIds: number[],
+    ): Promise<{ follow_up_selections: LessonPlan['follow_up_selections'] }> => {
+        const response = await apiClient.post<{ follow_up_selections: LessonPlan['follow_up_selections'] }>(
+            `${LESSON_PLANS_BASE_PATH}/${id}/follow-up-selections/`,
+            { follow_up_ids: followUpIds },
         );
         return response.data;
     },

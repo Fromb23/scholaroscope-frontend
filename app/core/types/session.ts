@@ -824,6 +824,7 @@ export interface CohortSubjectOption {
   cohort_subject_id?: number | null;
   offering_id?: number | null;
   session_supported: boolean;
+  supported_new_session_types?: Array<'LESSON' | 'PRACTICAL'>;
   disabled_reason?: string | null;
 }
 

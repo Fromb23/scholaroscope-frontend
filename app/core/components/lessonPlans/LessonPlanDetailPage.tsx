@@ -414,6 +414,23 @@ export function LessonPlanDetailPage() {
         ),
         [scheduleExtensionContext],
     );
+    const availableScheduleSessionTypes = useMemo(
+        () => SCHEDULE_LESSON_SESSION_TYPE_OPTIONS.filter((option) => (
+            option.value === 'LESSON'
+            || lessonPlan?.supported_new_session_types?.includes(option.value)
+        )),
+        [lessonPlan?.supported_new_session_types],
+    );
+
+    useEffect(() => {
+        if (!availableScheduleSessionTypes.some((option) => option.value === scheduleForm.session_type)) {
+            setScheduleForm((current) => ({
+                ...current,
+                session_type: 'LESSON',
+                practical_context: undefined,
+            }));
+        }
+    }, [availableScheduleSessionTypes, scheduleForm.session_type]);
 
     const handleScheduleFormPatch = useCallback((patch: Partial<ScheduleLessonFormData>) => {
         setScheduleForm((current) => ({
@@ -1895,7 +1912,7 @@ export function LessonPlanDetailPage() {
                             onChange={(event) => handleScheduleFormPatch({
                                 session_type: event.target.value as ScheduleLessonSessionType,
                             })}
-                            options={SCHEDULE_LESSON_SESSION_TYPE_OPTIONS}
+                            options={availableScheduleSessionTypes}
                         />
                         <Input
                             label="Start time"
