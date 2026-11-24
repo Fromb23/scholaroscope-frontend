@@ -225,6 +225,8 @@ export interface LessonPlan {
     curriculum_scope?: CurriculumScope | Record<string, never>;
     status: LessonPlanStatus;
     planned_outcomes: PlannedOutcome[];
+    follow_up_selections: LessonFollowUpSelection[];
+    supported_new_session_types: ScheduleLessonSessionType[];
     planned_date: string | null;
     planned_start_time: string | null;
     planned_end_time: string | null;
@@ -251,6 +253,23 @@ export interface LessonPlan {
     selected_references: LessonPlanReferenceRecord[];
     created_at: string;
     updated_at: string;
+}
+
+export interface LessonFollowUpSelection {
+    follow_up_id: number;
+    selected_by_id: number;
+    selected_at: string;
+}
+
+export interface LessonGapSuggestion {
+    grouping_key: string;
+    specific_skill: string;
+    learning_outcome_id: number;
+    reason: string;
+    affected_learner_count: number;
+    observed_denominator: number | null;
+    follow_up_ids: number[];
+    already_planned: boolean;
 }
 
 export interface CurriculumScope {
@@ -328,9 +347,7 @@ export interface GenerateLessonPlanResponse {
 
 export type ScheduleLessonSessionType =
     | 'LESSON'
-    | 'PRACTICAL'
-    | 'PROJECT'
-    | 'OTHER';
+    | 'PRACTICAL';
 
 export const SCHEDULE_LESSON_SESSION_TYPE_OPTIONS: Array<{
     value: ScheduleLessonSessionType;
@@ -338,8 +355,6 @@ export const SCHEDULE_LESSON_SESSION_TYPE_OPTIONS: Array<{
 }> = [
     { value: 'LESSON', label: 'Lesson' },
     { value: 'PRACTICAL', label: 'Practical' },
-    { value: 'PROJECT', label: 'Project' },
-    { value: 'OTHER', label: 'Other' },
 ];
 
 export interface ScheduleLessonPayload {

@@ -18,6 +18,7 @@ import type {
     LessonPlanComplianceQueryParams,
     LessonPlanComplianceResponse,
     LessonPlanCreatePayload,
+    LessonGapSuggestion,
     LessonPlanQueryParams,
     LessonPlanUpdatePayload,
     MarkUsedPayload,
@@ -25,6 +26,47 @@ import type {
     ScheduleLessonPayload,
     ScheduleLessonResponse,
 } from '@/app/core/types/lessonPlans';
+
+export function useLessonGapSuggestions(args: {
+    cohortSubjectId: number | null;
+    subStrandId: number | null;
+    outcomeIds: number[];
+}) {
+    const { cohortSubjectId, subStrandId } = args;
+    const [suggestions, setSuggestions] = useState<LessonGapSuggestion[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const outcomeKey = args.outcomeIds.join(',');
+
+    useEffect(() => {
+        let active = true;
+        if (!cohortSubjectId || !subStrandId) {
+            setSuggestions([]);
+            setLoading(false);
+            setError(null);
+            return () => { active = false; };
+        }
+        setLoading(true);
+        setError(null);
+        void lessonPlanAPI.getGapSuggestions({
+            cohort_subject: cohortSubjectId,
+            sub_strand: subStrandId,
+            outcomes: outcomeKey ? outcomeKey.split(',').map(Number) : [],
+        }).then((rows) => {
+            if (active) setSuggestions(rows.slice(0, 3));
+        }).catch((reason: ApiError) => {
+            if (active) {
+                setSuggestions([]);
+                setError(resolveErrorMessage(reason, 'Confirmed learning gaps could not be loaded.'));
+            }
+        }).finally(() => {
+            if (active) setLoading(false);
+        });
+        return () => { active = false; };
+    }, [cohortSubjectId, subStrandId, outcomeKey]);
+
+    return { suggestions, loading, error };
+}
 
 function unwrapList<T>(data: T[] | PaginatedResponse<T>): T[] {
     return Array.isArray(data) ? data : data?.results ?? [];

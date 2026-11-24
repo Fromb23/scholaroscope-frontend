@@ -101,6 +101,21 @@ describe('GenerateLessonPlanPage validation and error placement', () => {
     expect(pageSource).not.toContain('generated.lesson_plan.id');
   });
 
+  it('loads persisted gap suggestions and saves optional selections before generation', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('useLessonGapSuggestions');
+    expect(pageSource).toContain('Confirmed learning gaps');
+    expect(pageSource).toContain('Follow up in this lesson');
+    expect(pageSource).toContain('Full class-subject list');
+    expect(pageSource).toContain('affected_learner_count');
+    expect(pageSource).toContain('observed_denominator');
+    expect(pageSource).toContain('lessonPlanAPI.saveFollowUpSelections');
+    expect(pageSource.indexOf('lessonPlanAPI.saveFollowUpSelections')).toBeLessThan(
+      pageSource.indexOf('generateLessonPlan(lessonPlan.id'),
+    );
+  });
+
   it('distinguishes missing class setup, assignment, curriculum, and term states', () => {
     const pageSource = source();
 

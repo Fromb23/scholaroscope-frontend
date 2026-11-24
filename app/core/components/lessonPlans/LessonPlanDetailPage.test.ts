@@ -67,4 +67,10 @@ describe('LessonPlanDetailPage scheme desire path', () => {
     expect(source).not.toContain('Request edit');
     expect(source).not.toContain('Planning metadata');
   });
+
+  it('offers Practical only when the backend reports an implemented workflow', () => {
+    expect(source).toContain('availableScheduleSessionTypes');
+    expect(source).toContain('supported_new_session_types?.includes(option.value)');
+    expect(source).toContain('options={availableScheduleSessionTypes}');
+  });
 });

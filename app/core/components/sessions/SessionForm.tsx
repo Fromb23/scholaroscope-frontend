@@ -59,8 +59,6 @@ interface SessionFormProps {
 
 const SESSION_TYPES = [
     { value: 'PRACTICAL', label: 'Practical' },
-    { value: 'PROJECT', label: 'Project' },
-    { value: 'OTHER', label: 'Other' },
 ];
 
 const DEFAULT_FORM: SessionFormData = {
@@ -68,7 +66,7 @@ const DEFAULT_FORM: SessionFormData = {
     subject_source: undefined,
     subject_id: null,
     term: null,
-    session_type: 'OTHER',
+    session_type: 'PRACTICAL',
     session_date: new Date().toISOString().split('T')[0],
     start_time: '08:00',
     end_time: '09:30',
@@ -171,6 +169,14 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         : true;
 
     const selectedSubjectOption = filteredSubjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
+    const availableSessionTypes = useMemo(
+        () => SESSION_TYPES.filter((option) => (
+            selectedSubjectOption?.supported_new_session_types?.includes(
+                option.value as 'PRACTICAL'
+            ) ?? false
+        )),
+        [selectedSubjectOption],
+    );
     const [formData, setFormData] = useState<SessionFormData>(DEFAULT_FORM);
     const [teachingAssignmentOptions, setTeachingAssignmentOptions] = useState<SessionTeachingAssignmentOption[]>([]);
     const { options: schemeEntryOptions, loading: loadingSchemeEntries } = useSchemeEntryOptions(
@@ -455,7 +461,10 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                 onChange={e => handleChange('session_type', e.target.value)}
                                 required
                                 helperText="Lesson sessions are scheduled from reviewed lesson plans."
-                                options={SESSION_TYPES}
+                                disabled={!selectedSubjectOption || availableSessionTypes.length === 0}
+                                options={availableSessionTypes.length > 0
+                                    ? availableSessionTypes
+                                    : [{ value: '', label: 'No implemented practical workflow for this subject' }]}
                             />
                         </div>
 
@@ -547,8 +556,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                         </p>
                         <div>
                             <FieldLabel
-                                required={formData.session_type === 'OTHER'}
-                                optional={formData.session_type !== 'OTHER'}
+                                optional
                                 className="mb-1 flex items-center gap-1 text-sm font-medium text-gray-700"
                             >
                                 Description

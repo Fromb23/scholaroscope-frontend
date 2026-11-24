@@ -32,6 +32,8 @@ function lessonPlan(overrides: Partial<LessonPlan> = {}): LessonPlan {
     title: 'Hardware lesson',
     status: 'GENERATED',
     planned_outcomes: [],
+    follow_up_selections: [],
+    supported_new_session_types: ['LESSON'],
     planned_date: null,
     planned_start_time: null,
     planned_end_time: null,
