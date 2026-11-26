@@ -11,9 +11,11 @@ describe('Teaching Today assignment workflow integration', () => {
   it('uses instructor-safe academic context instead of admin setup/year/term requests', () => {
     const hookSource = source();
 
-    expect(hookSource).toContain('useMyTeachingLoad');
-    expect(hookSource).toContain('useAcademicTodayMode');
-    expect(hookSource).toContain('assignment.current_term');
+    expect(hookSource).toContain('useInstructorTeachingTodayDashboard');
+    expect(hookSource).toContain('dashboard?.teaching_load');
+    expect(hookSource).toContain('dashboard?.today_mode');
+    expect(hookSource).not.toContain('useMyTeachingLoad');
+    expect(hookSource).not.toContain('useAcademicTodayMode');
     expect(hookSource).not.toContain('useAcademicLifecycleContext');
     expect(hookSource).not.toContain('useAcademicSetupStatus');
     expect(hookSource).not.toContain('useCurrentAcademicYear');
@@ -24,16 +26,18 @@ describe('Teaching Today assignment workflow integration', () => {
   it('refreshes dashboard data independently', () => {
     const hookSource = source();
 
-    expect(hookSource).toContain('Promise.allSettled');
+    expect(hookSource).toContain('await dashboardQuery.refetch()');
+    expect(hookSource).not.toContain('Promise.allSettled');
     expect(hookSource).not.toContain('refetchSetupStatus');
     expect(hookSource).not.toContain('refetchCurrentYear');
     expect(hookSource).not.toContain('refetchCurrentTerm');
   });
 
-  it('loads assignment workflow items from the assignment hook', () => {
+  it('loads assignment workflow items from the aggregate dashboard', () => {
     const hookSource = source();
 
-    expect(hookSource).toContain('useAssignmentTeachingToday');
+    expect(hookSource).toContain('dashboard?.assignment_work');
+    expect(hookSource).not.toContain('useAssignmentTeachingToday');
     expect(hookSource).toContain('assignmentWork');
     expect(hookSource).toContain('AssignmentTeachingTodayItem');
   });

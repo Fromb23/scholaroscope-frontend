@@ -69,6 +69,20 @@ export const academicKeys = {
   },
 } as const;
 
+export const dashboardKeys = {
+  all: ['dashboard'] as const,
+  instructorTeachingToday: (
+    organizationId: number | null,
+    actorId: number | null,
+    workspaceGeneration: number,
+  ) => ['dashboard', 'instructor', 'teaching-today', organizationId, actorId, workspaceGeneration] as const,
+  workspaceAdmin: (
+    organizationId: number | null,
+    actorId: number | null,
+    workspaceGeneration: number,
+  ) => ['dashboard', 'admin', organizationId, actorId, workspaceGeneration] as const,
+} as const;
+
 export const assignmentKeys = {
   all: ['assignments'] as const,
   lists: () => ['assignments', 'list'] as const,

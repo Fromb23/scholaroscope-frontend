@@ -171,15 +171,16 @@ describe('freelance dashboard quick actions', () => {
     expect(source).toContain('<TeachingWorkspaceCard');
   });
 
-  it('uses useInstructorDashboard assignmentWork from useAssignmentTeachingToday', () => {
+  it('uses the shared aggregate dashboard assignment work', () => {
     const hookSource = readFileSync(
       join(process.cwd(), 'app/core/hooks/useInstructorDashboard.ts'),
       'utf8',
     );
 
-    expect(hookSource).toContain('useAssignmentTeachingToday');
-    expect(hookSource).toContain('items: assignmentWork');
-    expect(hookSource).toContain('refetchAssignmentWork');
+    expect(hookSource).toContain('useInstructorTeachingTodayDashboard');
+    expect(hookSource).toContain('dashboardQuery.data?.assignment_work');
+    expect(hookSource).toContain('dashboardQuery.refetch()');
+    expect(hookSource).not.toContain('useAssignmentTeachingToday');
     expect(hookSource).toContain('assignmentWork,');
   });
 });

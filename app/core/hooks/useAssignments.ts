@@ -11,7 +11,7 @@ import {
 import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import { sessionAPI } from '@/app/core/api/sessions';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
-import { assignmentKeys } from '@/app/core/lib/queryKeys';
+import { assignmentKeys, dashboardKeys } from '@/app/core/lib/queryKeys';
 import { getStableClientMutationId } from '@/app/core/lib/clientMutationId';
 import { withOperationalScope } from '@/app/core/lib/academicScope';
 import { emitLessonPlanDataChanged } from '@/app/core/lib/lessonPlanEvents';
@@ -170,6 +170,7 @@ async function invalidateAssignmentDependencies(
     lessonPlanId?: number | null
 ) {
     await Promise.all([
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
         queryClient.invalidateQueries({ queryKey: assignmentKeys.all }),
         queryClient.invalidateQueries({ queryKey: assignmentKeys.teachingToday() }),
         isValidId(lessonPlanId)

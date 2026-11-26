@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
-import { useMyTeachingLoad } from '@/app/core/hooks/useInstructorCohortAccess';
-import { useTodaySessions } from '@/app/core/hooks/useSessions';
-import { useSessionLifecycleReminders } from '@/app/core/hooks/useSessionLifecycleReminders';
-import {
-    useAssessmentReviewSummary,
-} from '@/app/core/hooks/useAssessments';
-import { useAssignmentTeachingToday } from '@/app/core/hooks/useAssignments';
+import { useAuth } from '@/app/context/AuthContext';
+import { useInstructorTeachingTodayDashboard } from '@/app/core/hooks/useDashboardQueries';
 import {
     buildAssignmentTeachingActionItem,
     sortAssignmentTeachingTodayItems,
@@ -26,8 +20,6 @@ import type {
     SessionLifecycleReminderType,
 } from '@/app/core/types/session';
 import type { AssignmentTeachingTodayItem } from '@/app/core/types/assignments';
-
-const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export type LearningDayState =
     | 'SETUP_BLOCKED'
@@ -875,31 +867,18 @@ function deriveTeachingTodayEligibility(todayMode: AcademicTodayMode | null): Te
 export function useTeachingToday(): UseTeachingTodayResult {
     const [clock, setClock] = useState(() => new Date());
     const [lastRefresh, setLastRefresh] = useState(() => new Date());
-
-    const {
-        data: teachingLoadData,
-        isLoading: teachingLoadLoading,
-        error: teachingLoadError,
-        refetch: refetchTeachingLoad,
-    } = useMyTeachingLoad();
-    const {
-        data: todayModeData,
-        isLoading: todayModeLoading,
-        error: todayModeError,
-        refetch: refetchTodayMode,
-    } = useAcademicTodayMode();
-    const {
-        sessions: todaySessions,
-        loading: sessionsLoading,
-        error: sessionsError,
-        refetch: refetchTodaySessions,
-    } = useTodaySessions();
-    const {
-        reminders,
-        loading: remindersLoading,
-        error: remindersError,
-        refetch: refetchReminders,
-    } = useSessionLifecycleReminders();
+    const { activeOperatingContext } = useAuth();
+    const dashboardQuery = useInstructorTeachingTodayDashboard({
+        enabled: activeOperatingContext === 'MY_TEACHING',
+    });
+    const dashboard = dashboardQuery.data;
+    const teachingLoadData = dashboard?.teaching_load;
+    const todayModeData = dashboard?.today_mode;
+    const todaySessions = useMemo(() => dashboard?.sessions ?? [], [dashboard?.sessions]);
+    const reminders = useMemo(
+        () => dashboard?.session_reminders ?? [],
+        [dashboard?.session_reminders],
+    );
     const todayKey = useMemo(() => getDateKey(clock), [clock]);
     const teachingLoad = useMemo(
         () => teachingLoadData?.assignments ?? [],
@@ -913,29 +892,11 @@ export function useTeachingToday(): UseTeachingTodayResult {
         () => termFromSingleContext(academicContexts),
         [academicContexts]
     );
-    const scopedReviewTerm = useMemo(() => {
-        const termIds = Array.from(new Set(
-            academicContexts
-                .map((context) => context.termId)
-                .filter((termId): termId is number => Boolean(termId))
-        ));
-        return termIds.length === 1 ? termIds[0] : undefined;
-    }, [academicContexts]);
-    const {
-        summary: reviewSummary,
-        loading: reviewSummaryLoading,
-        error: reviewSummaryError,
-        refetch: refetchReviewSummary,
-    } = useAssessmentReviewSummary({
-        term: scopedReviewTerm,
-        enabled: teachingLoadLoading || teachingLoad.length > 0,
-    });
-    const {
-        items: assignmentWorkItems,
-        loading: assignmentWorkLoading,
-        error: assignmentWorkError,
-        refetch: refetchAssignmentWork,
-    } = useAssignmentTeachingToday();
+    const reviewSummary = dashboard?.assessment_review ?? null;
+    const assignmentWorkItems = useMemo(
+        () => dashboard?.assignment_work ?? [],
+        [dashboard?.assignment_work],
+    );
 
     const todayMode = todayModeData ?? null;
     const actionEligibility = useMemo(
@@ -1028,49 +989,23 @@ export function useTeachingToday(): UseTeachingTodayResult {
     );
 
     const refresh = useCallback(async () => {
-        await Promise.allSettled([
-            refetchTodaySessions(),
-            refetchReminders(),
-            refetchReviewSummary(),
-            refetchTeachingLoad(),
-            refetchTodayMode(),
-            refetchAssignmentWork(),
-        ]);
+        await dashboardQuery.refetch();
         const nextRefresh = new Date();
         setClock(nextRefresh);
         setLastRefresh(nextRefresh);
-    }, [
-        refetchReminders,
-        refetchReviewSummary,
-        refetchTeachingLoad,
-        refetchTodayMode,
-        refetchTodaySessions,
-        refetchAssignmentWork,
-    ]);
+    }, [dashboardQuery]);
 
     useEffect(() => {
-        const interval = window.setInterval(() => {
-            void refresh();
-        }, AUTO_REFRESH_INTERVAL_MS);
+        if (!dashboard?.generated_at) return;
+        const generatedAt = new Date(dashboard.generated_at);
+        if (!Number.isNaN(generatedAt.getTime())) {
+            setLastRefresh(generatedAt);
+            setClock(new Date());
+        }
+    }, [dashboard?.generated_at]);
 
-        return () => window.clearInterval(interval);
-    }, [refresh]);
-
-    const loading = Boolean(
-        sessionsLoading
-        || remindersLoading
-        || reviewSummaryLoading
-        || teachingLoadLoading
-        || todayModeLoading
-        || assignmentWorkLoading
-    );
-    const error = sessionsError
-        ?? remindersError
-        ?? reviewSummaryError
-        ?? teachingLoadError?.message
-        ?? todayModeError?.message
-        ?? assignmentWorkError
-        ?? null;
+    const loading = dashboardQuery.isLoading;
+    const error = dashboardQuery.error?.message ?? null;
 
     return {
         context: {

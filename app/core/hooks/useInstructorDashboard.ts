@@ -7,15 +7,13 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useStudents } from '@/app/core/hooks/useStudents';
-import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import {
     useAssessments,
-    useAssessmentReviewSummary,
     useAssessmentScores,
 } from '@/app/core/hooks/useAssessments';
-import { useAssignmentTeachingToday } from '@/app/core/hooks/useAssignments';
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import { useInstructorAttendanceRisk } from '@/app/core/hooks/useInstructorAttendanceRisk';
+import { useInstructorTeachingTodayDashboard } from '@/app/core/hooks/useDashboardQueries';
 import type { Session } from '@/app/core/types/session';
 import type {
     AssessmentReviewSummary,
@@ -237,12 +235,15 @@ function buildTeachingCohorts(assignments: TeachingAssignment[]): TeachingCohort
 
 export function useInstructorDashboard() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
-    const [teachingLoad, setTeachingLoad] = useState<TeachingAssignment[]>([]);
-    const [teachingLoadLoading, setTeachingLoadLoading] = useState(true);
     const [teachingHistory, setTeachingHistory] = useState<HistoryEntry[]>([]);
 
     const { students, loading: studentsLoading, reload: refetchStudents } = useStudents({ page_size: 1000 });
-    const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useTodaySessions();
+    const dashboardQuery = useInstructorTeachingTodayDashboard();
+    const sessions = useMemo(() => dashboardQuery.data?.sessions ?? [], [dashboardQuery.data?.sessions]);
+    const teachingLoad = useMemo<TeachingAssignment[]>(
+        () => dashboardQuery.data?.teaching_load.assignments ?? [],
+        [dashboardQuery.data?.teaching_load.assignments],
+    );
     const { currentTerm, loading: termLoading } = useCurrentTerm();
     const { currentYear, loading: yearLoading } = useCurrentAcademicYear();
     const { assessments, loading: assessmentsLoading, refetch: refetchAssessments } = useAssessments({
@@ -256,20 +257,10 @@ export function useInstructorDashboard() {
         assessment__term: currentTerm?.id,
         page_size: 200,
     });
-    const {
-        summary: reviewSummary,
-        loading: reviewSummaryLoading,
-        refetch: refetchReviewSummary,
-    } = useAssessmentReviewSummary({
-        term: currentTerm?.id,
-        enabled: Boolean(currentTerm?.id),
-    });
-    const {
-        items: assignmentWork,
-        loading: assignmentWorkLoading,
-        error: assignmentWorkError,
-        refetch: refetchAssignmentWork,
-    } = useAssignmentTeachingToday();
+    const reviewSummary = dashboardQuery.data?.assessment_review ?? null;
+    const assignmentWork = dashboardQuery.data?.assignment_work ?? [];
+    const sessionReminders = dashboardQuery.data?.session_reminders ?? [];
+    const assignmentWorkError = dashboardQuery.error?.message ?? null;
     const {
         count: attendanceRiskCount,
         uniqueLearnerCount: attendanceRiskLearnerCount,
@@ -280,9 +271,8 @@ export function useInstructorDashboard() {
         termId: currentTerm?.id,
     });
 
-    const isLoading = studentsLoading || sessionsLoading ||
-        assessmentsLoading || scoresLoading || reviewSummaryLoading ||
-        termLoading || yearLoading || teachingLoadLoading || assignmentWorkLoading;
+    const isLoading = studentsLoading || dashboardQuery.isLoading ||
+        assessmentsLoading || scoresLoading || termLoading || yearLoading;
 
     const metrics = useMemo(
         () => computeInstructorMetrics(
@@ -325,27 +315,6 @@ export function useInstructorDashboard() {
             ))
     ), [scores]);
 
-    const loadTeachingLoad = useCallback(async (showLoadingState = false) => {
-        if (showLoadingState) {
-            setTeachingLoadLoading(true);
-        }
-
-        try {
-            const data = await teachingLoadAPI.getMyTeachingLoad();
-            setTeachingLoad(data.assignments);
-        } catch {
-            setTeachingLoad([]);
-        } finally {
-            if (showLoadingState) {
-                setTeachingLoadLoading(false);
-            }
-        }
-    }, []);
-
-    useEffect(() => {
-        void loadTeachingLoad(true);
-    }, [loadTeachingLoad]);
-
     useEffect(() => {
         teachingLoadAPI.getMyTeachingHistory()
             .then(data => setTeachingHistory(data.history))
@@ -360,30 +329,19 @@ export function useInstructorDashboard() {
     const refresh = useCallback(async () => {
         await Promise.all([
             refetchStudents(),
-            refetchSessions(),
             refetchAssessments(),
             refetchScores(),
-            refetchReviewSummary(),
-            refetchAssignmentWork(),
             refetchAttendanceRisk(),
-            loadTeachingLoad(),
+            dashboardQuery.refetch(),
         ]);
         setLastRefresh(new Date());
     }, [
         refetchStudents,
-        refetchSessions,
         refetchAssessments,
         refetchScores,
-        refetchReviewSummary,
-        refetchAssignmentWork,
         refetchAttendanceRisk,
-        loadTeachingLoad,
+        dashboardQuery,
     ]);
-
-    useEffect(() => {
-        const interval = setInterval(refresh, 5 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [refresh]);
 
     return {
         metrics,
@@ -403,5 +361,7 @@ export function useInstructorDashboard() {
         pendingReviewRows,
         assignmentWork,
         assignmentWorkError,
+        sessionReminders,
+        dashboardError: dashboardQuery.error?.message ?? null,
     };
 }

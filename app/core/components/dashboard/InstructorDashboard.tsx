@@ -25,7 +25,6 @@ import { LoadingMessage, PageSkeleton } from '@/app/components/ui/loading';
 import { useInstructorDashboard } from '@/app/core/hooks/useInstructorDashboard';
 import { useAcademicLifecycleContext } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
-import { useSessionLifecycleReminders } from '@/app/core/hooks/useSessionLifecycleReminders';
 import { SessionReminderPanelContent } from '@/app/core/components/dashboard/SessionReminderPanel';
 import { TeacherNextActionPanel } from '@/app/core/components/dashboard/TeacherNextActionPanel';
 import {
@@ -501,13 +500,22 @@ export function InstructorDashboard({
         currentTerm, currentYear,
         lastRefresh, isLoading, refresh, teachingLoad,
         attendanceRiskLoading, attendanceRiskError,
-        pendingReviewRows,
-        assignmentWork,
+      pendingReviewRows,
+      assignmentWork,
+      sessionReminders,
+      dashboardError,
     } = useInstructorDashboard();
     const academicLifecycleQuery = useAcademicLifecycleContext({
         enabled: Boolean(activeOrg) && capabilities.can_teach,
     });
-    const sessionReminderState = useSessionLifecycleReminders();
+    const sessionReminderState = useMemo(() => ({
+      reminders: sessionReminders,
+      needsClosingCount: sessionReminders.filter(item => item.type === 'NEEDS_CLOSING').length,
+      unfinishedCount: sessionReminders.filter(item => item.type === 'UNFINISHED_LESSON').length,
+      loading: isLoading,
+      error: dashboardError,
+      refetch: refresh,
+    }), [dashboardError, isLoading, refresh, sessionReminders]);
 
     const hasTeachingAssignments = teachingLoad.length > 0;
     const dashboardLoading = isLoading || instructorAccess.isLoading || sessionReminderState.loading;
