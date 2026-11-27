@@ -7,10 +7,11 @@ import { useAcademicYears } from './useAcademic';
 
 const mocks = vi.hoisted(() => ({
   getAcademicYears: vi.fn(),
+  setCurrentAcademicYear: vi.fn(),
 }));
 
 vi.mock('@/app/core/api/academic', () => ({
-  academicYearAPI: { getAll: mocks.getAcademicYears },
+  academicYearAPI: { getAll: mocks.getAcademicYears, setCurrent: mocks.setCurrentAcademicYear },
   academicLifecycleAPI: {},
   termAPI: {},
   termCalendarEventAPI: {},
@@ -87,6 +88,47 @@ describe('shared academic reference queries', () => {
     await vi.waitFor(() => {
       expect(snapshots.at(-1)?.academicYears).toEqual([{ id: 1, name: '2026' }]);
     });
+    await act(async () => renderer.unmount());
+  });
+
+  it('preserves backend validation metadata through set-current', async () => {
+    mocks.getAcademicYears.mockResolvedValue([]);
+    const validationError = {
+      response: {
+        status: 400,
+        data: {
+          is_current: ["Only an academic year containing today's date can be selected as current."],
+          error: { code: 'academic_year_not_current_eligible', type: 'validation' },
+        },
+      },
+    };
+    mocks.setCurrentAcademicYear.mockRejectedValue(validationError);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let renderer!: ReactTestRenderer;
+
+    await act(async () => {
+      renderer = create(createElement(QueryClientProvider, { client: queryClient }, createElement(Consumer)));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await expect(snapshots.at(-1)!.setCurrentYear(2)).rejects.toMatchObject(validationError);
+    await act(async () => renderer.unmount());
+  });
+
+  it('does not report a completed set-current mutation as failed when refresh invalidation fails', async () => {
+    const updatedYear = { id: 2, name: '2026', curriculum: 4, is_current: true };
+    mocks.getAcademicYears.mockResolvedValue([]);
+    mocks.setCurrentAcademicYear.mockResolvedValue(updatedYear);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.spyOn(queryClient, 'invalidateQueries').mockRejectedValue(new Error('refresh failed'));
+    let renderer!: ReactTestRenderer;
+
+    await act(async () => {
+      renderer = create(createElement(QueryClientProvider, { client: queryClient }, createElement(Consumer)));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await expect(snapshots.at(-1)!.setCurrentYear(2)).resolves.toMatchObject(updatedYear);
     await act(async () => renderer.unmount());
   });
 });

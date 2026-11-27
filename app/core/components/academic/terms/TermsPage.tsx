@@ -400,6 +400,13 @@ export function TermsPage() {
         () => parsePositiveIntegerParam(searchParams.get('term')),
         [searchParams],
     );
+    const requestedAcademicYearId = useMemo(
+        () => parsePositiveIntegerParam(
+            searchParams.get('academic_year') ?? searchParams.get('academicYear'),
+        ),
+        [searchParams],
+    );
+    const planningMode = searchParams.get('planning') === '1';
     const { user, capabilities } = useAuth();
     const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const subscriptionSummaryQuery = useWorkspaceSubscriptionSummary(undefined, { enabled: Boolean(user) });
@@ -421,10 +428,14 @@ export function TermsPage() {
     const consumedCreateActionRef = useRef<string | null>(null);
 
     useEffect(() => {
-        if (currentYear && selectedYearId === undefined) {
+        if (selectedYearId !== undefined) return;
+        const requestedYear = academicYears.find((year) => year.id === requestedAcademicYearId);
+        if (requestedYear) {
+            setSelectedYearId(requestedYear.id);
+        } else if (currentYear) {
             setSelectedYearId(currentYear.id);
         }
-    }, [currentYear, selectedYearId]);
+    }, [academicYears, currentYear, requestedAcademicYearId, selectedYearId]);
 
     const {
         terms,
@@ -454,7 +465,8 @@ export function TermsPage() {
     }, [requestedTermId, visibleTerms]);
 
     const selectedYear = academicYears.find((year) => year.id === selectedYearId);
-    const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
+    const isHistoricalView = selectedYear?.current_eligibility === 'ENDED';
+    const isFuturePlanningView = selectedYear?.current_eligibility === 'FUTURE';
     const selectedTerm = useMemo(
         () => visibleTerms.find((term) => term.id === selectedTermId) ?? null,
         [selectedTermId, visibleTerms],
@@ -537,7 +549,6 @@ export function TermsPage() {
         }
         if (
             loading
-            || !currentYear
             || searchParams.get('action') !== 'create'
             || showModal
             || consumedCreateActionRef.current === actionKey
@@ -549,14 +560,14 @@ export function TermsPage() {
         );
         if (Number.isInteger(requestedAcademicYear) && requestedAcademicYear > 0) {
             const year = academicYears.find((item) => item.id === requestedAcademicYear);
-            if (!year || !year.is_current) {
+            if (!year || year.current_eligibility === 'ENDED') {
                 return;
             }
             if (selectedYearId !== year.id) {
                 setSelectedYearId(year.id);
                 return;
             }
-        } else if (selectedYearId === undefined) {
+        } else if (selectedYearId === undefined && currentYear) {
             setSelectedYearId(currentYear.id);
             return;
         }
@@ -632,12 +643,16 @@ export function TermsPage() {
             throw err;
         }
         setSelectedTermId(created.id);
-        if (setupMode) {
+        if (setupMode && !planningMode) {
             const refreshedStatus = (await setupStatusQuery.refetch()).data;
             router.push(
                 withAcademicSetupMode(
                     refreshedStatus?.next_action.href ?? '/academic/subjects',
                 ),
+            );
+        } else if (planningMode && selectedYear) {
+            router.push(
+                `/academic/cohorts?setup=1&planning=1&academic_year=${selectedYear.id}&curriculum=${selectedYear.curriculum ?? ''}`,
             );
         }
     };
@@ -819,7 +834,7 @@ export function TermsPage() {
                             : 'Manage academic terms and the organization term calendar used for schemes of work.'}
                     </p>
                 </div>
-                {canManageTermSetup ? (
+                {canManageTermSetup && !isHistoricalView ? (
                     <Button onClick={openCreate}>
                         <Plus className="h-4 w-4" />
                         Add Term
@@ -846,12 +861,23 @@ export function TermsPage() {
                 <div className="flex items-center gap-3">
                     <Select
                         value={selectedYearId?.toString() ?? ''}
-                        onChange={(event) => setSelectedYearId(event.target.value ? Number(event.target.value) : undefined)}
+                        onChange={(event) => {
+                            const nextYearId = event.target.value ? Number(event.target.value) : undefined;
+                            setSelectedYearId(nextYearId);
+                            const params = new URLSearchParams(searchParams.toString());
+                            if (nextYearId) params.set('academic_year', String(nextYearId));
+                            else params.delete('academic_year');
+                            router.replace(params.size ? `/academic/terms?${params.toString()}` : '/academic/terms', { scroll: false });
+                        }}
                         options={[
                             { value: '', label: 'All Academic Years' },
                             ...academicYears.map((year) => ({
                                 value: String(year.id),
-                                label: year.is_current ? `${year.name} (Current)` : `${year.name} — Historical`,
+                                label: year.is_current
+                                    ? `${year.name} (Current)`
+                                    : year.current_eligibility === 'FUTURE'
+                                        ? `${year.name} - Planning`
+                                        : `${year.name} - Historical`,
                             })),
                         ]}
                     />
@@ -859,6 +885,11 @@ export function TermsPage() {
                         <div className="theme-warning-surface flex items-center gap-2 rounded-lg px-3 py-2 text-xs whitespace-nowrap">
                             <History className="h-3.5 w-3.5 shrink-0 text-[color:var(--color-warning)]" />
                             Historical view
+                        </div>
+                    ) : null}
+                    {isFuturePlanningView ? (
+                        <div className="theme-info-surface rounded-lg px-3 py-2 text-xs whitespace-nowrap">
+                            Planning year — configuration is available, but teaching remains unavailable until this year is current and its term is active.
                         </div>
                     ) : null}
                 </div>
@@ -876,7 +907,7 @@ export function TermsPage() {
                                 ? 'No terms exist for this academic year.'
                                 : 'Create a term to set up the school calendar for schemes of work.'}
                         </p>
-                        {canManageTermSetup ? (
+                        {canManageTermSetup && !isHistoricalView ? (
                             <Button className="mt-4" onClick={openCreate}>
                                 <Plus className="h-4 w-4" />
                                 Add Term

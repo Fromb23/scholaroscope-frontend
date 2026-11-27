@@ -22,9 +22,10 @@ describe('Header user dropdown', () => {
     expect(source).toContain('const logoutPending = isLoggingOut || loggingOut');
     expect(source).toContain('setDropdownOpen(false);');
     expect(source).toContain('setOrgDropdownOpen(false);');
-    expect(source).toContain("window.location.replace('/login')");
+    expect(source).toContain("router.prefetch?.('/login')");
+    expect(source).toContain("router.replace('/login')");
+    expect(source).not.toContain("window.location.replace('/login')");
     expect(source).not.toContain("router.push('/login')");
-    expect(source).not.toContain("router.replace('/login')");
     expect(source).not.toContain('buildLoginPath');
     expect(source).not.toContain('next=');
     expect(source).toContain('disabled={logoutPending}');

@@ -86,6 +86,23 @@ describe('resolveAppError', () => {
     expect(server.channel).toBe('banner');
   });
 
+  it('does not treat every status-less client exception as a network failure', () => {
+    const unexpected = resolveAppError(new Error('client mapping failed'), {
+      domain: 'academic_setup',
+      action: 'update',
+      entityLabel: 'academic year',
+    });
+    const cancelled = resolveAppError(
+      Object.assign(new Error('cancelled'), { name: 'CanceledError', code: 'ERR_CANCELED' }),
+      { domain: 'academic_setup', action: 'update', entityLabel: 'academic year' },
+    );
+
+    expect(unexpected.kind).toBe('unknown');
+    expect(unexpected.retryable).toBe(false);
+    expect(cancelled.kind).toBe('cancelled');
+    expect(cancelled.retryable).toBe(false);
+  });
+
   it('routes background auth failures to toast channel', () => {
     const error = resolveAppError(new TypeError('Failed to fetch'), {
       domain: 'auth',

@@ -60,6 +60,9 @@ export interface AcademicSetupStatus {
   has_active_current_term: boolean;
   has_active_or_configured_term: boolean;
   is_established_workspace: boolean;
+  initial_onboarding_completed_at?: string | null;
+  requires_configuration_repair?: boolean;
+  configuration_repair_reasons?: string[];
   current_term_availability: 'ACTIVE' | 'CONFIGURED_NOT_ACTIVE' | 'NO_ACTIVE_TERM' | 'NOT_CONFIGURED';
   requires_next_term_setup: boolean;
   has_subjects: boolean;
@@ -152,6 +155,9 @@ export interface AcademicYear {
   created_at: string;
   updated_at: string;
   deletion: AcademicSetupDeletionImpact;
+  current_eligibility: 'ELIGIBLE' | 'FUTURE' | 'ENDED';
+  current_ineligibility_reason: string | null;
+  can_set_current: boolean;
 }
 
 export interface AcademicSetupDeletionItem {

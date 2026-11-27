@@ -89,7 +89,9 @@ describe('cohort report setup routes', () => {
     }, 'class', 9);
 
     expect(resolved).toEqual(expect.objectContaining({
-      message: 'Check your connection and try again. Retrying is safe because the request did not reach the server reliably.',
+      kind: 'unknown',
+      message: 'The request could not be completed. Try again, or contact support if it continues.',
+      retryable: false,
     }));
     expect(resolved.actionHref).toBeUndefined();
   });

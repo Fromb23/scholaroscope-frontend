@@ -165,7 +165,9 @@ describe('CohortAssignModal interactions', () => {
     vi.mocked(instructorsAPI.assignToCohortSubject).mockRejectedValueOnce(new Error('Assignment denied'));
     await act(async () => reassignButtons()[1].props.onClick());
     await act(async () => buttonWithText(root, 'Confirm Reassign').props.onClick());
-    expect(textContent(root.findAll((node) => node.props.role === 'alert')[0])).toContain('Retrying is safe');
+    expect(textContent(root.findAll((node) => node.props.role === 'alert')[0])).toContain(
+      'The request could not be completed.',
+    );
     expect(root.findAll((node) => node.type === 'button' && node.children.join('') === 'Confirm Reassign')).toHaveLength(1);
   });
 

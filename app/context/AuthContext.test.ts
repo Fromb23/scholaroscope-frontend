@@ -38,34 +38,41 @@ describe('AuthContext local-first logout', () => {
     const source = read('app/context/AuthContext.tsx');
     expect(source).toContain('clearStoredAuthState();');
     expect(source).toContain('queryClient.clear();');
+    expect(read('app/core/api/auth.ts')).toContain('keepalive: true');
   });
 
   it('ignores backend logout rejection after local state is cleared', async () => {
     const events: string[] = [];
+    const reportRevocationFailure = vi.fn();
 
     await expect(logoutLocalFirst({
       clearAuthState: () => events.push('clear'),
       setLoading: (loading) => events.push(`loading:${loading}`),
       revokeSession: () => Promise.reject(new Error('backend logout failed')),
+      reportRevocationFailure,
     })).resolves.toBeUndefined();
 
     await Promise.resolve();
     expect(events).toEqual(['clear', 'loading:false']);
+    expect(reportRevocationFailure).toHaveBeenCalledWith('failed');
   });
 
   it('ignores backend logout abort after local state is cleared', async () => {
     const abortError = new Error('aborted');
     abortError.name = 'AbortError';
     const events: string[] = [];
+    const reportRevocationFailure = vi.fn();
 
     await expect(logoutLocalFirst({
       clearAuthState: () => events.push('clear'),
       setLoading: (loading) => events.push(`loading:${loading}`),
       revokeSession: () => Promise.reject(abortError),
+      reportRevocationFailure,
     })).resolves.toBeUndefined();
 
     await Promise.resolve();
     expect(events).toEqual(['clear', 'loading:false']);
+    expect(reportRevocationFailure).toHaveBeenCalledWith('aborted');
   });
 
   it('invalidates boot-time refresh results so logout cannot restore an old session', () => {

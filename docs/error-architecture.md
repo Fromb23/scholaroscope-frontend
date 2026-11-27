@@ -54,3 +54,17 @@ technical transport messages do not reach auth presentation.
 response rendering. `npm run check:errors` retains the domain-copy guardrails.
 Regression tests cover SQL, stacks, paths, HTML, tokens/cookies, nested values,
 authorization, network failure, and allowlisted validation fields.
+
+## Transport and mutation boundaries
+
+Missing HTTP status is not a network classification. Network errors require a
+recognized fetch/Axios transport signal; cancellations have their own
+non-retryable presentation, and unexpected client exceptions remain unknown
+client failures. Validation, permission and server responses keep their status,
+structured code, context and allowlisted field errors through academic hooks.
+
+A connectivity failure does not prove whether a write reached the server.
+Recovery copy tells the user to confirm current state before retrying. Academic
+mutation hooks treat the authoritative mutation response as the commit boundary:
+cache invalidation or follow-up navigation failure is reported as a refresh
+problem and cannot turn a completed write into a failed mutation.

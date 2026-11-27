@@ -339,6 +339,7 @@ export const authAPI = {
       const response = await fetch(`${API_URL}/users/logout/`, {
         method: 'POST',
         credentials: 'include',
+        keepalive: true,
         signal: controller?.signal,
       });
       if (!response.ok) {

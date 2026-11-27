@@ -56,6 +56,9 @@ export function AcademicYearsPage() {
         yearId: number;
     } | null>(null);
     const setupStatus = setupStatusQuery.data ?? null;
+    const setupNoticeYear = setupCurrentYearNotice
+        ? academicYears.find((year) => year.id === setupCurrentYearNotice.yearId) ?? null
+        : null;
     const setupPageState = getAcademicSetupPageState(setupStatus, 'ACADEMIC_YEAR');
     const hasActiveCurricula = curricula.length > 0;
 
@@ -123,6 +126,7 @@ export function AcademicYearsPage() {
     };
 
     const handleDelete = async (year: AcademicYear) => {
+        setPageError(null);
         try {
             const impact = await academicYearAPI.getDeletionImpact(year.id);
             if (!impact.eligible) {
@@ -149,22 +153,35 @@ export function AcademicYearsPage() {
     };
 
     const handleSetCurrent = async (id: number) => {
+        setPageError(null);
         try {
             await setCurrentYear(id);
-            setSetupCurrentYearNotice(null);
-            if (setupMode) {
-                const refreshedStatus = (await setupStatusQuery.refetch()).data;
-                router.push(
-                    withAcademicSetupMode(
-                        refreshedStatus?.next_action.href ?? '/academic/terms',
-                    ),
-                );
-            }
         } catch (error: unknown) {
             setPageError(resolveAcademicSetupError(error, {
                 action: 'update',
                 entityLabel: 'academic year',
             }));
+            return;
+        }
+        setSetupCurrentYearNotice(null);
+        if (setupMode) {
+            const refreshed = await setupStatusQuery.refetch();
+            if (refreshed.error) {
+                setPageError({
+                    kind: 'unknown',
+                    title: 'Academic year was updated.',
+                    message: 'The year is current, but the next setup step could not be refreshed. Open Academic Setup to continue.',
+                    retryable: true,
+                    severity: 'warning',
+                    channel: 'banner',
+                });
+                return;
+            }
+            router.push(
+                withAcademicSetupMode(
+                    refreshed.data?.next_action.href ?? '/academic/terms',
+                ),
+            );
         }
     };
 
@@ -273,20 +290,28 @@ export function AcademicYearsPage() {
             {pageError ? (
                 <AppErrorBanner error={pageError} onDismiss={() => setPageError(null)} />
             ) : null}
-            {setupMode && setupCurrentYearNotice ? (
+            {setupMode && setupCurrentYearNotice && setupNoticeYear ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm">
-                            Academic year created, but it is not current. Set it as current to continue setup.
+                            {setupNoticeYear.can_set_current
+                                ? 'Academic year created, but it is not current. Set it as current to continue initial setup.'
+                                : `${setupNoticeYear.name} was created for future planning. You can prepare its calendar without making it current.`}
                         </p>
-                        <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => handleSetCurrent(setupCurrentYearNotice.yearId)}
-                        >
-                            <CheckCircle className="h-4 w-4" />
-                            Set as current year
-                        </Button>
+                        {setupNoticeYear.can_set_current ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleSetCurrent(setupCurrentYearNotice.yearId)}
+                            >
+                                <CheckCircle className="h-4 w-4" />
+                                Set as current year
+                            </Button>
+                        ) : (
+                            <NextLink href={`/academic/terms?setup=1&planning=1&academic_year=${setupNoticeYear.id}&curriculum=${setupNoticeYear.curriculum ?? ''}`}>
+                                <Button type="button" size="sm">Prepare calendar</Button>
+                            </NextLink>
+                        )}
                     </div>
                 </div>
             ) : null}
@@ -376,7 +401,7 @@ export function AcademicYearsPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            {!year.is_current && (
+                                            {!year.is_current && year.can_set_current && (
                                                 <Button
                                                     variant="primary"
                                                     size="sm"
@@ -386,6 +411,18 @@ export function AcademicYearsPage() {
                                                     Set Current
                                                 </Button>
                                             )}
+                                            {!year.is_current && year.current_eligibility === 'FUTURE' ? (
+                                                <NextLink href={`/academic/terms?setup=1&planning=1&academic_year=${year.id}&curriculum=${year.curriculum ?? ''}`}>
+                                                    <Button variant="secondary" size="sm">
+                                                        Prepare {year.name}
+                                                    </Button>
+                                                </NextLink>
+                                            ) : null}
+                                            {!year.is_current && !year.can_set_current ? (
+                                                <span className="max-w-xs text-xs text-gray-500">
+                                                    {year.current_ineligibility_reason}
+                                                </span>
+                                            ) : null}
                                             <Button
                                                 variant="ghost"
                                                 size="sm"

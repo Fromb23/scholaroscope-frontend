@@ -64,6 +64,7 @@ function failedAction(context: ResolveAppErrorContext): string {
 }
 
 export function severityForKind(kind: AppErrorKind): AppErrorSeverity {
+  if (kind === 'cancelled') return 'info';
   if (kind === 'report_not_ready' || kind === 'setup_required' || kind === 'workspace_boundary')
     return 'warning';
   if (kind === 'validation') return 'warning';
@@ -101,6 +102,8 @@ export function titleForKind(kind: AppErrorKind, context: ResolveAppErrorContext
       return `${capitalize(label)} could not be changed.`;
     case 'network':
       return `We could not reach the server to ${failedAction(context)}.`;
+    case 'cancelled':
+      return `${capitalize(label)} request was cancelled.`;
     case 'server':
       return `We could not ${failedAction(context)}.`;
     case 'setup_required':
@@ -148,7 +151,9 @@ export function defaultMessageForKind(kind: AppErrorKind, context: ResolveAppErr
     case 'conflict':
       return 'The record is in a state that blocks this change. Refresh the page and check whether another user already updated it.';
     case 'network':
-      return 'Check your connection and try again. Retrying is safe because the request did not reach the server reliably.';
+      return 'Check your connection and confirm the latest state before retrying. A connection failure does not prove whether the server received the request.';
+    case 'cancelled':
+      return 'The request was cancelled before the client received a final result. Refresh the latest state before starting it again.';
     case 'server':
       return 'The server could not complete this request. Try again later, or contact platform support if it continues.';
     case 'setup_required':

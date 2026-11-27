@@ -106,7 +106,8 @@ export function AdminCohortsPageContent() {
 
     const selectedYear = academicYears.find((academicYear) => academicYear.id === selectedYearId);
     const selectedCurriculum = curricula.find((curriculum) => curriculum.id === selectedCurriculumId);
-    const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
+    const isHistoricalView = selectedYear?.current_eligibility === 'ENDED';
+    const isFuturePlanningView = selectedYear?.current_eligibility === 'FUTURE';
     const canCreateSelectedCurriculumWork = selectedCurriculum ? canCreateCurriculumWork(selectedCurriculum) : curricula.some((curriculum) => canCreateCurriculumWork(curriculum));
     const selectedCurriculumBlockReason = selectedCurriculum
         ? getCurriculumActionBlockReason(selectedCurriculum, 'create')
@@ -546,6 +547,11 @@ export function AdminCohortsPageContent() {
                             Historical view — records are read-only
                         </div>
                     )}
+                    {isFuturePlanningView ? (
+                        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 md:whitespace-nowrap">
+                            Planning year — cohort configuration is available; teaching remains lifecycle-gated.
+                        </div>
+                    ) : null}
                 </div>
             </Card>
 

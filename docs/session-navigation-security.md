@@ -8,7 +8,8 @@ An explicit logout is locally authoritative:
 2. clear the access token, authenticated context, workspace cache, and manual
    workspace state by advancing the workspace generation;
 3. attempt the idempotent workspace logout endpoint with a bounded timeout;
-4. navigate to `/login` regardless of network, abort, or revocation outcome.
+4. use a prefetched client replacement to `/login` regardless of network,
+   abort, or revocation outcome.
 
 Boot refresh, online reconnect, membership/context synchronization, timer or
 401 recovery, and pending refresh results all check both the tombstone and the
@@ -19,6 +20,21 @@ that clears the tombstone.
 The workspace logout endpoint remains distinct from platform-control logout.
 Its refresh cookie is HttpOnly and server-managed; the frontend never stores a
 refresh token or claims revocation succeeded when the request fails.
+
+The revocation fetch uses browser keepalive plus the existing 2.5-second bound,
+so leaving the dashboard does not silently discard the server cookie-clearing
+attempt. Failure reporting records only a safe outcome category; it does not log
+credentials, tokens, cookies or raw responses.
+
+The production delay could not be replayed against the production deployment in
+the local test environment. Code-path measurement established that revocation
+was never awaited: local clearing and the old full-document replacement were
+started in the same turn. The remaining blocking boundary was the network-first
+document navigation (also intercepted network-first by the service worker),
+which could leave the cleared dashboard's `Signing out...` state visible until
+the login document arrived. The client replacement removes that document-load
+boundary and is prefetched; delayed workspace requests are rejected by the
+generation boundary and do not gate navigation.
 
 ## Destination parsing
 
