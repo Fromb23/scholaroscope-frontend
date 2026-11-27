@@ -1,6 +1,7 @@
 import { createElement, useEffect } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useCurrentTerm } from './useAcademic';
 
@@ -50,12 +51,18 @@ function Harness() {
 
 async function renderHarness() {
   let renderer!: ReactTestRenderer;
-  await act(async () => {
-    renderer = create(createElement(Harness));
-    await Promise.resolve();
-    await Promise.resolve();
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
   });
-  return renderer;
+  await act(async () => {
+    renderer = create(createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      createElement(Harness),
+    ));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  return { renderer, queryClient };
 }
 
 describe('useCurrentTerm expected empty state', () => {
@@ -76,7 +83,8 @@ describe('useCurrentTerm expected empty state', () => {
         },
       },
     });
-    const renderer = await renderHarness();
+    const { renderer, queryClient } = await renderHarness();
+    await vi.waitFor(() => expect(latest.loading).toBe(false));
 
     expect(latest).toMatchObject({
       currentTerm: null,
@@ -88,8 +96,12 @@ describe('useCurrentTerm expected empty state', () => {
     expect(mocks.getCurrentTerm).toHaveBeenCalledWith({ organization: 7 });
 
     await act(async () => {
-      renderer.update(createElement(Harness));
-      await Promise.resolve();
+      renderer.update(createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        createElement(Harness),
+      ));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(mocks.getCurrentTerm).toHaveBeenCalledTimes(1);
     await act(async () => renderer.unmount());
@@ -108,7 +120,8 @@ describe('useCurrentTerm expected empty state', () => {
         },
       },
     });
-    const renderer = await renderHarness();
+    const { renderer } = await renderHarness();
+    await vi.waitFor(() => expect(latest.loading).toBe(false));
 
     expect(latest.currentTerm).toBeNull();
     expect(latest.noActiveTerm).toBe(false);

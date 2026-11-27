@@ -8,12 +8,12 @@ import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import { CBCNav, CBCError, CBCLoading, CBCEmpty, SubjectGroupPicker } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
-import { useAcademic } from '@/app/core/hooks/useAcademic';
+import { useSubjects } from '@/app/core/hooks/useAcademic';
 import type { Subject } from '@/app/core/types/academic';
 
 export default function CBCAuthoringPage() {
     const { selectedCurriculumId, selectedSubjectId, setSelectedSubject, curriculumLoading } = useCBCContext();
-    const { subjects = [] } = useAcademic();
+    const { subjects = [] } = useSubjects(selectedCurriculumId ?? undefined);
 
     const { data: strands = [], isLoading, error, refetch } = useStrands(
         selectedCurriculumId ? { curriculum: selectedCurriculumId } : undefined

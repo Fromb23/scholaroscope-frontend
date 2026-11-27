@@ -24,12 +24,15 @@ import {
     sortAssessmentScores,
 } from '@/app/core/types/assessment';
 import { resolveErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { useQueryClient } from '@tanstack/react-query';
+import { dashboardKeys } from '@/app/core/lib/queryKeys';
 
 function normalizeSearchValue(value: string | number | null | undefined): string {
     return String(value ?? '').trim().toLowerCase();
 }
 
 export function useAssessmentDetailPage() {
+    const queryClient = useQueryClient();
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -315,6 +318,7 @@ export function useAssessmentDetailPage() {
                 loadParticipationRoster(true),
                 refetch(),
                 refetchScores(),
+                queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
             ]);
         } catch (error) {
             setParticipationError(
@@ -344,6 +348,7 @@ export function useAssessmentDetailPage() {
                 loadParticipationRoster(true),
                 refetch(),
                 refetchScores(),
+                queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
             ]);
         } catch (error) {
             setParticipationError(

@@ -5,6 +5,7 @@ import { workspaceAccessAPI } from '@/app/core/api/workspaceAccess';
 import { resolveWorkspaceError, type AppError } from '@/app/core/errors';
 import type { PrincipalGovernancePayload, WorkspaceRoleAssignmentPayload, WorkspaceRolePayload } from '@/app/core/types/workspaceAccess';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
+import { dashboardKeys } from '@/app/core/lib/queryKeys';
 
 export const workspaceAccessKeys = {
   permissions: (organizationId: number | null) => ['workspace-access', organizationId, 'permissions'] as const,
@@ -82,6 +83,7 @@ export function useWorkspaceAccess() {
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.assignmentOptions(organizationId) });
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.me(organizationId) });
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.principal(organizationId) });
+    void queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
   };
 
   const createRole = useMutation({

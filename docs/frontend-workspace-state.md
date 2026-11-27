@@ -103,3 +103,29 @@ invalid token responses remain distinct; transport, CORS, timeout, server and
 malformed-response failures are unavailable states, never invalid-token states.
 Raw reset tokens and reset URLs must not enter logs, telemetry, monitoring
 metadata or page titles.
+
+## Shared academic reference queries
+
+Academic years, current year, current term and subjects now use the existing
+TanStack Query provider instead of component-local request state. Curricula and
+academic lifecycle remain on the same provider. Stable catalogue lists use a
+five-minute `staleTime`; current selections use one minute because their answer
+is time dependent. Query keys include organization and normalized filters.
+Actor-projected subjects additionally include actor, operating context,
+workspace generation and projection identity.
+
+The exported hook shapes remain compatible. Consumers can request only the
+dataset they need; the CBC authoring surfaces no longer invoke the five-read
+composite academic hook merely to obtain subjects. Two concurrent consumers of
+the same academic-year identity issue one request, verified by the hook test.
+Thus the representative duplicate-consumer graph changes from two HTTP reads to
+one, while the subject-only authoring graph changes from five reference reads to
+one. These are request-graph counts, not production latency measurements.
+
+Successful year, term and curriculum mutations apply authoritative response
+data where sufficient, then invalidate current context and dependent reference
+keys. Subject mutations invalidate subject projections. Session, attendance,
+assessment, score, participation and workspace-access mutations invalidate only
+the dashboard families whose displayed values may change. Workspace generation
+advance and logout retain the existing provider clear, abort and late-response
+rejection behavior, so cached results cannot cross authority generations.

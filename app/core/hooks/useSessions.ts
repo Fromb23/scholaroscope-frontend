@@ -43,6 +43,8 @@ import {
 } from '@/app/core/types/session';
 import { CohortSubject } from '@/app/core/types/academic';
 import { ApiError, resolveErrorMessage } from '@/app/core/types/errors';
+import { useQueryClient } from '@tanstack/react-query';
+import { dashboardKeys } from '@/app/core/lib/queryKeys';
 
 export { sessionAPI };
 export type { SupervisionHierarchyQuery };
@@ -78,6 +80,7 @@ export const useSessions = (
   supervision?: SessionSupervisionOptions,
   options: { enabled?: boolean } = {},
 ) => {
+  const queryClient = useQueryClient();
   const enabled = options.enabled ?? true;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(enabled);
@@ -158,18 +161,21 @@ export const useSessions = (
   const createSession = async (data: SessionFormData): Promise<Session> => {
     const newSession = await sessionAPI.create(data);
     setSessions(prev => [newSession, ...prev]);
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return newSession;
   };
 
   const updateSession = async (id: number, data: Partial<Session>): Promise<Session> => {
     const updated = await sessionAPI.update(id, data);
     setSessions(prev => prev.map(s => s.id === id ? updated : s));
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
   const deleteSession = async (id: number): Promise<void> => {
     await sessionAPI.delete(id);
     setSessions(prev => prev.filter(s => s.id !== id));
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
   };
 
   return {
@@ -231,6 +237,7 @@ export const useSessionDetail = (
     authorityMode?: SessionReadAuthorityMode;
   },
 ) => {
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [closureState, setClosureState] = useState<SessionClosureState | null>(null);
@@ -312,6 +319,7 @@ export const useSessionDetail = (
       reason: 'attendance_updated',
       sessionId,
     });
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return response;
   };
 
@@ -323,6 +331,7 @@ export const useSessionDetail = (
       reason: 'attendance_updated',
       sessionId,
     });
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
   };
 
   const startSession = async (): Promise<SessionDetail | null> => {
@@ -333,6 +342,7 @@ export const useSessionDetail = (
       reason: 'session_started',
       sessionId,
     });
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
@@ -344,6 +354,7 @@ export const useSessionDetail = (
       reason: 'session_completed',
       sessionId,
     });
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
@@ -355,6 +366,7 @@ export const useSessionDetail = (
       reason: 'session_cancelled',
       sessionId,
     });
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
@@ -368,6 +380,7 @@ export const useSessionDetail = (
       reason: 'session_rescheduled',
       sessionId,
     });
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
@@ -381,6 +394,7 @@ export const useSessionDetail = (
       reason: 'taught_outcomes_confirmed',
       sessionId,
     });
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
@@ -389,6 +403,7 @@ export const useSessionDetail = (
     const updated = await sessionAPI.recordDelivery(sessionId, data);
     applySessionDetail(updated);
     emitSessionDataChanged({ reason: 'session_completed', sessionId });
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
@@ -506,6 +521,7 @@ export const useCohortSubjectOptions = (cohortId: number | null) => {
 // ── useAttendance ─────────────────────────────────────────────────────────
 
 export const useAttendance = (params?: AttendanceQueryParams) => {
+  const queryClient = useQueryClient();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -562,6 +578,7 @@ export const useAttendance = (params?: AttendanceQueryParams) => {
   const updateRecord = async (id: number, data: AttendanceRecordUpdatePayload): Promise<AttendanceRecord> => {
     const updated = await attendanceAPI.update(id, data);
     setRecords(prev => prev.map(r => r.id === id ? updated : r));
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 

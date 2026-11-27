@@ -6,7 +6,7 @@ import {
     useDeleteStrand,
 } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
-import { useAcademic } from '@/app/core/hooks/useAcademic';
+import { useSubjects } from '@/app/core/hooks/useAcademic';
 import { resolveErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
 import type { Strand, StrandFormData } from '@/app/plugins/cbc/types/cbc';
 import type { Subject } from '@/app/core/types/academic';
@@ -15,7 +15,7 @@ const EMPTY_FORM: Partial<StrandFormData> = { name: '', description: '', subject
 
 export function useCBCAuthoringStrandsPage() {
     const { selectedCurriculumId, selectedSubjectId, setSelectedSubject } = useCBCContext();
-    const { subjects = [] } = useAcademic();
+    const { subjects = [] } = useSubjects(selectedCurriculumId ?? undefined);
 
     const { data: strands = [], isLoading, error, refetch } = useStrands(
         selectedCurriculumId ? { curriculum: selectedCurriculumId } : undefined

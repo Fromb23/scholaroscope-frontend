@@ -10,6 +10,17 @@ export const academicKeys = {
     detail: (organizationId: number | null) =>
       ['academic', 'current-context', organizationId] as const,
   },
+  academicYears: {
+    all: ['academic', 'academic-years'] as const,
+    list: (organizationId: number | null) =>
+      ['academic', 'academic-years', 'list', organizationId] as const,
+    current: (organizationId: number | null) =>
+      ['academic', 'academic-years', 'current', organizationId] as const,
+  },
+  currentTerm: {
+    detail: (organizationId: number | null) =>
+      ['academic', 'terms', 'current', organizationId] as const,
+  },
   terms: {
     all: ['academic', 'terms'] as const,
     list: (organizationId: number | null, academicYearId?: number | null) =>
@@ -23,6 +34,27 @@ export const academicKeys = {
       ['academic', 'curricula', 'detail', curriculumId] as const,
     disableImpact: (curriculumId: number | null) =>
       ['academic', 'curricula', 'disable-impact', curriculumId] as const,
+  },
+  subjects: {
+    all: ['academic', 'subjects'] as const,
+    list: (
+      organizationId: number | null,
+      actorId: number | null,
+      operatingContext: string | null,
+      workspaceGeneration: number,
+      curriculumId: number | null,
+      projectionKey: string,
+    ) => [
+      'academic',
+      'subjects',
+      'list',
+      organizationId,
+      actorId,
+      operatingContext,
+      workspaceGeneration,
+      curriculumId,
+      projectionKey,
+    ] as const,
   },
   curriculumDisableRequests: {
     all: ['academic', 'curriculum-disable-requests'] as const,
