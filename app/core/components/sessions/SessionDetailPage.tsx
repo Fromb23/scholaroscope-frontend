@@ -409,7 +409,6 @@ export function SessionDetailPage() {
         errorStatus,
         markAttendance,
         refetch,
-        refetchClosureState,
         reseedAttendance,
         startSession,
         completeSession,
@@ -954,9 +953,8 @@ export function SessionDetailPage() {
         }
 
         if (explicitClosureIntent && isInProgress) {
-            await completeSession();
-            await refetch();
-            const refreshedClosureState = await refetchClosureState();
+            const completedSession = await completeSession();
+            const refreshedClosureState = completedSession?.closure_state ?? latestClosureState;
             closureIntentRef.current = false;
             setGuidedSection('post-lesson');
             setWorkflowSuccess(
@@ -977,8 +975,6 @@ export function SessionDetailPage() {
         isInProgress,
         teachingSurface,
         openCompletionSection,
-        refetch,
-        refetchClosureState,
         revealAttendanceSection,
         revealReflectionSection,
         revealTaughtOutcomesSection,
@@ -1013,8 +1009,8 @@ export function SessionDetailPage() {
 
         let latestClosureState: SessionClosureState | null = null;
         try {
-            await refetch();
-            latestClosureState = await refetchClosureState();
+            const refreshedSession = await refetch();
+            latestClosureState = refreshedSession?.closure_state ?? null;
         } catch (err) {
             const message = err instanceof Error
                 ? err.message
@@ -1034,7 +1030,6 @@ export function SessionDetailPage() {
         });
     }, [
         refetch,
-        refetchClosureState,
         routeClosureStateFromBackend,
     ]);
 
@@ -2613,7 +2608,7 @@ export function SessionDetailPage() {
                         key={extension.key}
                         {...sessionDetailExtensionContext}
                         onSessionDataChanged={async () => {
-                            await Promise.all([refetch(), refetchClosureState()]);
+                            await refetch();
                         }}
                     />
                 );

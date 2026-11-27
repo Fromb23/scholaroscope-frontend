@@ -240,51 +240,32 @@ export const useSessionDetail = (
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  const includeOperationalData = options?.includeOperationalData ?? true;
   const authorityMode = options?.authorityMode;
 
-  const fetchClosureState = useCallback(async (): Promise<SessionClosureState | null> => {
-    if (!sessionId || !includeOperationalData) {
-      setClosureState(null);
-      return null;
-    }
+  const applySessionDetail = useCallback((data: SessionDetail) => {
+    const records = data.attendance_records ?? [];
+    setSession(data);
+    setAttendanceRecords(records);
+    setClosureState(data.closure_state ?? null);
+    setPagination({
+      currentPage: 1,
+      pageSize: records.length,
+      totalItems: records.length,
+      totalPages: 1,
+    });
+  }, []);
 
-    try {
-      const data = await sessionAPI.getClosureState(sessionId, authorityMode);
-      setClosureState(data);
-      return data;
-    } catch (err) {
-      const message = resolveErrorMessage(err as ApiError, 'Failed to fetch lesson closure state');
-      setError(message);
-      setClosureState(null);
-      throw new Error(message);
-    }
-  }, [authorityMode, includeOperationalData, sessionId]);
-
-  const fetchSession = useCallback(async (
-    freshClosureState?: SessionClosureState | null,
-  ) => {
-    if (!sessionId) { setLoading(false); return; }
+  const fetchSession = useCallback(async (): Promise<SessionDetail | null> => {
+    if (!sessionId) { setLoading(false); return null; }
 
     try {
       setLoading(true);
 
       const sessionData = await sessionAPI.getById(sessionId, authorityMode);
-      const [attendanceData, closureData] = includeOperationalData
-        ? await Promise.all([
-          sessionAPI.getAttendanceRecords(sessionId, {
-            page_size: 1000,
-            authority_mode: authorityMode,
-          }),
-          freshClosureState === undefined
-            ? sessionAPI.getClosureState(sessionId, authorityMode)
-            : Promise.resolve(freshClosureState),
-        ])
-        : [sessionData.attendance_records, null] as const;
 
       // Operational fields are absent from the learner contract. Empty/default
       // values keep the shared component stable without reconstructing class data.
-      setSession({
+      const normalized = {
         linked_cohorts: [],
         planned_outcomes: [],
         taught_outcomes: [],
@@ -300,23 +281,14 @@ export const useSessionDetail = (
         schedule_state: 'UNKNOWN',
         is_current_year: true,
         ...sessionData,
-      } as SessionDetail);
-      setClosureState(closureData);
-
-      const records = unwrapList(attendanceData) as AttendanceRecord[];
-      const totalItems = Array.isArray(attendanceData)
-        ? records.length
-        : (attendanceData as { count?: number }).count ?? records.length;
-
-      setAttendanceRecords(records);
-      setPagination({
-        currentPage: 1,
-        pageSize: records.length,
-        totalItems,
-        totalPages: 1,
-      });
+        closure_state: 'closure_state' in sessionData
+          ? sessionData.closure_state
+          : null,
+      } as SessionDetail;
+      applySessionDetail(normalized);
       setError(null);
       setErrorStatus(null);
+      return normalized;
     } catch (err) {
       const apiError = err as ApiError;
       setSession(null);
@@ -324,18 +296,18 @@ export const useSessionDetail = (
       setClosureState(null);
       setError(resolveErrorMessage(apiError, 'Failed to fetch session details'));
       setErrorStatus(typeof apiError.response?.status === 'number' ? apiError.response.status : null);
+      return null;
     } finally {
       setLoading(false);
     }
-  }, [authorityMode, includeOperationalData, sessionId]);
+  }, [applySessionDetail, authorityMode, sessionId]);
 
   useEffect(() => { fetchSession(); }, [fetchSession]);
 
   const markAttendance = async (data: BulkAttendanceData): Promise<BulkAttendanceResponse | null> => {
     if (!sessionId) return null;
     const response = await sessionAPI.markAttendance(sessionId, data);
-    setClosureState(response.closure_state);
-    await fetchSession(response.closure_state);
+    applySessionDetail(response.session);
     emitSessionDataChanged({
       reason: 'attendance_updated',
       sessionId,
@@ -353,71 +325,71 @@ export const useSessionDetail = (
     });
   };
 
-  const startSession = async (): Promise<void> => {
-    if (!sessionId) return;
+  const startSession = async (): Promise<SessionDetail | null> => {
+    if (!sessionId) return null;
     const updated = await sessionAPI.start(sessionId);
-    setSession(updated);
-    await fetchSession();
+    applySessionDetail(updated);
     emitSessionDataChanged({
       reason: 'session_started',
       sessionId,
     });
+    return updated;
   };
 
-  const completeSession = async (): Promise<void> => {
-    if (!sessionId) return;
+  const completeSession = async (): Promise<SessionDetail | null> => {
+    if (!sessionId) return null;
     const updated = await sessionAPI.complete(sessionId);
-    setSession(updated);
-    await fetchSession();
+    applySessionDetail(updated);
     emitSessionDataChanged({
       reason: 'session_completed',
       sessionId,
     });
+    return updated;
   };
 
-  const cancelSession = async (): Promise<void> => {
-    if (!sessionId) return;
+  const cancelSession = async (): Promise<SessionDetail | null> => {
+    if (!sessionId) return null;
     const updated = await sessionAPI.cancel(sessionId);
-    setSession(updated);
-    await fetchSession();
+    applySessionDetail(updated);
     emitSessionDataChanged({
       reason: 'session_cancelled',
       sessionId,
     });
+    return updated;
   };
 
   const rescheduleSession = async (
     data: RescheduleSessionPayload,
-  ): Promise<void> => {
-    if (!sessionId) return;
+  ): Promise<SessionDetail | null> => {
+    if (!sessionId) return null;
     const updated = await sessionAPI.reschedule(sessionId, data);
-    setSession(updated);
-    await fetchSession();
+    applySessionDetail(updated);
     emitSessionDataChanged({
       reason: 'session_rescheduled',
       sessionId,
     });
+    return updated;
   };
 
   const confirmTaughtOutcomes = async (
     data: ConfirmTaughtOutcomesPayload,
-  ): Promise<void> => {
-    if (!sessionId) return;
+  ): Promise<SessionDetail | null> => {
+    if (!sessionId) return null;
     const updated = await sessionAPI.confirmTaughtOutcomes(sessionId, data);
-    setSession(updated);
-    await fetchSession();
+    applySessionDetail(updated);
     emitSessionDataChanged({
       reason: 'taught_outcomes_confirmed',
       sessionId,
     });
+    return updated;
   };
 
-  const recordDelivery = async (data: import('@/app/core/types/session').RecordSessionDeliveryPayload): Promise<void> => {
-    if (!sessionId) return;
+  const recordDelivery = async (data: import('@/app/core/types/session').RecordSessionDeliveryPayload): Promise<SessionDetail | null> => {
+    if (!sessionId) return null;
     const updated = await sessionAPI.recordDelivery(sessionId, data);
-    setSession(updated);
-    await fetchSession();
+    applySessionDetail(updated);
     emitSessionDataChanged({ reason: 'session_completed', sessionId });
+    return updated;
   };
 
   const createAssignmentFromLesson = async (): Promise<SessionAssignmentDraftResponse> => {
@@ -433,7 +405,6 @@ export const useSessionDetail = (
     closureState,
     loading, error, errorStatus,
     refetch: () => fetchSession(),
-    refetchClosureState: fetchClosureState,
     markAttendance,
     reseedAttendance,
     completeSession,
