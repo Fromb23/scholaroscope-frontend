@@ -44,3 +44,12 @@ Operational CBC Browse, Teaching, and Evidence routes are not report objects. Th
 ## Return locations
 
 `buildReportReturnTo` is the ordinary report origin constructor. It preserves semantic query state, removes an existing `returnTo` and `origin`, and produces one encoded internal destination. Operational detail helpers validate through the shared application-destination parser. Absolute, protocol-relative, encoded-external, malformed, credential-bearing, and excessively nested destinations are rejected. Every Back control prefers a valid `returnTo`, then uses a route-specific structural fallback; it never depends only on browser history.
+## Projection request reuse
+
+Canonical cohort-subject overview, learner, performance, and teaching-activity
+projections use the shared query cache. Keys include organization, actor,
+workspace generation, cohort subject, term, authority mode, and projection.
+This preserves server authority while reusing a fresh response when navigating
+between related projections. The cache freshness window is 60 seconds; explicit
+refetch remains available for recovery, and a workspace-generation change
+creates a distinct cache scope.
