@@ -101,6 +101,13 @@ describe('GenerateLessonPlanPage validation and error placement', () => {
     expect(pageSource).not.toContain('generated.lesson_plan.id');
   });
 
+  it('cancels generation polling when the page lifecycle ends', () => {
+    const pageSource = source();
+    expect(pageSource).toContain('generationControllerRef.current?.abort()');
+    expect(pageSource).toContain('pollGenerationJob({');
+    expect(pageSource).toContain('getGenerationJob(queued.job_id, signal)');
+  });
+
   it('loads persisted gap suggestions and saves optional selections before generation', () => {
     const pageSource = source();
 

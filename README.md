@@ -2,6 +2,11 @@
 
 This repository serves `scholaroscope.com`, the customer workspace application and public commercial onboarding surface.
 
+Scholaroscope is curriculum-agnostic. CBC/CBE is the current reference
+curriculum implementation and a plugin-owned extension, not the identity of the
+product or its shared frontend kernel; other curriculum extensions must not be
+described as complete unless their implementation proves that coverage.
+
 It is not the Scholaroscope platform control plane. Platform-superadmin operations live in the separate `superadmin-scholaroscope` frontend deployed at `admin.scholaroscope.com`.
 
 Its job is to let public visitors create commercial workspace quotes and let real workspace users run school operations across organizations, roles, curricula, plugins, sessions, assessments, learners, reporting, and workspace administration without leaking backend complexity into the UI.

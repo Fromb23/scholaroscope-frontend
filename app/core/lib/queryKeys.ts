@@ -138,3 +138,26 @@ export const projectKeys = {
     ['projects', organizationId, 'catalogue', filters] as const,
   imports: (organizationId: number | null) => ['projects', organizationId, 'imports'] as const,
 } as const;
+
+export const reportKeys = {
+  all: ['reports'] as const,
+  cohortSubjectProjection: (
+    organizationId: number | null,
+    actorId: number | null,
+    workspaceGeneration: number,
+    cohortSubjectId: number,
+    termId: number | null,
+    authorityMode: 'teaching' | 'supervision',
+    projection: 'overview' | 'learners' | 'performance' | 'teaching-activity',
+  ) => [
+    'reports',
+    organizationId,
+    actorId,
+    workspaceGeneration,
+    'cohort-subject',
+    cohortSubjectId,
+    termId,
+    authorityMode,
+    projection,
+  ] as const,
+} as const;

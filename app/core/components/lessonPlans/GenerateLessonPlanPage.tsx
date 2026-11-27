@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { parseAppDestination } from '@/app/core/auth/navigation';
@@ -36,6 +36,7 @@ import {
     validateReferencePages,
 } from '@/app/core/lib/lessonPlanReferences';
 import { getLessonGenerationSource } from '@/app/core/lib/lessonPlanGeneration';
+import { pollGenerationJob } from '@/app/core/lib/pollGenerationJob';
 import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
 import {
     LESSON_PLAN_FIELD_LABELS,
@@ -98,6 +99,9 @@ export function GenerateLessonPlanPage() {
     const [generationStatus, setGenerationStatus] = useState<string | null>(null);
     const [asyncGenerating, setAsyncGenerating] = useState(false);
     const [guidanceOpen, setGuidanceOpen] = useState(false);
+    const generationControllerRef = useRef<AbortController | null>(null);
+
+    useEffect(() => () => generationControllerRef.current?.abort(), []);
     const [draftLessonPlan, setDraftLessonPlan] = useState<{
         id: number;
         cohortSubjectId: number;
@@ -437,24 +441,28 @@ export function GenerateLessonPlanPage() {
 
             await lessonPlanAPI.saveFollowUpSelections(lessonPlan.id, selectedFollowUpIds);
 
+            generationControllerRef.current?.abort();
+            const generationController = new AbortController();
+            generationControllerRef.current = generationController;
             const queued = await generateLessonPlan(lessonPlan.id, {
                 force_regenerate: false,
                 use_ai: requestedUseAi,
             });
 
             setGenerationStatus(queued.duplicate ? 'Generation already queued.' : 'Queued.');
-            let generated = queued;
-            for (let attempt = 0; attempt < 60 && generated.status !== 'COMPLETED' && generated.status !== 'FAILED'; attempt += 1) {
-                await new Promise((resolve) => window.setTimeout(resolve, 1000));
-                generated = await lessonPlanAPI.getGenerationJob(queued.job_id);
-                setGenerationStatus(
-                    generated.status === 'PROCESSING'
+            const generated = await pollGenerationJob({
+                initial: queued,
+                maxPolls: 60,
+                signal: generationController.signal,
+                getJob: (signal) => lessonPlanAPI.getGenerationJob(queued.job_id, signal),
+                onUpdate: (job) => setGenerationStatus(
+                    job.status === 'PROCESSING'
                         ? 'Generating...'
-                        : generated.status === 'QUEUED'
+                        : job.status === 'QUEUED'
                             ? 'Queued.'
-                            : generated.status,
-                );
-            }
+                            : job.status,
+                ),
+            });
 
             if (generated.status !== 'COMPLETED' || !generated.result_payload.lesson_plan) {
                 const detail = typeof generated.error_payload.detail === 'string'
@@ -475,6 +483,7 @@ export function GenerateLessonPlanPage() {
                 }).toString()}`
             );
         } catch (submitError) {
+            if (submitError instanceof Error && submitError.name === 'AbortError') return;
             const message = submitError instanceof Error
                 ? submitError.message
                 : 'We could not generate the lesson plan.';

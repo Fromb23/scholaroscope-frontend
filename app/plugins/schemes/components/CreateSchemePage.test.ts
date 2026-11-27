@@ -79,6 +79,12 @@ describe('create scheme term calendar setup copy', () => {
     expect(source).toContain('generated.result_payload.scheme');
     expect(source).toContain('Scheme generation failed. Please retry.');
   });
+
+  it('cancels generation polling when the page lifecycle ends', () => {
+    expect(source).toContain('generationControllerRef.current?.abort()');
+    expect(source).toContain('pollGenerationJob({');
+    expect(source).toContain('getGenerationJob(queued.job_id, signal)');
+  });
 });
 
 describe('create scheme calendar state projection', () => {

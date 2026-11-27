@@ -24,3 +24,17 @@ The preserved audit snapshot and operational dictionary live in the backend; see
 selection, execution gating, limitations, and update workflow. Future public API
 changes should update backend contracts and tests first, followed by generated or
 read-only frontend types if needed. Do not create a second independent dictionary.
+
+## Principal conversation presentation
+
+Conversation route IDs select UI state but never authorize records. The history
+surface initially renders at most ten recent conversations and pages older or
+searched results. A blank conversation is not persisted until the backend
+accepts its first authorized message; titles remain trimmed plain text and
+renameable. Academic-context failure does not remove conversation navigation,
+and disconnected intelligence must remain explicit without fabricated replies.
+
+Message acceptance follows the backend asynchronous run contract. Render only
+server-reported stages, poll inside the active organization/conversation
+lifecycle, and retry the linked failed run without creating a second user
+message. Follow-mode pauses when the reader scrolls away from the latest result.

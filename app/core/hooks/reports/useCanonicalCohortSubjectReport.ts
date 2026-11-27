@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
+import { useAuth } from '@/app/context/AuthContext';
 import { cohortSubjectReportsAPI } from '@/app/core/api/reporting';
+import { reportKeys } from '@/app/core/lib/queryKeys';
 import type {
   ClassSubjectReportPayload,
   InstructorCohortSubjectLearnersReport,
@@ -11,39 +13,40 @@ import type { ApiError } from '@/app/core/types/errors';
 import { resolveErrorMessage } from '@/app/core/types/errors';
 
 type AuthorityMode = 'teaching' | 'supervision';
+type Projection = 'overview' | 'learners' | 'performance' | 'teaching-activity';
 
 function useProjection<T>(
+  projection: Projection,
+  cohortSubjectId: number,
+  termId: number | null,
+  authorityMode: AuthorityMode,
   enabled: boolean,
   load: () => Promise<T>,
   fallbackMessage: string,
 ) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
-  const [errorStatus, setErrorStatus] = useState<number | null>(null);
-
-  const refetch = useCallback(async () => {
-    if (!enabled) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setData(await load());
-      setError(null);
-      setErrorStatus(null);
-    } catch (caught) {
-      const apiError = caught as ApiError;
-      setData(null);
-      setError(resolveErrorMessage(apiError, fallbackMessage));
-      setErrorStatus(apiError.response?.status ?? null);
-    } finally {
-      setLoading(false);
-    }
-  }, [enabled, fallbackMessage, load]);
-
-  useEffect(() => { void refetch(); }, [refetch]);
-  return { data, loading, error, errorStatus, refetch };
+  const { activeOrg, user, workspaceGeneration } = useAuth();
+  const query = useQuery({
+    queryKey: reportKeys.cohortSubjectProjection(
+      activeOrg?.id ?? null,
+      user?.id ?? null,
+      workspaceGeneration,
+      cohortSubjectId,
+      termId,
+      authorityMode,
+      projection,
+    ),
+    queryFn: load,
+    enabled: Boolean(activeOrg && enabled),
+    staleTime: 60_000,
+  });
+  const apiError = query.error as ApiError | null;
+  return {
+    data: query.data ?? null,
+    loading: query.isLoading,
+    error: apiError ? resolveErrorMessage(apiError, fallbackMessage) : null,
+    errorStatus: apiError?.response?.status ?? null,
+    refetch: query.refetch,
+  };
 }
 
 export function useCanonicalCohortSubjectOverview(
@@ -52,11 +55,15 @@ export function useCanonicalCohortSubjectOverview(
   authorityMode: AuthorityMode,
   enabled: boolean,
 ) {
-  const load = useCallback(
+  return useProjection<ClassSubjectReportPayload>(
+    'overview',
+    cohortSubjectId,
+    termId,
+    authorityMode,
+    enabled,
     () => cohortSubjectReportsAPI.getOverview(cohortSubjectId, { termId, authorityMode }),
-    [authorityMode, cohortSubjectId, termId],
+    'Failed to load the class-subject overview.',
   );
-  return useProjection<ClassSubjectReportPayload>(enabled, load, 'Failed to load the class-subject overview.');
 }
 
 export function useCanonicalCohortSubjectLearners(
@@ -65,11 +72,15 @@ export function useCanonicalCohortSubjectLearners(
   authorityMode: AuthorityMode,
   enabled: boolean,
 ) {
-  const load = useCallback(
+  return useProjection<InstructorCohortSubjectLearnersReport>(
+    'learners',
+    cohortSubjectId,
+    termId,
+    authorityMode,
+    enabled,
     () => cohortSubjectReportsAPI.getLearners(cohortSubjectId, { termId, authorityMode }),
-    [authorityMode, cohortSubjectId, termId],
+    'Failed to load learners.',
   );
-  return useProjection<InstructorCohortSubjectLearnersReport>(enabled, load, 'Failed to load learners.');
 }
 
 export function useCanonicalCohortSubjectPerformance(
@@ -78,11 +89,15 @@ export function useCanonicalCohortSubjectPerformance(
   authorityMode: AuthorityMode,
   enabled: boolean,
 ) {
-  const load = useCallback(
+  return useProjection<InstructorCohortSubjectPerformanceReport>(
+    'performance',
+    cohortSubjectId,
+    termId,
+    authorityMode,
+    enabled,
     () => cohortSubjectReportsAPI.getPerformance(cohortSubjectId, { termId, authorityMode }),
-    [authorityMode, cohortSubjectId, termId],
+    'Failed to load assessments and results.',
   );
-  return useProjection<InstructorCohortSubjectPerformanceReport>(enabled, load, 'Failed to load assessments and results.');
 }
 
 export function useCanonicalCohortSubjectTeachingActivity(
@@ -91,10 +106,13 @@ export function useCanonicalCohortSubjectTeachingActivity(
   authorityMode: AuthorityMode,
   enabled: boolean,
 ) {
-  const load = useCallback(
+  return useProjection<InstructorCohortSubjectTeachingActivityReport>(
+    'teaching-activity',
+    cohortSubjectId,
+    termId,
+    authorityMode,
+    enabled,
     () => cohortSubjectReportsAPI.getTeachingActivity(cohortSubjectId, { termId, authorityMode }),
-    [authorityMode, cohortSubjectId, termId],
+    'Failed to load teaching and curriculum activity.',
   );
-  return useProjection<InstructorCohortSubjectTeachingActivityReport>(enabled, load, 'Failed to load teaching and curriculum activity.');
 }
-

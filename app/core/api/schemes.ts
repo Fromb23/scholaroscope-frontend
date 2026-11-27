@@ -82,9 +82,10 @@ export const schemesAPI = {
     return response.data;
   },
 
-  getGenerationJob: async (jobId: string): Promise<SchemeGenerationJob> => {
+  getGenerationJob: async (jobId: string, signal?: AbortSignal): Promise<SchemeGenerationJob> => {
     const response = await apiClient.get<SchemeGenerationJob>(
-      `${SCHEMES_BASE_PATH}/generation-jobs/${jobId}/`
+      `${SCHEMES_BASE_PATH}/generation-jobs/${jobId}/`,
+      { signal },
     );
     return response.data;
   },

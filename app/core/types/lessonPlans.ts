@@ -343,6 +343,7 @@ export interface GenerateLessonPlanResponse {
     };
     error_payload: Record<string, unknown>;
     duplicate?: boolean;
+    reused?: boolean;
 }
 
 export type ScheduleLessonSessionType =

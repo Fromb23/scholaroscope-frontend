@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { Children, useEffect, useState, type ReactNode } from 'react';
+import { Children, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -57,13 +57,46 @@ export function ProjectDetailPage() {
   const activeTab = tabs.includes(searchParams.get('tab') as Tab)
     ? (searchParams.get('tab') as Tab)
     : 'overview';
+  const requestedWorkSection = searchParams.get('section') ?? searchParams.get('action');
+  const relatedResources = useMemo(() => {
+    const resources = new Set<
+      | 'participants'
+      | 'groups'
+      | 'historicalGroups'
+      | 'evidence'
+      | 'evidenceTypes'
+      | 'evaluations'
+      | 'results'
+      | 'checklist'
+      | 'observations'
+    >();
+    if (activeTab === 'tasks') {
+      resources.add('participants');
+      resources.add('groups');
+      resources.add('historicalGroups');
+      resources.add('evidence');
+      resources.add('evaluations');
+      if (requestedWorkSection === 'evidence') resources.add('evidenceTypes');
+    } else if (activeTab === 'participants') resources.add('participants');
+    else if (activeTab === 'groups') {
+      resources.add('groups');
+      resources.add('historicalGroups');
+    } else if (activeTab === 'evidence') resources.add('evidence');
+    else if (activeTab === 'observations') resources.add('observations');
+    else if (activeTab === 'evaluations') resources.add('evaluations');
+    else if (activeTab === 'results') resources.add('results');
+    else if (activeTab === 'administration') resources.add('checklist');
+    return resources;
+  }, [activeTab, requestedWorkSection]);
   const deploymentQuery = useProjectDeployment(Number.isFinite(id) && id > 0 ? id : null);
-  const related = useProjectRelated(Number.isFinite(id) && id > 0 ? id : null);
+  const related = useProjectRelated(
+    Number.isFinite(id) && id > 0 ? id : null,
+    relatedResources,
+  );
   const mutation = useProjectAction(id);
   const resources = useProjectResourceMutations(id);
   const [pendingAction, setPendingAction] = useState<ProjectLifecycleAction | null>(null);
   const [cancelReason, setCancelReason] = useState('');
-  const requestedWorkSection = searchParams.get('section') ?? searchParams.get('action');
   const initialWorkAction =
     requestedWorkSection === 'evidence' || requestedWorkSection === 'evaluation'
       ? (requestedWorkSection as 'evidence' | 'evaluation')
