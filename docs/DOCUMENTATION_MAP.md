@@ -19,7 +19,7 @@ without loading unrelated domain policy.
 | Projects | `projects-institutional-registration.md`, project API/hooks/types/components | `../../schoolscope/server/docs/projects-architecture.md`, `../../schoolscope/server/docs/projects-reporting-infrastructure.md` |
 | Evidence and academic projections | project/report hooks and curriculum extension surface | `../../schoolscope/server/docs/EVENT_SYSTEM.md`, applicable curriculum projection document |
 | Reporting | `REPORTING_ENGINE_LAW.md`, `reporting-engine-route-map.md`, `desire-paths.md` | canonical reporting services and `../../schoolscope/server/docs/projects-reporting-infrastructure.md` |
-| AI orchestration | `assistant-semantic-dictionary.md` | `../../schoolscope/server/docs/academic-intelligence-authority.md`, `../../schoolscope/server/docs/ASSISTANT_CONVERSATIONS.md`, then the affected capability document |
+| AI orchestration | `assistant-semantic-dictionary.md`, `ai-execution-efficiency.md` | `../../schoolscope/server/docs/academic-intelligence-authority.md`, `../../schoolscope/server/docs/ASSISTANT_CONVERSATIONS.md`, `../../schoolscope/server/docs/ai-execution-efficiency.md`, then the affected capability document |
 | Infrastructure and operational practices | `../README.md`, workspace/query architecture and tools | `../../schoolscope/server/docs/celery-architecture.md`, `../../schoolscope/server/docs/redis-dashboard-infrastructure.md` |
 | Frontend architecture and API contracts | `../README.md`, `frontend-action-surfaces.md`, `error-architecture.md` | affected backend serializer/view/service and invariant tests |
 

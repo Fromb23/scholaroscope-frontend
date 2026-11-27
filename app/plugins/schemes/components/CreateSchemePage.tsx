@@ -29,6 +29,7 @@ import { useAcademicLifecycleContext, useTermCalendarEvents, useCurricula, useSu
 import { useGenerateScheme, useSchemeSubjectStrands } from '@/app/core/hooks/useSchemes';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { isSelfManagedTeachingAdmin } from '@/app/core/lib/workspaces';
+import { pollGenerationJob } from '@/app/core/lib/pollGenerationJob';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type { CohortSubject, Curriculum, Subject, Term } from '@/app/core/types/academic';
 import { useAuth } from '@/app/context/AuthContext';
@@ -198,6 +199,9 @@ export function CreateSchemePage() {
   const { subjects, loading: subjectsLoading } = useSubjects();
   const instructorAccess = useInstructorCohortAccess();
   const { generateScheme, submitting, error: generateError, clearError } = useGenerateScheme();
+  const generationControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => generationControllerRef.current?.abort(), []);
 
   const [adminCohortSubjects, setAdminCohortSubjects] = useState<CohortSubject[]>([]);
   const [adminContextLoading, setAdminContextLoading] = useState(false);
@@ -983,20 +987,24 @@ export function CreateSchemePage() {
           : {}),
       };
 
+      generationControllerRef.current?.abort();
+      const generationController = new AbortController();
+      generationControllerRef.current = generationController;
       const queued = await generateScheme(payload);
       setGenerationStatus(queued.duplicate ? 'Generation already queued.' : 'Queued.');
-      let generated = queued;
-      for (let attempt = 0; attempt < 90 && generated.status !== 'COMPLETED' && generated.status !== 'FAILED'; attempt += 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 1000));
-        generated = await schemesAPI.getGenerationJob(queued.job_id);
-        setGenerationStatus(
-          generated.status === 'PROCESSING'
+      const generated = await pollGenerationJob({
+        initial: queued,
+        maxPolls: 90,
+        signal: generationController.signal,
+        getJob: (signal) => schemesAPI.getGenerationJob(queued.job_id, signal),
+        onUpdate: (job) => setGenerationStatus(
+          job.status === 'PROCESSING'
             ? 'Generating...'
-            : generated.status === 'QUEUED'
+            : job.status === 'QUEUED'
               ? 'Queued.'
-              : generated.status,
-        );
-      }
+              : job.status,
+        ),
+      });
       if (generated.status !== 'COMPLETED' || !generated.result_payload.scheme) {
         const detail = typeof generated.error_payload.detail === 'string'
           ? generated.error_payload.detail
@@ -1007,6 +1015,7 @@ export function CreateSchemePage() {
         returnTo: safeReturnTo ?? '/schemes',
       }).toString()}`);
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setGenerationFailure(
         resolveErrorMessage(err, 'We could not generate the draft scheme.'),
       );

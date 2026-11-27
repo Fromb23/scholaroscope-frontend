@@ -192,9 +192,10 @@ export const lessonPlanAPI = {
         return response.data;
     },
 
-    getGenerationJob: async (jobId: string): Promise<GenerateLessonPlanResponse> => {
+    getGenerationJob: async (jobId: string, signal?: AbortSignal): Promise<GenerateLessonPlanResponse> => {
         const response = await apiClient.get<GenerateLessonPlanResponse>(
-            `${LESSON_PLANS_BASE_PATH}/generation-jobs/${jobId}/`
+            `${LESSON_PLANS_BASE_PATH}/generation-jobs/${jobId}/`,
+            { signal },
         );
         return response.data;
     },
