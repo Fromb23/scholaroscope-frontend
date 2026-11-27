@@ -434,6 +434,11 @@ export interface BulkScoreData {
   }[];
 }
 
+export interface BulkScoreResponse {
+  detail: string;
+  scores: AssessmentScore[];
+}
+
 export interface AssessmentFormData {
   cohort_subject: number;
   term: number | null;

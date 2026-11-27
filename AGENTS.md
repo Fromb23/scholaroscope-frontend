@@ -6,6 +6,19 @@ Use these terms precisely: observation, project evidence, evaluation, finalized 
 
 ## Before changing the frontend
 
+The authoritative Operational Sustainability Doctrine is maintained only in
+`../schoolscope/server/ARCHITECTURE.md` and is the first governing
+architectural law for frontend work as well as backend work. Read it before
+implementation and apply its mandatory architectural decision gate and ordered
+optimisation hierarchy. Use the gap-driven sequence: audit, identify the
+verified gap and root cause, reuse established infrastructure, implement the
+smallest correct solution, test invariants, measure total-work improvement, and
+update documentation. Prefer existing API composition, query, invalidation and
+workspace-generation infrastructure; do not shift redundant work to the server
+or add a parallel client state architecture. Changes must remain boring,
+deterministic, measurable, recoverable, safely reversible and routinely
+maintainable by one or two engineers.
+
 Roles do not form a hierarchy and never inherit permissions. Role titles and legacy membership roles are classification only; authority comes exclusively from backend-projected effective assignments and exact capabilities. Principal is the workspace-wide, permission-bounded `OVERSIGHT` responsibility, not owner, Administrator, or Teacher. Principal routes and components must use `INSTITUTION_OVERSIGHT` plus capabilities and must never infer authority from `activeRole`. New permissions are default-deny and must be explicitly classified as read, review, approval, operation, or technical administration and added to canonical role contracts.
 
 Principal remains a canonical protected system role and cannot be assigned through generic role APIs. Workspace administrators appoint and manage Principal tenure only through the protected lifecycle and the exact server-projected Principal-management permission. Role definitions, membership classifications, staff assignments, and operating contexts remain independent; URL state uses workspace membership identity for staff-role management and never confers authority.
