@@ -27,8 +27,12 @@ import {
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { ApiError, ApiErrorWithCode, extractErrorCode, resolveErrorMessage } from '@/app/core/types/errors';
-import { academicKeys } from '@/app/core/lib/queryKeys';
+import { academicKeys, dashboardKeys } from '@/app/core/lib/queryKeys';
 import { filterByTeachingProjection } from '@/app/core/lib/teachingProjectionBoundary';
+import { useAuth } from '@/app/context/AuthContext';
+
+const STABLE_REFERENCE_STALE_TIME = 5 * 60_000;
+const CURRENT_CONTEXT_STALE_TIME = 60_000;
 
 export interface CohortFilters {
   academic_year?: number;
@@ -90,40 +94,42 @@ export function useAcademicLifecycleContext(options: {
     },
     enabled,
     refetchOnMount: options.refetchOnMount,
-    staleTime: 60_000,
+    staleTime: CURRENT_CONTEXT_STALE_TIME,
   });
 }
 
 // ── useAcademicYears ──────────────────────────────────────────────────────
 
 export const useAcademicYears = () => {
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
   const qc = useQueryClient();
-
-  const fetchAcademicYears = useCallback(async () => {
-    try {
-      setLoading(true);
+  const queryKey = academicKeys.academicYears.list(organizationId);
+  const query = useQuery<AcademicYear[], Error>({
+    queryKey,
+    queryFn: async () => {
       const params: { organization?: number } = {};
       if (organizationId) params.organization = organizationId;
       const data = await academicYearAPI.getAll(params);
-      setAcademicYears(Array.isArray(data) ? data : (data as { results?: AcademicYear[] })?.results ?? []);
-      setError(null);
-    } catch (err) {
-      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch academic years'));
-    } finally {
-      setLoading(false);
-    }
-  }, [organizationId]);
+      return Array.isArray(data) ? data : (data as { results?: AcademicYear[] })?.results ?? [];
+    },
+    staleTime: STABLE_REFERENCE_STALE_TIME,
+  });
 
-  useEffect(() => { fetchAcademicYears(); }, [fetchAcademicYears]);
+  const invalidateYearDependents = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: academicKeys.academicYears.current(organizationId) }),
+      qc.invalidateQueries({ queryKey: academicKeys.currentContext.detail(organizationId) }),
+      qc.invalidateQueries({ queryKey: academicKeys.currentTerm.detail(organizationId) }),
+      qc.invalidateQueries({ queryKey: academicKeys.terms.all }),
+      qc.invalidateQueries({ queryKey: dashboardKeys.all }),
+    ]);
+  }, [organizationId, qc]);
 
   const createAcademicYear = async (data: Partial<AcademicYear>) => {
     try {
       const newYear = await academicYearAPI.create(data);
-      setAcademicYears(prev => [newYear, ...prev]);
+      qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => [newYear, ...prev]);
+      await invalidateYearDependents();
       return newYear;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to create academic year');
@@ -133,7 +139,8 @@ export const useAcademicYears = () => {
   const updateAcademicYear = async (id: number, data: Partial<AcademicYear>) => {
     try {
       const updated = await academicYearAPI.update(id, data);
-      setAcademicYears(prev => prev.map(y => y.id === id ? updated : y));
+      qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.map(y => y.id === id ? updated : y));
+      await invalidateYearDependents();
       return updated;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to update academic year');
@@ -143,8 +150,8 @@ export const useAcademicYears = () => {
   const deleteAcademicYear = async (id: number) => {
     try {
       await academicYearAPI.delete(id);
-      setAcademicYears(prev => prev.filter(y => y.id !== id));
-      await qc.invalidateQueries({ queryKey: ['academic'] });
+      qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.filter(y => y.id !== id));
+      await invalidateYearDependents();
     } catch (err) {
       throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete academic year'));
     }
@@ -153,84 +160,83 @@ export const useAcademicYears = () => {
   const setCurrentYear = async (id: number) => {
     try {
       const updated = await academicYearAPI.setCurrent(id);
-      setAcademicYears(prev => prev.map(y => (
+      qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.map(y => (
         y.curriculum === updated.curriculum
           ? { ...y, is_current: y.id === id }
           : y
       )));
+      await invalidateYearDependents();
       return updated;
     } catch (err) {
       throw new Error(resolveErrorMessage(err as ApiError, 'Failed to set current year'));
     }
   };
 
-  return { academicYears, loading, error, refetch: fetchAcademicYears, createAcademicYear, updateAcademicYear, deleteAcademicYear, setCurrentYear };
+  return {
+    academicYears: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: query.refetch,
+    createAcademicYear,
+    updateAcademicYear,
+    deleteAcademicYear,
+    setCurrentYear,
+  };
 };
 
 // ── useCurrentAcademicYear ────────────────────────────────────────────────
 
 export const useCurrentAcademicYear = () => {
-  const [currentYear, setCurrentYear] = useState<AcademicYear | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
-
-  const fetchCurrentYear = useCallback(async () => {
-    try {
-      setLoading(true);
+  const query = useQuery<AcademicYear, ApiError>({
+    queryKey: academicKeys.academicYears.current(organizationId),
+    queryFn: async () => {
       const params: { organization?: number } = {};
       if (organizationId) params.organization = organizationId;
-      const data = await academicYearAPI.getCurrent(params);
-      setCurrentYear(data);
-      setError(null);
-    } catch (err) {
-      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch current academic year'));
-      setCurrentYear(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [organizationId]);
+      return academicYearAPI.getCurrent(params);
+    },
+    staleTime: CURRENT_CONTEXT_STALE_TIME,
+    retry: false,
+  });
 
-  useEffect(() => { fetchCurrentYear(); }, [fetchCurrentYear]);
-
-  return { currentYear, loading, error, refetch: fetchCurrentYear };
+  return {
+    currentYear: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error
+      ? resolveErrorMessage(query.error, 'Failed to fetch current academic year')
+      : null,
+    refetch: query.refetch,
+  };
 };
 
 // ── useCurrentTerm ────────────────────────────────────────────────────────
 
 export const useCurrentTerm = () => {
-  const [currentTerm, setCurrentTerm] = useState<Term | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [noActiveTerm, setNoActiveTerm] = useState(false);
   const { organizationId } = useOrganizationContext();
-
-  const fetchCurrentTerm = useCallback(async () => {
-    try {
-      setLoading(true);
+  const query = useQuery<Term, ApiError>({
+    queryKey: academicKeys.currentTerm.detail(organizationId),
+    queryFn: async () => {
       const params: { organization?: number } = {};
       if (organizationId) params.organization = organizationId;
-      const data = await termAPI.getCurrent(params);
-      setCurrentTerm(data);
-      setError(null);
-      setNoActiveTerm(false);
-    } catch (err) {
-      const apiError = err as ApiError;
-      const expectedNoActiveTerm = apiError.response?.status === 404
-        && extractErrorCode(apiError) === 'no_active_term';
-      setError(expectedNoActiveTerm
-        ? null
-        : resolveErrorMessage(apiError, 'Failed to fetch current term'));
-      setNoActiveTerm(expectedNoActiveTerm);
-      setCurrentTerm(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [organizationId]);
+      return termAPI.getCurrent(params);
+    },
+    staleTime: CURRENT_CONTEXT_STALE_TIME,
+    retry: false,
+  });
+  const noActiveTerm = Boolean(
+    query.error?.response?.status === 404
+      && extractErrorCode(query.error) === 'no_active_term'
+  );
 
-  useEffect(() => { fetchCurrentTerm(); }, [fetchCurrentTerm]);
-
-  return { currentTerm, loading, error, noActiveTerm, refetch: fetchCurrentTerm };
+  return {
+    currentTerm: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error && !noActiveTerm
+      ? resolveErrorMessage(query.error, 'Failed to fetch current term')
+      : null,
+    noActiveTerm,
+    refetch: query.refetch,
+  };
 };
 
 // ── useTerms ──────────────────────────────────────────────────────────────
@@ -259,6 +265,15 @@ export const useTerms = (academicYearId?: number) => {
     staleTime: 60_000,
   });
 
+  const invalidateTermDependents = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: academicKeys.currentContext.detail(organizationId) }),
+      qc.invalidateQueries({ queryKey: academicKeys.currentTerm.detail(organizationId) }),
+      qc.invalidateQueries({ queryKey: academicKeys.academicYears.current(organizationId) }),
+      qc.invalidateQueries({ queryKey: dashboardKeys.all }),
+    ]);
+  }, [organizationId, qc]);
+
   const fetchTerms = useCallback(async () => {
     try {
       const result = await query.refetch();
@@ -275,6 +290,7 @@ export const useTerms = (academicYearId?: number) => {
       qc.setQueryData<Term[]>(queryKey, (prev = []) => (
         [...prev, newTerm].sort((a, b) => a.sequence - b.sequence)
       ));
+      await invalidateTermDependents();
       return newTerm;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to create term');
@@ -285,6 +301,7 @@ export const useTerms = (academicYearId?: number) => {
     try {
       const updated = await termAPI.update(id, data);
       qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
+      await invalidateTermDependents();
       return updated;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to update term');
@@ -295,7 +312,7 @@ export const useTerms = (academicYearId?: number) => {
     try {
       await termAPI.delete(id);
       qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.filter(t => t.id !== id));
-      await qc.invalidateQueries({ queryKey: ['academic'] });
+      await invalidateTermDependents();
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to delete term');
     }
@@ -305,6 +322,7 @@ export const useTerms = (academicYearId?: number) => {
     try {
       const updated = await termAPI.completeCalendarSetup(id);
       qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
+      await invalidateTermDependents();
       return updated;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to complete term calendar setup');
@@ -315,6 +333,7 @@ export const useTerms = (academicYearId?: number) => {
     try {
       const updated = await termAPI.reopenCalendarSetup(id);
       qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
+      await invalidateTermDependents();
       return updated;
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to reopen term calendar setup');
@@ -430,8 +449,10 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
   const qc = useQueryClient();
   const enabled = options.enabled ?? true;
   const activeOnly = options.activeOnly ?? false;
+  const allCurriculaKey = [...academicKeys.curricula.list(organizationId), 'all'] as const;
+  const activeCurriculaKey = [...academicKeys.curricula.list(organizationId), 'active'] as const;
   const query = useQuery<Curriculum[], Error>({
-    queryKey: [...academicKeys.curricula.list(organizationId), activeOnly ? 'active' : 'all'],
+    queryKey: activeOnly ? activeCurriculaKey : allCurriculaKey,
     queryFn: async () => {
       const params: Record<string, string> = {};
       if (organizationId) params.organization = String(organizationId);
@@ -443,8 +464,18 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
         : (data as { results?: Curriculum[] })?.results ?? [];
     },
     enabled,
-    staleTime: 60 * 1000,
+    staleTime: STABLE_REFERENCE_STALE_TIME,
   });
+
+  const invalidateCurriculumDependents = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: academicKeys.currentContext.detail(organizationId) }),
+      qc.invalidateQueries({ queryKey: academicKeys.academicYears.all }),
+      qc.invalidateQueries({ queryKey: academicKeys.currentTerm.detail(organizationId) }),
+      qc.invalidateQueries({ queryKey: academicKeys.subjects.all }),
+      qc.invalidateQueries({ queryKey: dashboardKeys.all }),
+    ]);
+  }, [organizationId, qc]);
 
   const createMutation = useMutation({
     mutationFn: async (data: Partial<Curriculum>) => {
@@ -454,11 +485,11 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
         throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create curriculum'));
       }
     },
-    onSuccess: (created) => {
-      qc.setQueryData<Curriculum[]>(
-        academicKeys.curricula.list(organizationId),
-        (prev = []) => [...prev, created],
-      );
+    onSuccess: async (created) => {
+      const add = (prev: Curriculum[] = []) => prev.some(item => item.id === created.id) ? prev : [...prev, created];
+      qc.setQueryData<Curriculum[]>(allCurriculaKey, add);
+      if (created.is_active) qc.setQueryData<Curriculum[]>(activeCurriculaKey, add);
+      await invalidateCurriculumDependents();
     },
   });
 
@@ -470,11 +501,13 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
         throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update curriculum'));
       }
     },
-    onSuccess: (updated) => {
-      qc.setQueryData<Curriculum[]>(
-        academicKeys.curricula.list(organizationId),
-        (prev = []) => prev.map(c => c.id === updated.id ? updated : c),
-      );
+    onSuccess: async (updated) => {
+      const replace = (prev: Curriculum[] = []) => prev.map(c => c.id === updated.id ? updated : c);
+      qc.setQueryData<Curriculum[]>(allCurriculaKey, replace);
+      qc.setQueryData<Curriculum[]>(activeCurriculaKey, (prev = []) => (
+        replace(prev).filter(c => c.is_active)
+      ));
+      await invalidateCurriculumDependents();
     },
   });
 
@@ -487,11 +520,11 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
         throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete curriculum'));
       }
     },
-    onSuccess: (deletedId) => {
-      qc.setQueryData<Curriculum[]>(
-        academicKeys.curricula.list(organizationId),
-        (prev = []) => prev.filter(c => c.id !== deletedId),
-      );
+    onSuccess: async (deletedId) => {
+      const remove = (prev: Curriculum[] = []) => prev.filter(c => c.id !== deletedId);
+      qc.setQueryData<Curriculum[]>(allCurriculaKey, remove);
+      qc.setQueryData<Curriculum[]>(activeCurriculaKey, remove);
+      await invalidateCurriculumDependents();
     },
   });
 
@@ -512,10 +545,9 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
 // ── useSubjects ───────────────────────────────────────────────────────────
 
 export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean }) => {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
-  const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
+  const { user, activeOperatingContext, workspaceGeneration } = useAuth();
+  const qc = useQueryClient();
   const enabled = options?.enabled ?? true;
   const instructorAccess = useInstructorCohortAccess({ enabled });
   const subjectTeachingProjectionBoundary = useMemo(
@@ -531,37 +563,41 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
     [subjectIdsKey]
   );
 
-  const fetchSubjects = useCallback(async () => {
-    if (!enabled) {
-      setSubjects([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    try {
-      setLoading(true);
+  const projectionKey = `${subjectIdsKey}:${subjectTeachingProjectionBoundary.hasTeachingProjection ? 'teaching' : 'no-teaching'}:${subjectTeachingProjectionBoundary.hasManagementProjection ? 'management' : 'no-management'}`;
+  const queryKey = academicKeys.subjects.list(
+    organizationId,
+    user?.id ?? null,
+    activeOperatingContext,
+    workspaceGeneration,
+    curriculumId ?? null,
+    projectionKey,
+  );
+  const query = useQuery<Subject[], Error>({
+    queryKey,
+    queryFn: async () => {
       const params: Record<string, string> = { page_size: '1000' };
       if (curriculumId) params.curriculum = String(curriculumId);
       if (organizationId) params.organization = String(organizationId);
       const data = await subjectAPI.getAll(params);
       const allSubjects = Array.isArray(data) ? data : (data as { results?: Subject[] })?.results ?? [];
-      setSubjects(
-        filterByTeachingProjection(allSubjects, allowedSubjectIds, subjectTeachingProjectionBoundary)
-      );
-      setError(null);
-    } catch (err) {
-      setError(resolveErrorMessage(err as ApiError, 'Failed to fetch subjects'));
-    } finally {
-      setLoading(false);
-    }
-  }, [allowedSubjectIds, curriculumId, enabled, organizationId, subjectTeachingProjectionBoundary]);
+      return filterByTeachingProjection(allSubjects, allowedSubjectIds, subjectTeachingProjectionBoundary);
+    },
+    enabled,
+    staleTime: STABLE_REFERENCE_STALE_TIME,
+  });
 
-  useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
+  const invalidateSubjectDependents = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: academicKeys.subjects.all }),
+      qc.invalidateQueries({ queryKey: dashboardKeys.all }),
+    ]);
+  }, [qc]);
 
   const createSubject = async (data: Partial<Subject>) => {
     try {
       const newSubject = await subjectAPI.create(data);
-      setSubjects(prev => [...prev, newSubject]);
+      qc.setQueryData<Subject[]>(queryKey, (prev = []) => [...prev, newSubject]);
+      await invalidateSubjectDependents();
       return newSubject;
     } catch (err) {
       throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create subject'));
@@ -571,7 +607,8 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
   const updateSubject = async (id: number, data: Partial<Subject>) => {
     try {
       const updated = await subjectAPI.update(id, data);
-      setSubjects(prev => prev.map(s => s.id === id ? updated : s));
+      qc.setQueryData<Subject[]>(queryKey, (prev = []) => prev.map(s => s.id === id ? updated : s));
+      await invalidateSubjectDependents();
       return updated;
     } catch (err) {
       throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update subject'));
@@ -581,13 +618,22 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
   const deleteSubject = async (id: number) => {
     try {
       await subjectAPI.delete(id);
-      setSubjects(prev => prev.filter(s => s.id !== id));
+      qc.setQueryData<Subject[]>(queryKey, (prev = []) => prev.filter(s => s.id !== id));
+      await invalidateSubjectDependents();
     } catch (err) {
       throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete subject'));
     }
   };
 
-  return { subjects, loading, error, refetch: fetchSubjects, createSubject, updateSubject, deleteSubject };
+  return {
+    subjects: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: query.refetch,
+    createSubject,
+    updateSubject,
+    deleteSubject,
+  };
 };
 
 export const useLearnerSubjectOptions = (

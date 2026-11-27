@@ -31,6 +31,8 @@ import { ApiError, resolveErrorMessage } from '../types/errors';
 import { resolveAppError } from '@/app/core/errors';
 import { withOperationalScope, type OperationalScope } from '@/app/core/lib/academicScope';
 import { useAuth } from '@/app/context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { dashboardKeys } from '@/app/core/lib/queryKeys';
 
 // ── Helper ────────────────────────────────────────────────────────────────
 
@@ -56,6 +58,7 @@ export const useAssessments = (params?: {
   authority_mode?: 'teaching' | 'supervision';
   enabled?: boolean;
 }) => {
+  const queryClient = useQueryClient();
   const { activeOrg, activeOperatingContext, workspaceGeneration } = useAuth();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const enabled = params?.enabled ?? true;
@@ -123,18 +126,21 @@ export const useAssessments = (params?: {
   const createAssessment = async (data: Partial<Assessment>): Promise<Assessment> => {
     const created = await assessmentAPI.create(data);
     setAssessments(prev => [created, ...prev]);
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return created;
   };
 
   const updateAssessment = async (id: number, data: Partial<Assessment>): Promise<Assessment> => {
     const updated = await assessmentAPI.update(id, data);
     setAssessments(prev => prev.map(a => a.id === id ? updated : a));
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
   const deleteAssessment = async (id: number): Promise<void> => {
     await assessmentAPI.delete(id);
     setAssessments(prev => prev.filter(a => a.id !== id));
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
   };
 
   return {
@@ -196,6 +202,7 @@ export const useOpenAssessmentsForStudent = (
 // ── useAssessmentDetail ───────────────────────────────────────────────────
 
 export const useAssessmentDetail = (assessmentId: number | null) => {
+  const queryClient = useQueryClient();
   const [assessment, setAssessment] = useState<AssessmentDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -223,6 +230,7 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
     if (!assessmentId) return;
     const updated = await assessmentAPI.activate(assessmentId);
     setAssessment(prev => prev ? { ...prev, ...updated } : null);
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
   };
 
   const finalizeAssessment = async (
@@ -233,6 +241,7 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
     try {
       const updated = await assessmentAPI.finalize(assessmentId, options);
       setAssessment(prev => prev ? { ...prev, ...updated } : null);
+      await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     } finally {
       setFinalizing(false);
     }
@@ -244,6 +253,7 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
     try {
       const updated = await assessmentAPI.reopen(assessmentId);
       setAssessment(prev => prev ? { ...prev, ...updated } : null);
+      await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     } finally {
       setReopening(false);
     }
@@ -254,6 +264,7 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
     setDeleting(true);
     try {
       await assessmentAPI.delete(assessmentId);
+      await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     } finally {
       setDeleting(false);
     }
@@ -284,6 +295,7 @@ export const useAssessmentScores = (params?: {
   page_size?: number;
   enabled?: boolean;
 }) => {
+  const queryClient = useQueryClient();
   const [scores, setScores] = useState<AssessmentScore[]>([]);
   const [loading, setLoading] = useState(params?.enabled !== false);
   const [error, setError] = useState<string | null>(null);
@@ -345,6 +357,7 @@ export const useAssessmentScores = (params?: {
   const updateScore = async (id: number, data: AssessmentScoreDraft): Promise<AssessmentScore> => {
     const updated = await assessmentScoreAPI.update(id, data);
     setScores(prev => prev.map(s => s.id === id ? updated : s));
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return updated;
   };
 
@@ -352,6 +365,7 @@ export const useAssessmentScores = (params?: {
     const result = await assessmentScoreAPI.bulkEntry(data);
     const updatedById = new Map(result.scores.map(score => [score.id, score]));
     setScores(previous => previous.map(score => updatedById.get(score.id) ?? score));
+    await queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     return result.scores;
   };
 
