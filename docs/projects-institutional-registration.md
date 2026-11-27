@@ -34,3 +34,18 @@ the organization-scoped detail query and invalidate active dependent resources.
 They do not immediately refetch the unchanged detail. Error/conflict handling
 still refreshes the exact deployment because another actor may have changed its
 state. Workspace identity remains present in every project query key.
+
+## Evaluation workspace law
+
+Every project screen is oriented to its lifecycle stage and one primary next
+action; secondary actions may move under More. URL state owns deployment, task,
+scope, group, participant/evaluation, section and sanitized `returnTo` values.
+Drafts are keyed by stable record IDs, never list positions. Previous and Next
+preserve drafts; a failed save preserves both input and position.
+
+Save Draft and Save & Next persist editable work only. Finalize is a separate,
+confirmed action that explains locking and downstream projection. Group scores
+are starting values for canonical members and remain individually adjustable.
+Loading, empty, validation, error, keyboard, mobile and unsaved-change states
+are part of the workflow contract. The UI must not describe internal project or
+evaluation finalisation as KNEC submission.

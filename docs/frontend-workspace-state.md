@@ -82,3 +82,24 @@ authorize Principal UI.
 ## Project workspace navigation
 
 Project list filters are URL state. Project, catalogue and portfolio source links carry a bounded internal `returnTo`; the project workspace sanitizes it with the shared application-destination parser. Tab changes modify the existing query string so `returnTo`, task, participant and other valid workspace state survive. Project source routes select the exact evaluation for authorized staff, while learner and parent portfolio detail never links into the staff workspace.
+
+## Protected Principal and public identity boundaries
+
+Principal is the protected, permission-bounded `OVERSIGHT` responsibility, not
+workspace ownership, technical administration or teaching authority. Generic
+role-management UI must not assign or end it. Principal tenure actions render
+only from the protected backend lifecycle and exact capability. Principal
+Academic Overview remains read-only, uses `INSTITUTION_OVERSIGHT`, clears
+invalid academic descendants when a parent changes, and uses neutral canonical
+report routes. A sanitized `returnTo` value is navigation only.
+Role definitions, membership classifications, staff assignments and operating
+contexts remain independent. Staff-role management identifies a member by
+workspace membership identity; URL state never confers authority.
+
+Password-reset request, validation and consumption are public identity flows.
+They must not invoke authenticated refresh recovery, workspace generation,
+membership state or organization headers. Valid, expired, used, superseded and
+invalid token responses remain distinct; transport, CORS, timeout, server and
+malformed-response failures are unavailable states, never invalid-token states.
+Raw reset tokens and reset URLs must not enter logs, telemetry, monitoring
+metadata or page titles.
