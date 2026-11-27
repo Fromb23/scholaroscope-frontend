@@ -348,9 +348,11 @@ export const useAssessmentScores = (params?: {
     return updated;
   };
 
-  const bulkEntry = async (data: BulkScoreData): Promise<void> => {
-    await assessmentScoreAPI.bulkEntry(data);
-    await fetchScores();
+  const bulkEntry = async (data: BulkScoreData): Promise<AssessmentScore[]> => {
+    const result = await assessmentScoreAPI.bulkEntry(data);
+    const updatedById = new Map(result.scores.map(score => [score.id, score]));
+    setScores(previous => previous.map(score => updatedById.get(score.id) ?? score));
+    return result.scores;
   };
 
   return {

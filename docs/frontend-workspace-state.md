@@ -35,6 +35,13 @@ from an unmounted workspace from overwriting the new one.
 | Announcements, profile, workspace access, subscriptions             | Manual hook or page state                            | Dashboard remount and request-generation rejection. Profile/capability state cannot survive account replacement.                                                   |
 | Modal, dropdown, draft form, display preference state               | Local UI state                                       | Reset on component remount where inside the workspace shell; these values are not treated as remote authority.                                                     |
 
+Assessment score mutations merge the authoritative score rows returned by the
+backend into the existing assessment score store. They do not immediately
+reload the unchanged list or assessment detail. Assessment reopen similarly
+keeps the authoritative lifecycle response and reloads only scores and, when
+applicable, the separately owned participation roster whose rows may have
+changed. Workspace-generation rejection remains the stale-response boundary.
+
 ## Switch transaction
 
 A switch request is made while the current workspace remains committed. If it

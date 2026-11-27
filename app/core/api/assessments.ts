@@ -19,6 +19,7 @@ import {
   RubricScaleDetail,
   RubricLevel,
   BulkScoreData,
+  BulkScoreResponse,
   AssessmentStatistics,
   StudentScoresResponse,
   AssessmentReviewSummary,
@@ -387,8 +388,8 @@ export const assessmentScoreAPI = {
     await apiClient.delete(`/scores/${id}/`);
   },
 
-  bulkEntry: async (data: BulkScoreData) => {
-    const response = await apiClient.post('/scores/bulk_entry/', data);
+  bulkEntry: async (data: BulkScoreData): Promise<BulkScoreResponse> => {
+    const response = await apiClient.post<BulkScoreResponse>('/scores/bulk_entry/', data);
     return response.data;
   },
 

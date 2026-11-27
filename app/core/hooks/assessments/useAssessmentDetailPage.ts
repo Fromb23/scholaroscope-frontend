@@ -473,7 +473,6 @@ export function useAssessmentDetailPage() {
             });
             setDraft({});
             setSaveSuccess('Scores updated successfully.');
-            refetch();
         } catch (error) {
             setSaveError(resolveErrorMessage(error as ApiError, 'Failed to save scores'));
         } finally {
@@ -558,7 +557,6 @@ export function useAssessmentDetailPage() {
         try {
             await reopenAssessment();
             await Promise.all([
-                refetch(),
                 refetchScores(),
                 isTrackedParticipation ? loadParticipationRoster(true) : Promise.resolve(),
             ]);
