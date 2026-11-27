@@ -206,6 +206,7 @@ export interface RecordSessionDeliveryPayload {
 
 export interface SessionDetail extends Session {
   attendance_records: AttendanceRecord[];
+  closure_state: SessionClosureState;
 }
 
 export interface AttendanceRecord {
@@ -300,7 +301,7 @@ export interface BulkAttendanceData {
 
 export interface BulkAttendanceResponse {
   detail: string;
-  session: Session;
+  session: SessionDetail;
   closure_state: SessionClosureState;
 }
 

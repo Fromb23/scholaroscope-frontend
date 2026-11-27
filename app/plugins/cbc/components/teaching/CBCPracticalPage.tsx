@@ -48,7 +48,7 @@ export function CBCPracticalPage() {
         searchParams.get('returnTo'),
         `/sessions/${sessionId}?section=complete`,
     );
-    const { session, closureState, loading, error, refetch, refetchClosureState } = useSessionDetail(sessionId);
+    const { session, closureState, loading, error, refetch } = useSessionDetail(sessionId);
     const practicalProfileQuery = useSessionCbcPracticalProfile(sessionId, Boolean(session));
     const [completionPending, setCompletionPending] = useState(false);
     const [completionError, setCompletionError] = useState<string | null>(null);
@@ -185,7 +185,6 @@ export function CBCPracticalPage() {
                     onStateChange={async () => {
                         await Promise.all([
                             refetch(),
-                            refetchClosureState(),
                             practicalProfileQuery.refetch(),
                         ]);
                     }}
@@ -228,7 +227,6 @@ export function CBCPracticalPage() {
                     onStateChange={async () => {
                         await Promise.all([
                             refetch(),
-                            refetchClosureState(),
                             practicalProfileQuery.refetch(),
                         ]);
                     }}
