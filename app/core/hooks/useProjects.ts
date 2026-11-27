@@ -65,19 +65,33 @@ export function useProjectGroup(deploymentId: number | null, groupId: number | n
   });
 }
 
-export function useProjectRelated(id: number | null) {
+type ProjectRelatedResource =
+  | 'participants'
+  | 'groups'
+  | 'historicalGroups'
+  | 'evidence'
+  | 'evidenceTypes'
+  | 'evaluations'
+  | 'results'
+  | 'checklist'
+  | 'observations';
+
+export function useProjectRelated(
+  id: number | null,
+  requested: ReadonlySet<ProjectRelatedResource>,
+) {
   const { activeOrg } = useAuth();
   const organizationId = activeOrg?.id ?? null;
   const enabled = Boolean(organizationId && id);
   const participants = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'participants'),
     queryFn: () => projectsAPI.participants(id as number),
-    enabled,
+    enabled: enabled && requested.has('participants'),
   });
   const groups = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'groups'),
     queryFn: async () => unwrapProjectList(await projectsAPI.groups(id as number)),
-    enabled,
+    enabled: enabled && requested.has('groups'),
   });
   const historicalGroups = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'historical-groups'),
@@ -85,38 +99,38 @@ export function useProjectRelated(id: number | null) {
       const rows = unwrapProjectList(await projectsAPI.historicalGroups(id as number));
       return rows.filter((group) => group.lifecycle_state === 'HISTORICAL');
     },
-    enabled,
+    enabled: enabled && requested.has('historicalGroups'),
   });
   const evidence = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'evidence'),
     queryFn: async () => unwrapProjectList(await projectsAPI.evidence(id as number)),
-    enabled,
+    enabled: enabled && requested.has('evidence'),
   });
   const evidenceTypes = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'evidence-type-contract'),
     queryFn: projectsAPI.evidenceTypeContract,
-    enabled,
+    enabled: enabled && requested.has('evidenceTypes'),
     staleTime: 5 * 60_000,
   });
   const evaluations = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'evaluations'),
     queryFn: async () => unwrapProjectList(await projectsAPI.evaluations(id as number)),
-    enabled,
+    enabled: enabled && requested.has('evaluations'),
   });
   const results = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'results'),
     queryFn: () => projectsAPI.results(id as number),
-    enabled,
+    enabled: enabled && requested.has('results'),
   });
   const checklist = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'checklist'),
     queryFn: () => projectsAPI.checklist(id as number),
-    enabled,
+    enabled: enabled && requested.has('checklist'),
   });
   const observations = useQuery({
     queryKey: projectKeys.related(organizationId, id, 'class-observations'),
     queryFn: async () => unwrapProjectList(await projectsAPI.classObservations(id as number)),
-    enabled,
+    enabled: enabled && requested.has('observations'),
   });
   return {
     participants,
@@ -142,15 +156,25 @@ export function useProjectAction(deploymentId: number) {
       action: 'publish' | 'start' | 'complete' | 'finalize' | 'cancel';
       payload?: Record<string, unknown>;
     }) => projectsAPI.deploymentAction(deploymentId, action, payload),
-    onSettled: async (_data, error) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: projectKeys.detail(activeOrg?.id ?? null, deploymentId),
-        }),
-        queryClient.invalidateQueries({ queryKey: projectKeys.all }),
-      ]);
-      // Lifecycle conflicts deliberately refresh canonical state before the UI explains the error.
-      void error;
+    onSuccess: async (data) => {
+      queryClient.setQueryData(
+        projectKeys.detail(activeOrg?.id ?? null, deploymentId),
+        data,
+      );
+      await queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+          return key[0] === 'projects' && key[1] === (activeOrg?.id ?? null) &&
+            key[2] === 'deployment' && key[3] === deploymentId && key.length > 4;
+        },
+      });
+    },
+    onError: async () => {
+      // A lifecycle conflict can mean another actor changed the authoritative row.
+      await queryClient.invalidateQueries({
+        queryKey: projectKeys.detail(activeOrg?.id ?? null, deploymentId),
+        exact: true,
+      });
     },
   });
 }
