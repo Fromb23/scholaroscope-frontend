@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -77,15 +77,19 @@ export default function Header() {
       ? 'Workspace management'
       : 'Principal';
 
-  const handleLogout = () => {
+  useEffect(() => {
+    router.prefetch?.('/login');
+  }, [router]);
+
+  const handleLogout = async () => {
     if (logoutPending) return;
     setIsLoggingOut(true);
     setDropdownOpen(false);
     setOrgDropdownOpen(false);
     try {
-      void logout().catch(() => undefined);
+      await logout();
     } finally {
-      window.location.replace('/login');
+      router.replace('/login');
     }
   };
 

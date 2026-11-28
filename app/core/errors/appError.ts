@@ -5,6 +5,7 @@ export type AppErrorKind =
   | 'not_found'
   | 'conflict'
   | 'network'
+  | 'cancelled'
   | 'server'
   | 'setup_required'
   | 'lifecycle_locked'

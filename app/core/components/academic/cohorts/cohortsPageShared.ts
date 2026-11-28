@@ -8,7 +8,12 @@ export function parseOptionalNumber(value: string | number | null | undefined): 
 }
 
 export function buildAcademicYearOptions(
-    academicYears: Array<{ id: number; name: string; is_current: boolean }>,
+    academicYears: Array<{
+        id: number;
+        name: string;
+        is_current: boolean;
+        current_eligibility?: 'ELIGIBLE' | 'FUTURE' | 'ENDED';
+    }>,
     emptyLabel = 'All Academic Years'
 ) {
     return [
@@ -17,7 +22,9 @@ export function buildAcademicYearOptions(
             value: String(academicYear.id),
             label: academicYear.is_current
                 ? `${academicYear.name} (Current)`
-                : `${academicYear.name} — Historical`,
+                : academicYear.current_eligibility === 'FUTURE'
+                    ? `${academicYear.name} — Planning`
+                    : `${academicYear.name} — Historical`,
         })),
     ];
 }

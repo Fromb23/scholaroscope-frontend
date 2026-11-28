@@ -96,6 +96,29 @@ function codeIncludes(code: string | undefined, ...tokens: string[]): boolean {
   return tokens.some((token) => normalized.includes(token));
 }
 
+function isCancellation(err: unknown): boolean {
+  if (!isRecord(err)) return false;
+  return err.name === 'AbortError'
+    || err.name === 'CanceledError'
+    || err.code === 'ERR_CANCELED'
+    || err.__CANCEL__ === true;
+}
+
+function isTransportFailure(err: unknown): boolean {
+  if (!isRecord(err) || getStatus(err) !== undefined) return false;
+  const code = readString(err.code)?.toUpperCase();
+  if (code && ['ERR_NETWORK', 'ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET'].includes(code)) {
+    return true;
+  }
+  if (err.isAxiosError === true && 'request' in err && err.request) {
+    return true;
+  }
+  const name = readString(err.name);
+  const message = readString(err.message) ?? '';
+  return name === 'TypeError'
+    && /^(Failed to fetch|NetworkError when attempting to fetch resource\.?)$/i.test(message);
+}
+
 function classifyByStatus(status?: number): AppErrorKind | null {
   if (!status) return null;
   if (status === 400 || status === 422) return 'validation';
@@ -108,7 +131,8 @@ function classifyByStatus(status?: number): AppErrorKind | null {
   return null;
 }
 
-function classifyError(status: number | undefined, serverCode: string | undefined, fieldErrors: Record<string, string[]>): AppErrorKind {
+function classifyError(err: unknown, status: number | undefined, serverCode: string | undefined, fieldErrors: Record<string, string[]>): AppErrorKind {
+  if (isCancellation(err)) return 'cancelled';
   if (Object.keys(fieldErrors).length > 0) return 'validation';
   if (codeIncludes(serverCode, 'validation', 'invalid')) return 'validation';
   if (codeIncludes(serverCode, 'permission_denied', 'permission', 'forbidden')) return 'permission';
@@ -122,7 +146,8 @@ function classifyError(status: number | undefined, serverCode: string | undefine
   if (codeIncludes(serverCode, 'report_not_ready', 'report_stale', 'not_ready')) return 'report_not_ready';
   const byStatus = classifyByStatus(status);
   if (byStatus) return byStatus;
-  return status ? 'unknown' : 'network';
+  if (isTransportFailure(err)) return 'network';
+  return 'unknown';
 }
 
 function isRetryable(kind: AppErrorKind, context: ResolveAppErrorContext): boolean {
@@ -148,7 +173,7 @@ export function resolveAppError(err: unknown, context: ResolveAppErrorContext): 
   const fieldErrors = extractFieldErrors(data);
   const serverCode = getServerCode(data);
   const registryCopy = getErrorCodeCopy(serverCode);
-  const kind = registryCopy?.kind ?? classifyError(rawStatus, serverCode, fieldErrors);
+  const kind = registryCopy?.kind ?? classifyError(err, rawStatus, serverCode, fieldErrors);
   const serverMessage = sanitizeServerMessage(getServerMessage(data, err), kind, {
     requireAllowlisted: true,
   });

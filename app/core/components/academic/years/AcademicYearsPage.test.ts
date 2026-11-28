@@ -38,4 +38,11 @@ describe('AcademicYearsPage curriculum entitlement contract', () => {
     expect(pageSource).toContain('disabled={!hasActiveCurricula || curriculaLoading}');
     expect(pageSource).toContain('disabled={!hasActiveCurricula}');
   });
+
+  it('uses backend eligibility and explicit URL planning context for rollover', () => {
+    expect(pageSource).toContain('year.can_set_current');
+    expect(pageSource).toContain("year.current_eligibility === 'FUTURE'");
+    expect(pageSource).toContain('planning=1&academic_year=${year.id}&curriculum=${year.curriculum');
+    expect(pageSource).toContain('year.current_ineligibility_reason');
+  });
 });

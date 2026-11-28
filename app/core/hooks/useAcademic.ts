@@ -53,11 +53,23 @@ function toIdSet(idsKey: string): Set<number> {
 }
 
 function wrapApiMutationError(err: unknown, fallback: string): ApiErrorWithCode {
+  if (err instanceof Error) {
+    return err as ApiErrorWithCode;
+  }
   const apiError = err as ApiError;
   const wrapped = new Error(resolveErrorMessage(apiError, fallback)) as ApiErrorWithCode;
+  Object.assign(wrapped, err);
   wrapped.code = extractErrorCode(apiError);
   wrapped.response = apiError.response;
   return wrapped;
+}
+
+async function runPostMutationRefresh(refresh: () => Promise<void>): Promise<void> {
+  try {
+    await refresh();
+  } catch {
+    console.warn('Academic data was saved, but dependent views could not be refreshed.');
+  }
 }
 
 export function useAcademicLifecycleContext(options: {
@@ -112,7 +124,7 @@ export const useAcademicYears = () => {
       const data = await academicYearAPI.getAll(params);
       return Array.isArray(data) ? data : (data as { results?: AcademicYear[] })?.results ?? [];
     },
-    staleTime: STABLE_REFERENCE_STALE_TIME,
+    staleTime: CURRENT_CONTEXT_STALE_TIME,
   });
 
   const invalidateYearDependents = useCallback(async () => {
@@ -126,50 +138,53 @@ export const useAcademicYears = () => {
   }, [organizationId, qc]);
 
   const createAcademicYear = async (data: Partial<AcademicYear>) => {
+    let newYear: AcademicYear;
     try {
-      const newYear = await academicYearAPI.create(data);
-      qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => [newYear, ...prev]);
-      await invalidateYearDependents();
-      return newYear;
+      newYear = await academicYearAPI.create(data);
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to create academic year');
     }
+    qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => [newYear, ...prev]);
+    await runPostMutationRefresh(invalidateYearDependents);
+    return newYear;
   };
 
   const updateAcademicYear = async (id: number, data: Partial<AcademicYear>) => {
+    let updated: AcademicYear;
     try {
-      const updated = await academicYearAPI.update(id, data);
-      qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.map(y => y.id === id ? updated : y));
-      await invalidateYearDependents();
-      return updated;
+      updated = await academicYearAPI.update(id, data);
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to update academic year');
     }
+    qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.map(y => y.id === id ? updated : y));
+    await runPostMutationRefresh(invalidateYearDependents);
+    return updated;
   };
 
   const deleteAcademicYear = async (id: number) => {
     try {
       await academicYearAPI.delete(id);
-      qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.filter(y => y.id !== id));
-      await invalidateYearDependents();
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete academic year'));
+      throw wrapApiMutationError(err, 'Failed to delete academic year');
     }
+    qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.filter(y => y.id !== id));
+    await runPostMutationRefresh(invalidateYearDependents);
   };
 
   const setCurrentYear = async (id: number) => {
+    let updated: AcademicYear;
     try {
-      const updated = await academicYearAPI.setCurrent(id);
-      qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.map(y => (
-        y.curriculum === updated.curriculum
-          ? { ...y, is_current: y.id === id }
-          : y
-      )));
-      await invalidateYearDependents();
-      return updated;
+      updated = await academicYearAPI.setCurrent(id);
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to set current year'));
+      throw wrapApiMutationError(err, 'Failed to set current year');
     }
+    qc.setQueryData<AcademicYear[]>(queryKey, (prev = []) => prev.map(y => (
+      y.curriculum === updated.curriculum
+        ? { ...y, is_current: y.id === id }
+        : y
+    )));
+    await runPostMutationRefresh(invalidateYearDependents);
+    return updated;
   };
 
   return {
@@ -285,59 +300,63 @@ export const useTerms = (academicYearId?: number) => {
   }, [query]);
 
   const createTerm = async (data: Partial<Term>) => {
+    let newTerm: Term;
     try {
-      const newTerm = await termAPI.create(data);
-      qc.setQueryData<Term[]>(queryKey, (prev = []) => (
-        [...prev, newTerm].sort((a, b) => a.sequence - b.sequence)
-      ));
-      await invalidateTermDependents();
-      return newTerm;
+      newTerm = await termAPI.create(data);
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to create term');
     }
+    qc.setQueryData<Term[]>(queryKey, (prev = []) => (
+      [...prev, newTerm].sort((a, b) => a.sequence - b.sequence)
+    ));
+    await runPostMutationRefresh(invalidateTermDependents);
+    return newTerm;
   };
 
   const updateTerm = async (id: number, data: Partial<Term>) => {
+    let updated: Term;
     try {
-      const updated = await termAPI.update(id, data);
-      qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
-      await invalidateTermDependents();
-      return updated;
+      updated = await termAPI.update(id, data);
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to update term');
     }
+    qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
+    await runPostMutationRefresh(invalidateTermDependents);
+    return updated;
   };
 
   const deleteTerm = async (id: number) => {
     try {
       await termAPI.delete(id);
-      qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.filter(t => t.id !== id));
-      await invalidateTermDependents();
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to delete term');
     }
+    qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.filter(t => t.id !== id));
+    await runPostMutationRefresh(invalidateTermDependents);
   };
 
   const completeCalendarSetup = async (id: number) => {
+    let updated: Term;
     try {
-      const updated = await termAPI.completeCalendarSetup(id);
-      qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
-      await invalidateTermDependents();
-      return updated;
+      updated = await termAPI.completeCalendarSetup(id);
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to complete term calendar setup');
     }
+    qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
+    await runPostMutationRefresh(invalidateTermDependents);
+    return updated;
   };
 
   const reopenCalendarSetup = async (id: number) => {
+    let updated: Term;
     try {
-      const updated = await termAPI.reopenCalendarSetup(id);
-      qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
-      await invalidateTermDependents();
-      return updated;
+      updated = await termAPI.reopenCalendarSetup(id);
     } catch (err) {
       throw wrapApiMutationError(err, 'Failed to reopen term calendar setup');
     }
+    qc.setQueryData<Term[]>(queryKey, (prev = []) => prev.map(t => t.id === id ? updated : t));
+    await runPostMutationRefresh(invalidateTermDependents);
+    return updated;
   };
 
   return {
@@ -482,14 +501,14 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
       try {
         return await curriculumAPI.create(data);
       } catch (err) {
-        throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create curriculum'));
+        throw wrapApiMutationError(err, 'Failed to create curriculum');
       }
     },
-    onSuccess: async (created) => {
+    onSuccess: (created) => {
       const add = (prev: Curriculum[] = []) => prev.some(item => item.id === created.id) ? prev : [...prev, created];
       qc.setQueryData<Curriculum[]>(allCurriculaKey, add);
       if (created.is_active) qc.setQueryData<Curriculum[]>(activeCurriculaKey, add);
-      await invalidateCurriculumDependents();
+      void runPostMutationRefresh(invalidateCurriculumDependents);
     },
   });
 
@@ -498,16 +517,16 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
       try {
         return await curriculumAPI.update(id, data);
       } catch (err) {
-        throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update curriculum'));
+        throw wrapApiMutationError(err, 'Failed to update curriculum');
       }
     },
-    onSuccess: async (updated) => {
+    onSuccess: (updated) => {
       const replace = (prev: Curriculum[] = []) => prev.map(c => c.id === updated.id ? updated : c);
       qc.setQueryData<Curriculum[]>(allCurriculaKey, replace);
       qc.setQueryData<Curriculum[]>(activeCurriculaKey, (prev = []) => (
         replace(prev).filter(c => c.is_active)
       ));
-      await invalidateCurriculumDependents();
+      void runPostMutationRefresh(invalidateCurriculumDependents);
     },
   });
 
@@ -517,14 +536,14 @@ export const useCurricula = (options: { enabled?: boolean; activeOnly?: boolean 
         await curriculumAPI.delete(id);
         return id;
       } catch (err) {
-        throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete curriculum'));
+        throw wrapApiMutationError(err, 'Failed to delete curriculum');
       }
     },
-    onSuccess: async (deletedId) => {
+    onSuccess: (deletedId) => {
       const remove = (prev: Curriculum[] = []) => prev.filter(c => c.id !== deletedId);
       qc.setQueryData<Curriculum[]>(allCurriculaKey, remove);
       qc.setQueryData<Curriculum[]>(activeCurriculaKey, remove);
-      await invalidateCurriculumDependents();
+      void runPostMutationRefresh(invalidateCurriculumDependents);
     },
   });
 
@@ -594,35 +613,37 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
   }, [qc]);
 
   const createSubject = async (data: Partial<Subject>) => {
+    let newSubject: Subject;
     try {
-      const newSubject = await subjectAPI.create(data);
-      qc.setQueryData<Subject[]>(queryKey, (prev = []) => [...prev, newSubject]);
-      await invalidateSubjectDependents();
-      return newSubject;
+      newSubject = await subjectAPI.create(data);
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create subject'));
+      throw wrapApiMutationError(err, 'Failed to create subject');
     }
+    qc.setQueryData<Subject[]>(queryKey, (prev = []) => [...prev, newSubject]);
+    await runPostMutationRefresh(invalidateSubjectDependents);
+    return newSubject;
   };
 
   const updateSubject = async (id: number, data: Partial<Subject>) => {
+    let updated: Subject;
     try {
-      const updated = await subjectAPI.update(id, data);
-      qc.setQueryData<Subject[]>(queryKey, (prev = []) => prev.map(s => s.id === id ? updated : s));
-      await invalidateSubjectDependents();
-      return updated;
+      updated = await subjectAPI.update(id, data);
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update subject'));
+      throw wrapApiMutationError(err, 'Failed to update subject');
     }
+    qc.setQueryData<Subject[]>(queryKey, (prev = []) => prev.map(s => s.id === id ? updated : s));
+    await runPostMutationRefresh(invalidateSubjectDependents);
+    return updated;
   };
 
   const deleteSubject = async (id: number) => {
     try {
       await subjectAPI.delete(id);
-      qc.setQueryData<Subject[]>(queryKey, (prev = []) => prev.filter(s => s.id !== id));
-      await invalidateSubjectDependents();
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete subject'));
+      throw wrapApiMutationError(err, 'Failed to delete subject');
     }
+    qc.setQueryData<Subject[]>(queryKey, (prev = []) => prev.filter(s => s.id !== id));
+    await runPostMutationRefresh(invalidateSubjectDependents);
   };
 
   return {
@@ -807,7 +828,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       setCohorts(prev => [...prev, newCohort]);
       return newCohort;
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to create cohort'));
+      throw wrapApiMutationError(err, 'Failed to create cohort');
     }
   };
 
@@ -819,7 +840,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       setCohorts(prev => prev.map(c => c.id === id ? updated : c));
       return updated;
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to update cohort'));
+      throw wrapApiMutationError(err, 'Failed to update cohort');
     }
   };
 
@@ -828,7 +849,7 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
       await cohortAPI.delete(id);
       setCohorts(prev => prev.filter(c => c.id !== id));
     } catch (err) {
-      throw new Error(resolveErrorMessage(err as ApiError, 'Failed to delete cohort'));
+      throw wrapApiMutationError(err, 'Failed to delete cohort');
     }
   };
 
