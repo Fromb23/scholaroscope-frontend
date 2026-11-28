@@ -69,11 +69,16 @@ revocation is bounded and best-effort, while local signed-out state is
 authoritative. Automatic refresh and context paths cannot clear the tombstone
 or restore a session. An intentional new authentication submission clears it.
 
-Logout navigation uses the prefetched client router after the local transaction,
-so the dashboard does not wait for a new document or an unrelated workspace
-request. Server revocation continues independently with keepalive and a bounded
-timeout. A safe failure category is observable, while the UI remains signed out
-and makes no claim that server revocation succeeded.
+`AuthProvider`, above the workspace-generation boundary, is the only explicit
+logout navigation owner. It requests a client replacement to `/login` after the
+local transaction, never carries a protected return destination, and observes
+the pathname to distinguish a committed login route from a prefetch or router
+invocation. A 1.5-second one-shot timer replaces the full document with `/login`
+if client navigation does not commit. Login-route commitment, provider unmount,
+or a later deliberate authentication cancels the timer. Server revocation
+continues independently with keepalive and a bounded timeout. A safe failure
+category is observable, while the UI remains signed out and makes no claim that
+server revocation succeeded.
 ## Operating contexts and Principal revocation
 
 Operating contexts are backend authority projections, not role-title guesses.

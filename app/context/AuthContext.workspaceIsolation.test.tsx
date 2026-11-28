@@ -19,6 +19,20 @@ import {
 } from '@/app/core/auth/explicitLogout';
 import type { OperatingContext } from '@/app/core/types/auth';
 
+const navigationMocks = vi.hoisted(() => ({
+  pathname: '/dashboard',
+  prefetch: vi.fn(),
+  replace: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => navigationMocks.pathname,
+  useRouter: () => ({
+    prefetch: navigationMocks.prefetch,
+    replace: navigationMocks.replace,
+  }),
+}));
+
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -96,6 +110,9 @@ describe('AuthContext workspace authority races', () => {
   let renderer: ReactTestRenderer | null = null;
 
   beforeEach(() => {
+    navigationMocks.pathname = '/dashboard';
+    navigationMocks.prefetch.mockReset();
+    navigationMocks.replace.mockReset();
     clearExplicitLogout();
     resetWorkspaceGenerationForTests();
     const storage = new Map<string, string>();

@@ -153,6 +153,12 @@ Plugin registration must be idempotent. Loading a plugin twice must not duplicat
 
 Frontend logout is local-first: clear local auth state, query cache, and navigation state immediately, then attempt backend session revocation in the background.
 
+The root auth provider is the single explicit-logout navigation owner. It survives
+workspace-generation remounts, replaces the route with `/login` without a return
+destination, and falls back once to full-document navigation if the client route
+has not committed within 1.5 seconds. Route commitment, not revocation success or
+prefetch completion, ends the signing-out state.
+
 Backend logout must clear the HttpOnly refresh cookie and revoke the Redis refresh session. Missing, invalid, or failed revocation must not trap the browser in a session; the browser should still receive a cleared refresh cookie. After backend logout, refresh must be treated as unauthenticated.
 
 ### GitHub Release Version Law

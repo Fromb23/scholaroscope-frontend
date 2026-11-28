@@ -17,12 +17,12 @@ interface AuthGuardProps {
  * Must wrap TenantGuard which must wrap PermissionGuard.
  */
 export function AuthGuard({ children }: AuthGuardProps) {
-    const { user, loading } = useAuth();
+    const { user, loading, loggingOut } = useAuth();
     const router = useRouter();
     const redirectedToRef = useRef<string | null>(null);
 
     useEffect(() => {
-        if (!loading && !user) {
+        if (!loading && !loggingOut && !user) {
             const destination = buildLoginPath(getCurrentPath());
             if (redirectedToRef.current !== destination) {
                 redirectedToRef.current = destination;
@@ -31,9 +31,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
         } else if (user) {
             redirectedToRef.current = null;
         }
-    }, [loading, router, user]);
+    }, [loading, loggingOut, router, user]);
 
     if (loading) return <PermissionResolvingState message="Restoring your session..." />;
+    if (loggingOut) return <PermissionResolvingState message="Signing out..." />;
     if (!user) return <PermissionResolvingState message="Redirecting to sign in..." />;
 
     return <>{children}</>;
