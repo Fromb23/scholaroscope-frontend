@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { DEFAULT_WORKSPACE_CAPABILITIES, authAPI } from '@/app/core/api/auth';
 import {
@@ -18,6 +19,10 @@ import {
   registerAuthFailureHandler,
 } from '@/app/core/api/client';
 import { logoutLocalFirst } from '@/app/core/auth/logout';
+import {
+  LOGOUT_NAVIGATION_DEADLINE_MS,
+  replaceWithLoginDocument,
+} from '@/app/core/auth/logoutNavigation';
 import {
   clearExplicitLogout,
   isExplicitLogoutActive,
@@ -209,6 +214,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const workspaceGeneration = useWorkspaceGeneration();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
   const [activeOrg, setActiveOrg] = useState<ActiveOrg | null>(null);
@@ -225,6 +232,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     organizationId: number;
     promise: Promise<SwitchOrgResponse>;
   } | null>(null);
+  const logoutPromiseRef = useRef<Promise<void> | null>(null);
+  const logoutAttemptRef = useRef(0);
+  const logoutNavigationStartedRef = useRef<number | null>(null);
+  const logoutFallbackIssuedRef = useRef<number | null>(null);
+  const logoutFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loggingOutRef = useRef(false);
+
+  const clearLogoutFallback = useCallback(() => {
+    if (logoutFallbackTimerRef.current !== null) {
+      clearTimeout(logoutFallbackTimerRef.current);
+      logoutFallbackTimerRef.current = null;
+    }
+  }, []);
+
+  const finishLogoutNavigation = useCallback(() => {
+    clearLogoutFallback();
+    loggingOutRef.current = false;
+    logoutPromiseRef.current = null;
+    logoutNavigationStartedRef.current = null;
+    logoutFallbackIssuedRef.current = null;
+    setLoggingOut(false);
+  }, [clearLogoutFallback]);
+
+  const cancelLogoutNavigation = useCallback(() => {
+    logoutAttemptRef.current += 1;
+    finishLogoutNavigation();
+  }, [finishLogoutNavigation]);
+
+  const beginIntentionalAuthentication = useCallback(() => {
+    cancelLogoutNavigation();
+    clearExplicitLogout();
+  }, [cancelLogoutNavigation]);
 
   const activeRole = useMemo(
     () => resolveActiveRole(user, activeOrg, memberships),
@@ -364,8 +403,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => registerAuthFailureHandler(null);
   }, [clearAuthState]);
 
+  useEffect(() => {
+    if (!loggingOut) {
+      clearLogoutFallback();
+      return;
+    }
+
+    if (pathname === '/login') {
+      finishLogoutNavigation();
+      return;
+    }
+
+    const attempt = logoutAttemptRef.current;
+    const issueDocumentFallback = () => {
+      if (
+        logoutFallbackIssuedRef.current === attempt
+        || logoutAttemptRef.current !== attempt
+        || !loggingOutRef.current
+        || !isExplicitLogoutActive()
+      ) {
+        return;
+      }
+      logoutFallbackIssuedRef.current = attempt;
+      clearLogoutFallback();
+      replaceWithLoginDocument();
+    };
+
+    if (logoutNavigationStartedRef.current !== attempt) {
+      logoutNavigationStartedRef.current = attempt;
+      router.prefetch?.('/login');
+      try {
+        router.replace('/login');
+      } catch {
+        issueDocumentFallback();
+      }
+    }
+
+    if (
+      logoutFallbackIssuedRef.current !== attempt
+      && logoutFallbackTimerRef.current === null
+    ) {
+      logoutFallbackTimerRef.current = setTimeout(
+        issueDocumentFallback,
+        LOGOUT_NAVIGATION_DEADLINE_MS,
+      );
+    }
+  }, [
+    clearLogoutFallback,
+    finishLogoutNavigation,
+    loggingOut,
+    pathname,
+    router,
+  ]);
+
+  useEffect(() => clearLogoutFallback, [clearLogoutFallback]);
+
   const boot = useCallback(async (isCancelled: () => boolean = () => false) => {
     if (isExplicitLogoutActive()) {
+      loggingOutRef.current = true;
+      logoutAttemptRef.current += 1;
+      setLoggingOut(true);
       clearAuthState('session-invalidation');
       setLoading(false);
       return;
@@ -445,7 +542,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [boot, offline]);
 
   const login = useCallback(async (email: string, password: string) => {
-    clearExplicitLogout();
+    beginIntentionalAuthentication();
     const authorityAtStart = captureWorkspaceAuthority(activeOrg?.id ?? null);
     const authStateVersionAtStart = authStateVersionRef.current;
     const response = await authAPI.login({ email, password });
@@ -459,13 +556,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyAuthState(response, 'login');
     setLoading(false);
     return response;
-  }, [activeOrg?.id, applyAuthState]);
+  }, [activeOrg?.id, applyAuthState, beginIntentionalAuthentication]);
 
-  const logout = useCallback(() => logoutLocalFirst({
-    markLogoutStarted: () => setLoggingOut(true),
-    clearAuthState: () => clearAuthState('logout'),
-    setLoading,
-  }), [clearAuthState]);
+  const logout = useCallback(() => {
+    if (logoutPromiseRef.current) {
+      return logoutPromiseRef.current;
+    }
+    logoutAttemptRef.current += 1;
+    const promise = logoutLocalFirst({
+      markLogoutStarted: () => {
+        loggingOutRef.current = true;
+        setLoggingOut(true);
+      },
+      clearAuthState: () => clearAuthState('logout'),
+      setLoading,
+    });
+    logoutPromiseRef.current = promise;
+    return promise;
+  }, [clearAuthState]);
 
   const switchOrg = useCallback(async (organizationId: number) => {
     const existingSwitch = switchOrgInFlightRef.current;
@@ -503,7 +611,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applyAuthState]);
 
   const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResponse> => {
-    clearExplicitLogout();
+    beginIntentionalAuthentication();
     const response = await authAPI.register(payload);
 
     if (response.status === 'pending' || response.status === 'email_verification_required') {
@@ -524,10 +632,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 'registration');
     setLoading(false);
     return response;
-  }, [applyAuthState, membershipVersion]);
+  }, [applyAuthState, beginIntentionalAuthentication, membershipVersion]);
 
   const verifyEmail = useCallback(async (token: string): Promise<RegisterResponse> => {
-    clearExplicitLogout();
+    beginIntentionalAuthentication();
     const response = await authAPI.verifyEmail(token);
     if (response.access && response.user) {
       applyAuthState({
@@ -541,7 +649,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
     return response;
-  }, [applyAuthState, membershipVersion]);
+  }, [applyAuthState, beginIntentionalAuthentication, membershipVersion]);
 
   const acceptInvite = useCallback(async (
     inviteToken: string,

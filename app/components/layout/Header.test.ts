@@ -15,15 +15,16 @@ describe('Header user dropdown', () => {
     expect(source).toContain('Logout');
   });
 
-  it('routes logout locally to login and disables the logout button while processing', () => {
+  it('delegates logout navigation to the root auth owner and disables repeated clicks', () => {
     const source = readFileSync(join(process.cwd(), 'app/components/layout/Header.tsx'), 'utf8');
+    const authSource = readFileSync(join(process.cwd(), 'app/context/AuthContext.tsx'), 'utf8');
 
     expect(source).toContain('const [isLoggingOut, setIsLoggingOut] = useState(false)');
     expect(source).toContain('const logoutPending = isLoggingOut || loggingOut');
     expect(source).toContain('setDropdownOpen(false);');
     expect(source).toContain('setOrgDropdownOpen(false);');
-    expect(source).toContain("router.prefetch?.('/login')");
-    expect(source).toContain("router.replace('/login')");
+    expect(source).not.toContain("router.prefetch?.('/login')");
+    expect(source).not.toContain("router.replace('/login')");
     expect(source).not.toContain("window.location.replace('/login')");
     expect(source).not.toContain("router.push('/login')");
     expect(source).not.toContain('buildLoginPath');
@@ -31,6 +32,8 @@ describe('Header user dropdown', () => {
     expect(source).toContain('disabled={logoutPending}');
     expect(source).toContain('aria-busy={logoutPending}');
     expect(source).toContain("logoutPending ? 'Logging out...' : 'Logout'");
+    expect(authSource).toContain("router.replace('/login')");
+    expect(authSource).toContain('LOGOUT_NAVIGATION_DEADLINE_MS');
   });
 
   it('keeps mobile shell controls CSS-first and touch-friendly', () => {

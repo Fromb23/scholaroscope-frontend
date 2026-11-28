@@ -8,8 +8,10 @@ An explicit logout is locally authoritative:
 2. clear the access token, authenticated context, workspace cache, and manual
    workspace state by advancing the workspace generation;
 3. attempt the idempotent workspace logout endpoint with a bounded timeout;
-4. use a prefetched client replacement to `/login` regardless of network,
-   abort, or revocation outcome.
+4. let the root auth provider request one client replacement to `/login`
+   regardless of network, abort, or revocation outcome;
+5. confirm commitment from the mounted `/login` pathname, or issue one
+   full-document `/login` replacement after a 1.5-second deadline.
 
 Boot refresh, online reconnect, membership/context synchronization, timer or
 401 recovery, and pending refresh results all check both the tombstone and the
@@ -26,15 +28,27 @@ so leaving the dashboard does not silently discard the server cookie-clearing
 attempt. Failure reporting records only a safe outcome category; it does not log
 credentials, tokens, cookies or raw responses.
 
-The production delay could not be replayed against the production deployment in
-the local test environment. Code-path measurement established that revocation
-was never awaited: local clearing and the old full-document replacement were
-started in the same turn. The remaining blocking boundary was the network-first
-document navigation (also intercepted network-first by the service worker),
-which could leave the cleared dashboard's `Signing out...` state visible until
-the login document arrived. The client replacement removes that document-load
-boundary and is prefetched; delayed workspace requests are rejected by the
-generation boundary and do not gate navigation.
+The confirmed failure was navigation ownership, not backend revocation latency.
+`Header` awaited the immediately resolved local-first logout promise and owned
+`router.replace('/login')`, but logout advanced the workspace generation and
+remounted the protected subtree containing `Header`. A login prefetch request
+therefore did not establish route commitment, and the surviving dashboard shell
+could remain in `Signing out...` indefinitely.
+
+The owner now lives in `AuthProvider`, above that remount boundary. `Header`,
+`AuthGuard`, and `DashboardClientShell` do not initiate competing explicit-logout
+redirects. Guards render the protected-content-free signing-out state while the
+root owner navigates directly to `/login`, without `next`. The owner cancels its
+recovery timer only when `/login` commits, and resets `loggingOut` there so the
+login form is not replaced by another pending state. A deliberate later login
+also invalidates any old attempt before clearing the tombstone.
+
+Mounted provider tests reproduce the generation unmount and cover successful,
+rejected, aborted/timeout, and hanging revocation; delayed pre-logout context;
+guard competition; stalled and committed navigation; repeated clicks; and later
+intentional login. A production build is validated locally, but replay against a
+deployed production browser remains pending because this repository has no
+browser runner or production-session fixture.
 
 ## Destination parsing
 
